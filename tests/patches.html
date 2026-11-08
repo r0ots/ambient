@@ -32,6 +32,13 @@ window.addEventListener('load', async ()=>{
   await AMB.ui.importPatches(file);
   const u=JSON.parse(localStorage.getItem('ambient.userPresets.v1'));
   log('afterImport='+Object.keys(u).join('|')+' sceneA='+!!AMB.scenes.A);
+  // robustness: malformed values must be ignored, not crash
+  const before=AMB.store.get('texture.type');
+  AMB.ui.applyPatch({'texture.type':'Neige','global.scale':'Foo','fx.space':'x','pad.on':1});
+  log('invalid ignored: texture='+AMB.store.get('texture.type')+' scale='+AMB.store.get('global.scale')+' space='+AMB.store.get('fx.space')+' padOn='+AMB.store.get('pad.on'));
+  // forced chord then stop/play must not leave the chord lock behind
+  await AMB.ui.play(); AMB.seq.step=5000; AMB.seq.forceChord(2); AMB.ui.stop(); await AMB.ui.play();
+  log('lockUntil after restart='+AMB.seq.lockUntil);
   log('DONE');
   }catch(e){log('EXC '+e.stack)}
 });

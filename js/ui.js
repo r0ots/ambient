@@ -173,7 +173,9 @@
     const old = currentUserPatch(); if (!old) return;
     const name = prompt('Nouveau nom :', old);
     if (!name || name === old) return;
-    const u = loadUser(); u[name] = u[old]; delete u[old]; saveUser(u);
+    const u = loadUser();
+    if (u[name] && !confirm(`Un patch « ${name} » existe déjà. Le remplacer ?`)) return;
+    u[name] = u[old]; delete u[old]; saveUser(u);
     fillPresetSelect(); $('#preset').value = 'u:' + name; updatePatchButtons();
     toast(`Renommé en « ${name} »`);
   }
@@ -187,7 +189,7 @@
   function exportPatches() {
     let scenes = null;
     try { scenes = JSON.parse(localStorage.getItem('ambient.scenes.v1')); } catch (e) {}
-    const data = { app: 'ambient', version: 1, exported: new Date().toISOString(), patches: loadUser(), scenes, current: store.snapshot() };
+    const data = { app: 'ambient', version: 1, exported: new Date().toISOString(), patches: loadUser(), scenes, current: store.stableSnapshot() };
     AMB.rec.download(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }), 'json');
     toast(`${Object.keys(data.patches).length} patch(s) exporté(s)`);
   }
@@ -222,12 +224,14 @@
     }
   }
 
+  let lastGenerated = null;
   // "Nouveau paysage": coherent mood-based generation (see generator.js)
   function randomize() {
     const moodSel = $('#mood');
     const mv = moodSel ? moodSel.value : '';
     const { mood, title, patch } = mv === '__day' ? AMB.generator.generateDaily() : AMB.generator.generate(mv);
     applyPatch(patch);
+    lastGenerated = patch;
     const s = $('#preset');
     if (s) {
       let g = s.querySelector('optgroup[data-gen]');
@@ -283,12 +287,13 @@
     bind('#preset', 'change', (e) => {
       const v = e.target.value;
       if (v.startsWith('f:')) applyPatch(AMB.PRESETS[v.slice(2)]);
-      else applyPatch(loadUser()[v.slice(2)]);
+      else if (v.startsWith('g:')) { if (lastGenerated) applyPatch(lastGenerated); }
+      else if (loadUser()[v.slice(2)]) applyPatch(loadUser()[v.slice(2)]);
     });
     bind('#save', 'click', () => {
       const name = prompt('Nom du patch :', 'Mon ambient ' + (Object.keys(loadUser()).length + 1));
       if (!name) return;
-      saveUserPatch(name, store.snapshot());
+      saveUserPatch(name, store.stableSnapshot());
     });
     bind('#dice', 'click', randomize);
     bind('#renamePatch', 'click', renamePatch);
@@ -366,7 +371,7 @@
   const b64d = (str) => decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/'))));
   function encodePatch() {
     const diff = {};
-    for (const [k, v] of Object.entries(store.snapshot())) {
+    for (const [k, v] of Object.entries(store.stableSnapshot())) {
       const sp = store.spec(k);
       if (k === 'global.volume' || v === sp.def) continue;
       diff[k] = typeof v === 'number' ? Math.round(v * 1000) / 1000 : v;

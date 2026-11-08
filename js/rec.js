@@ -39,7 +39,7 @@
     }, 250);
     if (mins) {
       const fade = 5;
-      recState.fadeT = setTimeout(() => AMB.engine.fadeOut(fade), (mins * 60 - fade) * 1000);
+      recState.fadeT = setTimeout(() => { recState.fading = true; AMB.engine.fadeOut(fade); }, (mins * 60 - fade) * 1000);
       recState.endT = setTimeout(() => { finishRec(btn); setTimeout(() => AMB.seq.playing && AMB.engine.fadeIn(2), 300); }, mins * 60 * 1000);
     }
     btn.textContent = '■ 0:00';
@@ -47,6 +47,7 @@
   function finishRec(btn) {
     if (!recState) return;
     clearInterval(recState.iv); clearTimeout(recState.fadeT); clearTimeout(recState.endT);
+    if (recState.fading && AMB.seq.playing) AMB.engine.fadeIn(2); // stopped during the end fade: bring sound back
     if (recState.fmt === 'wav') download(AMB.engine.stopCapture(), 'wav');
     else if (recorder) recorder.stop();
     recState = null;
@@ -55,18 +56,21 @@
   }
 
   // ---------- sleep timer ----------
-  let sleepT = null;
+  let sleepT = null, sleepFading = false;
   function setSleep(mins, label) {
     clearTimeout(sleepT); sleepT = null;
     label.textContent = '';
+    // cancelled or changed during the final fade: restore the volume
+    if (sleepFading && AMB.seq.playing) AMB.engine.fadeIn(1.5);
+    sleepFading = false;
     if (!mins) return;
     const end = Date.now() + mins * 60000;
     const fadeSecs = Math.min(120, mins * 60 * 0.25);
     const tick = () => {
       const left = end - Date.now();
-      if (!AMB.seq.playing) { label.textContent = ''; return; }
-      if (left <= 0) { AMB.ui.stop(); label.textContent = ''; $('#sleep').value = '0'; return; }
-      if (left <= fadeSecs * 1000 && !tick.fading) { tick.fading = true; AMB.engine.fadeOut(left / 1000); }
+      if (left <= 0) { if (AMB.seq.playing) AMB.ui.stop(); sleepFading = false; label.textContent = ''; $('#sleep').value = '0'; return; }
+      // keeps counting while stopped, so a timer set before pressing play still applies
+      if (AMB.seq.playing && left <= fadeSecs * 1000 && !sleepFading) { sleepFading = true; AMB.engine.fadeOut(left / 1000); }
       const m = Math.ceil(left / 60000);
       label.textContent = `${m} min`;
       sleepT = setTimeout(tick, 1000);

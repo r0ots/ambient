@@ -1,5 +1,5 @@
 // Offline cache: network-first for freshness, cache fallback when offline.
-const CACHE = 'ambient-v8';
+const CACHE = 'ambient-v9';
 const ASSETS = ['./', 'index.html', 'css/style.css', 'manifest.webmanifest', 'icon.svg',
   'js/theory.js', 'js/params.js', 'js/engine.js', 'js/layers.js', 'js/sequencer.js', 'js/presets.js', 'js/generator.js', 'js/visual.js', 'js/scenes.js', 'js/journal.js', 'js/history.js', 'js/widgets.js', 'js/perform.js', 'js/rec.js', 'js/ui.js', 'js/play.js'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS))); self.skipWaiting(); });
@@ -10,6 +10,7 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
   e.respondWith(fetch(e.request).then((r) => {
-    const copy = r.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); return r;
+    if (r.ok) { const copy = r.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); }
+    return r;
   }).catch(() => caches.match(e.request, { ignoreSearch: true })));
 });

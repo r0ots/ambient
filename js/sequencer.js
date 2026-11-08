@@ -38,6 +38,7 @@
       if (this.playing) return;
       this.playing = true;
       this.step = 0;
+      this.lockUntil = 0;
       this.nextTime = ctx.currentTime + 0.1;
       this.chordDeg = 0;
       this.timer = setInterval(() => this.tick(), 50);

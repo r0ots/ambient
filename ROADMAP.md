@@ -47,6 +47,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] v0.32 : presets d'usine enrichis (contre-chant, caractères de reverb, LFO, reverse/glissando) ; « ☀ Paysage du jour » déterministe par date.
 - [x] v0.33 : tap de sortie (Gel + WAV) en AudioWorklet chargé par Blob URL, repli ScriptProcessor ; endurance inchangée (heap 15–28 Mo, lag ≤ 5 ms).
 - [x] v0.34 : gestion des patchs (renommer, supprimer avec confirmation) ; export/import .json des patchs + scènes A/B, sans écraser (suffixe « (importé) »).
+- [x] v0.35 : corrections issues d'une revue de code indépendante — verrou d'accord forcé réinitialisé au Play, grains justes en 432 Hz, fin de Rec/sommeil pendant un fondu ne laisse plus la sortie muette, minuteur réglé avant Lecture respecté, reselection du paysage généré, release sans clic d'un pad en attaque, valeurs invalides (lien/import) ignorées au lieu de planter, patchs/liens/scènes sauvent la valeur utilisateur (pas la valeur modulée), renommage sans écrasement silencieux, SW ne cache plus les erreurs.
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).

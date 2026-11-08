@@ -123,8 +123,11 @@
     // fade out every sounding chord (used when the player forces a new chord)
     releaseAll(time, tc = 0.7) {
       for (const r of this.active_) {
-        r.env.gain.cancelScheduledValues(time);
-        r.env.gain.setTargetAtTime(0, time, tc);
+        const g = r.env.gain;
+        // hold the current (possibly mid-attack) level instead of jumping back to the ramp's start
+        if (g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(time);
+        else { g.cancelScheduledValues(time); g.setValueAtTime(g.value, time); }
+        g.setTargetAtTime(0, time, tc);
       }
     }
     voice(midi, time, dur, atk, rel, gainMul) {
@@ -313,7 +316,7 @@
       const ctx = this.ctx, sr = ctx.sampleRate, secs = 8;
       const len = sr * secs, buf = ctx.createBuffer(1, len, sr);
       const d = buf.getChannelData(0);
-      const f0 = mtof(60);
+      const f0 = 440 * Math.pow(2, -9 / 12); // C4 at A=440, tuning is applied at playback
       const parts = 16;
       const phases = Array.from({ length: parts }, () => Math.random() * Math.PI * 2);
       const det = Array.from({ length: parts }, () => 1 + (Math.random() - 0.5) * 0.004);

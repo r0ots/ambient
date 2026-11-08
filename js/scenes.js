@@ -11,7 +11,7 @@
       try { const o = JSON.parse(localStorage.getItem(LS)) || {}; this.A = o.A || null; this.B = o.B || null; } catch (e) {}
     },
     save() { try { localStorage.setItem(LS, JSON.stringify({ A: this.A, B: this.B })); } catch (e) {} },
-    capture(slot) { this[slot] = store.snapshot(); this.save(); this.render(); },
+    capture(slot) { this[slot] = store.stableSnapshot(); this.save(); this.render(); },
     recall(slot) {
       if (!this[slot]) return this.capture(slot);
       this.setMorph(slot === 'A' ? 0 : 1);

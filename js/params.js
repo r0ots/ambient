@@ -129,7 +129,12 @@
     set(key, v, source) {
       const sp = this.spec(key);
       if (!sp) return;
+      // reject malformed values (bad share links / imports) instead of crashing the engine
+      if (sp.type === 'select' && !sp.options.includes(v)) return;
+      if (sp.type === 'toggle') v = !!v;
+      if (sp.type === 'text') v = String(v == null ? '' : v).slice(0, 80);
       if (!sp.type || sp.type === 'knob') {
+        if (!Number.isFinite(Number(v))) return;
         v = Math.max(sp.min, Math.min(sp.max, Number(v)));
         if (sp.step) v = Math.round(v / sp.step) * sp.step;
       }
@@ -142,6 +147,12 @@
       for (const [k, v] of Object.entries(obj)) if (this.spec(k)) this.set(k, v, source);
     }
     snapshot() { return { ...this.values }; }
+    // user-intended values: LFO/Evolve drift replaced by the anchor ("home") values when known
+    stableSnapshot() {
+      const snap = this.snapshot(), homes = (AMB.seq && AMB.seq.homes) || {};
+      for (const k of Object.keys(snap)) if (homes[k] !== undefined && this.spec(k) && !this.spec(k).type) snap[k] = homes[k];
+      return snap;
+    }
     on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   }
 
