@@ -43,6 +43,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] v0.28 : README utilisateur complet, interrupteurs de couches dans la vue Simple, diapason 440/432 Hz.
 - [x] v0.29 : accessibilité — knobs role=slider avec aria-valuenow/valuetext, flèches/PgUp/PgDn/Home/End, selects et interrupteurs étiquetés (aria-pressed), focus visible.
 - [x] v0.30 : contre-chant (Pad) — voix intérieure lente, notes tenues de l'accord, mouvement conjoint, dosée par « Contre-chant » (evolve).
+- [x] v0.31 : ui.js découpé (widgets.js, perform.js, rec.js) ; test tests/app.html qui pilote la vraie page (iframe) via ses boutons.
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
@@ -58,5 +59,4 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
-- [ ] Revue de code (lisibilité, duplication ui.js qui grossit : extraire macros/xy/rec dans des fichiers)
 - [ ] Mode « Flottant » : pas de grille, notes à instants libres (humanisation forte) pour un ambient sans pulsation
