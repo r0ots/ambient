@@ -14,14 +14,14 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] Grains sur fichier audio ou micro (8 s), shimmer (pitch-shift doppler dans la boucle reverb), minuteur de sommeil.
 - [x] Mix vérifié en headless (tests/run.sh) : drone baissé (trim 0.2), mélodie remontée.
 
+- [x] v0.2 : HUD (nom d'accord, tonalité, mesure), gros bouton de lancement, pad XY sur le visualiseur (X = lumière, Y = densité).
+
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
   Serveur : `python3 -u -m http.server 8765 2> $LOG`, puis `LOG=... tests/run.sh`. Capture : `--screenshot`.
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
-- [ ] Écran d'accueil/état vide du visualiseur + indicateur d'accord courant (nom de l'accord) et de la mesure
-- [ ] Mode « Performance » : gros contrôles macro (Lumière/Ombre, Densité, Espace) + XY pad pour mobile
 - [ ] Scènes A/B + slider Morph entre deux états
 - [ ] Plus de moteurs de Pad (wavetable, FM pad) et de textures (feu, ville, oiseaux)
 - [ ] PWA (manifest + service worker) pour installer comme appli

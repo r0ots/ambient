@@ -51,6 +51,35 @@
     return items[items.length - 1];
   }
 
+  // Human-readable chord name from midi notes (root = first note)
+  function chordName(midis) {
+    if (!midis || !midis.length) return '—';
+    const root = midis[0];
+    const ivs = new Set(midis.map((m) => (((m - root) % 12) + 12) % 12));
+    const has = (i) => ivs.has(i);
+    let tri = '', sus = '';
+    if (has(4) && has(8) && !has(7)) tri = 'aug';
+    else if (has(3) && has(6) && !has(7)) tri = 'dim';
+    else if (has(3)) tri = 'm';
+    else if (!has(4) && has(5)) sus = 'sus4';
+    else if (!has(4) && has(2)) sus = 'sus2';
+    let sev = has(11) ? 'maj7' : has(10) ? '7' : '';
+    if (tri === 'dim' && has(10)) { tri = 'm'; sev = '7♭5'; }
+    const ext = [];
+    if (has(2) && sus !== 'sus2') {
+      if (sev && sev !== '7♭5') { sev = sev.replace('7', '9'); } else ext.push('add9');
+    }
+    if (has(5) && sus !== 'sus4' && !tri.startsWith('aug')) ext.push(sev ? '11' : 'add11');
+    if (has(6) && tri !== 'dim' && sev !== '7♭5') ext.push('♯11');
+    if (has(9) && tri !== 'dim') ext.push(sev ? '13' : '6');
+    if (tri === 'm' && sev === 'maj7') sev = '(maj7)';
+    let e = '';
+    if (ext.length === 2 && ext[0] === 'add9' && ext[1] === '6') e = '6/9';
+    else if (ext.length === 1 && !sev && !sus) e = ext[0];
+    else if (ext.length) e = '(' + ext.map((x) => x.replace('add', '')).join(',') + ')';
+    return NOTE_NAMES[((root % 12) + 12) % 12] + tri + sev + sus + e;
+  }
+
   const rand = (a, b) => a + Math.random() * (b - a);
   const randInt = (a, b) => Math.floor(rand(a, b + 1));
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -58,7 +87,7 @@
   const lerp = (a, b, t) => a + (b - a) * t;
 
   AMB.theory = {
-    NOTE_NAMES, SCALES, mtof, degreeToMidi, chordDegrees,
+    NOTE_NAMES, SCALES, mtof, degreeToMidi, chordDegrees, chordName,
     CHORD_MOVES, CHORD_WEIGHTS, weightedPick,
   };
   AMB.util = { rand, randInt, pick, clamp, lerp };

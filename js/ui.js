@@ -321,7 +321,49 @@
       if (e.code === 'Space') { e.preventDefault(); started ? stop() : play(); }
     });
 
+    $('#bigPlay').addEventListener('click', play);
+    setupHud();
+    setupXY($('#viz'));
     AMB.visual.init($('#viz'));
+  }
+
+  // ---------- HUD: chord name + position ----------
+  function setupHud() {
+    const name = $('#chordName'), info = $('#hudInfo');
+    AMB.bus.on('chord', (c) => {
+      const delay = Math.max(0, (c.time - AMB.engine.ctx.currentTime) * 1000);
+      setTimeout(() => { name.textContent = AMB.theory.chordName(c.midis); }, delay);
+    });
+    const upd = () => {
+      const bar = Math.floor(AMB.seq.step / 16) + 1;
+      info.textContent = `${store.get('global.key')} ${store.get('global.scale')} · ${Math.round(store.get('global.tempo'))} bpm` +
+        (started ? ` · mesure ${bar}` : '');
+    };
+    store.on(upd); setInterval(upd, 500); upd();
+  }
+
+  // ---------- XY performance pad on the visualizer ----------
+  const XY_MAP = {
+    x: [['pad.tone', 0.08, 0.9], ['bells.tone', 0.05, 1], ['drone.tone', 0.08, 0.7], ['texture.tone', 0.15, 0.85]],
+    y: [['bells.density', 0.04, 0.8], ['grains.density', 0.08, 0.9], ['fx.echo', 0.12, 0.55]],
+  };
+  function setupXY(canvas) {
+    let down = false;
+    const applyXY = (e) => {
+      const r = canvas.getBoundingClientRect();
+      const x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+      const y = Math.max(0, Math.min(1, 1 - (e.clientY - r.top) / r.height));
+      AMB.visual.xy = { x, y, t: performance.now() };
+      for (const [k, a, b] of XY_MAP.x) store.set(k, a + (b - a) * x, 'user');
+      for (const [k, a, b] of XY_MAP.y) store.set(k, a + (b - a) * y, 'user');
+    };
+    canvas.addEventListener('pointerdown', (e) => {
+      if (!started) return;
+      down = true; canvas.setPointerCapture(e.pointerId); applyXY(e);
+    });
+    canvas.addEventListener('pointermove', (e) => { if (down) applyXY(e); });
+    const up = () => { down = false; };
+    canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
   }
 
   AMB.ui = { build, play, stop, ensureStarted, applyPatch, widgets };

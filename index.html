@@ -38,7 +38,14 @@
 
     <div class="stage">
       <canvas id="viz"></canvas>
-      <div class="hint">Espace : lecture / stop · glisser les knobs · double-clic : défaut</div>
+      <div class="hud">
+        <div id="chordName" class="chord">—</div>
+        <div id="hudInfo" class="hud-info"></div>
+      </div>
+      <button id="bigPlay" class="big-play" aria-label="Lecture">▶<span>Lancer le paysage</span></button>
+      <div class="xy-label xy-x">← Ombre · Lumière →</div>
+      <div class="xy-label xy-y">Densité ↑</div>
+      <div class="hint">Glisser sur l'écran : pad XY (lumière / densité) · Espace : lecture / stop · double-clic sur un knob : défaut</div>
     </div>
 
     <div id="globals" class="row globals"></div>

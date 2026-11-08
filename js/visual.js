@@ -67,6 +67,22 @@
         g.beginPath(); g.arc(o.x, o.y, o.r * 1.6, 0, Math.PI * 2); g.fill();
       }
 
+      // XY pad cursor
+      if (this.xy) {
+        const age = (performance.now() - this.xy.t) / 1000;
+        const a = Math.max(0, 1 - age / 3);
+        if (a > 0) {
+          const px = this.xy.x * W, py = (1 - this.xy.y) * H;
+          g.globalCompositeOperation = 'lighter';
+          const grd = g.createRadialGradient(px, py, 0, px, py, 40 * this.dpr);
+          grd.addColorStop(0, `rgba(255,255,255,${0.25 * a})`);
+          grd.addColorStop(1, 'rgba(255,255,255,0)');
+          g.fillStyle = grd; g.beginPath(); g.arc(px, py, 40 * this.dpr, 0, Math.PI * 2); g.fill();
+          g.strokeStyle = `rgba(200,190,255,${0.12 * a})`; g.lineWidth = this.dpr;
+          g.beginPath(); g.moveTo(px, 0); g.lineTo(px, H); g.moveTo(0, py); g.lineTo(W, py); g.stroke();
+        }
+      }
+
       // waveform ring
       if (eng.analyser) {
         const an = eng.analyser;
