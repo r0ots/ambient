@@ -50,7 +50,9 @@
 
     tick() {
       const ctx = AMB.engine.ctx;
-      const until = ctx.currentTime + this.lookahead;
+      // background tabs throttle timers to ~1/s: schedule further ahead so the music never gaps
+      const ahead = document.hidden ? 1.6 : this.lookahead;
+      const until = ctx.currentTime + ahead;
       while (this.nextTime < until) {
         this.onStep(this.step, this.nextTime);
         this.nextTime += this.stepDur();

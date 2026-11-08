@@ -3,6 +3,8 @@
   const AMB = (window.AMB = window.AMB || {});
   const store = AMB.store;
   const $ = (s, el = document) => el.querySelector(s);
+  // attach a listener if the element exists (test pages only stub part of the DOM)
+  const bind = (sel, ev, fn) => { const el = document.querySelector(sel); if (el) el.addEventListener(ev, fn); };
   const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 
   const widgets = {}; // key -> {render()}
@@ -381,22 +383,22 @@
     store.on((key) => { if (key === 'pad.prog') showCustom(); });
     showCustom();
 
-    $('#play').addEventListener('click', () => (started ? stop() : play()));
+    bind('#play', 'click', () => (started ? stop() : play()));
     fillPresetSelect();
-    $('#preset').addEventListener('change', (e) => {
+    bind('#preset', 'change', (e) => {
       const v = e.target.value;
       if (v.startsWith('f:')) applyPatch(AMB.PRESETS[v.slice(2)]);
       else applyPatch(loadUser()[v.slice(2)]);
     });
-    $('#save').addEventListener('click', () => {
+    bind('#save', 'click', () => {
       const name = prompt('Nom du patch :', 'Mon ambient ' + (Object.keys(loadUser()).length + 1));
       if (!name) return;
       const u = loadUser(); u[name] = store.snapshot(); saveUser(u);
       fillPresetSelect(); $('#preset').value = 'u:' + name;
     });
-    $('#dice').addEventListener('click', randomize);
-    $('#rec').addEventListener('click', (e) => toggleRec(e.currentTarget));
-    $('#sleep').addEventListener('change', (e) => setSleep(Number(e.target.value), $('#sleepLeft')));
+    bind('#dice', 'click', randomize);
+    bind('#rec', 'click', (e) => toggleRec(e.currentTarget));
+    bind('#sleep', 'change', (e) => setSleep(Number(e.target.value), $('#sleepLeft')));
 
     document.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
@@ -404,8 +406,8 @@
       if (e.code === 'Enter' && e.target.tagName !== 'BUTTON') { e.preventDefault(); freezeNow(); }
     });
 
-    $('#bigPlay').addEventListener('click', play);
-    $('#share').addEventListener('click', sharePatch);
+    bind('#bigPlay', 'click', play);
+    bind('#share', 'click', sharePatch);
     loadFromHash();
     window.addEventListener('hashchange', loadFromHash);
     setupHud();

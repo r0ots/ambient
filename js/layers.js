@@ -379,7 +379,7 @@
       const spray = P('grains', 'spray');
       const mode = P('grains', 'pitch');
       let n = 0;
-      while (this.next < until && n++ < 64) {
+      while (this.next < until && n++ < 160) {
         const t = this.next;
         this.next += (1 / rate) * rand(0.6, 1.4);
         const src = ctx.createBufferSource();

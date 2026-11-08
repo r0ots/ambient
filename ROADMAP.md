@@ -24,10 +24,11 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] v0.9 : Gel (Freeze) — capture des 4 dernières s du mix (ring buffer via ScriptProcessor) comme source des Grains, touche Entrée, flash visuel.
 - [x] v0.10 : progressions d'accords (Aléatoire, Plane, Pendule, I–V–vi–IV, i–VI–III–VII, Montée, Perso = degrés tapés « 1 6 4 5 »), widget texte.
 - [x] v0.11 : enregistrement WAV 16 bits stéréo sans perte (capture via le tap), ou compressé ; durée fixe 1/3/10/20 min avec fondu final ; plafond WAV 30 min.
+- [x] v0.12 : tests/run-all.sh (8 pages, échoue sur toute erreur JS), lookahead 1.6 s quand l'onglet est en arrière-plan (timers bridés), UI tolérante aux éléments absents.
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
-  Serveur : `python3 -u -m http.server 8765 2> $LOG`, puis `LOG=... tests/run.sh`. Capture : `--screenshot`.
+  Serveur : `python3 -u -m http.server 8765 2> $LOG`, puis `LOG=... tests/run-all.sh` (toujours avant commit). Capture : `--screenshot`.
 - Niveaux cibles mesurés par tests/run.sh : rms 0.08–0.15 par preset, peak < 0.8.
 - SW enregistré en relatif ('sw.js') : ne marche que depuis la racine (pas depuis tests/). Bumper CACHE dans sw.js si on ajoute des fichiers JS.
 - Chrome headless ne descend pas sous ~500 px de large : passer par tests/mobile.html pour les captures mobiles.
@@ -35,5 +36,4 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
-- [ ] Revue qualité du code (simplify) + nettoyage des tests en une suite unique tests/all.html
 - [ ] LFO assignables simples par couche (filtre / volume / pan) avec vitesse très lente
