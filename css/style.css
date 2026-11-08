@@ -44,6 +44,7 @@ h1 { margin: 0; font-size: 18px; letter-spacing: 0.5em; font-weight: 600; }
 .menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; display: flex; flex-direction: column; gap: 6px; padding: 10px;
   background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 40px #0008; min-width: 220px; }
 .menu .btn { text-align: left; }
+.menu .btn:disabled { opacity: .4; cursor: default; }
 .menu .sleep { justify-content: space-between; font-size: 13px; padding: 2px 4px; }
 .sleep-left { font-size: 12px; color: var(--accent); }
 .sleep-left:not(:empty)::before { content: "☾ "; }

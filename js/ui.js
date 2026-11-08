@@ -163,6 +163,51 @@
     fillPresetSelect(); const sel = $('#preset'); if (sel) sel.value = 'u:' + name;
   }
 
+  // ---- user patch management ----
+  const currentUserPatch = () => { const v = $('#preset') && $('#preset').value; return v && v.startsWith('u:') ? v.slice(2) : null; };
+  function updatePatchButtons() {
+    const own = !!currentUserPatch();
+    ['#renamePatch', '#deletePatch'].forEach((id) => { const b = $(id); if (b) b.disabled = !own; });
+  }
+  function renamePatch() {
+    const old = currentUserPatch(); if (!old) return;
+    const name = prompt('Nouveau nom :', old);
+    if (!name || name === old) return;
+    const u = loadUser(); u[name] = u[old]; delete u[old]; saveUser(u);
+    fillPresetSelect(); $('#preset').value = 'u:' + name; updatePatchButtons();
+    toast(`Renommé en « ${name} »`);
+  }
+  function deletePatch() {
+    const name = currentUserPatch(); if (!name) return;
+    if (!confirm(`Supprimer définitivement le patch « ${name} » ?`)) return;
+    const u = loadUser(); delete u[name]; saveUser(u);
+    fillPresetSelect(); updatePatchButtons();
+    toast(`« ${name} » supprimé`);
+  }
+  function exportPatches() {
+    let scenes = null;
+    try { scenes = JSON.parse(localStorage.getItem('ambient.scenes.v1')); } catch (e) {}
+    const data = { app: 'ambient', version: 1, exported: new Date().toISOString(), patches: loadUser(), scenes, current: store.snapshot() };
+    AMB.rec.download(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }), 'json');
+    toast(`${Object.keys(data.patches).length} patch(s) exporté(s)`);
+  }
+  async function importPatches(file) {
+    try {
+      const data = JSON.parse(await file.text());
+      if (data.app !== 'ambient' || typeof data.patches !== 'object') throw new Error('format');
+      const u = loadUser(); let n = 0;
+      for (const [name, state] of Object.entries(data.patches)) {
+        let nm = name; while (u[nm] && JSON.stringify(u[nm]) !== JSON.stringify(state)) nm += ' (importé)';
+        u[nm] = state; n++;
+      }
+      saveUser(u); fillPresetSelect(); updatePatchButtons();
+      if (data.scenes && (data.scenes.A || data.scenes.B) && AMB.scenes) {
+        AMB.scenes.A = data.scenes.A; AMB.scenes.B = data.scenes.B; AMB.scenes.save(); AMB.scenes.render();
+      }
+      toast(`${n} patch(s) importé(s)`);
+    } catch (e) { toast('Fichier non reconnu'); console.warn(e); }
+  }
+
   function fillPresetSelect() {
     const s = $('#preset');
     s.innerHTML = '';
@@ -246,6 +291,12 @@
       saveUserPatch(name, store.snapshot());
     });
     bind('#dice', 'click', randomize);
+    bind('#renamePatch', 'click', renamePatch);
+    bind('#deletePatch', 'click', deletePatch);
+    bind('#exportPatches', 'click', exportPatches);
+    bind('#importFile', 'change', (e) => { if (e.target.files[0]) importPatches(e.target.files[0]); e.target.value = ''; });
+    bind('#preset', 'change', updatePatchButtons);
+    updatePatchButtons();
     bind('#rec', 'click', (e) => toggleRec(e.currentTarget));
     bind('#sleep', 'change', (e) => setSleep(Number(e.target.value), $('#sleepLeft')));
 
@@ -350,7 +401,7 @@
     store.on(upd); setInterval(upd, 500); upd();
   }
 
-  AMB.ui = { build, play, stop, ensureStarted, applyPatch, widgets, encodePatch, toast, freezeNow, saveUserPatch };
+  AMB.ui = { build, play, stop, ensureStarted, applyPatch, widgets, encodePatch, toast, freezeNow, saveUserPatch, importPatches, exportPatches };
 
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW', e)));

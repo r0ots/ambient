@@ -46,6 +46,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] v0.31 : ui.js découpé (widgets.js, perform.js, rec.js) ; test tests/app.html qui pilote la vraie page (iframe) via ses boutons.
 - [x] v0.32 : presets d'usine enrichis (contre-chant, caractères de reverb, LFO, reverse/glissando) ; « ☀ Paysage du jour » déterministe par date.
 - [x] v0.33 : tap de sortie (Gel + WAV) en AudioWorklet chargé par Blob URL, repli ScriptProcessor ; endurance inchangée (heap 15–28 Mo, lag ≤ 5 ms).
+- [x] v0.34 : gestion des patchs (renommer, supprimer avec confirmation) ; export/import .json des patchs + scènes A/B, sans écraser (suffixe « (importé) »).
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
@@ -60,5 +61,3 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
-- [ ] Export / import de « Mes patchs » (+ scènes A/B) en fichier .json (sauvegarde, transfert entre appareils)
-- [ ] Gestion des patchs : renommer / supprimer un patch utilisateur
