@@ -28,6 +28,10 @@ window.addEventListener('load', async ()=>{
   log('space='+AMB.store.get('fx.space').toFixed(2)+' shimmer='+AMB.store.get('fx.shimmer').toFixed(2)+' tape='+AMB.store.get('fx.tape').toFixed(2)+' texOn='+AMB.store.get('texture.on'));
   AMB.store.set('macro.density',1,'user'); log('padLen='+AMB.store.get('pad.length')+' bellsDens='+AMB.store.get('bells.density').toFixed(2));
   await measure('macros',1.5*S);
+  AMB.ui.applyPatch(AMB.PRESETS['Cassette oubliée']); await new Promise(r=>setTimeout(r,200));
+  log('after Cassette: nostalgia='+AMB.store.get('macro.nostalgia').toFixed(2)+' space='+AMB.store.get('macro.space').toFixed(2));
+  AMB.ui.applyPatch(AMB.PRESETS['Cathédrale']); await new Promise(r=>setTimeout(r,200));
+  log('after Cathédrale: nostalgia='+AMB.store.get('macro.nostalgia').toFixed(2)+' space='+AMB.store.get('macro.space').toFixed(2)+' histSteps='+(AMB.history?AMB.history.past.length:'-'));
   document.getElementById('viewMode').click();
   log('DONE');
   }catch(e){log('EXC '+e.stack)}

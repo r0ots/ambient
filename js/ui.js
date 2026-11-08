@@ -519,6 +519,25 @@
   }
   store.on((key, v, source) => { if (source === 'user' && MACROS[key]) applyMacro(key, v); });
 
+  // Keep macro knobs truthful: after presets/undo/morph or direct knob edits, infer each
+  // macro's position from the parameters it drives (average of the inverse mappings).
+  let syncT = null;
+  function syncMacros() {
+    for (const [mk, list] of Object.entries(MACROS)) {
+      let sum = 0, n = 0;
+      for (const [k, a, b, pow] of list) {
+        if (a === b) continue;
+        const t = Math.max(0, Math.min(1, (store.get(k) - a) / (b - a)));
+        sum += Math.pow(t, 1 / (pow || 1)); n++;
+      }
+      if (n) store.set(mk, sum / n, 'sync');
+    }
+  }
+  store.on((key, v, source) => {
+    if (key.startsWith('macro.') || source === 'macro' || source === 'sync' || source === 'evolve' || source === 'lfo') return;
+    clearTimeout(syncT); syncT = setTimeout(syncMacros, 60);
+  });
+
   // Simple / Expert view
   function setView(simple) {
     document.body.classList.toggle('simple', simple);
