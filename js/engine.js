@@ -1,0 +1,290 @@
+// Audio engine: master bus + space FX (reverb w/ shimmer, ping-pong delay, tape, lo-fi)
+(function () {
+  const AMB = (window.AMB = window.AMB || {});
+  const store = AMB.store;
+
+  // ---------- helpers ----------
+  function makeNoiseBuffer(ctx, seconds, color = 'white', channels = 2) {
+    const len = Math.floor(ctx.sampleRate * seconds);
+    const buf = ctx.createBuffer(channels, len, ctx.sampleRate);
+    for (let c = 0; c < channels; c++) {
+      const d = buf.getChannelData(c);
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0, last = 0;
+      for (let i = 0; i < len; i++) {
+        const w = Math.random() * 2 - 1;
+        if (color === 'pink') {
+          b0 = 0.99886 * b0 + w * 0.0555179; b1 = 0.99332 * b1 + w * 0.0750759;
+          b2 = 0.969 * b2 + w * 0.153852; b3 = 0.8665 * b3 + w * 0.3104856;
+          b4 = 0.55 * b4 + w * 0.5329522; b5 = -0.7616 * b5 - w * 0.016898;
+          d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11;
+          b6 = w * 0.115926;
+        } else if (color === 'brown') {
+          last = (last + 0.02 * w) / 1.02;
+          d[i] = last * 3.5;
+        } else d[i] = w;
+      }
+    }
+    return buf;
+  }
+
+  function makeImpulse(ctx, seconds, decayPow = 3) {
+    const rate = ctx.sampleRate;
+    const len = Math.max(1, Math.floor(rate * seconds));
+    const buf = ctx.createBuffer(2, len, rate);
+    for (let c = 0; c < 2; c++) {
+      const d = buf.getChannelData(c);
+      let lp = 0;
+      for (let i = 0; i < len; i++) {
+        const t = i / len;
+        // damping: the tail gets darker over time
+        const coef = 0.15 + 0.8 * t;
+        const w = Math.random() * 2 - 1;
+        lp = lp + (w - lp) * (1 - coef);
+        const env = Math.pow(1 - t, decayPow);
+        // soft fade-in to avoid an early hard reflection
+        const pre = Math.min(1, i / (rate * 0.012));
+        d[i] = lp * env * pre;
+      }
+    }
+    return buf;
+  }
+
+  function satCurve(drive) {
+    const n = 2048, curve = new Float32Array(n);
+    const k = 1 + drive * 6;
+    const norm = Math.tanh(k);
+    for (let i = 0; i < n; i++) {
+      const x = (i / (n - 1)) * 2 - 1;
+      curve[i] = Math.tanh(k * x) / norm;
+    }
+    return curve;
+  }
+
+  const DIVS = { '1/8': 0.5, '1/8.': 0.75, '1/4': 1, '1/4.': 1.5, '1/2': 2, '1/1': 4 };
+
+  class Engine {
+    constructor() {
+      this.ctx = null;
+      this.started = false;
+    }
+
+    init() {
+      if (this.ctx) return;
+      const ctx = (this.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'playback' }));
+      const g = (v = 1) => { const n = ctx.createGain(); n.gain.value = v; return n; };
+      this.g = g;
+
+      // --- buses ---
+      this.dryBus = g(1);
+      this.fxBus = g(1);
+      this.preTape = g(1);
+
+      // --- reverb ---
+      this.revIn = g(0.5);
+      this.revPre = ctx.createBiquadFilter(); this.revPre.type = 'highpass'; this.revPre.frequency.value = 180;
+      this.conv = ctx.createConvolver();
+      this.revOut = g(1.2);
+      this.fxBus.connect(this.revIn);
+      this.revIn.connect(this.revPre);
+      this.revPre.connect(this.conv);
+      this.conv.connect(this.revOut);
+      this.revOut.connect(this.preTape);
+
+      // --- shimmer: doppler pitch shifter (+12) in the reverb feedback loop ---
+      this.shimmerGain = g(0);
+      this._buildShimmer();
+
+      // --- ping-pong delay ---
+      this.dlyIn = g(0.3);
+      this.dlyL = ctx.createDelay(4); this.dlyR = ctx.createDelay(4);
+      this.dlyFb = g(0.5);
+      this.dlyTone = ctx.createBiquadFilter(); this.dlyTone.type = 'lowpass'; this.dlyTone.frequency.value = 3200;
+      this.dlyHp = ctx.createBiquadFilter(); this.dlyHp.type = 'highpass'; this.dlyHp.frequency.value = 250;
+      const panL = ctx.createStereoPanner(); panL.pan.value = -0.7;
+      const panR = ctx.createStereoPanner(); panR.pan.value = 0.7;
+      this.dlyOut = g(0.9);
+      this.fxBus.connect(this.dlyIn);
+      this.dlyIn.connect(this.dlyHp);
+      this.dlyHp.connect(this.dlyL);
+      this.dlyL.connect(this.dlyTone);
+      this.dlyTone.connect(this.dlyR);
+      this.dlyR.connect(this.dlyFb);
+      this.dlyFb.connect(this.dlyL);
+      this.dlyL.connect(panL); this.dlyR.connect(panR);
+      panL.connect(this.dlyOut); panR.connect(this.dlyOut);
+      this.dlyOut.connect(this.preTape);
+      // delay feeds a little into the reverb: echoes melt into the space
+      this.dlyToRev = g(0.35);
+      this.dlyOut.connect(this.dlyToRev); this.dlyToRev.connect(this.revIn);
+
+      this.dryBus.connect(this.preTape);
+
+      // --- tape: wow/flutter + saturation ---
+      this.tapeDelay = ctx.createDelay(0.1);
+      this.tapeDelay.delayTime.value = 0.012;
+      this.wow = ctx.createOscillator(); this.wow.frequency.value = 0.55;
+      this.wowAmt = g(0);
+      this.flutter = ctx.createOscillator(); this.flutter.frequency.value = 6.3;
+      this.flutterAmt = g(0);
+      this.wow.connect(this.wowAmt); this.wowAmt.connect(this.tapeDelay.delayTime);
+      this.flutter.connect(this.flutterAmt); this.flutterAmt.connect(this.tapeDelay.delayTime);
+      this.wow.start(); this.flutter.start();
+      this.sat = ctx.createWaveShaper(); this.sat.oversample = '2x';
+      this.satIn = g(1); this.satOut = g(1);
+      this.preTape.connect(this.tapeDelay);
+      this.tapeDelay.connect(this.satIn);
+      this.satIn.connect(this.sat);
+      this.sat.connect(this.satOut);
+
+      // --- lo-fi: band-limit + hiss ---
+      this.lofiLp = ctx.createBiquadFilter(); this.lofiLp.type = 'lowpass'; this.lofiLp.frequency.value = 20000; this.lofiLp.Q.value = 0.5;
+      this.lofiHp = ctx.createBiquadFilter(); this.lofiHp.type = 'highpass'; this.lofiHp.frequency.value = 25;
+      this.satOut.connect(this.lofiHp);
+      this.lofiHp.connect(this.lofiLp);
+      this.hiss = ctx.createBufferSource();
+      this.hiss.buffer = makeNoiseBuffer(ctx, 4, 'pink');
+      this.hiss.loop = true;
+      this.hissGain = g(0);
+      const hissHp = ctx.createBiquadFilter(); hissHp.type = 'highpass'; hissHp.frequency.value = 3000;
+      this.hiss.connect(hissHp); hissHp.connect(this.hissGain); this.hissGain.connect(this.lofiLp);
+      this.hiss.start();
+
+      // --- master ---
+      this.master = g(0.8);
+      this.comp = ctx.createDynamicsCompressor();
+      this.comp.threshold.value = -18; this.comp.ratio.value = 2.5; this.comp.knee.value = 12;
+      this.comp.attack.value = 0.05; this.comp.release.value = 0.4;
+      this.limiter = ctx.createDynamicsCompressor();
+      this.limiter.threshold.value = -3; this.limiter.ratio.value = 20; this.limiter.knee.value = 0;
+      this.limiter.attack.value = 0.002; this.limiter.release.value = 0.15;
+      this.out = g(1); // used for fades (sleep timer / stop)
+      this.analyser = ctx.createAnalyser(); this.analyser.fftSize = 2048; this.analyser.smoothingTimeConstant = 0.85;
+      this.lofiLp.connect(this.master);
+      this.master.connect(this.comp);
+      this.comp.connect(this.limiter);
+      this.limiter.connect(this.out);
+      this.out.connect(this.analyser);
+      this.analyser.connect(ctx.destination);
+      this.recDest = ctx.createMediaStreamDestination();
+      this.out.connect(this.recDest);
+
+      this._revSize = -1;
+      this.applyAll();
+      store.on((key) => this.apply(key));
+    }
+
+    _buildShimmer() {
+      const ctx = this.ctx, g = this.g;
+      // Two delay lines whose delay time is swept by a falling sawtooth -> pitch up.
+      // slope = 2*D*f must equal 1 for +1 octave.
+      const f = 6, D = 1 / (2 * f); // sweep half-range in seconds
+      const input = g(1), out = g(1);
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 500;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 6000;
+      this.conv.connect(hp); hp.connect(input);
+      const cosWave = ctx.createPeriodicWave(new Float32Array([0, 1]), new Float32Array([0, 0]), { disableNormalization: true });
+      const now = ctx.currentTime + 0.05;
+      for (let i = 0; i < 2; i++) {
+        const d = ctx.createDelay(1);
+        d.delayTime.value = D + 0.01;
+        const saw = ctx.createOscillator(); saw.type = 'sawtooth'; saw.frequency.value = f;
+        const sawAmt = g(-D);
+        saw.connect(sawAmt); sawAmt.connect(d.delayTime);
+        const win = g(0.5);
+        const cos = ctx.createOscillator(); cos.setPeriodicWave(cosWave); cos.frequency.value = f;
+        const winAmt = g(0.5);
+        cos.connect(winAmt); winAmt.connect(win.gain);
+        input.connect(d); d.connect(win); win.connect(out);
+        const t0 = now + i * (0.5 / f);
+        saw.start(t0); cos.start(t0);
+      }
+      out.connect(lp);
+      lp.connect(this.shimmerGain);
+      this.shimmerGain.connect(this.revIn);
+    }
+
+    get now() { return this.ctx ? this.ctx.currentTime : 0; }
+
+    beatDur() { return 60 / store.get('global.tempo'); }
+
+    apply(key) {
+      if (!this.ctx) return;
+      const v = store.get(key);
+      const t = this.ctx.currentTime;
+      const ramp = (param, val, tc = 0.08) => param.setTargetAtTime(val, t, tc);
+      switch (key) {
+        case 'global.volume': ramp(this.master.gain, v * v * 1.1); break;
+        case 'fx.space': ramp(this.revIn.gain, v * 1.1); break;
+        case 'fx.size': {
+          clearTimeout(this._sizeT);
+          this._sizeT = setTimeout(() => {
+            const secs = 1.5 + v * 9.5;
+            if (Math.abs(secs - this._revSize) < 0.05) return;
+            this._revSize = secs;
+            this.conv.buffer = makeImpulse(this.ctx, secs, 2.2 + (1 - v) * 2);
+          }, 120);
+          break;
+        }
+        case 'fx.shimmer': ramp(this.shimmerGain.gain, v * 0.42); break;
+        case 'fx.echo': ramp(this.dlyIn.gain, v * 0.9); break;
+        case 'fx.feedback': ramp(this.dlyFb.gain, v); break;
+        case 'fx.echoTime':
+        case 'global.tempo': {
+          const secs = Math.min(3.9, this.beatDur() * DIVS[store.get('fx.echoTime')]);
+          ramp(this.dlyL.delayTime, secs, 0.3); ramp(this.dlyR.delayTime, secs, 0.3);
+          break;
+        }
+        case 'fx.tape': {
+          ramp(this.wowAmt.gain, v * 0.0035);
+          ramp(this.flutterAmt.gain, v * 0.00025);
+          this.sat.curve = satCurve(v);
+          ramp(this.satIn.gain, 1 + v * 0.6);
+          ramp(this.satOut.gain, 1 / (1 + v * 0.45));
+          break;
+        }
+        case 'fx.lofi': {
+          ramp(this.lofiLp.frequency, 20000 * Math.pow(0.12, v));
+          ramp(this.lofiHp.frequency, 25 + v * 220);
+          ramp(this.hissGain.gain, v * 0.05);
+          break;
+        }
+      }
+    }
+
+    applyAll() {
+      ['global.volume', 'fx.space', 'fx.size', 'fx.shimmer', 'fx.echo', 'fx.feedback', 'fx.echoTime', 'fx.tape', 'fx.lofi']
+        .forEach((k) => this.apply(k));
+    }
+
+    // Create a mixer channel for a layer. Returns {input, setLevel, setSend}
+    channel() {
+      const ctx = this.ctx, g = this.g;
+      const input = g(1), level = g(0), send = g(0);
+      input.connect(level);
+      level.connect(this.dryBus);
+      level.connect(send);
+      send.connect(this.fxBus);
+      return {
+        input, level, send,
+        setLevel: (v) => level.gain.setTargetAtTime(v, ctx.currentTime, 0.15),
+        setSend: (v) => send.gain.setTargetAtTime(v, ctx.currentTime, 0.15),
+      };
+    }
+
+    fadeOut(seconds) {
+      const t = this.ctx.currentTime;
+      this.out.gain.cancelScheduledValues(t);
+      this.out.gain.setValueAtTime(this.out.gain.value, t);
+      this.out.gain.linearRampToValueAtTime(0, t + seconds);
+    }
+    fadeIn(seconds = 1.5) {
+      const t = this.ctx.currentTime;
+      this.out.gain.cancelScheduledValues(t);
+      this.out.gain.setValueAtTime(this.out.gain.value, t);
+      this.out.gain.linearRampToValueAtTime(1, t + seconds);
+    }
+  }
+
+  AMB.makeNoiseBuffer = makeNoiseBuffer;
+  AMB.engine = new Engine();
+})();

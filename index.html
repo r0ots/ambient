@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ambient — machine générative</title>
+  <meta name="theme-color" content="#08090f">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div class="brand">
+        <span class="logo">◐</span>
+        <div>
+          <h1>AMBIENT</h1>
+          <p>machine à paysages sonores génératifs</p>
+        </div>
+      </div>
+      <div class="transport">
+        <button id="play" class="btn primary">▶ Lecture</button>
+        <select id="preset" title="Presets"></select>
+        <button id="dice" class="btn" title="Patch aléatoire">⚄ Hasard</button>
+        <button id="save" class="btn" title="Sauvegarder le patch">Sauver</button>
+        <button id="rec" class="btn" title="Enregistrer la sortie">● Rec</button>
+        <label class="sleep" title="Minuteur de sommeil : fondu puis arrêt">☾
+          <select id="sleep">
+            <option value="0">off</option>
+            <option value="15">15 min</option>
+            <option value="30">30 min</option>
+            <option value="60">60 min</option>
+            <option value="120">2 h</option>
+          </select>
+          <span id="sleepLeft"></span>
+        </label>
+      </div>
+    </header>
+
+    <div class="stage">
+      <canvas id="viz"></canvas>
+      <div class="hint">Espace : lecture / stop · glisser les knobs · double-clic : défaut</div>
+    </div>
+
+    <div id="globals" class="row globals"></div>
+    <div id="layers" class="row layers"></div>
+
+    <footer>Web Audio · aucun son n'est envoyé en ligne · inspiré des machines d'ambient génératives</footer>
+  </div>
+
+  <script src="js/theory.js"></script>
+  <script src="js/params.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/layers.js"></script>
+  <script src="js/sequencer.js"></script>
+  <script src="js/presets.js"></script>
+  <script src="js/visual.js"></script>
+  <script src="js/ui.js"></script>
+</body>
+</html>
