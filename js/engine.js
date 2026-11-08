@@ -165,6 +165,20 @@
       this.limiter.connect(this.out);
       this.out.connect(this.analyser);
       this.analyser.connect(ctx.destination);
+      // ring buffer of the last seconds of output, for the "Gel" (freeze/resample) grain source
+      this.ringSecs = 6;
+      this.ring = new Float32Array(Math.floor(ctx.sampleRate * this.ringSecs));
+      this.ringPos = 0;
+      this.tap = ctx.createScriptProcessor(4096, 2, 1);
+      this.tap.onaudioprocess = (e) => {
+        const L = e.inputBuffer.getChannelData(0), R = e.inputBuffer.getChannelData(1);
+        const ring = this.ring, n = ring.length;
+        let p = this.ringPos;
+        for (let i = 0; i < L.length; i++) { ring[p] = (L[i] + R[i]) * 0.5; p = p + 1 === n ? 0 : p + 1; }
+        this.ringPos = p;
+      };
+      const tapSink = g(0);
+      this.out.connect(this.tap); this.tap.connect(tapSink); tapSink.connect(ctx.destination);
       this.recDest = ctx.createMediaStreamDestination();
       this.out.connect(this.recDest);
 
@@ -201,6 +215,19 @@
       out.connect(lp);
       lp.connect(this.shimmerGain);
       this.shimmerGain.connect(this.revIn);
+    }
+
+    // Copy the last `secs` seconds of output into a normalized, faded AudioBuffer
+    snapshot(secs = 4) {
+      const sr = this.ctx.sampleRate, n = Math.min(this.ring.length, Math.floor(sr * secs));
+      const buf = this.ctx.createBuffer(1, n, sr), d = buf.getChannelData(0);
+      const start = (this.ringPos - n + this.ring.length) % this.ring.length;
+      let peak = 0;
+      for (let i = 0; i < n; i++) { const v = this.ring[(start + i) % this.ring.length]; d[i] = v; peak = Math.max(peak, Math.abs(v)); }
+      const fade = Math.floor(sr * 0.03);
+      for (let i = 0; i < fade; i++) { d[i] *= i / fade; d[n - 1 - i] *= i / fade; }
+      if (peak > 1e-4) for (let i = 0; i < n; i++) d[i] *= 0.9 / peak;
+      return { buffer: buf, peak };
     }
 
     get now() { return this.ctx ? this.ctx.currentTime : 0; }

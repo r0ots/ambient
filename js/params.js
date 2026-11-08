@@ -78,7 +78,7 @@
       color: '#7fffd4',
       params: {
         on: { label: 'On', type: 'toggle', def: true },
-        source: { label: 'Source', type: 'select', options: ['Synthèse', 'Échantillon'], def: 'Synthèse' },
+        source: { label: 'Source', type: 'select', options: ['Synthèse', 'Échantillon', 'Gel'], def: 'Synthèse' },
         vol: { label: 'Niveau', min: 0, max: 1, def: 0.35 },
         density: { label: 'Densité', min: 0, max: 1, def: 0.4, evolve: true },
         size: { label: 'Taille', min: 0, max: 1, def: 0.55 },

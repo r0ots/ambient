@@ -137,10 +137,22 @@
         } catch (e) { name.textContent = 'Micro indisponible'; console.error(e); }
         mic.disabled = false; mic.textContent = '● Micro 8 s';
       });
-      row.append(lbl, mic, name);
+      const frz = h('button', 'btn small', '❄ Geler la sortie');
+      frz.title = 'Capture les 4 dernières secondes du mix comme source de grains (touche Entrée)';
+      frz.addEventListener('click', () => freezeNow(name));
+      row.append(lbl, mic, frz, name);
       panel.append(row);
     }
     return panel;
+  }
+
+  function freezeNow(nameEl) {
+    if (!started) { toast('Lance la lecture avant de geler'); return; }
+    if (AMB.layers.grains.freeze(4)) {
+      toast('❄ Sortie gelée → nuage de grains');
+      const n = nameEl || document.querySelector('.sample-name');
+      if (n) n.textContent = 'gel ' + new Date().toLocaleTimeString();
+    } else toast('Rien à geler (silence)');
   }
 
   // ---------- mic capture for the grain sampler ----------
@@ -349,6 +361,7 @@
     document.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
       if (e.code === 'Space') { e.preventDefault(); started ? stop() : play(); }
+      if (e.code === 'Enter' && e.target.tagName !== 'BUTTON') { e.preventDefault(); freezeNow(); }
     });
 
     $('#bigPlay').addEventListener('click', play);
@@ -429,7 +442,7 @@
     canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
   }
 
-  AMB.ui = { build, play, stop, ensureStarted, applyPatch, widgets, encodePatch, toast };
+  AMB.ui = { build, play, stop, ensureStarted, applyPatch, widgets, encodePatch, toast, freezeNow };
 
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW', e)));

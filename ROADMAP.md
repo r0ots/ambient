@@ -21,6 +21,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] v0.6 : partage de patch par lien (#p=base64 du diff vs défauts), PWA installable (manifest, icône SVG, service worker network-first).
 - [x] v0.7 : jeu live — clavier d'ordi (A–L notes en gamme, Q–P octave +, Z–M accords forcés), Web MIDI (notes < C3 = accords, CC1 densité, CC74 brillance, CC91 reverb, CC93 shimmer).
 - [x] v0.8 : responsive mobile vérifié (tests/mobile.html = iframes 390/760 px), fix chevauchement des selects, déblocage audio iOS (audioSession + <audio> silencieux), Media Session (écran verrouillé).
+- [x] v0.9 : Gel (Freeze) — capture des 4 dernières s du mix (ring buffer via ScriptProcessor) comme source des Grains, touche Entrée, flash visuel.
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
@@ -28,10 +29,10 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Niveaux cibles mesurés par tests/run.sh : rms 0.08–0.15 par preset, peak < 0.8.
 - SW enregistré en relatif ('sw.js') : ne marche que depuis la racine (pas depuis tests/). Bumper CACHE dans sw.js si on ajoute des fichiers JS.
 - Chrome headless ne descend pas sous ~500 px de large : passer par tests/mobile.html pour les captures mobiles.
+- Le tap ScriptProcessor (engine.tap) tourne en permanence ; si perf mobile insuffisante, le passer en AudioWorklet.
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
-- [ ] « Freeze » : geler la reverb / figer le nuage de grains (bouton maintien), façon Evoke
 - [ ] LFO assignables simples par couche (filtre / volume / pan) avec vitesse très lente
 - [ ] Éditeur de progression d'accords (verrouiller une suite de degrés au lieu du hasard)
 - [ ] Export WAV (OfflineAudioContext ou conversion du webm) + durée fixe (ex. 10 min)

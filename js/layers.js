@@ -348,6 +348,20 @@
       this.sampleBuf = buf; this.sampleName = name;
       store.set('grains.source', 'Échantillon', 'user');
     }
+    // Freeze: resample the last seconds of the whole mix and turn it into a grain cloud
+    freeze(secs = 4) {
+      const { buffer, peak } = this.engine.snapshot(secs);
+      if (peak < 1e-4) return false;
+      this.freezeBuf = buffer;
+      store.set('grains.source', 'Gel', 'user');
+      store.set('grains.on', true, 'user');
+      // a frozen cloud wants long, overlapping grains to sustain like a held chord
+      if (P('grains', 'size') < 0.7) store.set('grains.size', 0.7, 'user');
+      if (P('grains', 'density') < 0.5) store.set('grains.density', 0.5, 'user');
+      if (P('grains', 'vol') < 0.45) store.set('grains.vol', 0.45, 'user');
+      AMB.bus.emit('freeze', {});
+      return true;
+    }
     setHarmony(chordMidis, root) { this.pitches = chordMidis; this.root = root; }
     schedule(until) {
       if (!this.active || P('grains', 'vol') < 0.01) { this.next = until; return; }
@@ -358,8 +372,10 @@
       const size = 0.04 + Math.pow(P('grains', 'size'), 1.6) * 0.9;
       const overlap = Math.max(1, size * rate);
       const gain = 0.5 / Math.sqrt(overlap);
-      const useSample = P('grains', 'source') === 'Échantillon' && this.sampleBuf;
-      const buf = useSample ? this.sampleBuf : this.synthBuf;
+      const srcMode = P('grains', 'source');
+      const ext = srcMode === 'Échantillon' ? this.sampleBuf : srcMode === 'Gel' ? this.freezeBuf : null;
+      const useSample = !!ext;
+      const buf = ext || this.synthBuf;
       const spray = P('grains', 'spray');
       const mode = P('grains', 'pitch');
       let n = 0;

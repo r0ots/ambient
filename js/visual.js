@@ -21,6 +21,7 @@
       AMB.bus.on('note', (n) => this.pending.push(n));
       AMB.bus.on('grain', (n) => this.pending.push(n));
       AMB.bus.on('chord', (c) => { this.chordFlash = c; });
+      AMB.bus.on('freeze', () => { this.frozenAt = performance.now(); });
       this.wave = null;
       const loop = () => { this.draw(); requestAnimationFrame(loop); };
       requestAnimationFrame(loop);
@@ -65,6 +66,18 @@
         grd.addColorStop(1, `rgba(${o.col[0]},${o.col[1]},${o.col[2]},0)`);
         g.fillStyle = grd;
         g.beginPath(); g.arc(o.x, o.y, o.r * 1.6, 0, Math.PI * 2); g.fill();
+      }
+
+      // freeze bloom: icy wash fading over 2 s
+      if (this.frozenAt) {
+        const a = 1 - (performance.now() - this.frozenAt) / 2000;
+        if (a > 0) {
+          g.globalCompositeOperation = 'lighter';
+          const grd = g.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.6);
+          grd.addColorStop(0, `rgba(170,230,255,${0.18 * a})`);
+          grd.addColorStop(1, 'rgba(170,230,255,0)');
+          g.fillStyle = grd; g.fillRect(0, 0, W, H);
+        }
       }
 
       // XY pad cursor
