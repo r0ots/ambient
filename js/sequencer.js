@@ -63,12 +63,36 @@
       AMB.layers.grains.schedule(until);
     }
 
+    // Voice-led chord: bass on the root (low), upper voices placed as close as possible
+    // to the previous chord's upper voices, so progressions glide instead of jumping.
     chordMidis(deg) {
       const rich = store.get('pad.voicing');
       const size = 3 + Math.round(rich * 2);
       const degs = T.chordDegrees(deg, size, this.scale);
-      // open voicing: spread the upper notes
-      return degs.map((d, i) => T.degreeToMidi(d, this.root, this.scale, 3) + (i >= 3 ? 12 : 0) + (i === 1 && rich > 0.7 ? 12 : 0));
+      const raw = degs.map((d) => T.degreeToMidi(d, this.root, this.scale, 3));
+      let bass = raw[0];
+      while (bass > 55) bass -= 12;
+      while (bass < 43) bass += 12;
+      const pcs = raw.slice(1).map((m) => ((m % 12) + 12) % 12);
+      if (rich > 0.6) pcs.push(((raw[0] % 12) + 12) % 12); // doubled root on top for rich voicings
+      const prev = this.lastUpper && this.lastUpper.length ? this.lastUpper : null;
+      const center = prev ? prev.reduce((a, b) => a + b, 0) / prev.length : 62 + rich * 4;
+      const lo = 52, hi = 81, upper = [];
+      for (const pc of pcs) {
+        const cands = [];
+        for (let m = lo; m <= hi; m++) if (m % 12 === pc) cands.push(m);
+        // prefer the candidate closest to a previous voice (common tones stay put), else to the center
+        const target = (m) => prev ? Math.min(...prev.map((p) => Math.abs(p - m))) + 0.15 * Math.abs(m - center) : Math.abs(m - center);
+        cands.sort((a, b) => target(a) - target(b));
+        // avoid semitone/tone clusters inside the voicing
+        const ok = cands.find((m) => upper.every((u) => Math.abs(u - m) > 2)) || cands[0];
+        upper.push(ok);
+      }
+      upper.sort((a, b) => a - b);
+      // keep the bass clear of the upper voices
+      while (upper.length && upper[0] - bass < 5) bass -= 12;
+      this.lastUpper = upper;
+      return [bass, ...upper];
     }
 
     retune() {

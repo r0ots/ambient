@@ -31,6 +31,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] Tests accélérés (~5 min → ~1 min) : attentes × 0.4 (paramètre ?s=), Chrome --mute-audio, 3 pages en parallèle, logs tagués par page.
 - [x] v0.16 : visuels Orbes / Horizon / Spectre (mémorisé), mode Écoute plein écran (Échap), URL kiosque ?viz=&listen=1&autoplay=1&mood=.
 - [x] v0.17 : aide (bouton ? / touche ?), toast de première visite.
+- [x] v0.18 : voice leading — basse sur la fondamentale, voix supérieures placées au plus près de l'accord précédent (notes communes tenues, pas de clusters de seconde).
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
@@ -44,6 +45,5 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
-- [ ] Son : couche « Basse » douce ou contre-chant lent (pad 2 voix) ? → plutôt : variations de voicing (inversions, notes communes) pour des enchaînements plus doux
 - [ ] Son : reverb « Hall/Plate/Cloud » (3 caractères d'IR) + pré-délai
 - [ ] Granulaire : mode « Reverse » et pitch-glide des grains (façon Evoke)
