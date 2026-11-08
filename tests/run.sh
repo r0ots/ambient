@@ -5,11 +5,25 @@
 LOG=${LOG:-/tmp/ambient-server.log}
 PAGE=${1:-smoke.html}; TAG=${PAGE%.html}; SCALE=${2:-0.4}
 START=$(( $(wc -l < "$LOG") + 1 ))
-UD=$(mktemp -d)
-"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --autoplay-policy=no-user-gesture-required \
-  --user-data-dir="$UD" --no-first-run --disable-gpu --mute-audio "http://localhost:8765/tests/$PAGE?s=$SCALE" >/dev/null 2>&1 &
-CPID=$!
+launch() {
+  UD=$(mktemp -d)
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --autoplay-policy=no-user-gesture-required \
+    --user-data-dir="$UD" --no-first-run --disable-gpu --mute-audio --disable-audio-output "http://localhost:8765/tests/$PAGE?s=$SCALE" >/dev/null 2>&1 &
+  CPID=$!
+}
+stopc() { kill $CPID 2>/dev/null; sleep 0.3; rm -rf "$UD" 2>/dev/null; }
 lines() { tail -n +$START "$LOG" | grep "__log?$TAG%7C" | sed -E 's/.*__log\?([^ ]*) HTTP.*/\1/' | python3 -c "import sys,urllib.parse;[print(urllib.parse.unquote(l.strip()).split('|',1)[1]) for l in sys.stdin]"; }
-for i in $(seq 1 100); do sleep 0.5; lines | grep -qE "^(DONE|EXC)" && break; done
-kill $CPID 2>/dev/null; sleep 0.5; rm -rf "$UD" 2>/dev/null
+# A page whose audio context never starts logs nothing: relaunch it after 8 s instead of waiting the full timeout.
+for attempt in 1 2 3; do
+  START=$(( $(wc -l < "$LOG") + 1 ))
+  launch
+  for i in $(seq 1 100); do
+    sleep 0.5
+    out=$(lines)
+    echo "$out" | grep -qE "^(DONE|EXC)" && break 2
+    [ $i -ge 16 ] && [ -z "$out" ] && break
+  done
+  stopc
+done
+stopc
 lines

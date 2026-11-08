@@ -23,6 +23,7 @@ window.addEventListener('load', async ()=>{
   try{
   AMB.ui.applyPatch({'global.tempo':140,'pad.length':1,'bells.density':0.9,'grains.density':1,'grains.size':1,'bells.mode':'Phrase','global.evolve':1,'mod.l1target':'fx.size','mod.l1rate':1,'mod.l1depth':1});
   await AMB.ui.play();
+  log('started');
   const secs=+(new URLSearchParams(location.search).get('secs')||60);
   for(let k=1;k<=6;k++){
     const t0=performance.now(); let lag=0;
