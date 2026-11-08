@@ -52,6 +52,8 @@
         tone: { label: 'Brillance', min: 0, max: 1, def: 0.4, evolve: true },
         attack: { label: 'Attaque', min: 0, max: 1, def: 0.6 },
         length: { label: 'Durée accord', min: 1, max: 8, def: 4, step: 1, unit: 'mes.' },
+        prog: { label: 'Progression', type: 'select', options: ['Aléatoire', 'Plane (I)', 'Pendule I–IV', 'I–V–vi–IV', 'i–VI–III–VII', 'Montée I–ii–iii–IV', 'Perso'], def: 'Aléatoire' },
+        custom: { label: 'Degrés perso', type: 'text', def: '1 6 4 5', placeholder: 'ex. 1 6 4 5' },
         voicing: { label: 'Richesse', min: 0, max: 1, def: 0.5, evolve: true },
         send: { label: 'Envoi FX', min: 0, max: 1, def: 0.7 },
       },

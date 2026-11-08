@@ -89,6 +89,17 @@
     return wrap;
   }
 
+  function textField(key, sp) {
+    const wrap = h('div', 'ctl sel txt');
+    const inp = h('input'); inp.type = 'text'; inp.placeholder = sp.placeholder || ''; inp.spellcheck = false;
+    inp.addEventListener('change', () => store.set(key, inp.value.trim(), 'user'));
+    inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') inp.blur(); });
+    wrap.append(inp, h('div', 'k-lab', sp.label));
+    widgets[key] = { render: () => { inp.value = store.get(key); }, el: wrap };
+    widgets[key].render();
+    return wrap;
+  }
+
   function toggle(key, sp, color) {
     const b = h('button', 'tog', sp.label);
     if (color) b.style.setProperty('--c', color);
@@ -111,6 +122,7 @@
       if (sp.type === 'toggle' && k === 'on') head.append(toggle(key, { label: '' }, sec.color));
       else if (sp.type === 'toggle') ctls.append(toggle(key, sp, sec.color));
       else if (sp.type === 'select') ctls.append(select(key, sp));
+      else if (sp.type === 'text') ctls.append(textField(key, sp));
       else ctls.append(knob(key, sp, sec.color));
     }
     panel.append(head, ctls);
@@ -269,6 +281,7 @@
       for (const [k, sp] of Object.entries(s.params)) {
         const key = `${sec}.${k}`;
         if (key === 'global.volume' || key === 'global.evolve') continue;
+        if (sp.type === 'text') continue;
         if (sp.type === 'select') patch[key] = sp.options[Math.floor(r() * sp.options.length)];
         else if (sp.type === 'toggle') patch[key] = k === 'on' ? r() > 0.15 : r() > 0.5;
         else {
@@ -340,6 +353,9 @@
     top.append(section('global'), section('fx'));
 
     store.on((key) => { const w = widgets[key]; if (w) w.render(); });
+    const showCustom = () => { widgets['pad.custom'].el.style.display = store.get('pad.prog') === 'Perso' ? '' : 'none'; };
+    store.on((key) => { if (key === 'pad.prog') showCustom(); });
+    showCustom();
 
     $('#play').addEventListener('click', () => (started ? stop() : play()));
     fillPresetSelect();

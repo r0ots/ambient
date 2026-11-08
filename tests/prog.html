@@ -1,0 +1,36 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body>
+<script>
+const log=(m)=>fetch('/__log?'+encodeURIComponent(m)).catch(()=>{});
+window.onerror=(m,s,l,c,e)=>log('ERROR '+m+' @'+s+':'+l);
+window.addEventListener('unhandledrejection',e=>log('REJECT '+(e.reason&&e.reason.stack||e.reason)));
+const oe=console.error;console.error=(...a)=>{log('CONSOLE.ERROR '+a.join(' '));oe(...a)};
+</script>
+<div id="scenes"></div><div id="layers"></div><div id="globals"></div>
+<button id="play"></button><button id="bigPlay"></button><div id="chordName"></div><div id="hudInfo"></div><select id="preset"></select><button id="dice"></button><button id="save"></button><button id="rec"></button><button id="share"></button><div id="toast"></div><select id="sleep"></select><span id="sleepLeft"></span><canvas id="viz" style="width:400px;height:200px"></canvas>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/presets.js"></script><script src="../js/visual.js"></script><script src="../js/scenes.js"></script><script src="../js/ui.js"></script><script src="../js/play.js"></script>
+<script>
+const params=new URLSearchParams(location.search);
+async function measure(label, secs){
+  const an=AMB.engine.analyser, buf=new Float32Array(an.fftSize);
+  let peak=0,sum=0,n=0; const t0=performance.now();
+  while(performance.now()-t0<secs*1000){ an.getFloatTimeDomainData(buf); for(const v of buf){peak=Math.max(peak,Math.abs(v));sum+=v*v;n++;} await new Promise(r=>setTimeout(r,40)); }
+  log(`${label} rms=${Math.sqrt(sum/n).toFixed(4)} peak=${peak.toFixed(3)} notes=${notes} t=${AMB.engine.ctx.currentTime.toFixed(1)}`);
+}
+let notes=0;
+window.addEventListener('load', async ()=>{
+  try{
+  const degs=[]; AMB.bus.on('chord',c=>degs.push(c.deg));
+  AMB.store.set('global.tempo',140); AMB.store.set('pad.length',1);
+  AMB.store.set('pad.prog','I–V–vi–IV');
+  await AMB.ui.play();
+  await new Promise(r=>setTimeout(r,9000));
+  log('prog degs='+degs.join(','));
+  degs.length=0; AMB.store.set('pad.prog','Perso'); AMB.store.set('pad.custom','2 5 1');
+  await new Promise(r=>setTimeout(r,7000));
+  log('custom degs='+degs.join(',')+' customVisible='+(AMB.ui.widgets['pad.custom'].el.style.display!=='none'));
+  document.getElementById('dice').click();
+  log('dice custom='+AMB.store.get('pad.custom')+' tempo='+AMB.store.get('global.tempo'));
+  log('DONE');
+  }catch(e){log('EXC '+e.stack)}
+});
+</script></body></html>

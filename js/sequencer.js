@@ -73,6 +73,20 @@
       this.applyHarmony(AMB.engine.ctx.currentTime);
     }
 
+    // Fixed progression as 0-based scale degrees, or null for the random walk
+    progression() {
+      const P = {
+        'Plane (I)': [0], 'Pendule I–IV': [0, 3], 'I–V–vi–IV': [0, 4, 5, 3],
+        'i–VI–III–VII': [0, 5, 2, 6], 'Montée I–ii–iii–IV': [0, 1, 2, 3],
+      };
+      const name = store.get('pad.prog');
+      if (name === 'Perso') {
+        const degs = String(store.get('pad.custom')).split(/[\s,;-]+/).map((x) => parseInt(x, 10)).filter((x) => x >= 1 && x <= 14).map((x) => x - 1);
+        return degs.length ? degs : null;
+      }
+      return P[name] || null;
+    }
+
     // Player-forced chord (keyboard / MIDI): plays now and holds for one chord length
     forceChord(deg) {
       if (!this.playing) return;
@@ -122,10 +136,20 @@
       // ---- chord changes ----
       if (step % (stepsPerBar * barLen) === 0 && !(this.lockUntil > step)) {
         if (step > 0) {
-          const move = T.weightedPick(T.CHORD_MOVES, T.CHORD_WEIGHTS);
-          // gravitate home so it never wanders too far
-          this.chordDeg = clamp(this.chordDeg + move, -3, 6);
-          if (Math.abs(this.chordDeg) > 4 && Math.random() < 0.5) this.chordDeg = 0;
+          const seq = this.progression();
+          if (seq) {
+            this.progIdx = ((this.progIdx || 0) + 1) % seq.length;
+            this.chordDeg = seq[this.progIdx];
+          } else {
+            const move = T.weightedPick(T.CHORD_MOVES, T.CHORD_WEIGHTS);
+            // gravitate home so it never wanders too far
+            this.chordDeg = clamp(this.chordDeg + move, -3, 6);
+            if (Math.abs(this.chordDeg) > 4 && Math.random() < 0.5) this.chordDeg = 0;
+          }
+        } else {
+          const seq = this.progression();
+          this.progIdx = 0;
+          if (seq) this.chordDeg = seq[0];
         }
         const midis = this.applyHarmony(time);
         const dur = sd * stepsPerBar * barLen + 0.5;

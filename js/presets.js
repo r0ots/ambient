@@ -13,7 +13,7 @@
     },
     'Cathédrale': {
       'global.tempo': 48, 'global.key': 'F', 'global.scale': 'Ionien (majeur)',
-      'drone.wave': 'Orgue', 'drone.tone': 0.5, 'pad.wave': 'Chœur', 'pad.attack': 0.9, 'pad.length': 6,
+      'drone.wave': 'Orgue', 'drone.tone': 0.5, 'pad.wave': 'Chœur', 'pad.attack': 0.9, 'pad.length': 6, 'pad.prog': 'Pendule I–IV',
       'pad.vol': 0.65, 'bells.wave': 'Cloche', 'bells.density': 0.12, 'bells.decay': 0.85,
       'grains.on': false, 'texture.on': false,
       'fx.space': 0.85, 'fx.size': 1, 'fx.shimmer': 0.45, 'fx.echo': 0.15, 'fx.tape': 0.1, 'fx.lofi': 0,
@@ -54,7 +54,7 @@
     },
     'Métropole nocturne': {
       'global.tempo': 62, 'global.key': 'C#', 'global.scale': 'Dorien',
-      'drone.wave': 'Sub', 'drone.vol': 0.45, 'pad.wave': 'FM', 'pad.tone': 0.35, 'pad.length': 2,
+      'drone.wave': 'Sub', 'drone.vol': 0.45, 'pad.wave': 'FM', 'pad.tone': 0.35, 'pad.length': 2, 'pad.prog': 'i–VI–III–VII',
       'bells.wave': 'Pluck', 'bells.density': 0.35, 'bells.tone': 0.35,
       'grains.vol': 0.25, 'grains.pitch': 'Libre', 'texture.type': 'Ville', 'texture.vol': 0.4,
       'fx.space': 0.5, 'fx.echo': 0.5, 'fx.echoTime': '1/8.', 'fx.tape': 0.55, 'fx.lofi': 0.35,
