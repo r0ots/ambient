@@ -146,7 +146,7 @@
   for (const [sec, sdef] of Object.entries(SCHEMA)) {
     for (const [k, p] of Object.entries(sdef.params)) {
       const key = `${sec}.${k}`;
-      if (p.type || p.step || key === 'global.volume' || key === 'global.evolve') continue;
+      if (p.type || p.step || ['global.volume', 'global.evolve', 'fx.size'].includes(key)) continue; // size rebuilds the IR: not modulatable
       targets.push(key); labels[key] = `${sdef.label} · ${p.label}`;
     }
   }
