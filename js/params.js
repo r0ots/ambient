@@ -89,6 +89,8 @@
         scan: { label: 'Position', min: 0, max: 1, def: 0.3, evolve: true },
         spray: { label: 'Dispersion', min: 0, max: 1, def: 0.4 },
         pitch: { label: 'Hauteurs', type: 'select', options: ['Accord', 'Octaves', 'Libre'], def: 'Accord' },
+        reverse: { label: 'Reverse', min: 0, max: 1, def: 0.15 },
+        glide: { label: 'Glissando', min: 0, max: 1, def: 0, evolve: true },
         send: { label: 'Envoi FX', min: 0, max: 1, def: 0.8 },
       },
     },

@@ -348,6 +348,20 @@
       this.sampleBuf = buf; this.sampleName = name;
       store.set('grains.source', 'Échantillon', 'user');
     }
+    // reversed copy of a buffer, cached
+    reversedOf(buf) {
+      this._rev = this._rev || new WeakMap();
+      let rb = this._rev.get(buf);
+      if (!rb) {
+        rb = this.ctx.createBuffer(buf.numberOfChannels, buf.length, buf.sampleRate);
+        for (let c = 0; c < buf.numberOfChannels; c++) {
+          const src = buf.getChannelData(c), dst = rb.getChannelData(c), n = src.length;
+          for (let i = 0; i < n; i++) dst[i] = src[n - 1 - i];
+        }
+        this._rev.set(buf, rb);
+      }
+      return rb;
+    }
     // Freeze: resample the last seconds of the whole mix and turn it into a grain cloud
     freeze(secs = 4) {
       const { buffer, peak } = this.engine.snapshot(secs);
@@ -377,13 +391,16 @@
       const useSample = !!ext;
       const buf = ext || this.synthBuf;
       const spray = P('grains', 'spray');
+      const revProb = P('grains', 'reverse');
+      const glide = P('grains', 'glide');
       const mode = P('grains', 'pitch');
       let n = 0;
       while (this.next < until && n++ < 160) {
         const t = this.next;
         this.next += (1 / rate) * rand(0.6, 1.4);
         const src = ctx.createBufferSource();
-        src.buffer = buf;
+        const reversed = Math.random() < revProb;
+        src.buffer = reversed ? this.reversedOf(buf) : buf;
         // pitch
         let target;
         if (mode === 'Accord') target = pick(this.pitches) + pick([0, 0, 12, -12]);
@@ -392,12 +409,20 @@
         // synth buffer is pitched at C4; a user sample is treated as being in the current key
         const base = useSample ? this.root : 60;
         const r = Math.pow(2, (target - base) / 12);
-        src.playbackRate.value = clamp(r * (1 + (Math.random() - 0.5) * 0.004 * spray), 0.0625, 8);
+        const rate0 = clamp(r * (1 + (Math.random() - 0.5) * 0.004 * spray), 0.0625, 8);
         const dur = size * rand(0.8, 1.2);
+        if (glide > 0.01) {
+          // pitch glide into the target note (or away from it), Evoke-style
+          const semis = glide * 12 * (Math.random() < 0.5 ? -1 : 1) * rand(0.3, 1);
+          const from = clamp(rate0 * Math.pow(2, semis / 12), 0.0625, 8);
+          src.playbackRate.setValueAtTime(from, t);
+          src.playbackRate.exponentialRampToValueAtTime(rate0, t + dur * 0.9);
+        } else src.playbackRate.value = rate0;
         const bufDur = buf.duration;
         const span = Math.max(0, bufDur - dur * r - 0.01);
         let pos = P('grains', 'scan') * span + (Math.random() - 0.5) * spray * span * 0.5;
         pos = clamp(pos, 0, span);
+        if (reversed) pos = Math.max(0, bufDur - pos - dur * r - 0.01); // same region, played backwards
         const env = ctx.createGain(); env.gain.value = 0;
         const pan = ctx.createStereoPanner(); pan.pan.value = (Math.random() * 2 - 1) * (0.2 + spray * 0.8);
         src.connect(env); env.connect(pan); pan.connect(this.bus);
