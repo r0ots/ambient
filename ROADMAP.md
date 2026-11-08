@@ -35,6 +35,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] v0.19 : reverb à 3 caractères (Hall avec réflexions précoces, Plate dense et brillante, Cloud à attaque gonflée) + pré-délai 0–250 ms.
 - [x] v0.20 : Grains — probabilité Reverse (copie inversée en cache) et Glissando (rampe de pitch jusqu'à ±12 demi-tons vers la note).
 - [x] v0.21 : test d'endurance (tests/endurance.html, hors suite rapide) en config extrême 60 s : voix de pad bornées (~28), heap stable (15–22 Mo), lag main thread ≤ 4 ms. fx.size retiré des cibles LFO (reconstruit l'IR).
+- [x] v0.22 : Journal de session (un « moment » par changement d'accord, ≥15 s d'écart, 48 max) : clic = revenir à l'état, ♥ Garder = patch utilisateur. Anneau du visualiseur lissé.
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
@@ -49,4 +50,3 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
-- [ ] « Journal » de session : timeline des accords/événements + bouton « reprendre ce moment » (restaure l'état)

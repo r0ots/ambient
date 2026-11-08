@@ -263,6 +263,11 @@
     store.setMany({ ...defaults, ...p }, 'preset');
   }
 
+  function saveUserPatch(name, state) {
+    const u = loadUser(); u[name] = state; saveUser(u);
+    fillPresetSelect(); const sel = $('#preset'); if (sel) sel.value = 'u:' + name;
+  }
+
   function fillPresetSelect() {
     const s = $('#preset');
     s.innerHTML = '';
@@ -388,8 +393,7 @@
     bind('#save', 'click', () => {
       const name = prompt('Nom du patch :', 'Mon ambient ' + (Object.keys(loadUser()).length + 1));
       if (!name) return;
-      const u = loadUser(); u[name] = store.snapshot(); saveUser(u);
-      fillPresetSelect(); $('#preset').value = 'u:' + name;
+      saveUserPatch(name, store.snapshot());
     });
     bind('#dice', 'click', randomize);
     bind('#rec', 'click', (e) => toggleRec(e.currentTarget));
@@ -514,7 +518,7 @@
     canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
   }
 
-  AMB.ui = { build, play, stop, ensureStarted, applyPatch, widgets, encodePatch, toast, freezeNow };
+  AMB.ui = { build, play, stop, ensureStarted, applyPatch, widgets, encodePatch, toast, freezeNow, saveUserPatch };
 
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW', e)));

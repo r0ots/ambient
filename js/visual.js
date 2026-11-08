@@ -174,9 +174,12 @@
         g.beginPath();
         const N = 256, step = Math.floor(this.wave.length / N);
         for (let i = 0; i <= N; i++) {
-          const v = this.wave[(i % N) * step];
+          // average a window of samples so the ring breathes instead of bristling
+          let v = 0; const j0 = (i % N) * step;
+          for (let k = 0; k < step; k++) v += this.wave[j0 + k];
+          v /= step;
           const ang = (i / N) * Math.PI * 2 - Math.PI / 2;
-          const rr = R * (1 + v * 0.9);
+          const rr = R * (1 + v * 1.2);
           const x = cx + Math.cos(ang) * rr, y = cy + Math.sin(ang) * rr;
           i ? g.lineTo(x, y) : g.moveTo(x, y);
         }
