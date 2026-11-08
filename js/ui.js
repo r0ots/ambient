@@ -38,6 +38,7 @@
     track.setAttribute('d', arcPath(A0, A1));
     const norm = () => (store.get(key) - sp.min) / (sp.max - sp.min);
     const fmt = (v) => {
+      if (sp.fmt) return sp.fmt(v);
       if (sp.unit) return `${Math.round(v)} ${sp.unit}`;
       return Math.round(((v - sp.min) / (sp.max - sp.min)) * 100);
     };
@@ -83,7 +84,7 @@
   function select(key, sp) {
     const wrap = h('div', 'ctl sel');
     const s = h('select');
-    sp.options.forEach((o) => { const op = h('option', null, o); op.value = o; s.append(op); });
+    sp.options.forEach((o) => { const op = h('option', null, (sp.labels && sp.labels[o]) || o); op.value = o; s.append(op); });
     s.addEventListener('change', () => store.set(key, s.value, 'user'));
     wrap.append(s, h('div', 'k-lab', sp.label));
     widgets[key] = { render: () => { s.value = store.get(key); }, el: wrap };
@@ -376,7 +377,7 @@
     const grid = $('#layers');
     ['drone', 'pad', 'bells', 'grains', 'texture'].forEach((s) => grid.append(section(s)));
     const top = $('#globals');
-    top.append(section('global'), section('fx'));
+    top.append(section('global'), section('fx'), section('mod'));
 
     store.on((key) => { const w = widgets[key]; if (w) w.render(); });
     const showCustom = () => { widgets['pad.custom'].el.style.display = store.get('pad.prog') === 'Perso' ? '' : 'none'; };

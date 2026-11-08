@@ -137,6 +137,28 @@
     on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   }
 
+  // ---- Modulation section: 2 slow LFOs whose targets can be any continuous parameter ----
+  const targets = ['—'], labels = { '—': 'Aucune' };
+  for (const [sec, sdef] of Object.entries(SCHEMA)) {
+    for (const [k, p] of Object.entries(sdef.params)) {
+      const key = `${sec}.${k}`;
+      if (p.type || p.step || key === 'global.volume' || key === 'global.evolve') continue;
+      targets.push(key); labels[key] = `${sdef.label} · ${p.label}`;
+    }
+  }
+  const lfo = (n, target, rate, depth) => ({
+    [`l${n}target`]: { label: `LFO ${n} → cible`, type: 'select', options: targets, labels, def: target },
+    [`l${n}shape`]: { label: 'Forme', type: 'select', options: ['Sinus', 'Triangle', 'Dérive'], def: 'Sinus' },
+    [`l${n}rate`]: { label: 'Période', min: 0, max: 1, def: rate, fmt: (v) => fmtPeriod(v) },
+    [`l${n}depth`]: { label: 'Profondeur', min: 0, max: 1, def: depth },
+  });
+  SCHEMA.mod = { label: 'Modulation', color: '#9fd0ff', params: { ...lfo(1, 'pad.tone', 0.45, 0.4), ...lfo(2, '—', 0.25, 0.3) } };
+
+  // rate knob 0..1 -> period 4 s .. 10 min (log)
+  function periodSecs(v) { return 4 * Math.pow(150, 1 - v); }
+  function fmtPeriod(v) { const s = periodSecs(v); return s >= 90 ? `${(s / 60).toFixed(1)} min` : `${Math.round(s)} s`; }
+  AMB.periodSecs = periodSecs;
+
   AMB.SCHEMA = SCHEMA;
   AMB.store = new Store();
 })();

@@ -26,6 +26,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] v0.11 : enregistrement WAV 16 bits stéréo sans perte (capture via le tap), ou compressé ; durée fixe 1/3/10/20 min avec fondu final ; plafond WAV 30 min.
 - [x] v0.12 : tests/run-all.sh (8 pages, échoue sur toute erreur JS), lookahead 1.6 s quand l'onglet est en arrière-plan (timers bridés), UI tolérante aux éléments absents.
 - [x] v0.13 : analyse spectrale par preset (tests/spectrum.html) → IR de reverb moins amortie, shimmer plus ouvert, shelf « air » +4 dB à 7 kHz (réduit par Lo-fi).
+- [x] v0.14 : section Modulation — 2 LFO lents (4 s à 10 min, sinus/triangle/dérive) assignables à n'importe quel paramètre continu, autour de la valeur utilisateur.
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
@@ -38,4 +39,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
-- [ ] LFO assignables simples par couche (filtre / volume / pan) avec vitesse très lente
+- [ ] Générateur « Nouveau paysage » plus musical que Hasard (choix cohérents gamme/tempo/moteurs/textures, nommage poétique)
+- [ ] Visualiseur : modes (orbes / horizon / spectre) + plein écran
+- [ ] Mode « Écoute » plein écran épuré (juste visuel + XY + play), pour laisser tourner
+- [ ] Onboarding léger (tooltip au premier lancement) + page d'aide raccourcis (touche ?)

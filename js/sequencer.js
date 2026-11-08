@@ -24,7 +24,7 @@
       this.homes = store.snapshot(); // evolve anchor values
       this.timer = null;
       store.on((key, v, source) => {
-        if (source !== 'evolve') this.homes[key] = v;
+        if (source !== 'evolve' && source !== 'lfo') this.homes[key] = v;
         if (key === 'global.key' || key === 'global.scale') this.retune();
       });
     }
@@ -41,11 +41,13 @@
       this.nextTime = ctx.currentTime + 0.1;
       this.chordDeg = 0;
       this.timer = setInterval(() => this.tick(), 50);
+      this.lfoTimer = setInterval(() => this.runLfos(), 100);
       this.tick();
     }
     stop() {
       this.playing = false;
       clearInterval(this.timer);
+      clearInterval(this.lfoTimer);
     }
 
     tick() {
@@ -257,6 +259,37 @@
       const swing = (i % 2 === 1 ? sd * 0.12 : 0) + rand(0, 0.01);
       AMB.layers.bells.note(midi, time + swing, ev.vel);
       AMB.bus.emit('phrase', { i, len, time });
+    }
+
+    // Slow LFOs (control rate, ~10 Hz) modulating around the user's value
+    runLfos() {
+      const t = performance.now() / 1000;
+      this.lfoState = this.lfoState || {};
+      for (const n of [1, 2]) {
+        const target = store.get(`mod.l${n}target`);
+        const st = (this.lfoState[n] = this.lfoState[n] || { phase: Math.random(), last: t, drift: 0, driftTarget: 0 });
+        const dt = Math.min(0.5, t - st.last); st.last = t;
+        if (st.target && st.target !== target && this.homes[st.target] !== undefined) {
+          store.set(st.target, this.homes[st.target], 'lfo'); // release the old target
+        }
+        st.target = target;
+        if (!target || target === '—') continue;
+        const sp = store.spec(target); if (!sp) continue;
+        st.phase = (st.phase + dt / AMB.periodSecs(store.get(`mod.l${n}rate`))) % 1;
+        const shape = store.get(`mod.l${n}shape`);
+        let y;
+        if (shape === 'Triangle') y = 1 - 4 * Math.abs(st.phase - 0.5);
+        else if (shape === 'Dérive') {
+          if (st.phase < st.prevPhase) st.driftTarget = Math.random() * 2 - 1;
+          st.drift += (st.driftTarget - st.drift) * Math.min(1, dt * 4 / AMB.periodSecs(store.get(`mod.l${n}rate`)));
+          y = st.drift;
+        } else y = Math.sin(2 * Math.PI * st.phase);
+        st.prevPhase = st.phase;
+        st.value = y;
+        const home = this.homes[target] !== undefined ? this.homes[target] : store.get(target);
+        const range = sp.max - sp.min;
+        store.set(target, clamp(home + y * store.get(`mod.l${n}depth`) * range * 0.5, sp.min, sp.max), 'lfo');
+      }
     }
 
     evolve() {
