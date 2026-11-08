@@ -3,20 +3,21 @@
   const AMB = (window.AMB = window.AMB || {});
 
   AMB.PRESETS = {
-    'Aube lydienne': {},
+    'Aube lydienne': { 'pad.counter': 0.3, 'fx.revType': 'Hall', 'mod.l1target': 'pad.tone', 'mod.l1rate': 0.4 },
     'Nuit sous la pluie': {
       'global.tempo': 56, 'global.key': 'A', 'global.scale': 'Éolien (mineur)',
       'drone.wave': 'Sub', 'drone.tone': 0.25, 'pad.wave': 'Verre', 'pad.tone': 0.3,
       'bells.wave': 'Verre', 'bells.density': 0.18, 'bells.range': 0.35,
       'grains.density': 0.25, 'texture.type': 'Pluie', 'texture.vol': 0.4,
       'fx.space': 0.7, 'fx.size': 0.9, 'fx.shimmer': 0.05, 'fx.tape': 0.45, 'fx.lofi': 0.3,
+      'fx.revType': 'Plate', 'grains.reverse': 0.4, 'pad.counter': 0.35, 'mod.l1target': 'texture.vol', 'mod.l1rate': 0.3, 'mod.l1depth': 0.35, 'mod.l1shape': 'Dérive',
     },
     'Cathédrale': {
       'global.tempo': 48, 'global.key': 'F', 'global.scale': 'Ionien (majeur)', 'global.time': 'Flottant',
       'drone.wave': 'Orgue', 'drone.tone': 0.5, 'pad.wave': 'Chœur', 'pad.attack': 0.9, 'pad.length': 6, 'pad.prog': 'Pendule I–IV',
       'pad.vol': 0.65, 'bells.wave': 'Cloche', 'bells.density': 0.12, 'bells.decay': 0.85,
       'grains.on': false, 'texture.on': false,
-      'fx.space': 0.85, 'fx.size': 1, 'fx.revType': 'Hall', 'fx.predelay': 0.55, 'fx.shimmer': 0.45, 'fx.echo': 0.15, 'fx.tape': 0.1, 'fx.lofi': 0,
+      'fx.space': 0.85, 'fx.size': 1, 'fx.revType': 'Hall', 'fx.predelay': 0.55, 'fx.shimmer': 0.45, 'pad.counter': 0.5, 'fx.echo': 0.15, 'fx.tape': 0.1, 'fx.lofi': 0,
     },
     'Océan intérieur': {
       'global.tempo': 60, 'global.key': 'E', 'global.scale': 'Dorien',
@@ -24,6 +25,7 @@
       'bells.on': false, 'grains.density': 0.55, 'grains.size': 0.75, 'grains.pitch': 'Octaves',
       'texture.type': 'Océan', 'texture.vol': 0.45, 'texture.motion': 0.3,
       'fx.space': 0.6, 'fx.shimmer': 0.25, 'fx.echo': 0.2,
+      'fx.revType': 'Cloud', 'grains.glide': 0.25, 'texture.motion': 0.6, 'mod.l1target': 'grains.scan', 'mod.l1rate': 0.25, 'mod.l1depth': 0.6,
     },
     'Cassette oubliée': {
       'global.tempo': 72, 'global.key': 'C', 'global.scale': 'Pentatonique maj.',
@@ -37,6 +39,7 @@
       'bells.wave': 'Kalimba', 'bells.density': 0.38, 'bells.range': 0.65, 'bells.mode': 'Phrase', 'bells.mutate': 0.25,
       'grains.pitch': 'Accord', 'grains.density': 0.2, 'texture.type': 'Ruisseau', 'texture.vol': 0.35,
       'fx.space': 0.5, 'fx.echo': 0.4, 'fx.shimmer': 0.1,
+      'fx.revType': 'Plate', 'fx.predelay': 0.45, 'pad.counter': 0.2,
     },
     'Feu de camp': {
       'global.tempo': 58, 'global.key': 'G', 'global.scale': 'Mixolydien',
@@ -44,6 +47,7 @@
       'bells.wave': 'Pluck', 'bells.density': 0.22, 'bells.tone': 0.3,
       'grains.vol': 0.25, 'texture.type': 'Feu', 'texture.vol': 0.45,
       'fx.space': 0.4, 'fx.size': 0.5, 'fx.tape': 0.5, 'fx.lofi': 0.25,
+      'pad.counter': 0.4, 'mod.l1target': 'fx.tape', 'mod.l1rate': 0.2, 'mod.l1depth': 0.3, 'mod.l1shape': 'Dérive',
     },
     'Forêt matinale': {
       'global.tempo': 70, 'global.key': 'G', 'global.scale': 'Pentatonique maj.',
@@ -51,6 +55,7 @@
       'bells.wave': 'Kalimba', 'bells.density': 0.3, 'bells.range': 0.7, 'bells.mode': 'Phrase', 'bells.phraseLen': '1 mes.', 'bells.mutate': 0.4,
       'grains.density': 0.3, 'grains.pitch': 'Octaves', 'texture.type': 'Oiseaux', 'texture.vol': 0.45,
       'fx.space': 0.45, 'fx.size': 0.6, 'fx.shimmer': 0.2, 'fx.echo': 0.35,
+      'fx.revType': 'Hall', 'pad.prog': 'Montée I–ii–iii–IV', 'mod.l1target': 'bells.density', 'mod.l1rate': 0.35, 'mod.l1depth': 0.4,
     },
     'Métropole nocturne': {
       'global.tempo': 62, 'global.key': 'C#', 'global.scale': 'Dorien',
@@ -65,6 +70,7 @@
       'bells.wave': 'Verre', 'bells.density': 0.1, 'grains.density': 0.7, 'grains.pitch': 'Libre', 'grains.spray': 0.8,
       'texture.type': 'Vent', 'texture.vol': 0.3,
       'fx.space': 0.9, 'fx.size': 1, 'fx.revType': 'Cloud', 'fx.shimmer': 0.6, 'fx.echo': 0.35, 'fx.feedback': 0.75,
+      'grains.reverse': 0.5, 'grains.glide': 0.4, 'pad.counter': 0.5, 'mod.l1target': 'fx.shimmer', 'mod.l1rate': 0.2, 'mod.l1depth': 0.5, 'mod.l2target': 'drone.tone', 'mod.l2rate': 0.15, 'mod.l2depth': 0.5, 'mod.l2shape': 'Dérive',
     },
   };
 })();

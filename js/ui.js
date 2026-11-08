@@ -180,7 +180,8 @@
   // "Nouveau paysage": coherent mood-based generation (see generator.js)
   function randomize() {
     const moodSel = $('#mood');
-    const { mood, title, patch } = AMB.generator.generate(moodSel ? moodSel.value : '');
+    const mv = moodSel ? moodSel.value : '';
+    const { mood, title, patch } = mv === '__day' ? AMB.generator.generateDaily() : AMB.generator.generate(mv);
     applyPatch(patch);
     const s = $('#preset');
     if (s) {

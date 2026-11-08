@@ -90,5 +90,17 @@
     return { mood: name, title, patch };
   }
 
-  AMB.generator = { MOODS, generate };
+  // "Paysage du jour": same date -> same landscape for everyone (seeded PRNG swapped in temporarily)
+  function mulberry32(a) {
+    return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+  function generateDaily(date = new Date()) {
+    const seed = date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
+    const real = Math.random;
+    Math.random = mulberry32(seed);
+    try { const g = generate(); g.title = `${g.title} (${date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })})`; return g; }
+    finally { Math.random = real; }
+  }
+
+  AMB.generator = { MOODS, generate, generateDaily };
 })();
