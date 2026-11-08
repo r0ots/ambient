@@ -15,14 +15,15 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] Mix vérifié en headless (tests/run.sh) : drone baissé (trim 0.2), mélodie remontée.
 
 - [x] v0.2 : HUD (nom d'accord, tonalité, mesure), gros bouton de lancement, pad XY sur le visualiseur (X = lumière, Y = densité).
+- [x] v0.3 : scènes A/B + morph (manuel ou auto ping-pong 1–20 min), saturation tape à gain unitaire (loudness stable entre presets), master +4 dB.
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
   Serveur : `python3 -u -m http.server 8765 2> $LOG`, puis `LOG=... tests/run.sh`. Capture : `--screenshot`.
+- Niveaux cibles mesurés par tests/run.sh : rms 0.08–0.15 par preset, peak < 0.8.
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
-- [ ] Scènes A/B + slider Morph entre deux états
 - [ ] Plus de moteurs de Pad (wavetable, FM pad) et de textures (feu, ville, oiseaux)
 - [ ] PWA (manifest + service worker) pour installer comme appli
 - [ ] Partage de patch via URL (state encodé dans le hash)

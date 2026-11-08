@@ -5,9 +5,9 @@ window.onerror=(m,s,l,c,e)=>log('ERROR '+m+' @'+s+':'+l);
 window.addEventListener('unhandledrejection',e=>log('REJECT '+(e.reason&&e.reason.stack||e.reason)));
 const oe=console.error;console.error=(...a)=>{log('CONSOLE.ERROR '+a.join(' '));oe(...a)};
 </script>
-<div id="layers"></div><div id="globals"></div>
+<div id="scenes"></div><div id="layers"></div><div id="globals"></div>
 <button id="play"></button><button id="bigPlay"></button><div id="chordName"></div><div id="hudInfo"></div><select id="preset"></select><button id="dice"></button><button id="save"></button><button id="rec"></button><select id="sleep"></select><span id="sleepLeft"></span><canvas id="viz" style="width:400px;height:200px"></canvas>
-<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/presets.js"></script><script src="../js/visual.js"></script><script src="../js/ui.js"></script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/presets.js"></script><script src="../js/visual.js"></script><script src="../js/scenes.js"></script><script src="../js/ui.js"></script>
 <script>
 const params=new URLSearchParams(location.search);
 async function measure(label, secs){
@@ -27,6 +27,9 @@ window.addEventListener('load', async ()=>{
   for(const solo of layers){ for(const l of layers) AMB.store.set(l+'.on', l===solo); await new Promise(r=>setTimeout(r,1500)); await measure('solo '+solo,4); }
   for(const l of layers) AMB.store.set(l+'.on', true);
   for(const p of Object.keys(AMB.PRESETS)){ AMB.ui.applyPatch(AMB.PRESETS[p]); await new Promise(r=>setTimeout(r,1500)); await measure('preset '+p,3); }
+  AMB.ui.applyPatch(AMB.PRESETS['Cassette oubliée']); AMB.scenes.capture('A');
+  AMB.ui.applyPatch(AMB.PRESETS['Cathédrale']); AMB.scenes.capture('B');
+  for(const x of [0,0.25,0.5,0.75,1]){ AMB.scenes.setMorph(x); await new Promise(r=>setTimeout(r,800)); await measure('morph '+x+' tape='+AMB.store.get('fx.tape').toFixed(2)+' pad='+AMB.store.get('pad.wave'),2); }
   log('chord='+document.getElementById('chordName').textContent+' info='+document.getElementById('hudInfo').textContent); log('DONE');
   }catch(e){log('EXC '+e.stack)}
 });

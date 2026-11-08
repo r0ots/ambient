@@ -51,11 +51,11 @@
 
   function satCurve(drive) {
     const n = 2048, curve = new Float32Array(n);
-    const k = 1 + drive * 6;
-    const norm = Math.tanh(k);
+    // unity small-signal gain: only peaks get squashed, so loudness stays stable as drive rises
+    const k = 1 + drive * 3;
     for (let i = 0; i < n; i++) {
-      const x = (i / (n - 1)) * 2 - 1;
-      curve[i] = Math.tanh(k * x) / norm;
+      const x = ((i / (n - 1)) * 2 - 1) * 2; // shaper input range is [-1,1]; scale for headroom
+      curve[i] = Math.tanh(k * x) / k;
     }
     return curve;
   }
@@ -213,13 +213,13 @@
       const t = this.ctx.currentTime;
       const ramp = (param, val, tc = 0.08) => param.setTargetAtTime(val, t, tc);
       switch (key) {
-        case 'global.volume': ramp(this.master.gain, v * v * 1.1); break;
+        case 'global.volume': ramp(this.master.gain, v * v * 1.8); break;
         case 'fx.space': ramp(this.revIn.gain, v * 1.1); break;
         case 'fx.size': {
           clearTimeout(this._sizeT);
           this._sizeT = setTimeout(() => {
             const secs = 1.5 + v * 9.5;
-            if (Math.abs(secs - this._revSize) < 0.05) return;
+            if (Math.abs(secs - this._revSize) < 0.6) return; // avoid reloading the IR on tiny moves (evolve/morph)
             this._revSize = secs;
             this.conv.buffer = makeImpulse(this.ctx, secs, 2.2 + (1 - v) * 2);
           }, 120);
@@ -238,8 +238,8 @@
           ramp(this.wowAmt.gain, v * 0.0035);
           ramp(this.flutterAmt.gain, v * 0.00025);
           this.sat.curve = satCurve(v);
-          ramp(this.satIn.gain, 1 + v * 0.6);
-          ramp(this.satOut.gain, 1 / (1 + v * 0.45));
+          ramp(this.satIn.gain, 0.5);
+          ramp(this.satOut.gain, 2);
           break;
         }
         case 'fx.lofi': {
