@@ -20,7 +20,9 @@
       label: 'Espace',
       params: {
         space: { label: 'Reverb', min: 0, max: 1, def: 0.55, evolve: true },
+        revType: { label: 'Caractère', type: 'select', options: ['Hall', 'Plate', 'Cloud'], def: 'Hall' },
         size: { label: 'Taille', min: 0, max: 1, def: 0.75 },
+        predelay: { label: 'Pré-délai', min: 0, max: 1, def: 0.3, fmt: (v) => `${Math.round(v * v * 250)} ms` },
         shimmer: { label: 'Shimmer', min: 0, max: 1, def: 0.15, evolve: true },
         echo: { label: 'Delay', min: 0, max: 1, def: 0.3, evolve: true },
         echoTime: { label: 'Temps', type: 'select', options: ['1/8', '1/8.', '1/4', '1/4.', '1/2', '1/1'], def: '1/4.' },

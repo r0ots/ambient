@@ -16,7 +16,7 @@
       'drone.wave': 'Orgue', 'drone.tone': 0.5, 'pad.wave': 'Chœur', 'pad.attack': 0.9, 'pad.length': 6, 'pad.prog': 'Pendule I–IV',
       'pad.vol': 0.65, 'bells.wave': 'Cloche', 'bells.density': 0.12, 'bells.decay': 0.85,
       'grains.on': false, 'texture.on': false,
-      'fx.space': 0.85, 'fx.size': 1, 'fx.shimmer': 0.45, 'fx.echo': 0.15, 'fx.tape': 0.1, 'fx.lofi': 0,
+      'fx.space': 0.85, 'fx.size': 1, 'fx.revType': 'Hall', 'fx.predelay': 0.55, 'fx.shimmer': 0.45, 'fx.echo': 0.15, 'fx.tape': 0.1, 'fx.lofi': 0,
     },
     'Océan intérieur': {
       'global.tempo': 60, 'global.key': 'E', 'global.scale': 'Dorien',
@@ -29,7 +29,7 @@
       'global.tempo': 72, 'global.key': 'C', 'global.scale': 'Pentatonique maj.',
       'drone.vol': 0.3, 'pad.wave': 'Nappe', 'pad.tone': 0.25, 'bells.wave': 'Pluck', 'bells.density': 0.45,
       'grains.vol': 0.2, 'texture.type': 'Vinyle', 'texture.vol': 0.35,
-      'fx.tape': 0.85, 'fx.lofi': 0.6, 'fx.echo': 0.45, 'fx.echoTime': '1/8.', 'fx.shimmer': 0,
+      'fx.tape': 0.85, 'fx.lofi': 0.6, 'fx.revType': 'Plate', 'fx.predelay': 0.1, 'fx.echo': 0.45, 'fx.echoTime': '1/8.', 'fx.shimmer': 0,
     },
     'Jardin japonais': {
       'global.tempo': 64, 'global.key': 'D', 'global.scale': 'Hirajoshi',
@@ -64,7 +64,7 @@
       'drone.wave': 'Creux', 'drone.motion': 0.9, 'pad.wave': 'Chœur', 'pad.attack': 1, 'pad.length': 8,
       'bells.wave': 'Verre', 'bells.density': 0.1, 'grains.density': 0.7, 'grains.pitch': 'Libre', 'grains.spray': 0.8,
       'texture.type': 'Vent', 'texture.vol': 0.3,
-      'fx.space': 0.9, 'fx.size': 1, 'fx.shimmer': 0.6, 'fx.echo': 0.35, 'fx.feedback': 0.75,
+      'fx.space': 0.9, 'fx.size': 1, 'fx.revType': 'Cloud', 'fx.shimmer': 0.6, 'fx.echo': 0.35, 'fx.feedback': 0.75,
     },
   };
 })();

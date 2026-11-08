@@ -27,23 +27,37 @@
     return buf;
   }
 
-  function makeImpulse(ctx, seconds, decayPow = 3) {
+  // Synthetic impulse responses with three characters:
+  //  Hall  – early reflections + darkening tail
+  //  Plate – dense, bright, quick build-up
+  //  Cloud – slow swelling attack, very diffuse and dark (pad-like)
+  function makeImpulse(ctx, seconds, decayPow = 3, type = 'Hall') {
     const rate = ctx.sampleRate;
+    if (type === 'Cloud') seconds *= 1.4;
     const len = Math.max(1, Math.floor(rate * seconds));
     const buf = ctx.createBuffer(2, len, rate);
+    const swell = type === 'Cloud' ? rate * Math.min(1.5, seconds * 0.15) : rate * (type === 'Plate' ? 0.004 : 0.012);
+    const dampA = type === 'Plate' ? 0.01 : type === 'Cloud' ? 0.25 : 0.04;
+    const dampB = type === 'Plate' ? 0.35 : type === 'Cloud' ? 0.6 : 0.7;
+    const pow = type === 'Plate' ? decayPow * 0.8 : decayPow;
     for (let c = 0; c < 2; c++) {
       const d = buf.getChannelData(c);
       let lp = 0;
       for (let i = 0; i < len; i++) {
         const t = i / len;
-        // damping: the tail gets darker over time
-        const coef = 0.04 + 0.7 * t * t;
+        const coef = dampA + dampB * t * t; // damping: the tail gets darker over time
         const w = Math.random() * 2 - 1;
         lp = lp + (w - lp) * (1 - coef);
-        const env = Math.pow(1 - t, decayPow);
-        // soft fade-in to avoid an early hard reflection
-        const pre = Math.min(1, i / (rate * 0.012));
+        const env = Math.pow(1 - t, pow);
+        const pre = type === 'Cloud' ? Math.pow(Math.min(1, i / swell), 2) : Math.min(1, i / swell);
         d[i] = lp * env * pre;
+      }
+      if (type === 'Hall') {
+        // a handful of discrete early reflections (different per channel for width)
+        for (let k = 0; k < 8; k++) {
+          const at = Math.floor(rate * (0.008 + Math.random() * 0.07));
+          if (at < len) d[at] += (Math.random() < 0.5 ? -1 : 1) * (0.5 - k * 0.04);
+        }
       }
     }
     return buf;
@@ -86,7 +100,9 @@
       this.revOut = g(1.2);
       this.fxBus.connect(this.revIn);
       this.revIn.connect(this.revPre);
-      this.revPre.connect(this.conv);
+      this.preDelay = ctx.createDelay(0.5);
+      this.revPre.connect(this.preDelay);
+      this.preDelay.connect(this.conv);
       this.conv.connect(this.revOut);
       this.revOut.connect(this.preTape);
 
@@ -269,16 +285,20 @@
       switch (key) {
         case 'global.volume': ramp(this.master.gain, v * v * 1.8); break;
         case 'fx.space': ramp(this.revIn.gain, v * 1.1); break;
+        case 'fx.revType': this._revSize = -1; // force a rebuild, then fall through
+        // eslint-disable-next-line no-fallthrough
         case 'fx.size': {
           clearTimeout(this._sizeT);
           this._sizeT = setTimeout(() => {
-            const secs = 1.5 + v * 9.5;
+            const sz = store.get('fx.size');
+            const secs = 1.5 + sz * 9.5;
             if (Math.abs(secs - this._revSize) < 0.6) return; // avoid reloading the IR on tiny moves (evolve/morph)
             this._revSize = secs;
-            this.conv.buffer = makeImpulse(this.ctx, secs, 2.2 + (1 - v) * 2);
+            this.conv.buffer = makeImpulse(this.ctx, secs, 2.2 + (1 - sz) * 2, store.get('fx.revType'));
           }, 120);
           break;
         }
+        case 'fx.predelay': ramp(this.preDelay.delayTime, v * v * 0.25, 0.2); break;
         case 'fx.shimmer': ramp(this.shimmerGain.gain, v * 0.42); break;
         case 'fx.echo': ramp(this.dlyIn.gain, v * 0.9); break;
         case 'fx.feedback': ramp(this.dlyFb.gain, v); break;
@@ -307,7 +327,7 @@
     }
 
     applyAll() {
-      ['global.volume', 'fx.space', 'fx.size', 'fx.shimmer', 'fx.echo', 'fx.feedback', 'fx.echoTime', 'fx.tape', 'fx.lofi']
+      ['global.volume', 'fx.space', 'fx.size', 'fx.predelay', 'fx.shimmer', 'fx.echo', 'fx.feedback', 'fx.echoTime', 'fx.tape', 'fx.lofi']
         .forEach((k) => this.apply(k));
     }
 

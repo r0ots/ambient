@@ -76,7 +76,7 @@
       'grains.pitch': pick(['Accord', 'Accord', 'Octaves', 'Libre']),
       'texture.on': Math.random() > 0.1, 'texture.type': pick(m.textures), 'texture.vol': rand(0.2, 0.45),
       'texture.tone': rand(0.3, 0.7), 'texture.motion': rand(0.3, 0.7),
-      'fx.space': r(m.fx.space), 'fx.size': rand(0.55, 1), 'fx.shimmer': r(m.fx.shimmer), 'fx.echo': r(m.fx.echo),
+      'fx.space': r(m.fx.space), 'fx.size': rand(0.55, 1), 'fx.revType': pick(['Hall', 'Hall', 'Plate', 'Cloud']), 'fx.predelay': rand(0.1, 0.6), 'fx.shimmer': r(m.fx.shimmer), 'fx.echo': r(m.fx.echo),
       'fx.echoTime': pick(['1/4.', '1/4', '1/8.', '1/2']), 'fx.feedback': rand(0.4, 0.75),
       'fx.tape': r(m.fx.tape), 'fx.lofi': r(m.fx.lofi),
       // one slow LFO on something meaningful
