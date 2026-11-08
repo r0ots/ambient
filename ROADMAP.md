@@ -59,4 +59,6 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
-- [ ] Mode « Flottant » : pas de grille, notes à instants libres (humanisation forte) pour un ambient sans pulsation
+- [ ] Repasser sur les 10 presets d'usine pour exploiter les ajouts récents (contre-chant, caractère de reverb, temps flottant, reverse/glissando, LFO)
+- [ ] « Paysage du jour » : paysage généré de façon déterministe à partir de la date (même résultat pour tout le monde ce jour-là)
+- [ ] Perf mobile : remplacer le tap ScriptProcessor par un AudioWorklet (blob URL) avec repli
