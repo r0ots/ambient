@@ -377,6 +377,10 @@
     ['drone', 'pad', 'bells', 'grains', 'texture'].forEach((s) => grid.append(section(s)));
     const top = $('#globals');
     top.append(section('global'), section('fx'), section('mod'));
+    const mac = $('#macros');
+    if (mac) mac.append(section('macro'));
+    bind('#viewMode', 'click', () => setView(!document.body.classList.contains('simple')));
+    try { setView(localStorage.getItem('ambient.view') === 'simple'); } catch (e) {}
 
     store.on((key) => { const w = widgets[key]; if (w) w.render(); });
     const showCustom = () => { widgets['pad.custom'].el.style.display = store.get('pad.prog') === 'Perso' ? '' : 'none'; };
@@ -428,6 +432,7 @@
     const q = new URLSearchParams(location.search);
     if (q.get('viz') && AMB.visual.MODES.includes(q.get('viz'))) { AMB.visual.mode = q.get('viz'); if (vm) vm.textContent = AMB.visual.mode; }
     if (q.get('mood')) { const m = $('#mood'); if (m) m.value = q.get('mood'); randomize(); }
+    if (q.get('view')) setView(q.get('view') === 'simple');
     if (q.get('listen')) setListen(true);
     if (q.get('autoplay')) play().catch(() => toast('Clique sur Lecture pour démarrer'));
   }
@@ -495,6 +500,27 @@
   }
 
   // ---------- XY performance pad on the visualizer ----------
+  // Macro -> [param, at 0, at 1, curve exponent]
+  const MACROS = {
+    'macro.light': [['pad.tone', 0.08, 0.9], ['bells.tone', 0.05, 1], ['drone.tone', 0.08, 0.7], ['texture.tone', 0.15, 0.85]],
+    'macro.density': [['bells.density', 0.04, 0.8], ['grains.density', 0.08, 0.9], ['fx.echo', 0.12, 0.55], ['pad.length', 8, 2]],
+    'macro.space': [['fx.space', 0.15, 0.95], ['fx.size', 0.35, 1], ['fx.shimmer', 0, 0.55, 2], ['fx.predelay', 0.1, 0.6]],
+    'macro.nostalgia': [['fx.tape', 0.05, 0.85], ['fx.lofi', 0, 0.6, 2]],
+    'macro.nature': [['texture.vol', 0, 0.55]],
+  };
+  function applyMacro(key, v) {
+    for (const [k, a, b, pow] of MACROS[key]) store.set(k, a + (b - a) * Math.pow(v, pow || 1), 'macro');
+    if (key === 'macro.nature') store.set('texture.on', v > 0.02, 'macro');
+  }
+  store.on((key, v, source) => { if (source === 'user' && MACROS[key]) applyMacro(key, v); });
+
+  // Simple / Expert view
+  function setView(simple) {
+    document.body.classList.toggle('simple', simple);
+    const b = $('#viewMode'); if (b) b.textContent = simple ? 'Expert' : 'Simple';
+    try { localStorage.setItem('ambient.view', simple ? 'simple' : 'expert'); } catch (e) {}
+  }
+
   const XY_MAP = {
     x: [['pad.tone', 0.08, 0.9], ['bells.tone', 0.05, 1], ['drone.tone', 0.08, 0.7], ['texture.tone', 0.15, 0.85]],
     y: [['bells.density', 0.04, 0.8], ['grains.density', 0.08, 0.9], ['fx.echo', 0.12, 0.55]],

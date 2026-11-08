@@ -156,6 +156,14 @@
     [`l${n}rate`]: { label: 'Période', min: 0, max: 1, def: rate, fmt: (v) => fmtPeriod(v) },
     [`l${n}depth`]: { label: 'Profondeur', min: 0, max: 1, def: depth },
   });
+  // Macro knobs for the "Simple" view: each drives several parameters at once (see ui.js MACROS)
+  SCHEMA.macro = { label: 'Macros', color: '#c9b6ff', params: {
+    light: { label: 'Lumière', min: 0, max: 1, def: 0.45 },
+    density: { label: 'Densité', min: 0, max: 1, def: 0.35 },
+    space: { label: 'Espace', min: 0, max: 1, def: 0.55 },
+    nostalgia: { label: 'Nostalgie', min: 0, max: 1, def: 0.25 },
+    nature: { label: 'Nature', min: 0, max: 1, def: 0.4 },
+  } };
   SCHEMA.mod = { label: 'Modulation', color: '#9fd0ff', params: { ...lfo(1, 'pad.tone', 0.45, 0.4), ...lfo(2, '—', 0.25, 0.3) } };
 
   // rate knob 0..1 -> period 4 s .. 10 min (log)

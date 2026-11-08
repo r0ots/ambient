@@ -39,6 +39,7 @@
           <select id="recFmt" title="Format"><option value="wav">WAV</option><option value="comp">Compressé</option></select>
           <select id="recDur" title="Durée (fondu de sortie automatique)"><option value="0">libre</option><option value="1">1 min</option><option value="3">3 min</option><option value="10">10 min</option><option value="20">20 min</option></select>
         </span>
+        <button id="viewMode" class="btn" title="Vue simple (5 macros) ou experte (tous les réglages)">Simple</button>
         <button id="help" class="btn" title="Aide et raccourcis (?)">?</button>
         <label class="sleep" title="Minuteur de sommeil : fondu puis arrêt">☾
           <select id="sleep">
@@ -72,6 +73,7 @@
 
     <div id="scenes" class="scenes"></div>
     <div id="journal" class="scenes journal empty"></div>
+    <div id="macros" class="row macros"></div>
     <div id="globals" class="row globals"></div>
     <div id="layers" class="row layers"></div>
 
