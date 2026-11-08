@@ -106,43 +106,103 @@
       }
 
       // ---- melody ----
-      const dens = store.get('bells.density');
-      const strong = step % 4 === 0 ? 1.6 : step % 2 === 0 ? 0.9 : 0.45;
-      const p = Math.pow(dens, 1.6) * 0.6 * strong;
-      if (Math.random() < p) {
-        const range = store.get('bells.range');
-        const lo = 4 + Math.round(range * 6), hi = lo + 9;
-        // random walk, biased to chord tones
-        let step_ = pick([-2, -1, -1, 1, 1, 2, 3, -3, 0]);
-        this.melodyDeg = clamp(this.melodyDeg + step_, lo, hi);
-        let deg = this.melodyDeg;
-        if (Math.random() < 0.55) {
-          // snap to nearest chord tone
-          const chordDegs = T.chordDegrees(this.chordDeg, 4, this.scale);
-          const n = this.scale.length;
-          let best = deg, bd = 99;
-          for (const cd of chordDegs) {
-            for (let o = -3; o <= 3; o++) {
-              const cand = cd + o * n;
-              const dd = Math.abs(cand - deg);
-              if (dd < bd) { bd = dd; best = cand; }
-            }
-          }
-          deg = best;
-        }
-        const midi = T.degreeToMidi(deg, this.root, this.scale, 3);
-        const vel = rand(0.45, 1) * (step % 4 === 0 ? 1 : 0.8);
-        const swing = (step % 2 === 1 ? sd * 0.12 : 0) + rand(0, 0.015);
-        L.bells.note(midi, time + swing, vel);
-        // occasional answering note
-        if (Math.random() < 0.15 * dens) {
-          const m2 = T.degreeToMidi(deg + pick([2, 4, -3, 7]), this.root, this.scale, 3);
-          L.bells.note(m2, time + sd * pick([2, 3, 6]), vel * 0.6);
-        }
-      }
+      if (store.get('bells.mode') === 'Phrase') this.phraseStep(step, time, sd);
+      else this.randomMelodyStep(step, time, sd);
 
       // ---- evolve macro (every beat) ----
       if (step % 4 === 0) this.evolve();
+    }
+
+    melodyRange() {
+      const range = store.get('bells.range');
+      const lo = 4 + Math.round(range * 6);
+      return [lo, lo + 9];
+    }
+
+    snapToChord(deg) {
+      const chordDegs = T.chordDegrees(this.chordDeg, 4, this.scale);
+      const n = this.scale.length;
+      let best = deg, bd = 99;
+      for (const cd of chordDegs) {
+        for (let o = -3; o <= 3; o++) {
+          const cand = cd + o * n;
+          const dd = Math.abs(cand - deg);
+          if (dd < bd) { bd = dd; best = cand; }
+        }
+      }
+      return best;
+    }
+
+    randomMelodyStep(step, time, sd) {
+      const L = AMB.layers;
+      const dens = store.get('bells.density');
+      const strong = step % 4 === 0 ? 1.6 : step % 2 === 0 ? 0.9 : 0.45;
+      const p = Math.pow(dens, 1.6) * 0.6 * strong;
+      if (Math.random() >= p) return;
+      const [lo, hi] = this.melodyRange();
+      // random walk, biased to chord tones
+      this.melodyDeg = clamp(this.melodyDeg + pick([-2, -1, -1, 1, 1, 2, 3, -3, 0]), lo, hi);
+      let deg = this.melodyDeg;
+      if (Math.random() < 0.55) deg = this.snapToChord(deg);
+      const midi = T.degreeToMidi(deg, this.root, this.scale, 3);
+      const vel = rand(0.45, 1) * (step % 4 === 0 ? 1 : 0.8);
+      const swing = (step % 2 === 1 ? sd * 0.12 : 0) + rand(0, 0.015);
+      L.bells.note(midi, time + swing, vel);
+      // occasional answering note
+      if (Math.random() < 0.15 * dens) {
+        const m2 = T.degreeToMidi(deg + pick([2, 4, -3, 7]), this.root, this.scale, 3);
+        L.bells.note(m2, time + sd * pick([2, 3, 6]), vel * 0.6);
+      }
+    }
+
+    // ---- Phrase mode: a looping motif (relative to the chord) that mutates slowly ----
+    newPhrase(len) {
+      const dens = store.get('bells.density');
+      const ph = new Array(len).fill(null);
+      const [lo, hi] = this.melodyRange();
+      let d = Math.round((lo + hi) / 2) - this.chordDeg;
+      for (let i = 0; i < len; i++) {
+        const strong = i % 4 === 0 ? 1.8 : i % 2 === 0 ? 0.8 : 0.3;
+        if (Math.random() < Math.pow(dens, 1.2) * 0.45 * strong) {
+          d += pick([-2, -1, 1, 2, 0, 3, -3]);
+          ph[i] = { d, vel: rand(0.5, 1) * (i % 4 === 0 ? 1 : 0.8) };
+        }
+      }
+      if (!ph.some(Boolean)) ph[0] = { d, vel: 0.9 };
+      return ph;
+    }
+    mutatePhrase() {
+      const m = store.get('bells.mutate');
+      const ph = this.phrase;
+      const dens = store.get('bells.density');
+      for (let i = 0; i < ph.length; i++) {
+        if (ph[i]) {
+          if (Math.random() < m * 0.25) ph[i].d += pick([-2, -1, 1, 2]);
+          else if (Math.random() < m * 0.12 * (1.2 - dens)) ph[i] = null;
+        } else if (Math.random() < m * 0.06 * dens * (i % 2 ? 0.5 : 1.5)) {
+          const prev = ph.slice(0, i).reverse().find(Boolean);
+          ph[i] = { d: (prev ? prev.d : 7) + pick([-1, 1, 2, -2]), vel: rand(0.4, 0.9) };
+        }
+      }
+      if (!ph.some(Boolean)) this.phrase = this.newPhrase(ph.length);
+      this.phraseGen = (this.phraseGen || 0) + 1;
+    }
+    phraseStep(step, time, sd) {
+      const len = 16 * parseInt(store.get('bells.phraseLen'), 10);
+      if (!this.phrase || this.phrase.length !== len) this.phrase = this.newPhrase(len);
+      const i = step % len;
+      if (i === 0 && step > 0) this.mutatePhrase();
+      const ev = this.phrase[i];
+      if (!ev) return;
+      const [lo, hi] = this.melodyRange();
+      let deg = ev.d + this.chordDeg;
+      const n = this.scale.length;
+      while (deg > hi + 2) deg -= n;
+      while (deg < lo - 2) deg += n;
+      const midi = T.degreeToMidi(deg, this.root, this.scale, 3);
+      const swing = (i % 2 === 1 ? sd * 0.12 : 0) + rand(0, 0.01);
+      AMB.layers.bells.note(midi, time + swing, ev.vel);
+      AMB.bus.emit('phrase', { i, len, time });
     }
 
     evolve() {
