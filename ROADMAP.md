@@ -41,6 +41,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] v0.25 : annuler/rétablir (⌘Z / ⇧⌘Z, Ctrl+Y) des gestes, presets, macros et paysages générés ; groupés par 700 ms ; Evolve/LFO/morph ignorés ; volume jamais annulé.
 - [x] v0.27 : macros synchronisées avec l'état réel (inverse moyen des mappings) après preset, annulation, morph ou édition directe.
 - [x] v0.28 : README utilisateur complet, interrupteurs de couches dans la vue Simple, diapason 440/432 Hz.
+- [x] v0.29 : accessibilité — knobs role=slider avec aria-valuenow/valuetext, flèches/PgUp/PgDn/Home/End, selects et interrupteurs étiquetés (aria-pressed), focus visible.
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
@@ -56,6 +57,5 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 
 ## À faire (priorité décroissante)
 - [ ] Revue de code (lisibilité, duplication ui.js qui grossit : extraire macros/xy/rec dans des fichiers)
-- [ ] Accessibilité : labels ARIA des knobs (role=slider, aria-valuenow), focus visible partout
 - [ ] Contre-chant lent : 2e voix mélodique (notes longues, registre grave/médium) en complément de la Mélodie
 - [ ] Mode « Flottant » : pas de grille, notes à instants libres (humanisation forte) pour un ambient sans pulsation

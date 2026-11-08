@@ -13,6 +13,10 @@
   function knob(key, sp, color) {
     const wrap = h('div', 'ctl knob');
     wrap.title = 'Glisser verticalement · double-clic : valeur par défaut · Maj : réglage fin';
+    const secLabel = (AMB.SCHEMA[key.split('.')[0]] || {}).label || '';
+    wrap.setAttribute('role', 'slider');
+    wrap.setAttribute('aria-label', `${secLabel} · ${sp.label}`);
+    wrap.setAttribute('aria-valuemin', sp.min); wrap.setAttribute('aria-valuemax', sp.max);
     const svgNS = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(svgNS, 'svg');
     svg.setAttribute('viewBox', '0 0 60 60');
@@ -48,6 +52,8 @@
       const [x, y] = polar(a, 13);
       dot.setAttribute('cx', x); dot.setAttribute('cy', y);
       val.textContent = fmt(store.get(key));
+      wrap.setAttribute('aria-valuenow', +store.get(key).toFixed(3));
+      wrap.setAttribute('aria-valuetext', String(val.textContent));
     }
     let startY = 0, startV = 0, dragging = false;
     wrap.addEventListener('pointerdown', (e) => {
@@ -73,8 +79,11 @@
     // keyboard accessibility
     wrap.tabIndex = 0;
     wrap.addEventListener('keydown', (e) => {
-      const d = { ArrowUp: 0.02, ArrowRight: 0.02, ArrowDown: -0.02, ArrowLeft: -0.02 }[e.key];
-      if (d) { e.preventDefault(); store.set(key, store.get(key) + d * (sp.max - sp.min), 'user'); }
+      const span = sp.max - sp.min;
+      const d = { ArrowUp: 0.02, ArrowRight: 0.02, ArrowDown: -0.02, ArrowLeft: -0.02, PageUp: 0.1, PageDown: -0.1 }[e.key];
+      if (d) { e.preventDefault(); e.stopPropagation(); store.set(key, store.get(key) + d * (e.shiftKey ? 0.25 : 1) * span, 'user'); }
+      else if (e.key === 'Home') { e.preventDefault(); store.set(key, sp.min, 'user'); }
+      else if (e.key === 'End') { e.preventDefault(); store.set(key, sp.max, 'user'); }
     });
     widgets[key] = { render, el: wrap };
     render();
@@ -84,6 +93,7 @@
   function select(key, sp) {
     const wrap = h('div', 'ctl sel');
     const s = h('select');
+    s.setAttribute('aria-label', `${(AMB.SCHEMA[key.split('.')[0]] || {}).label || ''} · ${sp.label}`);
     sp.options.forEach((o) => { const op = h('option', null, (sp.labels && sp.labels[o]) || o); op.value = o; s.append(op); });
     s.addEventListener('change', () => store.set(key, s.value, 'user'));
     wrap.append(s, h('div', 'k-lab', sp.label));
@@ -107,7 +117,8 @@
     const b = h('button', 'tog', sp.label);
     if (color) b.style.setProperty('--c', color);
     b.addEventListener('click', () => store.set(key, !store.get(key), 'user'));
-    widgets[key] = { render: () => b.classList.toggle('on', !!store.get(key)), el: b };
+    if (!sp.label) b.setAttribute('aria-label', `${(AMB.SCHEMA[key.split('.')[0]] || {}).label || ''} activé`);
+    widgets[key] = { render: () => { const on = !!store.get(key); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); }, el: b };
     widgets[key].render();
     return b;
   }

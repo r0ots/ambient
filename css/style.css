@@ -159,6 +159,9 @@ body.simple .globals, body.simple .layers { display: none; }
 .macros .k-val { font-size: 13px; }
 .macros .k-lab { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
 
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.knob:focus-visible { outline: none; }
+
 footer { text-align: center; font-size: 11px; color: #4c5272; padding: 20px 0 8px; }
 
 @media (max-width: 760px) {
