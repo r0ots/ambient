@@ -151,6 +151,8 @@ kbd { background: #23273b; border: 1px solid #383e5c; border-bottom-width: 2px; 
 .macros { display: none; }
 body.simple .macros { display: grid; }
 body.simple .globals, body.simple .layers { display: none; }
+.layer-chips { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+.layer-chips .tog { margin: 0; padding: 6px 14px; font-size: 12px; }
 .macros .ctls { justify-content: space-around; }
 .macros .ctl { width: 110px; }
 .macros .knob svg { width: 92px; height: 92px; }

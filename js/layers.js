@@ -408,7 +408,7 @@
         else target = this.root + Math.round(rand(-12, 24));
         // synth buffer is pitched at C4; a user sample is treated as being in the current key
         const base = useSample ? this.root : 60;
-        const r = Math.pow(2, (target - base) / 12);
+        const r = Math.pow(2, (target - base) / 12) * (useSample ? 1 : AMB.theory.A4 / 440);
         const rate0 = clamp(r * (1 + (Math.random() - 0.5) * 0.004 * spray), 0.0625, 8);
         const dur = size * rand(0.8, 1.2);
         if (glide > 0.01) {

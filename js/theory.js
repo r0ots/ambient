@@ -18,7 +18,8 @@
     'Par tons': [0, 2, 4, 6, 8, 10],
   };
 
-  const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
+  // reference pitch is mutable (440 / 432 Hz) and read at call time
+  const mtof = (m) => AMB.theory.A4 * Math.pow(2, (m - 69) / 12);
 
   // Returns midi note for a scale degree (can be negative / > length)
   function degreeToMidi(degree, root, scale, baseOctave) {
@@ -87,6 +88,7 @@
   const lerp = (a, b, t) => a + (b - a) * t;
 
   AMB.theory = {
+    A4: 440,
     NOTE_NAMES, SCALES, mtof, degreeToMidi, chordDegrees, chordName,
     CHORD_MOVES, CHORD_WEIGHTS, weightedPick,
   };

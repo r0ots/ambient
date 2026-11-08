@@ -40,6 +40,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] v0.24 : barre d'outils sur une ligne — Sauver, Partager, MIDI, Sommeil, Aide dans un menu « ⋯ » ; compte à rebours du sommeil visible dans la barre.
 - [x] v0.25 : annuler/rétablir (⌘Z / ⇧⌘Z, Ctrl+Y) des gestes, presets, macros et paysages générés ; groupés par 700 ms ; Evolve/LFO/morph ignorés ; volume jamais annulé.
 - [x] v0.27 : macros synchronisées avec l'état réel (inverse moyen des mappings) après preset, annulation, morph ou édition directe.
+- [x] v0.28 : README utilisateur complet, interrupteurs de couches dans la vue Simple, diapason 440/432 Hz.
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
@@ -54,4 +55,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
+- [ ] Revue de code (lisibilité, duplication ui.js qui grossit : extraire macros/xy/rec dans des fichiers)
+- [ ] Accessibilité : labels ARIA des knobs (role=slider, aria-valuenow), focus visible partout
+- [ ] Contre-chant lent : 2e voix mélodique (notes longues, registre grave/médium) en complément de la Mélodie
 - [ ] Mode « Flottant » : pas de grille, notes à instants libres (humanisation forte) pour un ambient sans pulsation

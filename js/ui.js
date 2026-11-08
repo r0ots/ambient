@@ -378,7 +378,29 @@
     const top = $('#globals');
     top.append(section('global'), section('fx'), section('mod'));
     const mac = $('#macros');
-    if (mac) mac.append(section('macro'));
+    if (mac) {
+      mac.append(section('macro'));
+      // layer on/off chips so the simple view can still shape the arrangement
+      const chips = h('div', 'layer-chips');
+      for (const l of ['drone', 'pad', 'bells', 'grains', 'texture']) {
+        const sp = AMB.SCHEMA[l];
+        // own button (not toggle()) so the expert panel's widget registration is untouched
+        const b = h('button', 'tog', sp.label); b.style.setProperty('--c', sp.color);
+        const key = `${l}.on`;
+        const r = () => b.classList.toggle('on', !!store.get(key));
+        b.addEventListener('click', () => store.set(key, !store.get(key), 'user'));
+        store.on((k) => { if (k === key) r(); }); r();
+        chips.append(b);
+      }
+      mac.querySelector('.panel').append(chips);
+    }
+    // reference pitch
+    const applyTuning = () => {
+      AMB.theory.A4 = store.get('global.tuning') === '432 Hz' ? 432 : 440;
+      if (AMB.layers.drone && AMB.layers.drone.setRoot) AMB.layers.drone.setRoot(AMB.layers.drone.root, AMB.engine.ctx.currentTime);
+    };
+    store.on((k) => { if (k === 'global.tuning') applyTuning(); });
+    AMB.theory.A4 = store.get('global.tuning') === '432 Hz' ? 432 : 440;
     bind('#viewMode', 'click', () => setView(!document.body.classList.contains('simple')));
     try { setView(localStorage.getItem('ambient.view') === 'simple'); } catch (e) {}
 

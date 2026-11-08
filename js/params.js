@@ -14,6 +14,7 @@
         scale: { label: 'Gamme', type: 'select', options: Object.keys(SCALES), def: 'Lydien' },
         evolve: { label: 'Evolve', min: 0, max: 1, def: 0.35 },
         time: { label: 'Temps', type: 'select', options: ['Pulsé', 'Flottant'], def: 'Pulsé' },
+        tuning: { label: 'Diapason', type: 'select', options: ['440 Hz', '432 Hz'], def: '440 Hz' },
         volume: { label: 'Volume', min: 0, max: 1, def: 0.8 },
       },
     },
