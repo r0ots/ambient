@@ -98,6 +98,10 @@ body.playing .big-play { opacity: 0; pointer-events: none; transform: scale(0.9)
 .sc-auto { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
 .btn.flash { background: #8f7aff; color: #fff; }
 
+.toast { position: absolute; top: 12px; left: 50%; transform: translate(-50%, -10px); background: #1d1a38ee; border: 1px solid #8f7aff88;
+  color: #e9e4ff; padding: 8px 14px; border-radius: 10px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
 footer { text-align: center; font-size: 11px; color: #4c5272; padding: 20px 0 8px; }
 
 @media (max-width: 760px) {

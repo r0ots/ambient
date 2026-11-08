@@ -322,9 +322,42 @@
     });
 
     $('#bigPlay').addEventListener('click', play);
+    $('#share').addEventListener('click', sharePatch);
+    loadFromHash();
+    window.addEventListener('hashchange', loadFromHash);
     setupHud();
     setupXY($('#viz'));
     AMB.visual.init($('#viz'));
+  }
+
+  // ---------- share via URL ----------
+  function toast(msg) {
+    const t = $('#toast'); if (!t) return;
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+  const b64e = (str) => btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const b64d = (str) => decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/'))));
+  function encodePatch() {
+    const diff = {};
+    for (const [k, v] of Object.entries(store.snapshot())) {
+      const sp = store.spec(k);
+      if (k === 'global.volume' || v === sp.def) continue;
+      diff[k] = typeof v === 'number' ? Math.round(v * 1000) / 1000 : v;
+    }
+    return b64e(JSON.stringify(diff));
+  }
+  async function sharePatch() {
+    const url = location.href.split('#')[0] + '#p=' + encodePatch();
+    history.replaceState(null, '', url);
+    try { await navigator.clipboard.writeText(url); toast('Lien du patch copié ✓'); }
+    catch (e) { toast('Lien dans la barre d\'adresse'); }
+  }
+  function loadFromHash() {
+    const m = location.hash.match(/p=([A-Za-z0-9_-]+)/);
+    if (!m) return;
+    try { applyPatch(JSON.parse(b64d(m[1]))); toast('Patch chargé depuis le lien'); }
+    catch (e) { console.warn('bad patch in URL', e); }
   }
 
   // ---------- HUD: chord name + position ----------
@@ -366,6 +399,10 @@
     canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
   }
 
-  AMB.ui = { build, play, stop, ensureStarted, applyPatch, widgets };
+  AMB.ui = { build, play, stop, ensureStarted, applyPatch, widgets, encodePatch, toast };
+
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW', e)));
+  }
   document.addEventListener('DOMContentLoaded', build);
 })();

@@ -6,12 +6,16 @@
   <title>Ambient — machine générative</title>
   <meta name="theme-color" content="#08090f">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
 </head>
 <body>
   <div class="app">
     <header class="top">
       <div class="brand">
-        <span class="logo">◐</span>
+        <img class="logo" src="icon.svg" alt="" width="40" height="40">
         <div>
           <h1>AMBIENT</h1>
           <p>machine à paysages sonores génératifs</p>
@@ -22,6 +26,7 @@
         <select id="preset" title="Presets"></select>
         <button id="dice" class="btn" title="Patch aléatoire">⚄ Hasard</button>
         <button id="save" class="btn" title="Sauvegarder le patch">Sauver</button>
+        <button id="share" class="btn" title="Copier un lien vers ce patch">Partager</button>
         <button id="rec" class="btn" title="Enregistrer la sortie">● Rec</button>
         <label class="sleep" title="Minuteur de sommeil : fondu puis arrêt">☾
           <select id="sleep">
@@ -45,6 +50,7 @@
       <button id="bigPlay" class="big-play" aria-label="Lecture">▶<span>Lancer le paysage</span></button>
       <div class="xy-label xy-x">← Ombre · Lumière →</div>
       <div class="xy-label xy-y">Densité ↑</div>
+      <div id="toast" class="toast"></div>
       <div class="hint">Glisser sur l'écran : pad XY (lumière / densité) · Espace : lecture / stop · double-clic sur un knob : défaut</div>
     </div>
 
