@@ -417,6 +417,11 @@
     if (vm) { vm.textContent = AMB.visual.mode; vm.addEventListener('click', () => { vm.textContent = AMB.visual.cycleMode(); }); }
     bind('#listen', 'click', toggleListen);
     bind('#help', 'click', () => showHelp(true));
+    const more = $('.more');
+    if (more) {
+      more.querySelectorAll('.menu button').forEach((b) => b.addEventListener('click', () => { more.open = false; }));
+      document.addEventListener('click', (e) => { if (more.open && !more.contains(e.target)) more.open = false; });
+    }
     bind('#helpDlg', 'click', (e) => { if (e.target.id === 'helpDlg' || e.target.hasAttribute('data-close')) showHelp(false); });
     try {
       if (!localStorage.getItem('ambient.seenHelp')) { localStorage.setItem('ambient.seenHelp', '1'); setTimeout(() => toast('Première visite ? Appuie sur ? pour l\'aide'), 1200); }
