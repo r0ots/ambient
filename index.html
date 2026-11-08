@@ -28,7 +28,11 @@
         <button id="save" class="btn" title="Sauvegarder le patch">Sauver</button>
         <button id="share" class="btn" title="Copier un lien vers ce patch">Partager</button>
         <button id="midi" class="btn" title="Connecter un clavier MIDI (notes graves = accords, CC1 densité, CC74 brillance)">MIDI</button>
-        <button id="rec" class="btn" title="Enregistrer la sortie">● Rec</button>
+        <span class="recgrp">
+          <button id="rec" class="btn" title="Enregistrer la sortie">● Rec</button>
+          <select id="recFmt" title="Format"><option value="wav">WAV</option><option value="comp">Compressé</option></select>
+          <select id="recDur" title="Durée (fondu de sortie automatique)"><option value="0">libre</option><option value="1">1 min</option><option value="3">3 min</option><option value="10">10 min</option><option value="20">20 min</option></select>
+        </span>
         <label class="sleep" title="Minuteur de sommeil : fondu puis arrêt">☾
           <select id="sleep">
             <option value="0">off</option>

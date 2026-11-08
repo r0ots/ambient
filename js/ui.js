@@ -299,30 +299,54 @@
 
   // ---------- recording ----------
   let recorder = null, recChunks = [];
+  function download(blob, ext) {
+    const a = h('a'); a.href = URL.createObjectURL(blob);
+    a.download = `ambient-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.${ext}`;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  }
+  let recState = null; // {mode, t0, iv, auto}
   async function toggleRec(btn) {
     await ensureStarted();
-    if (recorder) { recorder.stop(); return; }
-    const stream = AMB.engine.recDest.stream;
-    const mime = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4'].find((m) => MediaRecorder.isTypeSupported(m)) || '';
-    recorder = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 256000 } : undefined);
-    recChunks = [];
-    recorder.ondataavailable = (e) => e.data.size && recChunks.push(e.data);
-    recorder.onstop = () => {
-      const blob = new Blob(recChunks, { type: recorder.mimeType });
-      const ext = (recorder.mimeType.includes('ogg') ? 'ogg' : recorder.mimeType.includes('mp4') ? 'm4a' : 'webm');
-      const a = h('a'); a.href = URL.createObjectURL(blob);
-      a.download = `ambient-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.${ext}`;
-      document.body.append(a); a.click(); a.remove();
-      recorder = null; btn.classList.remove('rec'); btn.textContent = '● Rec';
-    };
-    recorder.start(1000);
-    btn.classList.add('rec'); btn.textContent = '■ Rec 0:00';
-    const t0 = Date.now();
-    const iv = setInterval(() => {
-      if (!recorder) return clearInterval(iv);
-      const s = Math.floor((Date.now() - t0) / 1000);
-      btn.textContent = `■ Rec ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-    }, 500);
+    if (recState) return finishRec(btn);
+    if (!started) await play();
+    const fmt = $('#recFmt').value, mins = Number($('#recDur').value);
+    recState = { fmt, t0: Date.now() };
+    if (fmt === 'wav') AMB.engine.startCapture();
+    else {
+      const mime = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4'].find((m) => MediaRecorder.isTypeSupported(m)) || '';
+      recorder = new MediaRecorder(AMB.engine.recDest.stream, mime ? { mimeType: mime, audioBitsPerSecond: 256000 } : undefined);
+      recChunks = [];
+      recorder.ondataavailable = (e) => e.data.size && recChunks.push(e.data);
+      recorder.onstop = () => {
+        const blob = new Blob(recChunks, { type: recorder.mimeType });
+        download(blob, recorder.mimeType.includes('ogg') ? 'ogg' : recorder.mimeType.includes('mp4') ? 'm4a' : 'webm');
+        recorder = null;
+      };
+      recorder.start(1000);
+    }
+    btn.classList.add('rec');
+    recState.iv = setInterval(() => {
+      const s = Math.floor((Date.now() - recState.t0) / 1000);
+      btn.textContent = `■ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` + (mins ? ` / ${mins}:00` : '');
+      // WAV is held in memory: cap at 30 min (~600 MB) to stay safe
+      if (fmt === 'wav' && s >= 1800) finishRec(btn);
+    }, 250);
+    if (mins) {
+      const fade = 5;
+      recState.fadeT = setTimeout(() => AMB.engine.fadeOut(fade), (mins * 60 - fade) * 1000);
+      recState.endT = setTimeout(() => { finishRec(btn); setTimeout(() => started && AMB.engine.fadeIn(2), 300); }, mins * 60 * 1000);
+    }
+    btn.textContent = '■ 0:00';
+  }
+  function finishRec(btn) {
+    if (!recState) return;
+    clearInterval(recState.iv); clearTimeout(recState.fadeT); clearTimeout(recState.endT);
+    if (recState.fmt === 'wav') download(AMB.engine.stopCapture(), 'wav');
+    else if (recorder) recorder.stop();
+    recState = null;
+    btn.classList.remove('rec'); btn.textContent = '● Rec';
+    toast('Enregistrement téléchargé');
   }
 
   // ---------- sleep timer ----------

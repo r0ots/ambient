@@ -176,6 +176,15 @@
         let p = this.ringPos;
         for (let i = 0; i < L.length; i++) { ring[p] = (L[i] + R[i]) * 0.5; p = p + 1 === n ? 0 : p + 1; }
         this.ringPos = p;
+        if (this.capturing) {
+          const out = new Int16Array(L.length * 2);
+          for (let i = 0; i < L.length; i++) {
+            out[2 * i] = Math.max(-1, Math.min(1, L[i])) * 32767;
+            out[2 * i + 1] = Math.max(-1, Math.min(1, R[i])) * 32767;
+          }
+          this.capturing.push(out);
+          this.capturedFrames += L.length;
+        }
       };
       const tapSink = g(0);
       this.out.connect(this.tap); this.tap.connect(tapSink); tapSink.connect(ctx.destination);
@@ -215,6 +224,21 @@
       out.connect(lp);
       lp.connect(this.shimmerGain);
       this.shimmerGain.connect(this.revIn);
+    }
+
+    // Lossless stereo capture of the master output -> 16-bit WAV Blob
+    startCapture() { this.capturing = []; this.capturedFrames = 0; }
+    stopCapture() {
+      const chunks = this.capturing || [];
+      this.capturing = null;
+      const sr = this.ctx.sampleRate, frames = this.capturedFrames;
+      const hdr = new DataView(new ArrayBuffer(44));
+      const w = (o, str) => { for (let i = 0; i < str.length; i++) hdr.setUint8(o + i, str.charCodeAt(i)); };
+      w(0, 'RIFF'); hdr.setUint32(4, 36 + frames * 4, true); w(8, 'WAVE'); w(12, 'fmt ');
+      hdr.setUint32(16, 16, true); hdr.setUint16(20, 1, true); hdr.setUint16(22, 2, true);
+      hdr.setUint32(24, sr, true); hdr.setUint32(28, sr * 4, true); hdr.setUint16(32, 4, true); hdr.setUint16(34, 16, true);
+      w(36, 'data'); hdr.setUint32(40, frames * 4, true);
+      return new Blob([hdr, ...chunks], { type: 'audio/wav' });
     }
 
     // Copy the last `secs` seconds of output into a normalized, faded AudioBuffer
