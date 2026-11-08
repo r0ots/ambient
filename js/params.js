@@ -47,7 +47,7 @@
       color: '#b58cff',
       params: {
         on: { label: 'On', type: 'toggle', def: true },
-        wave: { label: 'Moteur', type: 'select', options: ['Nappe', 'Verre', 'Chœur', 'Cordes'], def: 'Nappe' },
+        wave: { label: 'Moteur', type: 'select', options: ['Nappe', 'Verre', 'Chœur', 'Cordes', 'Onde', 'FM'], def: 'Nappe' },
         vol: { label: 'Niveau', min: 0, max: 1, def: 0.55 },
         tone: { label: 'Brillance', min: 0, max: 1, def: 0.4, evolve: true },
         attack: { label: 'Attaque', min: 0, max: 1, def: 0.6 },
@@ -90,7 +90,7 @@
       color: '#ff9f9f',
       params: {
         on: { label: 'On', type: 'toggle', def: true },
-        type: { label: 'Type', type: 'select', options: ['Pluie', 'Vent', 'Océan', 'Vinyle', 'Ruisseau', 'Feu'], def: 'Pluie' },
+        type: { label: 'Type', type: 'select', options: ['Pluie', 'Vent', 'Océan', 'Vinyle', 'Ruisseau', 'Feu', 'Oiseaux', 'Ville'], def: 'Pluie' },
         vol: { label: 'Niveau', min: 0, max: 1, def: 0.25 },
         tone: { label: 'Tonalité', min: 0, max: 1, def: 0.5 },
         motion: { label: 'Mouvement', min: 0, max: 1, def: 0.5 },

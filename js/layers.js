@@ -144,7 +144,7 @@
         o.connect(gn); gn.connect(filt); oscs.push(o);
         return o;
       };
-      let level = 0.18;
+      let level = 0.28;
       if (type === 'Nappe') {
         add('sawtooth', 1, 0.5, -det); add('sawtooth', 1, 0.5, det); add('triangle', 0.5, 0.3, 0);
       } else if (type === 'Verre') {
@@ -168,6 +168,42 @@
           src.connect(bp); bp.connect(bg); bg.connect(filt);
         });
         level = 0.3;
+      } else if (type === 'Onde') {
+        // wavetable-ish: two random harmonic spectra, crossfaded slowly over the note
+        const waves = this.tables || (this.tables = [0, 1, 2, 3].map((seed) => {
+          const n = 24, re = new Float32Array(n), im = new Float32Array(n);
+          for (let h = 1; h < n; h++) {
+            const odd = seed % 2 ? (h % 2 ? 1 : 0.15) : 1;
+            im[h] = (Math.random() * 0.8 + 0.2) * odd / Math.pow(h, 0.7 + seed * 0.25);
+          }
+          return ctx.createPeriodicWave(re, im);
+        }));
+        const wA = pick(waves), wB = pick(waves);
+        const mk = (w, d) => { const o = ctx.createOscillator(); o.setPeriodicWave(w); o.frequency.value = f; o.detune.value = d; return o; };
+        const oA = mk(wA, -det * 0.5), oB = mk(wB, det * 0.5);
+        const gA = ctx.createGain(), gB = ctx.createGain();
+        const morphT = Math.max(dur, 1);
+        gA.gain.setValueAtTime(0.6, time); gA.gain.linearRampToValueAtTime(0.1, time + morphT);
+        gB.gain.setValueAtTime(0.1, time); gB.gain.linearRampToValueAtTime(0.6, time + morphT);
+        oA.connect(gA); oB.connect(gB); gA.connect(filt); gB.connect(filt);
+        oscs.push(oA, oB);
+        level = 0.36;
+      } else if (type === 'FM') {
+        // soft FM pad: slowly breathing modulation index
+        const car = ctx.createOscillator(); car.frequency.value = f; car.detune.value = det * 0.3;
+        const car2 = ctx.createOscillator(); car2.frequency.value = f; car2.detune.value = -det * 0.3;
+        const mod = ctx.createOscillator(); mod.frequency.value = f * pick([1, 2, 0.5, 3]);
+        const idx = ctx.createGain();
+        const top = f * (0.3 + tone * 2.5);
+        idx.gain.setValueAtTime(0, time);
+        idx.gain.linearRampToValueAtTime(top, time + atk * 1.5);
+        idx.gain.linearRampToValueAtTime(top * 0.3, time + Math.max(dur, atk * 2));
+        mod.connect(idx); idx.connect(car.frequency); idx.connect(car2.frequency);
+        const cg = ctx.createGain(); cg.gain.value = 0.5;
+        car.connect(cg); car2.connect(cg); cg.connect(filt);
+        oscs.push(car, car2, mod);
+        filt.frequency.cancelScheduledValues(time); filt.frequency.setValueAtTime(12000, time);
+        level = 0.26;
       } else { // Cordes
         add('sawtooth', 1, 0.4, -det); add('sawtooth', 1, 0.4, 0); add('sawtooth', 1, 0.4, det);
         const vib = ctx.createOscillator(); vib.frequency.value = rand(4.8, 5.8);
@@ -207,7 +243,7 @@
       const pan = ctx.createStereoPanner(); pan.pan.value = rand(-0.7, 0.7);
       env.connect(pan); pan.connect(this.bus);
       const nodes = [];
-      const amp = 0.5 * vel;
+      const amp = 0.5 * vel * ({ 'Verre': 1.6, 'Pluck': 1.7 }[type] || 1);
       let dur = decay;
       const fm = (ratio, index, idxDecay, carrierType = 'sine') => {
         const car = ctx.createOscillator(); car.type = carrierType; car.frequency.value = f;
@@ -373,10 +409,10 @@
     buffer(type) {
       if (this.cache[type]) return this.cache[type];
       const ctx = this.ctx, sr = ctx.sampleRate;
-      const secs = type === 'Océan' ? 16 : 10;
+      const secs = type === 'Océan' ? 16 : type === 'Oiseaux' || type === 'Ville' ? 24 : 10;
       const len = sr * secs;
       let buf;
-      if (type === 'Vent' || type === 'Océan') buf = AMB.makeNoiseBuffer(ctx, secs, type === 'Vent' ? 'pink' : 'brown');
+      if (type === 'Vent' || type === 'Océan' || type === 'Ville') buf = AMB.makeNoiseBuffer(ctx, secs, type === 'Vent' ? 'pink' : 'brown');
       else buf = AMB.makeNoiseBuffer(ctx, secs, type === 'Feu' ? 'brown' : 'pink');
       for (let c = 0; c < 2; c++) {
         const d = buf.getChannelData(c);
@@ -417,6 +453,35 @@
               fr *= 1.0002; ph += (2 * Math.PI * fr) / sr;
               d[at + i] += a * Math.sin(ph) * Math.sin((Math.PI * i) / dl);
             }
+          }
+        } else if (type === 'Oiseaux') {
+          for (let i = 0; i < len; i++) d[i] *= 0.025; // leaves
+          const calls = Math.floor(secs * 0.7);
+          for (let k = 0; k < calls; k++) {
+            let at = Math.floor(Math.random() * (len - sr * 2));
+            const f0 = rand(2200, 5200), chirps = Math.floor(rand(2, 7));
+            const shape = pick(['up', 'down', 'trill']);
+            const amp = rand(0.08, 0.3) * (c === (k % 2) ? 1 : 0.35); // birds sit left or right
+            for (let q = 0; q < chirps; q++) {
+              const dl = Math.floor(sr * rand(0.05, 0.14));
+              let ph = 0;
+              for (let i = 0; i < dl; i++) {
+                const x = i / dl;
+                const fr = shape === 'up' ? f0 * (0.8 + 0.5 * x) : shape === 'down' ? f0 * (1.3 - 0.5 * x) : f0 * (1 + 0.08 * Math.sin(2 * Math.PI * 30 * i / sr));
+                ph += (2 * Math.PI * fr) / sr;
+                d[at + i] += amp * Math.sin(ph) * Math.sin(Math.PI * x);
+              }
+              at += dl + Math.floor(sr * rand(0.03, 0.12));
+            }
+          }
+        } else if (type === 'Ville') {
+          // distant traffic: brown rumble with slow swells of passing cars + faint mains hum
+          const passes = Array.from({ length: 5 }, () => [Math.random(), rand(0.02, 0.06), rand(0.4, 1)]);
+          for (let i = 0; i < len; i++) {
+            const x = i / len;
+            let sw = 0.35;
+            for (const [cx, w, a] of passes) { const dx = Math.min(Math.abs(x - cx), 1 - Math.abs(x - cx)); sw += a * Math.exp(-(dx * dx) / (2 * w * w)); }
+            d[i] = d[i] * 0.6 * sw + 0.01 * Math.sin((2 * Math.PI * 100 * i) / sr);
           }
         } else if (type === 'Feu') {
           for (let i = 0; i < len; i++) d[i] *= 0.5;
@@ -465,6 +530,8 @@
         'Vinyle': ['bandpass', 1000 + tone * 4000, 0.4, 0.05],
         'Ruisseau': ['bandpass', 500 + tone * 2500, 0.8, 0.3],
         'Feu': ['lowpass', 600 + tone * 6000, 0.6, 0.2],
+        'Oiseaux': ['highpass', 300 + tone * 1500, 0.5, 0.1],
+        'Ville': ['lowpass', 300 + tone * 2500, 0.6, 0.3],
       }[type];
       const [ftype, freq, q, fmod] = cfg;
       this.filter.type = ftype;
@@ -474,7 +541,7 @@
       this.lfoF.gain.setTargetAtTime(freq * fmod * motion * 1.5, t, 0.5);
       this.lfoA.gain.setTargetAtTime(0.35 * motion, t, 0.5);
       this.lfoP.gain.setTargetAtTime(0.5 * motion, t, 0.5);
-      const levelComp = { 'Pluie': 1, 'Vent': 1.6, 'Océan': 0.9, 'Vinyle': 1.3, 'Ruisseau': 1.6, 'Feu': 0.8 }[type];
+      const levelComp = { 'Pluie': 1, 'Vent': 2.6, 'Océan': 0.9, 'Vinyle': 2.2, 'Ruisseau': 1.6, 'Feu': 1.3, 'Oiseaux': 2.4, 'Ville': 1.1 }[type];
       this.amp.gain.setTargetAtTime(0.6 * levelComp, t, 0.5);
     }
     onParam(k) {

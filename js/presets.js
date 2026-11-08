@@ -45,6 +45,20 @@
       'grains.vol': 0.25, 'texture.type': 'Feu', 'texture.vol': 0.45,
       'fx.space': 0.4, 'fx.size': 0.5, 'fx.tape': 0.5, 'fx.lofi': 0.25,
     },
+    'Forêt matinale': {
+      'global.tempo': 70, 'global.key': 'G', 'global.scale': 'Pentatonique maj.',
+      'drone.wave': 'Orgue', 'drone.vol': 0.3, 'pad.wave': 'Onde', 'pad.tone': 0.5, 'pad.attack': 0.5,
+      'bells.wave': 'Kalimba', 'bells.density': 0.3, 'bells.range': 0.7,
+      'grains.density': 0.3, 'grains.pitch': 'Octaves', 'texture.type': 'Oiseaux', 'texture.vol': 0.45,
+      'fx.space': 0.45, 'fx.size': 0.6, 'fx.shimmer': 0.2, 'fx.echo': 0.35,
+    },
+    'Métropole nocturne': {
+      'global.tempo': 62, 'global.key': 'C#', 'global.scale': 'Dorien',
+      'drone.wave': 'Sub', 'drone.vol': 0.45, 'pad.wave': 'FM', 'pad.tone': 0.35, 'pad.length': 2,
+      'bells.wave': 'Pluck', 'bells.density': 0.35, 'bells.tone': 0.35,
+      'grains.vol': 0.25, 'grains.pitch': 'Libre', 'texture.type': 'Ville', 'texture.vol': 0.4,
+      'fx.space': 0.5, 'fx.echo': 0.5, 'fx.echoTime': '1/8.', 'fx.tape': 0.55, 'fx.lofi': 0.35,
+    },
     'Dérive spatiale': {
       'global.tempo': 40, 'global.key': 'B', 'global.scale': 'Par tons', 'global.evolve': 0.7,
       'drone.wave': 'Creux', 'drone.motion': 0.9, 'pad.wave': 'Chœur', 'pad.attack': 1, 'pad.length': 8,

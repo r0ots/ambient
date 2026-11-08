@@ -1,0 +1,35 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body>
+<script>
+const log=(m)=>fetch('/__log?'+encodeURIComponent(m)).catch(()=>{});
+window.onerror=(m,s,l,c,e)=>log('ERROR '+m+' @'+s+':'+l);
+window.addEventListener('unhandledrejection',e=>log('REJECT '+(e.reason&&e.reason.stack||e.reason)));
+const oe=console.error;console.error=(...a)=>{log('CONSOLE.ERROR '+a.join(' '));oe(...a)};
+</script>
+<div id="scenes"></div><div id="layers"></div><div id="globals"></div>
+<button id="play"></button><button id="bigPlay"></button><div id="chordName"></div><div id="hudInfo"></div><select id="preset"></select><button id="dice"></button><button id="save"></button><button id="rec"></button><select id="sleep"></select><span id="sleepLeft"></span><canvas id="viz" style="width:400px;height:200px"></canvas>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/presets.js"></script><script src="../js/visual.js"></script><script src="../js/scenes.js"></script><script src="../js/ui.js"></script>
+<script>
+const params=new URLSearchParams(location.search);
+async function measure(label, secs){
+  const an=AMB.engine.analyser, buf=new Float32Array(an.fftSize);
+  let peak=0,sum=0,n=0; const t0=performance.now();
+  while(performance.now()-t0<secs*1000){ an.getFloatTimeDomainData(buf); for(const v of buf){peak=Math.max(peak,Math.abs(v));sum+=v*v;n++;} await new Promise(r=>setTimeout(r,40)); }
+  log(`${label} rms=${Math.sqrt(sum/n).toFixed(4)} peak=${peak.toFixed(3)} notes=${notes} t=${AMB.engine.ctx.currentTime.toFixed(1)}`);
+}
+let notes=0;
+window.addEventListener('load', async ()=>{
+  try{
+  AMB.bus.on('note',()=>notes++);
+  await AMB.ui.play();
+  const layers=['drone','pad','bells','grains','texture'];
+  const solo=(x)=>layers.forEach(l=>AMB.store.set(l+'.on', l===x));
+  AMB.store.set('pad.length',1);
+  for(const sec of ['pad','drone','bells','texture']){
+    solo(sec);
+    const key=sec==='texture'?'texture.type':sec+'.wave';
+    for(const w of AMB.store.spec(key).options){ AMB.store.set(key,w); await new Promise(r=>setTimeout(r,1800)); await measure(sec+' '+w,3); }
+  }
+  log('DONE');
+  }catch(e){log('EXC '+e.stack)}
+});
+</script></body></html>
