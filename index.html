@@ -39,6 +39,7 @@
           <select id="recFmt" title="Format"><option value="wav">WAV</option><option value="comp">Compressé</option></select>
           <select id="recDur" title="Durée (fondu de sortie automatique)"><option value="0">libre</option><option value="1">1 min</option><option value="3">3 min</option><option value="10">10 min</option><option value="20">20 min</option></select>
         </span>
+        <button id="help" class="btn" title="Aide et raccourcis (?)">?</button>
         <label class="sleep" title="Minuteur de sommeil : fondu puis arrêt">☾
           <select id="sleep">
             <option value="0">off</option>
@@ -72,6 +73,33 @@
     <div id="scenes" class="scenes"></div>
     <div id="globals" class="row globals"></div>
     <div id="layers" class="row layers"></div>
+
+    <div id="helpDlg" class="modal" hidden>
+      <div class="modal-card" role="dialog" aria-label="Aide">
+        <button class="modal-x" data-close>✕</button>
+        <h3>Comment ça marche</h3>
+        <p>Ambient joue tout seul : cinq couches (Drone, Pad, Mélodie, Grains, Texture) improvisent dans la gamme choisie, et <b>Evolve</b> fait dériver lentement les réglages autour des tiens.</p>
+        <div class="help-grid">
+          <div><h4>Démarrer</h4><ul>
+            <li><b>✦ Paysage</b> : génère un paysage cohérent selon une humeur</li>
+            <li><b>Presets</b> : points de départ soignés</li>
+            <li><b>Scènes A/B</b> : mémorise deux états et glisse de l'un à l'autre (Auto = morph lent)</li></ul></div>
+          <div><h4>Jouer</h4><ul>
+            <li>Glisser sur l'écran : <b>pad XY</b> (gauche/droite = ombre/lumière, bas/haut = densité)</li>
+            <li><kbd>A</kbd>…<kbd>L</kbd> notes · <kbd>Q</kbd>…<kbd>P</kbd> octave au-dessus · <kbd>Z</kbd>…<kbd>M</kbd> accords</li>
+            <li><b>MIDI</b> : notes graves = accords, CC1 densité, CC74 brillance</li></ul></div>
+          <div><h4>Sculpter</h4><ul>
+            <li><kbd>Entrée</kbd> / <b>❄ Geler</b> : capture 4 s du mix → nuage de grains</li>
+            <li><b>Modulation</b> : 2 LFO très lents sur n'importe quel réglage</li>
+            <li>Knobs : glisser, molette, <kbd>Maj</kbd> = fin, double-clic = défaut</li></ul></div>
+          <div><h4>Garder</h4><ul>
+            <li><b>Rec</b> WAV ou compressé, durée fixe avec fondu</li>
+            <li><b>Partager</b> : lien qui contient tout le patch</li>
+            <li><b>☾</b> minuteur de sommeil · <b>⤢ Écoute</b> plein écran</li></ul></div>
+        </div>
+        <p class="muted"><kbd>Espace</kbd> lecture/stop · <kbd>?</kbd> cette aide · <kbd>Échap</kbd> fermer</p>
+      </div>
+    </div>
 
     <footer>Web Audio · aucun son n'est envoyé en ligne · inspiré des machines d'ambient génératives</footer>
   </div>

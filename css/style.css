@@ -119,6 +119,18 @@ body.listen .hud { top: 28px; left: 32px; }
   color: #e9e4ff; padding: 8px 14px; border-radius: 10px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+.modal { position: fixed; inset: 0; background: #05060bcc; backdrop-filter: blur(6px); display: grid; place-items: center; z-index: 50; padding: 16px; }
+.modal[hidden] { display: none; }
+.modal-card { position: relative; max-width: 860px; width: 100%; max-height: 90vh; overflow: auto; background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px; }
+.modal-card h3 { margin: 0 0 8px; font-weight: 500; letter-spacing: .05em; }
+.modal-card h4 { margin: 0 0 6px; font-size: 12px; letter-spacing: .15em; text-transform: uppercase; color: var(--accent); }
+.modal-card p, .modal-card li { font-size: 13px; line-height: 1.5; color: #c4c9e0; }
+.modal-card ul { margin: 0; padding-left: 18px; }
+.help-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin: 14px 0; }
+.modal-x { position: absolute; top: 12px; right: 12px; background: none; border: 0; color: var(--muted); font-size: 16px; cursor: pointer; }
+kbd { background: #23273b; border: 1px solid #383e5c; border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font-size: 11px; font-family: inherit; }
+.muted { color: var(--muted) !important; }
+
 footer { text-align: center; font-size: 11px; color: #4c5272; padding: 20px 0 8px; }
 
 @media (max-width: 760px) {

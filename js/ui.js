@@ -399,7 +399,8 @@
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
       if (e.code === 'Space') { e.preventDefault(); started ? stop() : play(); }
       if (e.code === 'Enter' && e.target.tagName !== 'BUTTON') { e.preventDefault(); freezeNow(); }
-      if (e.code === 'Escape' && document.body.classList.contains('listen')) setListen(false);
+      if (e.code === 'Escape') { showHelp(false); if (document.body.classList.contains('listen')) setListen(false); }
+      if (e.key === '?') { const d = $('#helpDlg'); showHelp(d && d.hidden); }
     });
 
     bind('#bigPlay', 'click', play);
@@ -407,6 +408,11 @@
     const vm = $('#vizMode');
     if (vm) { vm.textContent = AMB.visual.mode; vm.addEventListener('click', () => { vm.textContent = AMB.visual.cycleMode(); }); }
     bind('#listen', 'click', toggleListen);
+    bind('#help', 'click', () => showHelp(true));
+    bind('#helpDlg', 'click', (e) => { if (e.target.id === 'helpDlg' || e.target.hasAttribute('data-close')) showHelp(false); });
+    try {
+      if (!localStorage.getItem('ambient.seenHelp')) { localStorage.setItem('ambient.seenHelp', '1'); setTimeout(() => toast('Première visite ? Appuie sur ? pour l\'aide'), 1200); }
+    } catch (e) {}
     document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) setListen(false); });
     loadFromHash();
     window.addEventListener('hashchange', loadFromHash);
@@ -421,6 +427,8 @@
     if (q.get('listen')) setListen(true);
     if (q.get('autoplay')) play().catch(() => toast('Clique sur Lecture pour démarrer'));
   }
+
+  function showHelp(on) { const d = $('#helpDlg'); if (d) d.hidden = !on; }
 
   // ---------- listening mode ----------
   function setListen(on) {
