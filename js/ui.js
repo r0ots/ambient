@@ -173,6 +173,35 @@
       };
     }
     if (E.ctx.state !== 'running') await E.ctx.resume();
+    unlockMobileAudio();
+  }
+
+  // iOS: Web Audio is muted by the silent switch unless the page is in "playback" mode.
+  // Safari 17+ exposes navigator.audioSession; older versions need a looping (silent) <audio> element.
+  let silentEl = null;
+  function unlockMobileAudio() {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+    if (silentEl || !/iPhone|iPad|iPod/.test(navigator.userAgent)) return;
+    const sr = 8000, n = sr, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    const w = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
+    w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+    v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    w(36, 'data'); v.setUint32(40, n * 2, true);
+    silentEl = document.createElement('audio');
+    silentEl.src = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+    silentEl.loop = true; silentEl.setAttribute('playsinline', '');
+    silentEl.play().catch(() => {});
+  }
+
+  // Lock-screen / media keys
+  function mediaSession() {
+    if (!('mediaSession' in navigator)) return;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({ title: 'Ambient', artist: $('#preset').selectedOptions[0]?.textContent || 'Paysage génératif' });
+      navigator.mediaSession.setActionHandler('play', () => play());
+      navigator.mediaSession.setActionHandler('pause', () => stop());
+      navigator.mediaSession.setActionHandler('stop', () => stop());
+    } catch (e) {}
   }
 
   async function play() {
@@ -181,6 +210,7 @@
     AMB.seq.start();
     started = true;
     document.body.classList.add('playing');
+    mediaSession();
     $('#play').textContent = '■ Stop';
   }
   function stop() {
