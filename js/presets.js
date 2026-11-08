@@ -12,7 +12,7 @@
       'fx.space': 0.7, 'fx.size': 0.9, 'fx.shimmer': 0.05, 'fx.tape': 0.45, 'fx.lofi': 0.3,
     },
     'Cathédrale': {
-      'global.tempo': 48, 'global.key': 'F', 'global.scale': 'Ionien (majeur)',
+      'global.tempo': 48, 'global.key': 'F', 'global.scale': 'Ionien (majeur)', 'global.time': 'Flottant',
       'drone.wave': 'Orgue', 'drone.tone': 0.5, 'pad.wave': 'Chœur', 'pad.attack': 0.9, 'pad.length': 6, 'pad.prog': 'Pendule I–IV',
       'pad.vol': 0.65, 'bells.wave': 'Cloche', 'bells.density': 0.12, 'bells.decay': 0.85,
       'grains.on': false, 'texture.on': false,
@@ -60,7 +60,7 @@
       'fx.space': 0.5, 'fx.echo': 0.5, 'fx.echoTime': '1/8.', 'fx.tape': 0.55, 'fx.lofi': 0.35,
     },
     'Dérive spatiale': {
-      'global.tempo': 40, 'global.key': 'B', 'global.scale': 'Par tons', 'global.evolve': 0.7,
+      'global.tempo': 40, 'global.key': 'B', 'global.scale': 'Par tons', 'global.evolve': 0.7, 'global.time': 'Flottant',
       'drone.wave': 'Creux', 'drone.motion': 0.9, 'pad.wave': 'Chœur', 'pad.attack': 1, 'pad.length': 8,
       'bells.wave': 'Verre', 'bells.density': 0.1, 'grains.density': 0.7, 'grains.pitch': 'Libre', 'grains.spray': 0.8,
       'texture.type': 'Vent', 'texture.vol': 0.3,

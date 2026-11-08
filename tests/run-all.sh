@@ -11,7 +11,7 @@ while [ $# -gt 0 ]; do
   wait; shift ${PAR:-3} 2>/dev/null || shift $#
 done
 # headless Chrome occasionally fails to load a page under parallel load: retry those once, alone
-for p in $PAGES; do grep -q "^DONE" "$TMP/$p.out" || run "$p"; done
+for p in $PAGES; do grep -q "^DONE" "$TMP/$p.out" || { echo "(retry $p)"; run "$p"; }; done
 for p in $PAGES; do
   echo "== $p"; sed 's/^/   /' "$TMP/$p.out"
   grep -q "^DONE" "$TMP/$p.out" || { echo "   !! no DONE"; FAIL=1; }

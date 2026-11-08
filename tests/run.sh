@@ -10,6 +10,6 @@ UD=$(mktemp -d)
   --user-data-dir="$UD" --no-first-run --disable-gpu --mute-audio "http://localhost:8765/tests/$PAGE?s=$SCALE" >/dev/null 2>&1 &
 CPID=$!
 lines() { tail -n +$START "$LOG" | grep "__log?$TAG%7C" | sed -E 's/.*__log\?([^ ]*) HTTP.*/\1/' | python3 -c "import sys,urllib.parse;[print(urllib.parse.unquote(l.strip()).split('|',1)[1]) for l in sys.stdin]"; }
-for i in $(seq 1 240); do sleep 0.5; lines | grep -qE "^(DONE|EXC)" && break; done
+for i in $(seq 1 100); do sleep 0.5; lines | grep -qE "^(DONE|EXC)" && break; done
 kill $CPID 2>/dev/null; sleep 0.5; rm -rf "$UD" 2>/dev/null
 lines

@@ -64,7 +64,7 @@
     const tone = r(m.tone), dens = r(m.density);
     const patch = {
       'global.tempo': Math.round(r(m.tempo)), 'global.key': pick(keys), 'global.scale': pick(m.scales),
-      'global.evolve': rand(0.25, 0.6),
+      'global.evolve': rand(0.25, 0.6), 'global.time': (name === 'Mystérieux' || name === 'Contemplatif') && Math.random() < 0.6 ? 'Flottant' : Math.random() < 0.2 ? 'Flottant' : 'Pulsé',
       'drone.wave': pick(m.drone), 'drone.vol': rand(0.3, 0.55), 'drone.tone': tone * 0.8, 'drone.motion': rand(0.2, 0.8),
       'pad.wave': pick(m.pad), 'pad.vol': rand(0.4, 0.6), 'pad.tone': tone, 'pad.attack': rand(0.4, 1),
       'pad.length': pick([2, 3, 4, 4, 6, 8]), 'pad.voicing': rand(0.3, 0.9), 'pad.prog': pick(m.progs),

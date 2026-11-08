@@ -13,6 +13,7 @@
         key: { label: 'Tonalité', type: 'select', options: NOTE_NAMES, def: 'D' },
         scale: { label: 'Gamme', type: 'select', options: Object.keys(SCALES), def: 'Lydien' },
         evolve: { label: 'Evolve', min: 0, max: 1, def: 0.35 },
+        time: { label: 'Temps', type: 'select', options: ['Pulsé', 'Flottant'], def: 'Pulsé' },
         volume: { label: 'Volume', min: 0, max: 1, def: 0.8 },
       },
     },

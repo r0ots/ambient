@@ -181,7 +181,8 @@
         }
         const midis = this.applyHarmony(time);
         const dur = sd * stepsPerBar * barLen + 0.5;
-        L.pad.playChord(midis, time, dur);
+        // floating time: chords arrive late and loosely, never exactly on the bar
+        L.pad.playChord(midis, time + (this.floating ? rand(0, sd * 6) : 0), dur);
         AMB.bus.emit('chord', { time, deg: this.chordDeg, midis });
       }
 
@@ -191,6 +192,13 @@
 
       // ---- evolve macro (every beat) ----
       if (step % 4 === 0) this.evolve();
+    }
+
+    get floating() { return store.get('global.time') === 'Flottant'; }
+    // timing offset of a note: light swing when pulsed, wide free drift when floating
+    offset(step, sd) {
+      if (this.floating) return rand(0, sd * 3.5);
+      return (step % 2 === 1 ? sd * 0.12 : 0) + rand(0, 0.015);
     }
 
     melodyRange() {
@@ -216,7 +224,7 @@
     randomMelodyStep(step, time, sd) {
       const L = AMB.layers;
       const dens = store.get('bells.density');
-      const strong = step % 4 === 0 ? 1.6 : step % 2 === 0 ? 0.9 : 0.45;
+      const strong = this.floating ? 0.85 : step % 4 === 0 ? 1.6 : step % 2 === 0 ? 0.9 : 0.45;
       const p = Math.pow(dens, 1.6) * 0.6 * strong;
       if (Math.random() >= p) return;
       const [lo, hi] = this.melodyRange();
@@ -226,7 +234,7 @@
       if (Math.random() < 0.55) deg = this.snapToChord(deg);
       const midi = T.degreeToMidi(deg, this.root, this.scale, 3);
       const vel = rand(0.45, 1) * (step % 4 === 0 ? 1 : 0.8);
-      const swing = (step % 2 === 1 ? sd * 0.12 : 0) + rand(0, 0.015);
+      const swing = this.offset(step, sd);
       L.bells.note(midi, time + swing, vel);
       // occasional answering note
       if (Math.random() < 0.15 * dens) {
@@ -280,7 +288,7 @@
       while (deg > hi + 2) deg -= n;
       while (deg < lo - 2) deg += n;
       const midi = T.degreeToMidi(deg, this.root, this.scale, 3);
-      const swing = (i % 2 === 1 ? sd * 0.12 : 0) + rand(0, 0.01);
+      const swing = this.offset(i, sd);
       AMB.layers.bells.note(midi, time + swing, ev.vel);
       AMB.bus.emit('phrase', { i, len, time });
     }
