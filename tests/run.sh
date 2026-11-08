@@ -1,13 +1,15 @@
 #!/bin/bash
-# Headless smoke test: plays each layer/preset and prints RMS/peak levels + any JS error.
+# Headless test of one page: prints its tagged log lines (levels, checks, JS errors).
 # Needs a static server on :8765 logging requests to $LOG (python3 -u -m http.server 8765 2> $LOG).
+# Usage: LOG=... ./run.sh page.html [scale]   (scale multiplies all waits, default 0.4)
 LOG=${LOG:-/tmp/ambient-server.log}
-PAGE=${1:-smoke.html}
+PAGE=${1:-smoke.html}; TAG=${PAGE%.html}; SCALE=${2:-0.4}
 START=$(( $(wc -l < "$LOG") + 1 ))
 UD=$(mktemp -d)
 "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --autoplay-policy=no-user-gesture-required \
-  --user-data-dir="$UD" --no-first-run --disable-gpu "http://localhost:8765/tests/$PAGE" >/dev/null 2>&1 &
+  --user-data-dir="$UD" --no-first-run --disable-gpu --mute-audio "http://localhost:8765/tests/$PAGE?s=$SCALE" >/dev/null 2>&1 &
 CPID=$!
-for i in $(seq 1 150); do sleep 1; tail -n +$START "$LOG" | grep -q "DONE\|EXC" && break; done
-sleep 1; kill $CPID 2>/dev/null; sleep 1; rm -rf "$UD" 2>/dev/null
-tail -n +$START "$LOG" | grep __log | sed -E 's/.*__log\?([^ ]*) HTTP.*/\1/' | python3 -c "import sys,urllib.parse;[print(urllib.parse.unquote(l.strip())) for l in sys.stdin]"
+lines() { tail -n +$START "$LOG" | grep "__log?$TAG%7C" | sed -E 's/.*__log\?([^ ]*) HTTP.*/\1/' | python3 -c "import sys,urllib.parse;[print(urllib.parse.unquote(l.strip()).split('|',1)[1]) for l in sys.stdin]"; }
+for i in $(seq 1 240); do sleep 0.5; lines | grep -qE "^(DONE|EXC)" && break; done
+kill $CPID 2>/dev/null; sleep 0.5; rm -rf "$UD" 2>/dev/null
+lines

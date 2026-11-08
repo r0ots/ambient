@@ -24,7 +24,13 @@
       <div class="transport">
         <button id="play" class="btn primary">▶ Lecture</button>
         <select id="preset" title="Presets"></select>
-        <button id="dice" class="btn" title="Patch aléatoire">⚄ Hasard</button>
+        <span class="gengrp">
+          <button id="dice" class="btn" title="Générer un nouveau paysage cohérent">✦ Paysage</button>
+          <select id="mood" title="Humeur du paysage généré">
+            <option value="">toutes humeurs</option><option>Lumineux</option><option>Mélancolique</option><option>Mystérieux</option>
+            <option>Contemplatif</option><option>Nocturne</option><option>Aquatique</option>
+          </select>
+        </span>
         <button id="save" class="btn" title="Sauvegarder le patch">Sauver</button>
         <button id="share" class="btn" title="Copier un lien vers ce patch">Partager</button>
         <button id="midi" class="btn" title="Connecter un clavier MIDI (notes graves = accords, CC1 densité, CC74 brillance)">MIDI</button>
@@ -72,6 +78,7 @@
   <script src="js/layers.js"></script>
   <script src="js/sequencer.js"></script>
   <script src="js/presets.js"></script>
+  <script src="js/generator.js"></script>
   <script src="js/visual.js"></script>
   <script src="js/scenes.js"></script>
   <script src="js/ui.js"></script>

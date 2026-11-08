@@ -277,27 +277,21 @@
     }
   }
 
+  // "Nouveau paysage": coherent mood-based generation (see generator.js)
   function randomize() {
-    const r = Math.random;
-    const patch = {};
-    for (const [sec, s] of Object.entries(AMB.SCHEMA)) {
-      for (const [k, sp] of Object.entries(s.params)) {
-        const key = `${sec}.${k}`;
-        if (key === 'global.volume' || key === 'global.evolve') continue;
-        if (sp.type === 'text') continue;
-        if (sp.type === 'select') patch[key] = sp.options[Math.floor(r() * sp.options.length)];
-        else if (sp.type === 'toggle') patch[key] = k === 'on' ? r() > 0.15 : r() > 0.5;
-        else {
-          // stay in musical ranges: mostly near the default
-          const span = sp.max - sp.min;
-          const v = sp.def + (r() - 0.5) * span * 0.8;
-          patch[key] = Math.max(sp.min, Math.min(sp.max, v));
-        }
-      }
+    const moodSel = $('#mood');
+    const { mood, title, patch } = AMB.generator.generate(moodSel ? moodSel.value : '');
+    applyPatch(patch);
+    const s = $('#preset');
+    if (s) {
+      let g = s.querySelector('optgroup[data-gen]');
+      if (!g) { g = h('optgroup'); g.label = 'Généré'; g.dataset.gen = '1'; s.prepend(g); }
+      g.innerHTML = '';
+      const o = h('option', null, `✦ ${title}`); o.value = 'g:' + title; g.append(o);
+      s.value = o.value;
     }
-    patch['global.tempo'] = 40 + Math.round(r() * 50);
-    patch['pad.on'] = true;
-    store.setMany(patch, 'preset');
+    toast(`✦ ${title} · ${mood}`);
+    if (navigator.mediaSession && navigator.mediaSession.metadata) navigator.mediaSession.metadata.artist = title;
   }
 
   // ---------- recording ----------

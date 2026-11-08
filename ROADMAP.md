@@ -27,6 +27,8 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] v0.12 : tests/run-all.sh (8 pages, échoue sur toute erreur JS), lookahead 1.6 s quand l'onglet est en arrière-plan (timers bridés), UI tolérante aux éléments absents.
 - [x] v0.13 : analyse spectrale par preset (tests/spectrum.html) → IR de reverb moins amortie, shimmer plus ouvert, shelf « air » +4 dB à 7 kHz (réduit par Lo-fi).
 - [x] v0.14 : section Modulation — 2 LFO lents (4 s à 10 min, sinus/triangle/dérive) assignables à n'importe quel paramètre continu, autour de la valeur utilisateur.
+- [x] v0.15 : « ✦ Paysage » — générateur par humeur (Lumineux, Mélancolique, Mystérieux, Contemplatif, Nocturne, Aquatique) avec choix cohérents et nom poétique accordé en genre.
+- [x] Tests accélérés (~5 min → ~1 min) : attentes × 0.4 (paramètre ?s=), Chrome --mute-audio, 3 pages en parallèle, logs tagués par page.
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
@@ -36,10 +38,10 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Chrome headless ne descend pas sous ~500 px de large : passer par tests/mobile.html pour les captures mobiles.
 - Le tap ScriptProcessor (engine.tap) tourne en permanence ; si perf mobile insuffisante, le passer en AudioWorklet.
 - Spectre de référence (bandes sub/low/mid/high/air) : air ≈ −25 à −35 dB sous mid, c'est volontairement sombre ; ne pas sur-éclaircir.
+- Tests : garder la suite complète sous ~1 min 30 (demande de l'utilisateur). Pas plus de 3 Chrome en parallèle (au-delà : chargements ratés). `--mute-audio` évite le contexte audio bloqué.
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
-- [ ] Générateur « Nouveau paysage » plus musical que Hasard (choix cohérents gamme/tempo/moteurs/textures, nommage poétique)
 - [ ] Visualiseur : modes (orbes / horizon / spectre) + plein écran
 - [ ] Mode « Écoute » plein écran épuré (juste visuel + XY + play), pour laisser tourner
 - [ ] Onboarding léger (tooltip au premier lancement) + page d'aide raccourcis (touche ?)

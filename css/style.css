@@ -34,6 +34,7 @@ h1 { margin: 0; font-size: 18px; letter-spacing: 0.5em; font-weight: 600; }
 @keyframes pulse { 50% { box-shadow: 0 0 0 4px #ff5e7a33; } }
 .btn.on { border-color: #7fffd4; color: #7fffd4; }
 .btn.small { padding: 5px 9px; font-size: 12px; }
+.gengrp { display: flex; gap: 4px; }
 .recgrp { display: flex; gap: 4px; }
 .recgrp select { padding: 8px 6px; }
 .sleep { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 16px; }
