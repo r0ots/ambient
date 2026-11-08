@@ -131,8 +131,9 @@
         if (sp.step) v = Math.round(v / sp.step) * sp.step;
       }
       if (this.values[key] === v) return;
+      const prev = this.values[key];
       this.values[key] = v;
-      for (const fn of this.listeners) fn(key, v, source);
+      for (const fn of this.listeners) fn(key, v, source, prev);
     }
     setMany(obj, source) {
       for (const [k, v] of Object.entries(obj)) if (this.spec(k)) this.set(k, v, source);
