@@ -24,7 +24,7 @@ window.addEventListener('load', async ()=>{
   await AMB.ui.play();
   await new Promise(r=>setTimeout(r,5000*S));
   const ok=AMB.layers.grains.freeze(4);
-  log('freeze ok='+ok+' len='+(AMB.layers.grains.freezeBuf&&AMB.layers.grains.freezeBuf.duration.toFixed(2))+' source='+AMB.store.get('grains.source'));
+  log('tap='+AMB.engine.tapKind+' freeze ok='+ok+' len='+(AMB.layers.grains.freezeBuf&&AMB.layers.grains.freezeBuf.duration.toFixed(2))+' source='+AMB.store.get('grains.source'));
   ['drone','pad','bells','texture'].forEach(l=>AMB.store.set(l+'.on',false));
   await new Promise(r=>setTimeout(r,2500*S));
   await measure('grains on frozen buffer',3*S);

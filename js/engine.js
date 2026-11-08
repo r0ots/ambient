@@ -188,25 +188,8 @@
       this.ringSecs = 6;
       this.ring = new Float32Array(Math.floor(ctx.sampleRate * this.ringSecs));
       this.ringPos = 0;
-      this.tap = ctx.createScriptProcessor(4096, 2, 1);
-      this.tap.onaudioprocess = (e) => {
-        const L = e.inputBuffer.getChannelData(0), R = e.inputBuffer.getChannelData(1);
-        const ring = this.ring, n = ring.length;
-        let p = this.ringPos;
-        for (let i = 0; i < L.length; i++) { ring[p] = (L[i] + R[i]) * 0.5; p = p + 1 === n ? 0 : p + 1; }
-        this.ringPos = p;
-        if (this.capturing) {
-          const out = new Int16Array(L.length * 2);
-          for (let i = 0; i < L.length; i++) {
-            out[2 * i] = Math.max(-1, Math.min(1, L[i])) * 32767;
-            out[2 * i + 1] = Math.max(-1, Math.min(1, R[i])) * 32767;
-          }
-          this.capturing.push(out);
-          this.capturedFrames += L.length;
-        }
-      };
-      const tapSink = g(0);
-      this.out.connect(this.tap); this.tap.connect(tapSink); tapSink.connect(ctx.destination);
+      this.tapSink = g(0); this.tapSink.connect(ctx.destination);
+      this._setupTap();
       this.recDest = ctx.createMediaStreamDestination();
       this.out.connect(this.recDest);
 
@@ -243,6 +226,56 @@
       out.connect(lp);
       lp.connect(this.shimmerGain);
       this.shimmerGain.connect(this.revIn);
+    }
+
+    // Output tap feeding the ring buffer and WAV capture. Prefers an AudioWorklet (off the main
+    // thread, loaded from a Blob URL so no extra file is needed); falls back to ScriptProcessor.
+    async _setupTap() {
+      const ctx = this.ctx;
+      const useSP = () => {
+        this.tap = ctx.createScriptProcessor(4096, 2, 1);
+        this.tap.onaudioprocess = (e) => this._onFrames(e.inputBuffer.getChannelData(0), e.inputBuffer.getChannelData(1));
+        this.out.connect(this.tap); this.tap.connect(this.tapSink);
+        this.tapKind = 'script';
+      };
+      if (!ctx.audioWorklet || typeof AudioWorkletNode === 'undefined') return useSP();
+      const code = `class Tap extends AudioWorkletProcessor {
+        constructor() { super(); this.n = 0; this.L = new Float32Array(4096); this.R = new Float32Array(4096); }
+        process(inputs) {
+          const inp = inputs[0]; if (!inp || !inp.length) return true;
+          const l = inp[0], r = inp[1] || inp[0];
+          this.L.set(l, this.n); this.R.set(r, this.n); this.n += l.length;
+          if (this.n >= 4096) { this.port.postMessage([this.L, this.R], [this.L.buffer, this.R.buffer]); this.L = new Float32Array(4096); this.R = new Float32Array(4096); this.n = 0; }
+          return true;
+        }
+      }
+      registerProcessor('ambient-tap', Tap);`;
+      try {
+        const url = URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
+        await ctx.audioWorklet.addModule(url);
+        this.tap = new AudioWorkletNode(ctx, 'ambient-tap', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 2, channelCountMode: 'explicit' });
+        this.tap.port.onmessage = (e) => this._onFrames(e.data[0], e.data[1]);
+        this.out.connect(this.tap); this.tap.connect(this.tapSink);
+        this.tapKind = 'worklet';
+      } catch (e) {
+        console.warn('AudioWorklet tap unavailable, using ScriptProcessor', e);
+        useSP();
+      }
+    }
+    _onFrames(L, R) {
+      const ring = this.ring, n = ring.length;
+      let p = this.ringPos;
+      for (let i = 0; i < L.length; i++) { ring[p] = (L[i] + R[i]) * 0.5; p = p + 1 === n ? 0 : p + 1; }
+      this.ringPos = p;
+      if (this.capturing) {
+        const out = new Int16Array(L.length * 2);
+        for (let i = 0; i < L.length; i++) {
+          out[2 * i] = Math.max(-1, Math.min(1, L[i])) * 32767;
+          out[2 * i + 1] = Math.max(-1, Math.min(1, R[i])) * 32767;
+        }
+        this.capturing.push(out);
+        this.capturedFrames += L.length;
+      }
     }
 
     // Lossless stereo capture of the master output -> 16-bit WAV Blob
