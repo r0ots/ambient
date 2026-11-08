@@ -399,15 +399,42 @@
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
       if (e.code === 'Space') { e.preventDefault(); started ? stop() : play(); }
       if (e.code === 'Enter' && e.target.tagName !== 'BUTTON') { e.preventDefault(); freezeNow(); }
+      if (e.code === 'Escape' && document.body.classList.contains('listen')) setListen(false);
     });
 
     bind('#bigPlay', 'click', play);
     bind('#share', 'click', sharePatch);
+    const vm = $('#vizMode');
+    if (vm) { vm.textContent = AMB.visual.mode; vm.addEventListener('click', () => { vm.textContent = AMB.visual.cycleMode(); }); }
+    bind('#listen', 'click', toggleListen);
+    document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) setListen(false); });
     loadFromHash();
     window.addEventListener('hashchange', loadFromHash);
     setupHud();
     setupXY($('#viz'));
     AMB.visual.init($('#viz'));
+
+    // kiosk-style URL options: ?viz=Horizon&listen=1&autoplay=1&mood=Nocturne
+    const q = new URLSearchParams(location.search);
+    if (q.get('viz') && AMB.visual.MODES.includes(q.get('viz'))) { AMB.visual.mode = q.get('viz'); if (vm) vm.textContent = AMB.visual.mode; }
+    if (q.get('mood')) { const m = $('#mood'); if (m) m.value = q.get('mood'); randomize(); }
+    if (q.get('listen')) setListen(true);
+    if (q.get('autoplay')) play().catch(() => toast('Clique sur Lecture pour démarrer'));
+  }
+
+  // ---------- listening mode ----------
+  function setListen(on) {
+    document.body.classList.toggle('listen', on);
+    const b = $('#listen'); if (b) b.textContent = on ? '✕ Quitter' : '⤢ Écoute';
+    window.dispatchEvent(new Event('resize'));
+  }
+  function toggleListen() {
+    const on = !document.body.classList.contains('listen');
+    setListen(on);
+    try {
+      if (on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
+      else if (!on && document.fullscreenElement) document.exitFullscreen();
+    } catch (e) {}
   }
 
   // ---------- share via URL ----------

@@ -26,6 +26,66 @@
       const loop = () => { this.draw(); requestAnimationFrame(loop); };
       requestAnimationFrame(loop);
     },
+    mode: (() => { try { return localStorage.getItem('ambient.vizMode') || 'Orbes'; } catch (e) { return 'Orbes'; } })(),
+    MODES: ['Orbes', 'Horizon', 'Spectre'],
+    cycleMode() {
+      this.mode = this.MODES[(this.MODES.indexOf(this.mode) + 1) % this.MODES.length];
+      try { localStorage.setItem('ambient.vizMode', this.mode); } catch (e) {}
+      return this.mode;
+    },
+    level() {
+      const an = AMB.engine.analyser;
+      if (!an) return 0;
+      if (!this.wave) this.wave = new Float32Array(an.fftSize);
+      an.getFloatTimeDomainData(this.wave);
+      let r = 0; for (let i = 0; i < this.wave.length; i += 4) r += this.wave[i] * this.wave[i];
+      this.rms = Math.sqrt(r / (this.wave.length / 4));
+      this.lvl = (this.lvl || 0) * 0.92 + this.rms * 0.08;
+      return this.lvl;
+    },
+    // layered drifting ridges, like a horizon breathing with the music
+    drawHorizon(g, W, H) {
+      const lvl = this.level();
+      const hue = 250 + 40 * Math.sin(this.t * 0.03);
+      for (let L = 0; L < 5; L++) {
+        const base = H * (0.45 + L * 0.12);
+        const amp = H * (0.05 + lvl * 1.4) * (1 - L * 0.12);
+        g.beginPath(); g.moveTo(0, H);
+        for (let x = 0; x <= W; x += 8 * this.dpr) {
+          const u = x / W;
+          const y = base - amp * (Math.sin(u * (3 + L) + this.t * (0.15 + L * 0.05) + L) * 0.6 + Math.sin(u * (7 + L * 2) - this.t * 0.11) * 0.4);
+          g.lineTo(x, y);
+        }
+        g.lineTo(W, H); g.closePath();
+        g.fillStyle = `hsla(${hue - L * 12}, 55%, ${18 + L * 6}%, 0.10)`;
+        g.fill();
+      }
+    },
+    // smoothed log-frequency bars
+    drawSpectrum(g, W, H) {
+      const an = AMB.engine.analyser;
+      if (!an) return;
+      if (!this.freq) { this.freq = new Float32Array(an.frequencyBinCount); this.bars = new Float32Array(64); }
+      an.getFloatFrequencyData(this.freq);
+      const N = this.bars.length, sr = AMB.engine.ctx.sampleRate, bins = this.freq.length;
+      const bw = W / N;
+      g.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < N; i++) {
+        const f0 = 30 * Math.pow(16000 / 30, i / N), f1 = 30 * Math.pow(16000 / 30, (i + 1) / N);
+        const b0 = Math.floor((f0 / (sr / 2)) * bins), b1 = Math.max(b0 + 1, Math.floor((f1 / (sr / 2)) * bins));
+        let m = -140; for (let b = b0; b < b1 && b < bins; b++) m = Math.max(m, this.freq[b]);
+        const v = Math.max(0, (m + 100) / 70);
+        this.bars[i] = this.bars[i] * 0.85 + v * 0.15;
+        const h = this.bars[i] * H * 0.8;
+        const hue = 200 + (i / N) * 120;
+        const grd = g.createLinearGradient(0, H, 0, H - h);
+        grd.addColorStop(0, `hsla(${hue}, 80%, 65%, 0.35)`);
+        grd.addColorStop(1, `hsla(${hue}, 80%, 65%, 0)`);
+        g.fillStyle = grd;
+        g.fillRect(i * bw + bw * 0.15, H - h, bw * 0.7, h);
+      }
+      g.globalCompositeOperation = 'source-over';
+    },
     draw() {
       const { c, g } = this;
       const W = c.width, H = c.height;
@@ -35,6 +95,9 @@
       g.globalCompositeOperation = 'source-over';
       g.fillStyle = 'rgba(8, 9, 16, 0.14)';
       g.fillRect(0, 0, W, H);
+      this.t = (this.t || 0) + 1 / 60;
+      if (this.mode === 'Horizon') this.drawHorizon(g, W, H);
+      else if (this.mode === 'Spectre') this.drawSpectrum(g, W, H);
 
       // spawn due notes
       for (let i = this.pending.length - 1; i >= 0; i--) {
@@ -96,8 +159,8 @@
         }
       }
 
-      // waveform ring
-      if (eng.analyser) {
+      // waveform ring (orbs mode only; other modes read the analyser themselves)
+      if (eng.analyser && this.mode === 'Orbes') {
         const an = eng.analyser;
         if (!this.wave) this.wave = new Float32Array(an.fftSize);
         an.getFloatTimeDomainData(this.wave);

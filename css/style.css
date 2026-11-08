@@ -53,6 +53,17 @@ body:not(.playing) .chord { opacity: 0.25; }
 .big-play span { font-size: 14px; letter-spacing: 0.05em; }
 .big-play:hover { transform: scale(1.04); }
 body.playing .big-play { opacity: 0; pointer-events: none; transform: scale(0.9); }
+.stage-tools { position: absolute; top: 10px; right: 12px; display: flex; gap: 6px; z-index: 2; }
+.chip { background: #12142088; border: 1px solid #2b3050; color: var(--muted); font: inherit; font-size: 11px; padding: 4px 9px; border-radius: 999px; cursor: pointer; backdrop-filter: blur(4px); }
+.chip:hover { color: var(--text); border-color: #4a5180; }
+.xy-y { top: 40px !important; }
+/* Listening mode: only the stage, fullscreen */
+body.listen .app > :not(.stage) { display: none; }
+body.listen .app { max-width: none; padding: 0; }
+body.listen .stage { height: 100vh; margin: 0; border-radius: 0; border: 0; }
+body.listen .hint, body.listen .xy-label { display: none; }
+body.listen .chord { font-size: 44px; }
+body.listen .hud { top: 28px; left: 32px; }
 .xy-label { position: absolute; font-size: 10px; color: #3d4363; pointer-events: none; letter-spacing: .1em; }
 .xy-x { bottom: 8px; right: 12px; }
 .xy-y { top: 12px; right: 12px; }
