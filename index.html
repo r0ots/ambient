@@ -27,6 +27,7 @@
         <button id="dice" class="btn" title="Patch aléatoire">⚄ Hasard</button>
         <button id="save" class="btn" title="Sauvegarder le patch">Sauver</button>
         <button id="share" class="btn" title="Copier un lien vers ce patch">Partager</button>
+        <button id="midi" class="btn" title="Connecter un clavier MIDI (notes graves = accords, CC1 densité, CC74 brillance)">MIDI</button>
         <button id="rec" class="btn" title="Enregistrer la sortie">● Rec</button>
         <label class="sleep" title="Minuteur de sommeil : fondu puis arrêt">☾
           <select id="sleep">
@@ -51,7 +52,7 @@
       <div class="xy-label xy-x">← Ombre · Lumière →</div>
       <div class="xy-label xy-y">Densité ↑</div>
       <div id="toast" class="toast"></div>
-      <div class="hint">Glisser sur l'écran : pad XY (lumière / densité) · Espace : lecture / stop · double-clic sur un knob : défaut</div>
+      <div class="hint">Glisser : pad XY · Espace : lecture/stop · jouer : rangée A–L (notes), Q–P (octave +), Z–M (accords)</div>
     </div>
 
     <div id="scenes" class="scenes"></div>
@@ -70,5 +71,6 @@
   <script src="js/visual.js"></script>
   <script src="js/scenes.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/play.js"></script>
 </body>
 </html>

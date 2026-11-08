@@ -32,6 +32,7 @@ h1 { margin: 0; font-size: 18px; letter-spacing: 0.5em; font-weight: 600; }
 .btn.primary { background: linear-gradient(180deg, #8f7aff, #6a55e0); border-color: #8f7aff; color: #fff; min-width: 110px; font-weight: 600; }
 .btn.rec { background: #5a1a24; border-color: #ff5e7a; color: #ffd0d8; animation: pulse 1.6s ease-in-out infinite; }
 @keyframes pulse { 50% { box-shadow: 0 0 0 4px #ff5e7a33; } }
+.btn.on { border-color: #7fffd4; color: #7fffd4; }
 .btn.small { padding: 5px 9px; font-size: 12px; }
 .sleep { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 16px; }
 #sleepLeft { font-size: 12px; min-width: 40px; }

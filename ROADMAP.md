@@ -19,6 +19,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] v0.4 : pads Onde (wavetable morphé) et FM, textures Oiseaux et Ville, 2 presets, niveaux par moteur équilibrés (tests/engines.html).
 - [x] v0.5 : Mélodie en mode Phrase (motif de 1/2/4 mesures relatif à l'accord, qui mute à chaque tour selon « Mutation »).
 - [x] v0.6 : partage de patch par lien (#p=base64 du diff vs défauts), PWA installable (manifest, icône SVG, service worker network-first).
+- [x] v0.7 : jeu live — clavier d'ordi (A–L notes en gamme, Q–P octave +, Z–M accords forcés), Web MIDI (notes < C3 = accords, CC1 densité, CC74 brillance, CC91 reverb, CC93 shimmer).
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
@@ -28,5 +29,8 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
-- [ ] Clavier / MIDI in pour jouer la mélodie par-dessus
-- [ ] Responsive mobile
+- [ ] Responsive mobile (vérifier capture 390px de large) + gros knobs tactiles
+- [ ] « Freeze » : geler la reverb / figer le nuage de grains (bouton maintien), façon Evoke
+- [ ] LFO assignables simples par couche (filtre / volume / pan) avec vitesse très lente
+- [ ] Éditeur de progression d'accords (verrouiller une suite de degrés au lieu du hasard)
+- [ ] Export WAV (OfflineAudioContext ou conversion du webm) + durée fixe (ex. 10 min)

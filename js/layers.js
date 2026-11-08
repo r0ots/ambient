@@ -120,6 +120,13 @@
       const g = 1 / Math.sqrt(midis.length);
       midis.forEach((m, i) => this.voice(m, time + i * rand(0, 0.25) * P('pad', 'attack'), dur, atk, rel, g));
     }
+    // fade out every sounding chord (used when the player forces a new chord)
+    releaseAll(time, tc = 0.7) {
+      for (const r of this.active_) {
+        r.env.gain.cancelScheduledValues(time);
+        r.env.gain.setTargetAtTime(0, time, tc);
+      }
+    }
     voice(midi, time, dur, atk, rel, gainMul) {
       const ctx = this.ctx;
       const type = P('pad', 'wave');
@@ -220,7 +227,9 @@
       env.gain.setTargetAtTime(0, end, rel / 4);
       const stopAt = end + rel * 1.5;
       oscs.forEach((o) => { o.start(time); o.stop(stopAt); });
-      oscs[0].onended = () => { env.disconnect(); pan.disconnect(); };
+      const rec = { env, stopAt };
+      this.active_.add(rec);
+      oscs[0].onended = () => { env.disconnect(); pan.disconnect(); this.active_.delete(rec); };
       AMB.bus.emit('note', { layer: 'pad', midi, time, vel: 0.6, dur: end - time });
     }
   }
@@ -232,8 +241,8 @@
       this.bus = this.ctx.createGain(); this.bus.gain.value = 0.6;
       this.bus.connect(this.out);
     }
-    note(midi, time, vel = 0.8) {
-      if (!this.active) return;
+    note(midi, time, vel = 0.8, force = false) {
+      if (!this.active && !force) return;
       const ctx = this.ctx;
       const type = P('bells', 'wave');
       const tone = P('bells', 'tone');

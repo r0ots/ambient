@@ -73,6 +73,34 @@
       this.applyHarmony(AMB.engine.ctx.currentTime);
     }
 
+    // Player-forced chord (keyboard / MIDI): plays now and holds for one chord length
+    forceChord(deg) {
+      if (!this.playing) return;
+      const ctx = AMB.engine.ctx, t = ctx.currentTime + 0.03;
+      const barLen = store.get('pad.length');
+      this.chordDeg = deg;
+      const midis = this.applyHarmony(t);
+      AMB.layers.pad.releaseAll(t);
+      AMB.layers.pad.playChord(midis, t, this.stepDur() * 16 * barLen + 0.5);
+      AMB.bus.emit('chord', { time: t, deg, midis });
+      // hold until the next natural chord boundary after a full chord length
+      const span = 16 * barLen;
+      this.lockUntil = Math.ceil((this.step + span * 0.5) / span) * span;
+    }
+    // Player note: scale degree (quantized) or raw midi
+    playDegree(deg, vel = 0.85) {
+      const midi = T.degreeToMidi(deg, this.root, this.scale, 4);
+      this.playMidi(midi, vel);
+    }
+    playMidi(midi, vel = 0.85) {
+      if (!AMB.engine.ctx) return;
+      const L = AMB.layers;
+      const wasOn = store.get('bells.on');
+      // the melody voice is used as the instrument even if its generative part is muted
+      if (!wasOn) { L.bells.ch.setLevel(Math.pow(store.get('bells.vol'), 1.6)); }
+      L.bells.note(midi, AMB.engine.ctx.currentTime + 0.01, vel, true);
+    }
+
     applyHarmony(time) {
       const midis = this.chordMidis(this.chordDeg);
       this.chord = midis;
@@ -92,7 +120,7 @@
       const barLen = store.get('pad.length');
 
       // ---- chord changes ----
-      if (step % (stepsPerBar * barLen) === 0) {
+      if (step % (stepsPerBar * barLen) === 0 && !(this.lockUntil > step)) {
         if (step > 0) {
           const move = T.weightedPick(T.CHORD_MOVES, T.CHORD_WEIGHTS);
           // gravitate home so it never wanders too far
