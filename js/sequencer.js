@@ -186,6 +186,9 @@
         AMB.bus.emit('chord', { time, deg: this.chordDeg, midis });
       }
 
+      // ---- counter-melody: slow sustained inner voice moving by step between chord tones ----
+      if (step % 8 === 4 && store.get('pad.on')) this.counterStep(time, sd);
+
       // ---- melody ----
       if (store.get('bells.mode') === 'Phrase') this.phraseStep(step, time, sd);
       else this.randomMelodyStep(step, time, sd);
@@ -199,6 +202,25 @@
     offset(step, sd) {
       if (this.floating) return rand(0, sd * 3.5);
       return (step % 2 === 1 ? sd * 0.12 : 0) + rand(0, 0.015);
+    }
+
+    counterStep(time, sd) {
+      const amt = store.get('pad.counter');
+      if (amt <= 0.01 || Math.random() > amt * 0.45) return;
+      const n = this.scale.length;
+      const chordDegs = T.chordDegrees(this.chordDeg, 4, this.scale);
+      // stay in the middle register, prefer the chord tone nearest to the previous counter note
+      const prev = this.counterDeg !== undefined ? this.counterDeg : n + chordDegs[1];
+      let best = prev, bd = 99;
+      for (const cd of chordDegs) for (let o = 0; o <= 2; o++) {
+        const c = cd + o * n, d = Math.abs(c - prev) + (c === prev ? 1.5 : 0); // avoid repeating
+        if (d < bd && c >= n - 1 && c <= 2 * n + 2) { bd = d; best = c; }
+      }
+      this.counterDeg = best;
+      const midi = T.degreeToMidi(best, this.root, this.scale, 3);
+      const dur = sd * 16 * (1 + Math.random());
+      const atk = 1.2 + store.get('pad.attack') * 3;
+      AMB.layers.pad.voice(midi, time + (this.floating ? rand(0, sd * 4) : 0), dur, atk, atk * 1.5, 0.55);
     }
 
     melodyRange() {

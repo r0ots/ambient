@@ -67,7 +67,7 @@
       'global.evolve': rand(0.25, 0.6), 'global.time': (name === 'Mystérieux' || name === 'Contemplatif') && Math.random() < 0.6 ? 'Flottant' : Math.random() < 0.2 ? 'Flottant' : 'Pulsé',
       'drone.wave': pick(m.drone), 'drone.vol': rand(0.3, 0.55), 'drone.tone': tone * 0.8, 'drone.motion': rand(0.2, 0.8),
       'pad.wave': pick(m.pad), 'pad.vol': rand(0.4, 0.6), 'pad.tone': tone, 'pad.attack': rand(0.4, 1),
-      'pad.length': pick([2, 3, 4, 4, 6, 8]), 'pad.voicing': rand(0.3, 0.9), 'pad.prog': pick(m.progs),
+      'pad.length': pick([2, 3, 4, 4, 6, 8]), 'pad.voicing': rand(0.3, 0.9), 'pad.counter': rand(0, 0.6), 'pad.prog': pick(m.progs),
       'bells.on': Math.random() > 0.12, 'bells.wave': pick(m.bells), 'bells.density': dens, 'bells.tone': tone + rand(-0.1, 0.2),
       'bells.decay': rand(0.3, 0.85), 'bells.range': rand(0.3, 0.75), 'bells.mode': Math.random() < 0.45 ? 'Phrase' : 'Aléatoire',
       'bells.phraseLen': pick(['1 mes.', '2 mes.', '2 mes.', '4 mes.']), 'bells.mutate': rand(0.15, 0.5),

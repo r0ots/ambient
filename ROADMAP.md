@@ -42,6 +42,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] v0.27 : macros synchronisées avec l'état réel (inverse moyen des mappings) après preset, annulation, morph ou édition directe.
 - [x] v0.28 : README utilisateur complet, interrupteurs de couches dans la vue Simple, diapason 440/432 Hz.
 - [x] v0.29 : accessibilité — knobs role=slider avec aria-valuenow/valuetext, flèches/PgUp/PgDn/Home/End, selects et interrupteurs étiquetés (aria-pressed), focus visible.
+- [x] v0.30 : contre-chant (Pad) — voix intérieure lente, notes tenues de l'accord, mouvement conjoint, dosée par « Contre-chant » (evolve).
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
@@ -53,9 +54,9 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Spectre de référence (bandes sub/low/mid/high/air) : air ≈ −25 à −35 dB sous mid, c'est volontairement sombre ; ne pas sur-éclaircir.
 - Tests : garder la suite complète sous ~1 min 30 (demande de l'utilisateur). Pas plus de 3 Chrome en parallèle (au-delà : chargements ratés). `--mute-audio` évite le contexte audio bloqué.
 - Endurance : `LOG=... tests/run.sh endurance.html 1` (~70 s), à lancer après tout changement du moteur.
+- Si les logs de test s'interrompent d'un bloc (toutes pages figées), c'est la machine qui dort, pas un bug.
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
 - [ ] Revue de code (lisibilité, duplication ui.js qui grossit : extraire macros/xy/rec dans des fichiers)
-- [ ] Contre-chant lent : 2e voix mélodique (notes longues, registre grave/médium) en complément de la Mélodie
 - [ ] Mode « Flottant » : pas de grille, notes à instants libres (humanisation forte) pour un ambient sans pulsation
