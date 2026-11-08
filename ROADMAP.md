@@ -60,3 +60,5 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
+- [ ] Export / import de « Mes patchs » (+ scènes A/B) en fichier .json (sauvegarde, transfert entre appareils)
+- [ ] Gestion des patchs : renommer / supprimer un patch utilisateur
