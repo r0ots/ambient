@@ -37,7 +37,7 @@
       for (let i = 0; i < len; i++) {
         const t = i / len;
         // damping: the tail gets darker over time
-        const coef = 0.15 + 0.8 * t;
+        const coef = 0.04 + 0.7 * t * t;
         const w = Math.random() * 2 - 1;
         lp = lp + (w - lp) * (1 - coef);
         const env = Math.pow(1 - t, decayPow);
@@ -159,7 +159,10 @@
       this.limiter.attack.value = 0.002; this.limiter.release.value = 0.15;
       this.out = g(1); // used for fades (sleep timer / stop)
       this.analyser = ctx.createAnalyser(); this.analyser.fftSize = 2048; this.analyser.smoothingTimeConstant = 0.85;
-      this.lofiLp.connect(this.master);
+      // gentle "air" shelf: the synth layers are filtered/dark by design, this restores some sheen
+      this.air = ctx.createBiquadFilter(); this.air.type = 'highshelf'; this.air.frequency.value = 7000; this.air.gain.value = 4;
+      this.lofiLp.connect(this.air);
+      this.air.connect(this.master);
       this.master.connect(this.comp);
       this.comp.connect(this.limiter);
       this.limiter.connect(this.out);
@@ -203,7 +206,7 @@
       const f = 6, D = 1 / (2 * f); // sweep half-range in seconds
       const input = g(1), out = g(1);
       const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 500;
-      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 6000;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 9000;
       this.conv.connect(hp); hp.connect(input);
       const cosWave = ctx.createPeriodicWave(new Float32Array([0, 1]), new Float32Array([0, 0]), { disableNormalization: true });
       const now = ctx.currentTime + 0.05;
@@ -297,6 +300,7 @@
           ramp(this.lofiLp.frequency, 20000 * Math.pow(0.12, v));
           ramp(this.lofiHp.frequency, 25 + v * 220);
           ramp(this.hissGain.gain, v * 0.05);
+          ramp(this.air.gain, 4 * (1 - v));
           break;
         }
       }
