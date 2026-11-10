@@ -1,0 +1,39 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body>
+<script>
+const TAG=location.pathname.split('/').pop().replace('.html','');
+const S=+(new URLSearchParams(location.search).get('s')||0.4); // time scale for waits
+const log=(m)=>fetch('/__log?'+encodeURIComponent(TAG+'|'+m)).catch(()=>{});
+window.onerror=(m,s,l,c,e)=>log('ERROR '+m+' @'+s+':'+l);
+window.addEventListener('unhandledrejection',e=>log('REJECT '+(e.reason&&e.reason.stack||e.reason)));
+const oe=console.error;console.error=(...a)=>{log('CONSOLE.ERROR '+a.join(' '));oe(...a)};
+</script>
+<div id="scenes"></div><div id="journal"></div><div id="layers"></div><div id="seqrow"></div><div id="macros"></div><div id="globals"></div><button id="viewMode"></button>
+<button id="play"></button><button id="bigPlay"></button><div id="chordName"></div><div id="hudInfo"></div><select id="preset"></select><button id="dice"></button><button id="save"></button><button id="rec"></button><select id="recFmt"><option value="wav">w</option></select><select id="recDur"><option value="0">0</option></select><button id="share"></button><div id="toast"></div><select id="sleep"></select><span id="sleepLeft"></span><canvas id="viz" style="width:400px;height:200px"></canvas>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/presets.js"></script><script src="../js/generator.js"></script><script src="../js/visual.js"></script><script src="../js/scenes.js"></script><script src="../js/journal.js"></script><script src="../js/pianoroll.js"></script><script src="../js/pulses.js"></script><script src="../js/widgets.js"></script><script src="../js/perform.js"></script><script src="../js/rec.js"></script><script src="../js/ui.js"></script><script src="../js/play.js"></script>
+<script>
+const params=new URLSearchParams(location.search);
+async function measure(label, secs){
+  const an=AMB.engine.analyser, buf=new Float32Array(an.fftSize);
+  let peak=0,sum=0,n=0; const t0=performance.now();
+  while(performance.now()-t0<secs*1000){ an.getFloatTimeDomainData(buf); for(const v of buf){peak=Math.max(peak,Math.abs(v));sum+=v*v;n++;} await new Promise(r=>setTimeout(r,40*S)); }
+  log(`${label} rms=${Math.sqrt(sum/n).toFixed(4)} peak=${peak.toFixed(3)} notes=${notes} t=${AMB.engine.ctx.currentTime.toFixed(1)}`);
+}
+let notes=0;
+window.addEventListener('load', async ()=>{
+  try{
+  const st=AMB.store, P=AMB.pulses;
+  let hits=[0,0,0,0]; AMB.bus.on('perc',e=>hits[e.track]++);
+  log('cells='+document.querySelectorAll('.pulse-cell').length+' default='+st.get('perc.pattern')+' roundtrip='+(P.encode(P.parse('8888.2222.0820.0001'))==='8888.2222.0820.0001'));
+  log('euclid(3,8)='+P.euclid(3,8).map(x=>x?'x':'.').join(''));
+  document.querySelectorAll('.pulse-cell')[1].click();
+  log('after click='+st.get('perc.pattern'));
+  ['drone','pad','bells','grains','texture'].forEach(l=>st.set(l+'.on',false));
+  st.set('perc.on',true); st.set('perc.prob',1); st.set('global.tempo',120);
+  await AMB.ui.play();
+  await new Promise(r=>setTimeout(r,4000*S));
+  await measure('perc only hits='+hits.join('/'),2*S);
+  document.querySelector('[data-p=euclid]').click(); log('euclid pattern='+st.get('perc.pattern'));
+  log('DONE');
+  }catch(e){log('EXC '+e.stack)}
+});
+</script></body></html>

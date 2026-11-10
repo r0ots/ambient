@@ -170,6 +170,14 @@ body.simple .globals, body.simple .layers { display: none; }
 .roll-scroll { overflow-x: auto; border-radius: 8px; border: 1px solid var(--line); }
 canvas.roll { display: block; cursor: pointer; touch-action: none; }
 
+.pulse-grid { display: grid; grid-template-columns: 76px repeat(16, minmax(14px, 1fr)); gap: 4px; align-items: center; }
+.pulse-lab { font-size: 11px; color: var(--muted); }
+.pulse-cell { height: 22px; border-radius: 5px; border: 1px solid #2a2f45; background: #171a25; cursor: pointer; padding: 0; }
+.pulse-cell.beat { background: #1d2030; }
+.pulse-cell.on { background: var(--c); border-color: var(--c); box-shadow: 0 0 8px color-mix(in srgb, var(--c) 50%, transparent); }
+.pulse-cell.now { outline: 1px solid #ffffffaa; }
+.pulse-cell.on.now { filter: brightness(1.35); }
+
 footer { text-align: center; font-size: 11px; color: #4c5272; padding: 20px 0 8px; }
 
 @media (max-width: 760px) {

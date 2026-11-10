@@ -317,6 +317,60 @@
   // Step-sequencer voice: same synth family as the melody, own channel and settings
   class SeqVoice extends Bells { constructor() { super('seq'); } }
 
+  // ===================== PULSATIONS (soft percussion) =====================
+  class Perc extends Layer {
+    constructor() {
+      super('perc');
+      this.bus = this.ctx.createGain(); this.bus.gain.value = 0.38; // percussion is peaky: keep it under the textures
+      this.bus.connect(this.out);
+      this.noise = AMB.makeNoiseBuffer(this.ctx, 1, 'white', 1);
+    }
+    // track: 0 kick feutré, 1 shaker, 2 bois, 3 clochette
+    hit(track, time, vel = 0.8) {
+      const ctx = this.ctx, tone = P('perc', 'tone');
+      const env = ctx.createGain(); env.gain.value = 0;
+      const pan = ctx.createStereoPanner();
+      env.connect(pan); pan.connect(this.bus);
+      let src, stopAt;
+      if (track === 0) { // felt kick: sine with a short pitch drop, very round
+        src = ctx.createOscillator(); src.frequency.setValueAtTime(110 + tone * 40, time);
+        src.frequency.exponentialRampToValueAtTime(42, time + 0.18);
+        env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(0.9 * vel, time + 0.008);
+        env.gain.setTargetAtTime(0, time + 0.01, 0.12);
+        src.connect(env); stopAt = time + 0.8;
+      } else if (track === 1) { // shaker: band-passed noise burst
+        src = ctx.createBufferSource(); src.buffer = this.noise;
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 5000 + tone * 4000; bp.Q.value = 1.2;
+        env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(0.35 * vel, time + 0.012);
+        env.gain.setTargetAtTime(0, time + 0.015, 0.03);
+        pan.pan.value = (Math.random() - 0.5) * 0.6;
+        src.connect(bp); bp.connect(env); stopAt = time + 0.3;
+      } else if (track === 2) { // wood: resonant click
+        src = ctx.createOscillator(); src.type = 'triangle'; src.frequency.value = 600 + tone * 500;
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 900 + tone * 900; bp.Q.value = 6;
+        env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(0.5 * vel, time + 0.002);
+        env.gain.setTargetAtTime(0, time + 0.003, 0.025);
+        pan.pan.value = -0.3;
+        src.connect(bp); bp.connect(env); stopAt = time + 0.25;
+      } else { // little bell: high FM ping on a chord tone
+        const chord = (AMB.seq && AMB.seq.chord && AMB.seq.chord.length) ? AMB.seq.chord : [62];
+        const m = chord[Math.floor(Math.random() * chord.length)] + 24;
+        const f = AMB.theory.mtof(m);
+        src = ctx.createOscillator(); src.frequency.value = f;
+        const mod = ctx.createOscillator(); mod.frequency.value = f * 3.5;
+        const mg = ctx.createGain(); mg.gain.setValueAtTime(f * (0.5 + tone), time); mg.gain.setTargetAtTime(0, time, 0.08);
+        mod.connect(mg); mg.connect(src.frequency); mod.start(time); mod.stop(time + 1.5);
+        env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(0.18 * vel, time + 0.003);
+        env.gain.setTargetAtTime(0, time + 0.004, 0.3);
+        pan.pan.value = 0.4;
+        src.connect(env); stopAt = time + 1.5;
+      }
+      src.start(time); src.stop(stopAt);
+      src.onended = () => { env.disconnect(); pan.disconnect(); };
+      AMB.bus.emit('perc', { track, time, vel });
+    }
+  }
+
   // ===================== GRAINS =====================
   class Grains extends Layer {
     constructor() {
@@ -624,5 +678,5 @@
     }
   }
 
-  AMB.layers = { Drone, Pad, Bells, SeqVoice, Grains, Texture };
+  AMB.layers = { Drone, Pad, Bells, SeqVoice, Perc, Grains, Texture };
 })();

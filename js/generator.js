@@ -86,6 +86,13 @@
     };
     const [noun, gender] = pick(m.noun);
     const adj = pick(m.adj)[gender === 'f' ? 1 : 0];
+    // soft percussion now and then for the more pulsed moods (Euclidean pattern)
+    if (AMB.pulses && patch['global.time'] === 'Pulsé' && (name === 'Nocturne' || name === 'Lumineux' || name === 'Aquatique') && Math.random() < 0.45) {
+      patch['perc.on'] = true;
+      patch['perc.pattern'] = AMB.pulses.encode(AMB.pulses.euclidPattern());
+      patch['perc.prob'] = rand(0.55, 0.9);
+      patch['perc.vol'] = rand(0.25, 0.45);
+    }
     const title = `${noun} ${adj}`;
     return { mood: name, title, patch };
   }

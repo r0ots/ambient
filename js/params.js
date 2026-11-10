@@ -98,6 +98,20 @@
         pattern: { label: 'Motif', type: 'text', def: '', maxLen: 4000, hidden: true },
       },
     },
+    perc: {
+      label: 'Pulsations',
+      color: '#ffb36b',
+      params: {
+        on: { label: 'On', type: 'toggle', def: false },
+        vol: { label: 'Niveau', min: 0, max: 1, def: 0.45 },
+        prob: { label: 'Présence', min: 0, max: 1, def: 0.85, evolve: true },
+        tone: { label: 'Couleur', min: 0, max: 1, def: 0.4 },
+        swing: { label: 'Swing', min: 0, max: 1, def: 0.15 },
+        send: { label: 'Envoi FX', min: 0, max: 1, def: 0.35 },
+        // 4 tracks × 16 steps as hex bitmasks: "kick.shaker.wood.bell"
+        pattern: { label: 'Motif', type: 'text', def: '8888.2222.0820.0001', maxLen: 40, hidden: true },
+      },
+    },
     grains: {
       label: 'Grains',
       color: '#7fffd4',
