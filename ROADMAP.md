@@ -61,6 +61,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] v0.46 : mode Morceau — sections (instantané complet du son) de 4 à 64 mesures, renommables/réordonnables, lecture enchaînée avec fondu de 2 mesures des réglages continus, barre de progression, boucle, durée totale ; inclus dans l'export/import.
 - [x] v0.47 : piano roll — sélection (Alt+glisser, ⌘A), ⌘C/⌘X/⌘V (au dernier pas cliqué), ⌘D dupliquer à la suite, Suppr, flèches ↑↓ transposer (Maj = octave), ←→ décaler (Maj = temps) ; notes sélectionnées cerclées de blanc.
 - [x] v0.48 : Pulsations — intensité par pas (doux / normal / accent via clic droit ou molette), 16 ou 32 pas (⧉ Doubler), kit Organique (tambour, bâton de pluie, goutte, kalimba) ; ancien format de motif relu automatiquement ; export MIDI avec vélocités.
+- [x] v0.49 : « ● Rec live » — enregistre en boucle (overdub) ce qu'on joue au clavier d'ordi ou en MIDI dans le motif édité, quantifié à la double-croche et sur la gamme, vélocité conservée ; on entend la voix du séquenceur pendant l'enregistrement.
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
@@ -76,4 +77,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
+- [ ] Métronome optionnel pendant Rec live (clic doux sur les temps) + décompte d'une mesure
+- [ ] 2e voix de séquenceur (piste « Basse » au piano roll, son sub/rond) pour composer basse + mélodie
+- [ ] Quantification « humaine » : swing/groove par motif + léger décalage aléatoire réglable
 Demande utilisateur (10/11) : « rajoute des trucs genre piano roll, sequencer etc. » → priorité aux outils de composition.

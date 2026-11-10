@@ -141,7 +141,11 @@
       const wasOn = store.get('bells.on');
       // the melody voice is used as the instrument even if its generative part is muted
       if (!wasOn) { L.bells.ch.setLevel(Math.pow(store.get('bells.vol'), 1.6)); }
-      L.bells.note(midi, AMB.engine.ctx.currentTime + 0.01, vel, true);
+      const t = AMB.engine.ctx.currentTime + 0.01;
+      // while the piano roll records, live notes are heard on the sequencer voice (what gets recorded)
+      if (AMB.pianoRoll && AMB.pianoRoll.roll.recording) L.seq.note(midi, t, vel, true, this.stepDur() * 2);
+      else L.bells.note(midi, t, vel, true);
+      AMB.bus.emit('live', { midi, time: t, vel });
     }
 
     applyHarmony(time) {

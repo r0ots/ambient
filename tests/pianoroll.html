@@ -75,6 +75,12 @@ window.addEventListener('load', async ()=>{
   st.set('seq.mode','Piano roll');
   st.set('seq.on',true); st.set('seq.mode','Piano roll'); log('latched next: step5='+(()=>{ AMB.pianoRoll.onStep(0,0,0.1,0); st.set('seq.slot','B'); AMB.pianoRoll.onStep(5,0,0.1,0); const a=AMB.pianoRoll.roll.playSlot; AMB.pianoRoll.onStep(16,0,0.1,0); return a+' step16='+AMB.pianoRoll.roll.playSlot; })());
   st.set('seq.slot','A');
+  // live recording from the computer keyboard
+  st.set('seq.pattern',''); st.set('seq.slot','A');
+  const rb=document.querySelector('[data-act=liverec]'); rb.click();
+  for(const code of ['KeyA','KeyD','KeyG']){ document.dispatchEvent(new KeyboardEvent('keydown',{code})); await new Promise(r=>setTimeout(r,250)); }
+  rb.click();
+  log('live rec notes='+PR.parse(st.get('seq.pattern')).length+' rows='+PR.parse(st.get('seq.pattern')).map(n=>n.r).join(','));
   // capture the generative melody into the roll
   st.set('bells.on',true); st.set('bells.density',0.9);
   const btn=document.querySelector('[data-act=capture]'); PR.roll.act('capture',btn);

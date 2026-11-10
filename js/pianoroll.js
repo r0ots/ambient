@@ -111,6 +111,31 @@
     store.set(key, encode(out), 'evolve');
   }
 
+  // nearest piano-roll row for a midi note (relative to key, and to the chord when following)
+  function rowForMidi(midi) {
+    const seq = AMB.seq, oct = parseInt(store.get('seq.octave'), 10) || 0;
+    let best = 0, bd = 99;
+    for (let r = 0; r < ROWS; r++) {
+      const deg = r + (store.get('seq.follow') ? seq.chordDeg : 0);
+      const m = T.degreeToMidi(deg, seq.root, seq.scale, 3 + oct);
+      for (const o of [-12, 0, 12]) if (Math.abs(m + o - midi) < bd) { bd = Math.abs(m + o - midi); best = r; }
+    }
+    return best;
+  }
+
+  // ---------- live recording (computer keyboard / MIDI) into the edited motif, quantised, overdub ----------
+  AMB.bus.on('live', (ev) => {
+    if (!roll.recording || !AMB.seq.playing) return;
+    const seq = AMB.seq, sd = seq.stepDur(), len = steps();
+    // step of the event relative to the scheduler position, rounded to the nearest 16th
+    const s = ((Math.round((ev.time - seq.nextTime) / sd) + seq.step) % len + len) % len;
+    const r = rowForMidi(ev.midi);
+    const notes = roll.notes().filter((n) => !(n.s === s && n.r === r));
+    notes.push({ s, r, l: 2, v: Math.max(1, Math.min(9, Math.round(ev.vel * 9))), p: 10 });
+    roll.save(notes);
+    roll.recCount = (roll.recCount || 0) + 1;
+  });
+
   // ---------- editor ----------
   const roll = {
     playStep: -1,
@@ -123,6 +148,7 @@
           <button class="btn small" data-act="dup" title="Copier ce motif dans le prochain emplacement libre">⧉ Dupliquer</button>
           <button class="btn small" data-act="clear" title="Effacer toutes les notes">Effacer</button>
           <button class="btn small" data-act="random" title="Motif aléatoire dans la gamme">⚄ Motif</button>
+          <button class="btn small rec-btn" data-act="liverec" title="Enregistre ce que tu joues au clavier (A–L, Q–P) ou en MIDI dans ce motif, quantifié, en boucle (overdub)">● Rec live</button>
           <button class="btn small" data-act="capture" title="Enregistre ce que joue la Mélodie pendant un tour de motif">● Capturer la mélodie</button>
           <button class="btn small" data-act="shiftL" title="Décaler à gauche">◀</button>
           <button class="btn small" data-act="shiftR" title="Décaler à droite">▶</button>
@@ -293,6 +319,19 @@
       else if (a === 'shiftL' || a === 'shiftR') notes.forEach((x) => { x.s = (x.s + (a === 'shiftR' ? 1 : n - 1)) % n; });
       else if (a === 'up' || a === 'down') notes = notes.map((x) => ({ ...x, r: x.r + (a === 'up' ? 1 : -1) })).filter((x) => x.r >= 0 && x.r < ROWS);
       else if (a === 'capture') return capture(btn);
+      else if (a === 'liverec') {
+        this.recording = !this.recording;
+        btn.classList.toggle('rec', this.recording);
+        btn.textContent = this.recording ? '■ Stop rec' : '● Rec live';
+        if (this.recording) {
+          this.recCount = 0;
+          if (!store.get('seq.on')) store.set('seq.on', true, 'user');
+          if (store.get('seq.mode') !== 'Piano roll') store.set('seq.mode', 'Piano roll', 'user');
+          if (!AMB.seq.playing) AMB.ui.play();
+          AMB.ui.toast('Rec live : joue avec les touches A–L / Q–P ou ton clavier MIDI');
+        } else AMB.ui.toast(`${this.recCount || 0} note(s) enregistrée(s)`);
+        return;
+      }
       else if (a === 'midi') { if (AMB.midiExport) AMB.midiExport.exportMidi(); return; }
       else if (a === 'restore') { if (original[editKey()] != null) notes = parse(original[editKey()]); }
       else if (a === 'dup') { // copy the edited slot into the next empty one and switch to it
@@ -435,5 +474,5 @@
     }, ms);
   }
 
-  AMB.pianoRoll = { roll, parse, encode, onStep, arpStep, randomPattern, mutate, slotAt, chainList, SLOTKEY, ROWS };
+  AMB.pianoRoll = { roll, rowForMidi, parse, encode, onStep, arpStep, randomPattern, mutate, slotAt, chainList, SLOTKEY, ROWS };
 })();
