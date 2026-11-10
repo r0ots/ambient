@@ -72,6 +72,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Tests : garder la suite complète sous ~1 min 30 (demande de l'utilisateur). Pas plus de 3 Chrome en parallèle (au-delà : chargements ratés). `--mute-audio` évite le contexte audio bloqué.
 - Endurance : `LOG=... tests/run.sh endurance.html 1` (~70 s ; run.sh coupe à 50 s, les 5 premiers relevés suffisent), à lancer après tout changement du moteur.
 - Si les logs de test s'interrompent d'un bloc (toutes pages figées), c'est la machine qui dort, pas un bug.
+- Flake connu (1 occurrence, 10/11 22:31) : tests/app.html « AMB.ui undefined → toast » dans l'iframe ; non reproduit au 2e passage. À surveiller (piste : SW/cache dans l'iframe).
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
