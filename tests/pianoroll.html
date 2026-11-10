@@ -53,6 +53,13 @@ window.addEventListener('load', async ()=>{
   await AMB.ui.play();
   await new Promise(r=>setTimeout(r,3000*S));
   await measure('seq only notes='+seqNotes,2*S);
+  // arpeggiator: count seq notes and check they are chord tones
+  const arpMidis=[]; const onN=(n)=>{ if(n.layer==='seq') arpMidis.push(n.midi); }; AMB.bus.on('note',onN);
+  st.set('seq.mode','Arpège'); st.set('seq.arpRate','1/16'); st.set('seq.arpDir','Monte');
+  await new Promise(r=>setTimeout(r,1500));
+  const pcs=new Set(AMB.seq.chordMidis(AMB.seq.chordDeg).map(m=>m%12));
+  log('arp notes='+arpMidis.length+' asc='+arpMidis.slice(0,6).join(',')+' allChordTones='+arpMidis.every(m=>pcs.has(m%12)));
+  st.set('seq.mode','Piano roll');
   // capture the generative melody into the roll
   st.set('bells.on',true); st.set('bells.density',0.9);
   const btn=document.querySelector('[data-act=capture]'); PR.roll.act('capture',btn);

@@ -86,6 +86,10 @@
       params: {
         on: { label: 'On', type: 'toggle', def: false },
         wave: { label: 'Moteur', type: 'select', options: ['Cloche', 'Kalimba', 'Verre', 'Pluck', 'Doux'], def: 'Doux' },
+        mode: { label: 'Jeu', type: 'select', options: ['Piano roll', 'Arpège'], def: 'Piano roll' },
+        arpDir: { label: 'Arpège', type: 'select', options: ['Monte', 'Descend', 'Aller-retour', 'Aléatoire'], def: 'Monte' },
+        arpRate: { label: 'Vitesse', type: 'select', options: ['1/16', '1/8', '1/8.', '1/4'], def: '1/8' },
+        arpOct: { label: 'Étendue', type: 'select', options: ['1 oct.', '2 oct.', '3 oct.'], def: '2 oct.' },
         vol: { label: 'Niveau', min: 0, max: 1, def: 0.5 },
         steps: { label: 'Longueur', type: 'select', options: ['16', '32', '64'], labels: { 16: '1 mesure', 32: '2 mesures', 64: '4 mesures' }, def: '32' },
         octave: { label: 'Octave', type: 'select', options: ['-1', '0', '+1'], def: '0' },

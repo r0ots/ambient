@@ -41,8 +41,35 @@
   }
 
   // ---------- playback (called by the sequencer on every 16th) ----------
+  // ---------- arpeggiator: walks the current chord's tones over 1–3 octaves ----------
+  const ARP_RATE = { '1/16': 1, '1/8': 2, '1/8.': 3, '1/4': 4 };
+  let arpIdx = 0, arpUp = true;
+  function arpStep(step, time, sd, chordDeg) {
+    const every = ARP_RATE[store.get('seq.arpRate')] || 2;
+    if (step % every) return;
+    const seq = AMB.seq, oct = parseInt(store.get('seq.octave'), 10) || 0;
+    const span = parseInt(store.get('seq.arpOct'), 10) || 2;
+    const n = seq.scale.length;
+    const tones = [];
+    for (let o = 0; o < span; o++) for (const d of T.chordDegrees(chordDeg, 4, seq.scale)) tones.push(T.degreeToMidi(d + o * n, seq.root, seq.scale, 3 + oct));
+    const uniq = [...new Set(tones)].sort((a, b) => a - b);
+    if (!uniq.length) return;
+    const dir = store.get('seq.arpDir');
+    let idx;
+    if (dir === 'Aléatoire') idx = Math.floor(Math.random() * uniq.length);
+    else if (dir === 'Descend') idx = uniq.length - 1 - (arpIdx++ % uniq.length);
+    else if (dir === 'Aller-retour') {
+      if (arpIdx >= uniq.length - 1) arpUp = false; else if (arpIdx <= 0) arpUp = true;
+      idx = Math.max(0, Math.min(uniq.length - 1, arpIdx)); arpIdx += arpUp ? 1 : -1;
+    } else idx = arpIdx++ % uniq.length;
+    const swing = (step / every) % 2 === 1 ? store.get('seq.swing') * sd * every * 0.5 : 0;
+    const vel = 0.55 + (step % 16 === 0 ? 0.3 : step % 4 === 0 ? 0.15 : 0) + Math.random() * 0.08;
+    AMB.layers.seq.note(uniq[idx], time + swing, vel, true, every * sd * 0.9);
+  }
+
   function onStep(step, time, sd, chordDeg) {
     if (!store.get('seq.on')) return;
+    if (store.get('seq.mode') === 'Arpège') { roll.playStep = -1; return arpStep(step, time, sd, chordDeg); }
     const len = steps(), i = step % len;
     const slot = slotAt(step), key = SLOTKEY[slot];
     if (i === 0 && step > 0 && store.get('seq.mutate') > 0) mutate(store.get('seq.mutate'), key);
@@ -258,7 +285,7 @@
         const w = Math.min(nt.l, n - nt.s) * G.cw - 2;
         const active = seq.playing && ps >= nt.s && ps < nt.s + nt.l;
         g.fillStyle = active ? '#ffd0ec' : '#ff9fd6';
-        g.globalAlpha = (store.get('seq.on') ? 1 : 0.45) * (0.35 + 0.65 * (nt.v / 9));
+        g.globalAlpha = (store.get('seq.on') && store.get('seq.mode') !== 'Arpège' ? 1 : 0.35) * (0.35 + 0.65 * (nt.v / 9));
         roundRect(g, x, y, w, G.rowH - 4, 3); g.fill();
         g.globalAlpha = 1;
         if (nt.p < 10) { // dashed outline + percentage for probabilistic notes
@@ -324,5 +351,5 @@
     }, ms);
   }
 
-  AMB.pianoRoll = { roll, parse, encode, onStep, randomPattern, mutate, slotAt, chainList, SLOTKEY, ROWS };
+  AMB.pianoRoll = { roll, parse, encode, onStep, arpStep, randomPattern, mutate, slotAt, chainList, SLOTKEY, ROWS };
 })();
