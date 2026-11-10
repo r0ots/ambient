@@ -93,6 +93,7 @@
         tone: { label: 'Brillance', min: 0, max: 1, def: 0.45 },
         decay: { label: 'Résonance', min: 0, max: 1, def: 0.45 },
         swing: { label: 'Swing', min: 0, max: 1, def: 0.1 },
+        mutate: { label: 'Mutation', min: 0, max: 1, def: 0 },
         send: { label: 'Envoi FX', min: 0, max: 1, def: 0.6 },
         // notes as "step.row.len" (base36), comma separated; part of the patch so presets/links/undo include it
         pattern: { label: 'Motif', type: 'text', def: '', maxLen: 4000, hidden: true },

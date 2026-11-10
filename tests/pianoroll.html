@@ -31,6 +31,15 @@ window.addEventListener('load', async ()=>{
   const ev=(type,x,y)=>canvas.dispatchEvent(new PointerEvent(type,{clientX:r.left+x,clientY:r.top+y,bubbles:true,pointerId:1}));
   ev('pointerdown', G.labelW+G.cw*0.5, (PR.ROWS-1-7)*G.rowH+5); ev('pointermove', G.labelW+G.cw*3.5, (PR.ROWS-1-7)*G.rowH+5); ev('pointerup',0,0);
   log('after click+drag pattern='+st.get('seq.pattern'));
+  // velocity via wheel, probability via right click on the drawn note (step 0, row 7)
+  const at=[G.labelW+G.cw*0.5,(PR.ROWS-1-7)*G.rowH+5];
+  canvas.dispatchEvent(new WheelEvent('wheel',{clientX:r.left+at[0],clientY:r.top+at[1],deltaY:-100,bubbles:true,cancelable:true}));
+  canvas.dispatchEvent(new MouseEvent('contextmenu',{clientX:r.left+at[0],clientY:r.top+at[1],bubbles:true,cancelable:true}));
+  const n0=PR.parse(st.get('seq.pattern'))[0];
+  log('vel/prob pattern='+st.get('seq.pattern')+' v='+n0.v+' p='+n0.p+' roundtrip='+(PR.encode(PR.parse(st.get('seq.pattern')))===st.get('seq.pattern')));
+  const before=st.get('seq.pattern'); PR.mutate(1); PR.mutate(1);
+  log('mutated '+before+' -> '+st.get('seq.pattern'));
+  document.querySelector('[data-act=restore]').click(); log('restored='+(st.get('seq.pattern')===before));
   PR.roll.act('random');
   const pat=st.get('seq.pattern'); log('random notes='+PR.parse(pat).length+' seqOn='+st.get('seq.on')+' roundtrip='+(PR.encode(PR.parse(pat))===pat));
   ['drone','pad','bells','grains','texture'].forEach(l=>st.set(l+'.on',false));

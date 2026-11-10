@@ -13,31 +13,61 @@
     if (str === cacheStr) return cacheNotes;
     const notes = [];
     for (const tok of String(str || '').split(',')) {
-      const [s, r, l] = tok.split('.').map((x) => parseInt(x, 36));
-      if ([s, r, l].every(Number.isFinite) && s >= 0 && s < 64 && r >= 0 && r < ROWS && l >= 1) notes.push({ s, r, l: Math.min(l, 64) });
+      const [s, r, l, v, p] = tok.split('.').map((x) => parseInt(x, 36));
+      if ([s, r, l].every(Number.isFinite) && s >= 0 && s < 64 && r >= 0 && r < ROWS && l >= 1) {
+        // v: velocity 1..9 (default 7), p: probability in tenths 1..10 (default 10)
+        notes.push({ s, r, l: Math.min(l, 64), v: Number.isFinite(v) ? Math.max(1, Math.min(9, v)) : 7, p: Number.isFinite(p) ? Math.max(1, Math.min(10, p)) : 10 });
+      }
     }
     cacheStr = str; cacheNotes = notes;
     return notes;
   }
-  const encode = (notes) => notes.map((n) => `${n.s.toString(36)}.${n.r.toString(36)}.${n.l.toString(36)}`).join(',');
+  const encode = (notes) => notes.map((n) => {
+    let t = `${n.s.toString(36)}.${n.r.toString(36)}.${n.l.toString(36)}`;
+    const v = n.v || 7, p = n.p || 10;
+    if (v !== 7 || p !== 10) t += `.${v.toString(36)}`;
+    if (p !== 10) t += `.${p.toString(36)}`;
+    return t;
+  }).join(',');
   const steps = () => parseInt(store.get('seq.steps'), 10) || 32;
 
   // ---------- playback (called by the sequencer on every 16th) ----------
   function onStep(step, time, sd, chordDeg) {
     if (!store.get('seq.on')) return;
     const len = steps(), i = step % len;
+    if (i === 0 && step > 0 && store.get('seq.mutate') > 0) mutate(store.get('seq.mutate'));
     const notes = parse(store.get('seq.pattern'));
     if (!notes.length) return;
     const seq = AMB.seq, oct = parseInt(store.get('seq.octave'), 10) || 0;
     const swing = i % 2 === 1 ? store.get('seq.swing') * sd * 0.5 : 0;
     for (const n of notes) {
       if (n.s !== i) continue;
+      if (n.p < 10 && Math.random() * 10 >= n.p) continue;
       const deg = n.r + (store.get('seq.follow') ? chordDeg : 0);
       const midi = T.degreeToMidi(deg, seq.root, seq.scale, 3 + oct);
-      const vel = 0.7 + (i % 4 === 0 ? 0.2 : 0) + Math.random() * 0.1;
+      const vel = (n.v / 9) * (0.85 + (i % 4 === 0 ? 0.15 : 0)) + Math.random() * 0.05;
       AMB.layers.seq.note(midi, time + swing, vel, true, n.l * sd * 0.95);
     }
     roll.playStep = i;
+  }
+
+  // ---------- slow mutation (like the Phrase mode): notes drift by step, some vanish, some appear ----------
+  let original = null; // last pattern written by the user (to come back to)
+  store.on((k, v, source) => { if (k === 'seq.pattern' && source !== 'evolve') original = v; });
+  function mutate(m) {
+    const notes = parse(store.get('seq.pattern')).map((n) => ({ ...n }));
+    const len = steps();
+    for (const n of notes) {
+      if (Math.random() < m * 0.25) n.r = Math.max(0, Math.min(ROWS - 1, n.r + [-2, -1, 1, 2][Math.floor(Math.random() * 4)]));
+    }
+    let out = notes.filter(() => !(Math.random() < m * 0.06));
+    if (Math.random() < m * 0.5 && out.length) {
+      const src = out[Math.floor(Math.random() * out.length)];
+      const s = Math.floor(Math.random() * len);
+      if (!out.some((x) => x.s === s)) out.push({ s, r: Math.max(0, Math.min(ROWS - 1, src.r + [-1, 1, 2][Math.floor(Math.random() * 3)])), l: Math.min(src.l, len - s), v: 5, p: 10 });
+    }
+    if (!out.length && original) out = parse(original).map((n) => ({ ...n }));
+    store.set('seq.pattern', encode(out), 'evolve');
   }
 
   // ---------- editor ----------
@@ -55,7 +85,8 @@
           <button class="btn small" data-act="shiftR" title="Décaler à droite">▶</button>
           <button class="btn small" data-act="up" title="Monter d'un degré">▲</button>
           <button class="btn small" data-act="down" title="Descendre d'un degré">▼</button>
-          <span class="roll-hint">Clic : ajouter/retirer · glisser : longueur · Maj+clic : toute la colonne</span>
+          <button class="btn small" data-act="restore" title="Revenir au dernier motif dessiné (annule les mutations)">↺ Original</button>
+          <span class="roll-hint">Clic : ajouter/retirer · glisser : longueur · molette : vélocité · clic droit : probabilité · Maj+clic : colonne</span>
         </div>
         <div class="roll-scroll"><canvas class="roll"></canvas></div>`;
       panel.append(wrap);
@@ -93,9 +124,10 @@
           this.save(notes.filter((n) => !(c.s >= n.s && c.s < n.s + n.l)));
           return;
         }
+        if (e.button === 2) return; // right button handled by contextmenu (probability)
         const hit = notes.find((n) => n.r === c.r && c.s >= n.s && c.s < n.s + n.l);
         if (hit) { this.save(notes.filter((n) => n !== hit)); return; }
-        const note = { s: c.s, r: c.r, l: 1 };
+        const note = { s: c.s, r: c.r, l: 1, v: 7, p: 10 };
         notes.push(note); this.save(notes);
         drag = { s: c.s, r: c.r };
         this.canvas.setPointerCapture(e.pointerId);
@@ -109,6 +141,23 @@
         if (!n) return;
         const l = Math.max(1, c.s - drag.s + 1);
         if (l !== n.l) { n.l = l; this.save(notes); }
+      });
+      const noteAt = (e) => { const c = this.cellAt(e); if (!c) return [null, null]; const notes = this.notes(); return [notes, notes.find((n) => n.r === c.r && c.s >= n.s && c.s < n.s + n.l)]; };
+      // wheel over a note: velocity
+      this.canvas.addEventListener('wheel', (e) => {
+        const [notes, n] = noteAt(e); if (!n) return;
+        e.preventDefault();
+        const i = notes.indexOf(n);
+        notes[i] = { ...n, v: Math.max(1, Math.min(9, n.v + (e.deltaY < 0 ? 1 : -1))) };
+        this.save(notes);
+      }, { passive: false });
+      // right click on a note: probability 100 → 75 → 50 → 25 → 100 %
+      this.canvas.addEventListener('contextmenu', (e) => {
+        const [notes, n] = noteAt(e); if (!n) return;
+        e.preventDefault();
+        const order = [10, 7, 5, 2], i = notes.indexOf(n);
+        notes[i] = { ...n, p: order[(order.indexOf(n.p) + 1) % order.length] || 10 };
+        this.save(notes);
       });
       const end = () => { drag = null; };
       this.canvas.addEventListener('pointerup', end);
@@ -129,6 +178,7 @@
       else if (a === 'shiftL' || a === 'shiftR') notes.forEach((x) => { x.s = (x.s + (a === 'shiftR' ? 1 : n - 1)) % n; });
       else if (a === 'up' || a === 'down') notes = notes.map((x) => ({ ...x, r: x.r + (a === 'up' ? 1 : -1) })).filter((x) => x.r >= 0 && x.r < ROWS);
       else if (a === 'capture') return capture(btn);
+      else if (a === 'restore') { if (original != null) notes = parse(original); }
       this.save(notes);
       if (a === 'random' && !store.get('seq.on')) store.set('seq.on', true, 'user');
     },
@@ -171,9 +221,14 @@
         const w = Math.min(nt.l, n - nt.s) * G.cw - 2;
         const active = seq.playing && ps >= nt.s && ps < nt.s + nt.l;
         g.fillStyle = active ? '#ffd0ec' : '#ff9fd6';
-        g.globalAlpha = store.get('seq.on') ? 1 : 0.45;
+        g.globalAlpha = (store.get('seq.on') ? 1 : 0.45) * (0.35 + 0.65 * (nt.v / 9));
         roundRect(g, x, y, w, G.rowH - 4, 3); g.fill();
         g.globalAlpha = 1;
+        if (nt.p < 10) { // dashed outline + percentage for probabilistic notes
+          g.setLineDash([3, 2]); g.strokeStyle = '#fff8'; g.lineWidth = 1;
+          roundRect(g, x + 0.5, y + 0.5, w - 1, G.rowH - 5, 3); g.stroke(); g.setLineDash([]);
+          if (w > 22) { g.fillStyle = '#2a0f20'; g.font = '9px system-ui'; g.fillText(nt.p * 10 + '%', x + 3, y + (G.rowH - 4) / 2); }
+        }
       }
       this.lastDrawn = ps;
     },
@@ -232,5 +287,5 @@
     }, ms);
   }
 
-  AMB.pianoRoll = { roll, parse, encode, onStep, randomPattern, ROWS };
+  AMB.pianoRoll = { roll, parse, encode, onStep, randomPattern, mutate, ROWS };
 })();
