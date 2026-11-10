@@ -48,8 +48,6 @@ window.addEventListener('load', async ()=>{
   log('chain='+PR.chainList().join('')+' slots at steps 0/16/32/48='+[0,16,32,48].map(PR.slotAt).join(''));
   st.set('seq.chain',''); st.set('seq.slot','A');
   // quantised slot launch: latched slot only changes at a pattern boundary
-  st.set('seq.on',true); st.set('seq.mode','Piano roll'); log('latched next: step5='+(()=>{ AMB.pianoRoll.onStep(0,0,0.1,0); st.set('seq.slot','B'); AMB.pianoRoll.onStep(5,0,0.1,0); const a=AMB.pianoRoll.roll.playSlot; AMB.pianoRoll.onStep(16,0,0.1,0); return a+' step16='+AMB.pianoRoll.roll.playSlot; })());
-  st.set('seq.slot','A');
   PR.roll.act('random');
   const pat=st.get('seq.pattern'); log('random notes='+PR.parse(pat).length+' seqOn='+st.get('seq.on')+' roundtrip='+(PR.encode(PR.parse(pat))===pat));
   ['drone','pad','bells','grains','texture'].forEach(l=>st.set(l+'.on',false));
@@ -63,6 +61,8 @@ window.addEventListener('load', async ()=>{
   const pcs=new Set(AMB.seq.chordMidis(AMB.seq.chordDeg).map(m=>m%12));
   log('arp notes='+arpMidis.length+' asc='+arpMidis.slice(0,6).join(',')+' allChordTones='+arpMidis.every(m=>pcs.has(m%12)));
   st.set('seq.mode','Piano roll');
+  st.set('seq.on',true); st.set('seq.mode','Piano roll'); log('latched next: step5='+(()=>{ AMB.pianoRoll.onStep(0,0,0.1,0); st.set('seq.slot','B'); AMB.pianoRoll.onStep(5,0,0.1,0); const a=AMB.pianoRoll.roll.playSlot; AMB.pianoRoll.onStep(16,0,0.1,0); return a+' step16='+AMB.pianoRoll.roll.playSlot; })());
+  st.set('seq.slot','A');
   // capture the generative melody into the roll
   st.set('bells.on',true); st.set('bells.density',0.9);
   const btn=document.querySelector('[data-act=capture]'); PR.roll.act('capture',btn);

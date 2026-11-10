@@ -69,7 +69,7 @@
   }
 
   function onStep(step, time, sd, chordDeg) {
-    if (!store.get('seq.on')) return;
+    if (!store.get('seq.on') || !AMB.layers.seq) return;
     if (store.get('seq.mode') === 'Arpège') { roll.playStep = -1; return arpStep(step, time, sd, chordDeg); }
     const len = steps(), i = step % len;
     // slot changes are quantised: the new motif starts at the next pattern boundary (like clip launching)
