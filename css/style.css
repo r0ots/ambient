@@ -163,6 +163,13 @@ body.simple .globals, body.simple .layers { display: none; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .knob:focus-visible { outline: none; }
 
+.seqrow { grid-template-columns: 1fr; }
+.roll-wrap { margin-top: 10px; }
+.roll-tools { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+.roll-hint { font-size: 11px; color: var(--muted); margin-left: auto; }
+.roll-scroll { overflow-x: auto; border-radius: 8px; border: 1px solid var(--line); }
+canvas.roll { display: block; cursor: pointer; touch-action: none; }
+
 footer { text-align: center; font-size: 11px; color: #4c5272; padding: 20px 0 8px; }
 
 @media (max-width: 760px) {

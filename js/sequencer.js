@@ -194,6 +194,9 @@
       if (store.get('bells.mode') === 'Phrase') this.phraseStep(step, time, sd);
       else this.randomMelodyStep(step, time, sd);
 
+      // ---- step sequencer / piano roll ----
+      if (AMB.pianoRoll) AMB.pianoRoll.onStep(step, time, sd, this.chordDeg);
+
       // ---- evolve macro (every beat) ----
       if (step % 4 === 0) this.evolve();
     }

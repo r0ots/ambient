@@ -17,6 +17,7 @@
     const ctls = h('div', 'ctls');
     for (const [k, sp] of Object.entries(sec.params)) {
       const key = `${secKey}.${k}`;
+      if (sp.hidden) continue;
       if (sp.type === 'toggle' && k === 'on') head.append(toggle(key, { label: '' }, sec.color));
       else if (sp.type === 'toggle') ctls.append(toggle(key, sp, sec.color));
       else if (sp.type === 'select') ctls.append(select(key, sp));
@@ -90,7 +91,7 @@
       E.init();
       const L = AMB.layers;
       AMB.layers = {
-        drone: new L.Drone(), pad: new L.Pad(), bells: new L.Bells(), grains: new L.Grains(), texture: new L.Texture(),
+        drone: new L.Drone(), pad: new L.Pad(), bells: new L.Bells(), seq: new L.SeqVoice(), grains: new L.Grains(), texture: new L.Texture(),
         classes: L,
       };
     }
@@ -248,6 +249,12 @@
   function build() {
     const grid = $('#layers');
     ['drone', 'pad', 'bells', 'grains', 'texture'].forEach((s) => grid.append(section(s)));
+    const seqRow = $('#seqrow');
+    if (seqRow && AMB.pianoRoll) {
+      const sp = section('seq');
+      seqRow.append(sp);
+      AMB.pianoRoll.roll.build(sp);
+    }
     const top = $('#globals');
     top.append(section('global'), section('fx'), section('mod'));
     const mac = $('#macros');

@@ -239,17 +239,18 @@
 
   // ===================== BELLS (melody) =====================
   class Bells extends Layer {
-    constructor() {
-      super('bells');
+    constructor(name = 'bells') {
+      super(name);
       this.bus = this.ctx.createGain(); this.bus.gain.value = 0.6;
       this.bus.connect(this.out);
     }
-    note(midi, time, vel = 0.8, force = false) {
+    // len (seconds, optional): sustain length for held voices (« Doux »), used by the step sequencer
+    note(midi, time, vel = 0.8, force = false, len = 0) {
       if (!this.active && !force) return;
       const ctx = this.ctx;
-      const type = P('bells', 'wave');
-      const tone = P('bells', 'tone');
-      const decay = 0.6 + Math.pow(P('bells', 'decay'), 1.4) * 7;
+      const type = P(this.name, 'wave');
+      const tone = P(this.name, 'tone');
+      const decay = 0.6 + Math.pow(P(this.name, 'decay'), 1.4) * 7;
       const f = mtof(midi);
       const env = ctx.createGain(); env.gain.value = 0;
       const pan = ctx.createStereoPanner(); pan.pan.value = rand(-0.7, 0.7);
@@ -279,6 +280,22 @@
           const og = ctx.createGain(); og.gain.setValueAtTime(gn, time); og.gain.setTargetAtTime(0, time, decay / (r * 1.5));
           o.connect(og); og.connect(env); nodes.push(o);
         });
+      } else if (type === 'Doux') {
+        // soft sustained voice: sine + octave triangle, held for `len` then released
+        const o = ctx.createOscillator(); o.frequency.value = f;
+        const o2 = ctx.createOscillator(); o2.type = 'triangle'; o2.frequency.value = f * 2;
+        const g2 = ctx.createGain(); g2.gain.value = 0.15 + tone * 0.3;
+        o.connect(env); o2.connect(g2); g2.connect(env); nodes.push(o, o2);
+        const hold = Math.max(0.15, len || decay * 0.3);
+        env.gain.setValueAtTime(0, time);
+        env.gain.linearRampToValueAtTime(amp * 0.7, time + 0.06);
+        env.gain.setValueAtTime(amp * 0.7, time + hold);
+        env.gain.setTargetAtTime(0, time + hold, 0.15 + decay * 0.08);
+        const stopAt = time + hold + 1 + decay * 0.4;
+        nodes.forEach((n) => { n.start(time); n.stop(stopAt); });
+        nodes[0].onended = () => { env.disconnect(); pan.disconnect(); };
+        AMB.bus.emit('note', { layer: this.name, midi, time, vel, dur: hold });
+        return;
       } else { // Pluck: filtered saw with fast filter env
         const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
         const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 3;
@@ -293,9 +310,12 @@
       const stopAt = time + dur * 1.3 + 0.1;
       nodes.forEach((n) => { n.start(time); n.stop(stopAt); });
       nodes[0].onended = () => { env.disconnect(); pan.disconnect(); };
-      AMB.bus.emit('note', { layer: 'bells', midi, time, vel, dur });
+      AMB.bus.emit('note', { layer: this.name, midi, time, vel, dur });
     }
   }
+
+  // Step-sequencer voice: same synth family as the melody, own channel and settings
+  class SeqVoice extends Bells { constructor() { super('seq'); } }
 
   // ===================== GRAINS =====================
   class Grains extends Layer {
@@ -604,5 +624,5 @@
     }
   }
 
-  AMB.layers = { Drone, Pad, Bells, Grains, Texture };
+  AMB.layers = { Drone, Pad, Bells, SeqVoice, Grains, Texture };
 })();

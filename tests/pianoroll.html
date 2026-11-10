@@ -1,0 +1,49 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body>
+<script>
+const TAG=location.pathname.split('/').pop().replace('.html','');
+const S=+(new URLSearchParams(location.search).get('s')||0.4); // time scale for waits
+const log=(m)=>fetch('/__log?'+encodeURIComponent(TAG+'|'+m)).catch(()=>{});
+window.onerror=(m,s,l,c,e)=>log('ERROR '+m+' @'+s+':'+l);
+window.addEventListener('unhandledrejection',e=>log('REJECT '+(e.reason&&e.reason.stack||e.reason)));
+const oe=console.error;console.error=(...a)=>{log('CONSOLE.ERROR '+a.join(' '));oe(...a)};
+</script>
+<div id="scenes"></div><div id="journal"></div><div id="layers"></div><div id="seqrow"></div><div id="macros"></div><div id="globals"></div><button id="viewMode"></button>
+<button id="play"></button><button id="bigPlay"></button><div id="chordName"></div><div id="hudInfo"></div><select id="preset"></select><button id="dice"></button><button id="save"></button><button id="rec"></button><select id="recFmt"><option value="wav">w</option></select><select id="recDur"><option value="0">0</option></select><button id="share"></button><div id="toast"></div><select id="sleep"></select><span id="sleepLeft"></span><canvas id="viz" style="width:400px;height:200px"></canvas>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/presets.js"></script><script src="../js/generator.js"></script><script src="../js/visual.js"></script><script src="../js/scenes.js"></script><script src="../js/journal.js"></script><script src="../js/pianoroll.js"></script><script src="../js/widgets.js"></script><script src="../js/perform.js"></script><script src="../js/rec.js"></script><script src="../js/ui.js"></script><script src="../js/play.js"></script>
+<script>
+const params=new URLSearchParams(location.search);
+async function measure(label, secs){
+  const an=AMB.engine.analyser, buf=new Float32Array(an.fftSize);
+  let peak=0,sum=0,n=0; const t0=performance.now();
+  while(performance.now()-t0<secs*1000){ an.getFloatTimeDomainData(buf); for(const v of buf){peak=Math.max(peak,Math.abs(v));sum+=v*v;n++;} await new Promise(r=>setTimeout(r,40*S)); }
+  log(`${label} rms=${Math.sqrt(sum/n).toFixed(4)} peak=${peak.toFixed(3)} notes=${notes} t=${AMB.engine.ctx.currentTime.toFixed(1)}`);
+}
+let notes=0;
+window.addEventListener('load', async ()=>{
+  try{
+  const st=AMB.store, PR=AMB.pianoRoll;
+  let seqNotes=0, bellNotes=0; AMB.bus.on('note',n=>{ if(n.layer==='seq') seqNotes++; if(n.layer==='bells') bellNotes++; });
+  st.set('global.tempo',140); st.set('seq.steps','16');
+  const canvas=document.querySelector('canvas.roll');
+  log('roll canvas='+!!canvas+' w='+(canvas&&canvas.width));
+  // click a cell through pointer events: step 0, row 7
+  const r=canvas.getBoundingClientRect(), G=PR.roll.geom();
+  const ev=(type,x,y)=>canvas.dispatchEvent(new PointerEvent(type,{clientX:r.left+x,clientY:r.top+y,bubbles:true,pointerId:1}));
+  ev('pointerdown', G.labelW+G.cw*0.5, (PR.ROWS-1-7)*G.rowH+5); ev('pointermove', G.labelW+G.cw*3.5, (PR.ROWS-1-7)*G.rowH+5); ev('pointerup',0,0);
+  log('after click+drag pattern='+st.get('seq.pattern'));
+  PR.roll.act('random');
+  const pat=st.get('seq.pattern'); log('random notes='+PR.parse(pat).length+' seqOn='+st.get('seq.on')+' roundtrip='+(PR.encode(PR.parse(pat))===pat));
+  ['drone','pad','bells','grains','texture'].forEach(l=>st.set(l+'.on',false));
+  await AMB.ui.play();
+  await new Promise(r=>setTimeout(r,3000*S));
+  await measure('seq only notes='+seqNotes,2*S);
+  // capture the generative melody into the roll
+  st.set('bells.on',true); st.set('bells.density',0.9);
+  const btn=document.querySelector('[data-act=capture]'); PR.roll.act('capture',btn);
+  await new Promise(r=>setTimeout(r,5000));
+  log('captured notes='+PR.parse(st.get('seq.pattern')).length+' bellNotes='+bellNotes);
+  AMB.history && log('undoable='+(AMB.history.past.length>0));
+  log('DONE');
+  }catch(e){log('EXC '+e.stack)}
+});
+</script></body></html>

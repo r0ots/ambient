@@ -68,7 +68,7 @@
       color: '#ffd27f',
       params: {
         on: { label: 'On', type: 'toggle', def: true },
-        wave: { label: 'Moteur', type: 'select', options: ['Cloche', 'Kalimba', 'Verre', 'Pluck'], def: 'Kalimba' },
+        wave: { label: 'Moteur', type: 'select', options: ['Cloche', 'Kalimba', 'Verre', 'Pluck', 'Doux'], def: 'Kalimba' },
         vol: { label: 'Niveau', min: 0, max: 1, def: 0.45 },
         mode: { label: 'Jeu', type: 'select', options: ['Aléatoire', 'Phrase'], def: 'Aléatoire' },
         phraseLen: { label: 'Phrase', type: 'select', options: ['1 mes.', '2 mes.', '4 mes.'], def: '2 mes.' },
@@ -78,6 +78,24 @@
         decay: { label: 'Résonance', min: 0, max: 1, def: 0.5 },
         range: { label: 'Registre', min: 0, max: 1, def: 0.5 },
         send: { label: 'Envoi FX', min: 0, max: 1, def: 0.75 },
+      },
+    },
+    seq: {
+      label: 'Séquenceur',
+      color: '#ff9fd6',
+      params: {
+        on: { label: 'On', type: 'toggle', def: false },
+        wave: { label: 'Moteur', type: 'select', options: ['Cloche', 'Kalimba', 'Verre', 'Pluck', 'Doux'], def: 'Doux' },
+        vol: { label: 'Niveau', min: 0, max: 1, def: 0.5 },
+        steps: { label: 'Longueur', type: 'select', options: ['16', '32', '64'], labels: { 16: '1 mesure', 32: '2 mesures', 64: '4 mesures' }, def: '32' },
+        octave: { label: 'Octave', type: 'select', options: ['-1', '0', '+1'], def: '0' },
+        follow: { label: 'Suit accords', type: 'toggle', def: true },
+        tone: { label: 'Brillance', min: 0, max: 1, def: 0.45 },
+        decay: { label: 'Résonance', min: 0, max: 1, def: 0.45 },
+        swing: { label: 'Swing', min: 0, max: 1, def: 0.1 },
+        send: { label: 'Envoi FX', min: 0, max: 1, def: 0.6 },
+        // notes as "step.row.len" (base36), comma separated; part of the patch so presets/links/undo include it
+        pattern: { label: 'Motif', type: 'text', def: '', maxLen: 4000, hidden: true },
       },
     },
     grains: {
@@ -132,7 +150,7 @@
       // reject malformed values (bad share links / imports) instead of crashing the engine
       if (sp.type === 'select' && !sp.options.includes(v)) return;
       if (sp.type === 'toggle') v = !!v;
-      if (sp.type === 'text') v = String(v == null ? '' : v).slice(0, 80);
+      if (sp.type === 'text') v = String(v == null ? '' : v).slice(0, sp.maxLen || 80);
       if (!sp.type || sp.type === 'knob') {
         if (!Number.isFinite(Number(v))) return;
         v = Math.max(sp.min, Math.min(sp.max, Number(v)));
