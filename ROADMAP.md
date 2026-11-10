@@ -80,4 +80,6 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
+- [ ] Piano roll : déplacer une note (ou la sélection) en la faisant glisser ; clic simple sans déplacement = supprimer ; poignée de bord droit pour la longueur
+- [ ] Piano roll : surligner les lignes des notes de l'accord en cours (aide à composer juste)
 Demande utilisateur (10/11) : « rajoute des trucs genre piano roll, sequencer etc. » → priorité aux outils de composition.
