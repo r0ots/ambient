@@ -52,7 +52,8 @@
       // the kick on the downbeat always plays; everything else follows the "Présence" probability
       if (!(t === 0 && i === 0) && Math.random() > prob) return;
       const vel = LEVEL_VEL[lvl] * (0.85 + Math.random() * 0.15);
-      AMB.layers.perc.hit(t, time + swing + loose, vel);
+      const hu = AMB.util.human();
+      AMB.layers.perc.hit(t, Math.max(time, time + swing + loose + hu.dt), vel * hu.dv);
     });
   }
 

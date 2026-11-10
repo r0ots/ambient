@@ -63,6 +63,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] v0.48 : Pulsations — intensité par pas (doux / normal / accent via clic droit ou molette), 16 ou 32 pas (⧉ Doubler), kit Organique (tambour, bâton de pluie, goutte, kalimba) ; ancien format de motif relu automatiquement ; export MIDI avec vélocités.
 - [x] v0.49 : « ● Rec live » — enregistre en boucle (overdub) ce qu'on joue au clavier d'ordi ou en MIDI dans le motif édité, quantifié à la double-croche et sur la gamme, vélocité conservée ; on entend la voix du séquenceur pendant l'enregistrement.
 - [x] v0.50 : métronome pendant Rec live ; séquenceur de Basse — 4 rôles relatifs à l'accord (fondamentale, quinte, octave, approche vers l'accord suivant) × 16 pas, 3 sons (Sub, Ronde, Pluck), motifs Tenue/Pulsé/Quintes/Marche/Octaves, durée jusqu'au pas suivant.
+- [x] v0.51 : réglage global « Humain » (décalage ±25 ms + vélocité variable) sur Séquenceur, arpège, Basse et Pulsations ; aide et README mis à jour avec toute la partie Composer.
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
@@ -78,5 +79,4 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
-- [ ] Quantification « humaine » : swing/groove par motif + léger décalage aléatoire réglable
 Demande utilisateur (10/11) : « rajoute des trucs genre piano roll, sequencer etc. » → priorité aux outils de composition.

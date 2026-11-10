@@ -92,5 +92,7 @@
     NOTE_NAMES, SCALES, mtof, degreeToMidi, chordDegrees, chordName,
     CHORD_MOVES, CHORD_WEIGHTS, weightedPick,
   };
-  AMB.util = { rand, randInt, pick, clamp, lerp };
+  // "human" feel for sequenced parts: small timing drift (up to ±25 ms) and velocity spread
+  const human = () => { const h = AMB.store ? AMB.store.get('global.humanize') || 0 : 0; return { dt: (Math.random() - 0.5) * 0.05 * h, dv: 1 - Math.random() * 0.35 * h }; };
+  AMB.util = { rand, randInt, pick, clamp, lerp, human };
 })();

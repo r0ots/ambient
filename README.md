@@ -21,6 +21,7 @@ Clique **▶ Lecture** ou **✦ Paysage**, puis laisse tourner. `?` ouvre l'aide
 | **Espace** | Reverb Hall/Plate/Cloud + pré-délai + shimmer (octave), delay ping-pong, tape (wow/flutter/saturation), lo-fi |
 | **Mouvement** | Evolve (dérive autour de tes réglages), 2 LFO lents assignables, scènes A/B avec morph auto |
 | **Jouer** | Pad XY sur l'écran, clavier (A–L notes, Z–M accords), MIDI |
+| **Composer** | Progression d'accords en cases (I–VII), Séquenceur piano roll (vélocité, probabilité, mutation, sélection/copier-coller, motifs A–D + chaîne, arpégiateur, Rec live avec métronome, import/export MIDI), Basse en grille qui suit les accords, Pulsations (4 pistes, 16/32 pas, kits Feutré/Organique, euclidien), Automation dessinée, mode Morceau (sections enchaînées avec fondus), réglage « Humain » |
 | **Vues** | Simple (5 macros : Lumière, Densité, Espace, Nostalgie, Nature) ou Expert ; visuels Orbes/Horizon/Spectre ; mode Écoute plein écran |
 | **Garder** | Presets + ✦ générateur par humeur, journal des moments, ⌘Z/⇧⌘Z, partage par lien, Rec WAV/compressé à durée fixe, minuteur de sommeil |
 

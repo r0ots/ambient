@@ -65,7 +65,8 @@
     } else idx = arpIdx++ % uniq.length;
     const swing = (step / every) % 2 === 1 ? store.get('seq.swing') * sd * every * 0.5 : 0;
     const vel = 0.55 + (step % 16 === 0 ? 0.3 : step % 4 === 0 ? 0.15 : 0) + Math.random() * 0.08;
-    AMB.layers.seq.note(uniq[idx], time + swing, vel, true, every * sd * 0.9);
+    const hu = AMB.util.human();
+    AMB.layers.seq.note(uniq[idx], Math.max(time, time + swing + hu.dt), vel * hu.dv, true, every * sd * 0.9);
   }
 
   // soft metronome click straight into the dry bus (independent of the Pulsations layer)
@@ -99,7 +100,8 @@
       const deg = n.r + (store.get('seq.follow') ? chordDeg : 0);
       const midi = T.degreeToMidi(deg, seq.root, seq.scale, 3 + oct);
       const vel = (n.v / 9) * (0.85 + (i % 4 === 0 ? 0.15 : 0)) + Math.random() * 0.05;
-      AMB.layers.seq.note(midi, time + swing, vel, true, n.l * sd * 0.95);
+      const hu = AMB.util.human();
+      AMB.layers.seq.note(midi, Math.max(time, time + swing + hu.dt), vel * hu.dv, true, n.l * sd * 0.95);
     }
     roll.playStep = i;
   }

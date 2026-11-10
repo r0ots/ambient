@@ -30,7 +30,7 @@
     const nextDeg = prog && prog.length ? prog[((seq.progIdx || 0) + 1) % prog.length] : chordDeg;
     // note length: until the next active step in any row
     let len = 1; while (len < N && !g.some((row) => row[(i + len) % N])) len++;
-    g.forEach((row, r) => { if (row[i]) AMB.layers.bass.note(noteFor(r, chordDeg, nextDeg), time, len * sd); });
+    g.forEach((row, r) => { if (row[i]) AMB.layers.bass.note(noteFor(r, chordDeg, nextDeg), Math.max(time, time + AMB.util.human().dt * 0.5), len * sd); });
   }
 
   const PRESETS = {
