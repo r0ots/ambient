@@ -65,6 +65,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] v0.50 : métronome pendant Rec live ; séquenceur de Basse — 4 rôles relatifs à l'accord (fondamentale, quinte, octave, approche vers l'accord suivant) × 16 pas, 3 sons (Sub, Ronde, Pluck), motifs Tenue/Pulsé/Quintes/Marche/Octaves, durée jusqu'au pas suivant.
 - [x] v0.51 : réglage global « Humain » (décalage ±25 ms + vélocité variable) sur Séquenceur, arpège, Basse et Pulsations ; aide et README mis à jour avec toute la partie Composer.
 - [x] v0.52 : corrections issues d'une revue des outils de composition — sections du Morceau appliquées avant le calcul du pas (progression et chaîne repartent au début), automation protégée d'Evolve/LFO/fondus/morph, ⌘Z ne déplace plus les valeurs de référence modulées, Stop arrête aussi le Morceau et le Rec live, approche de basse en degrés et seulement avant le changement d'accord, MIDI : notes hors longueur exclues, piste Séquenceur seulement si active, voicings d'export cohérents, import calé sur la première note-on.
+- [x] v0.53 : piano roll — glisser une note (ou toute la sélection) pour la déplacer, glisser sa dernière case pour l'allonger/raccourcir, clic simple = supprimer ; lignes des notes de l'accord en cours surlignées.
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
@@ -80,6 +81,4 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
-- [ ] Piano roll : déplacer une note (ou la sélection) en la faisant glisser ; clic simple sans déplacement = supprimer ; poignée de bord droit pour la longueur
-- [ ] Piano roll : surligner les lignes des notes de l'accord en cours (aide à composer juste)
 Demande utilisateur (10/11) : « rajoute des trucs genre piano roll, sequencer etc. » → priorité aux outils de composition.

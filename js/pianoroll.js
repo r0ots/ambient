@@ -174,7 +174,7 @@
           <label class="btn small" title="Importer un fichier .mid dans ce motif (quantifié sur la gamme)">⬆ MIDI<input type="file" accept=".mid,.midi,audio/midi" hidden data-midi-in></label>
           <button class="btn small" data-act="midi" title="Exporter progression + motifs + pulsations en fichier MIDI">⬇ MIDI</button>
           <button class="btn small" data-act="restore" title="Revenir au dernier motif dessiné (annule les mutations)">↺ Original</button>
-          <span class="roll-hint">Clic : ajouter/retirer · glisser : longueur · molette : vélocité · clic droit : probabilité · Alt+glisser : sélection (⌘C ⌘V ⌘D, flèches, Suppr)</span>
+          <span class="roll-hint">Clic : ajouter/retirer · glisser une note : déplacer (bord droit : longueur) · molette : vélocité · clic droit : probabilité · Alt+glisser : sélection (⌘C ⌘V ⌘D, flèches, Suppr)</span>
         </div>
         <div class="roll-scroll"><canvas class="roll"></canvas></div>`;
       panel.append(wrap);
@@ -279,17 +279,27 @@
           this.updateBox();
           return;
         }
-        if (this.sel.size) this.sel = new Set();
         if (e.shiftKey) { // toggle a whole column off (or nothing to remove: no-op)
           this.save(notes.filter((n) => !(c.s >= n.s && c.s < n.s + n.l)));
           return;
         }
         if (e.button === 2) return; // right button handled by contextmenu (probability)
         const hit = notes.find((n) => n.r === c.r && c.s >= n.s && c.s < n.s + n.l);
-        if (hit) { this.save(notes.filter((n) => n !== hit)); return; }
+        if (hit) {
+          // grab: right edge of a long note = resize, elsewhere = move (whole selection if the note is selected);
+          // releasing without moving deletes the note, as before
+          const inSel = this.sel.has(this.keyOf(hit));
+          if (!inSel) this.sel = new Set();
+          const group = inSel ? notes.filter((n) => this.sel.has(this.keyOf(n))) : [hit];
+          const others = notes.filter((n) => !group.includes(n));
+          drag = { mode: hit.l > 1 && c.s === hit.s + hit.l - 1 ? 'resize' : 'move', start: c, hit, group: group.map((n) => ({ ...n })), others, moved: false };
+          try { this.canvas.setPointerCapture(e.pointerId); } catch (_) {}
+          return;
+        }
+        if (this.sel.size) this.sel = new Set();
         const note = { s: c.s, r: c.r, l: 1, v: 7, p: 10 };
         notes.push(note); this.save(notes);
-        drag = { s: c.s, r: c.r };
+        drag = { mode: 'new', s: c.s, r: c.r };
         try { this.canvas.setPointerCapture(e.pointerId); } catch (_) {}
         this.preview(c.r, c.s);
       });
@@ -297,6 +307,25 @@
         if (this.box) { const c = this.cellAt(e); if (c) { this.box.s1 = c.s; this.box.r1 = c.r; this.updateBox(); } return; }
         if (!drag) return;
         const c = this.cellAt(e); if (!c) return;
+        if (drag.mode === 'move' || drag.mode === 'resize') {
+          const ds = c.s - drag.start.s, dr = c.r - drag.start.r, len = steps();
+          if (!ds && !dr && !drag.moved) return;
+          drag.moved = true;
+          let moved;
+          if (drag.mode === 'resize') moved = drag.group.map((n) => ({ ...n, l: Math.max(1, Math.min(len - n.s, n.l + ds)) }));
+          else {
+            const minS = Math.min(...drag.group.map((n) => n.s)), maxS = Math.max(...drag.group.map((n) => n.s));
+            const minR = Math.min(...drag.group.map((n) => n.r)), maxR = Math.max(...drag.group.map((n) => n.r));
+            const ds2 = Math.max(-minS, Math.min(len - 1 - maxS, ds)), dr2 = Math.max(-minR, Math.min(ROWS - 1 - maxR, dr));
+            moved = drag.group.map((n) => ({ ...n, s: n.s + ds2, r: n.r + dr2, l: Math.min(n.l, len - (n.s + ds2)) }));
+            if (dr2 !== drag.lastDr && drag.group.length === 1) this.preview(moved[0].r, moved[0].s);
+            drag.lastDr = dr2;
+          }
+          const keys = new Set(moved.map(this.keyOf));
+          this.save([...drag.others.filter((n) => !keys.has(this.keyOf(n))), ...moved]);
+          if (this.sel.size) this.sel = keys;
+          return;
+        }
         const notes = this.notes();
         const n = notes.find((x) => x.s === drag.s && x.r === drag.r);
         if (!n) return;
@@ -320,7 +349,13 @@
         notes[i] = { ...n, p: order[(order.indexOf(n.p) + 1) % order.length] || 10 };
         this.save(notes);
       });
-      const end = () => { drag = null; if (this.box) { this.box = null; this.draw(); } };
+      const end = () => {
+        if (drag && drag.mode === 'move' && !drag.moved) { // simple click on a note: delete it
+          this.save(this.notes().filter((n) => !(n.s === drag.hit.s && n.r === drag.hit.r)));
+        }
+        drag = null;
+        if (this.box) { this.box = null; this.draw(); }
+      };
       this.canvas.addEventListener('pointerup', end);
       this.canvas.addEventListener('pointercancel', end);
     },
@@ -390,11 +425,17 @@
       g.clearRect(0, 0, G.w, G.h);
       const seq = AMB.seq, n = G.n;
       // rows
+      const chordPcs = new Set((seq.chord && seq.chord.length ? seq.chord : seq.chordMidis(seq.chordDeg || 0)).map((m) => ((m % 12) + 12) % 12));
       for (let r = 0; r < ROWS; r++) {
         const y = (ROWS - 1 - r) * G.rowH;
         const isRoot = r % seq.scale.length === 0;
         g.fillStyle = isRoot ? '#1d1a30' : r % 2 ? '#14161f' : '#171a25';
         g.fillRect(G.labelW, y, G.w - G.labelW, G.rowH);
+        // rows that are tones of the chord playing now (relative to the motif when following chords)
+        if (chordPcs.has(((T.degreeToMidi(r + (store.get('seq.follow') ? seq.chordDeg : 0), seq.root, seq.scale, 3)) % 12 + 12) % 12)) {
+          g.fillStyle = 'rgba(181,140,255,0.07)'; g.fillRect(G.labelW, y, G.w - G.labelW, G.rowH);
+          g.fillStyle = '#b58cff'; g.fillRect(G.labelW - 3, y + 4, 2, G.rowH - 8);
+        }
         const midi = T.degreeToMidi(r, seq.root, seq.scale, 3);
         g.fillStyle = isRoot ? '#c9b6ff' : '#5c6384';
         g.font = '10px system-ui, sans-serif'; g.textBaseline = 'middle';

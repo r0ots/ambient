@@ -40,6 +40,16 @@ window.addEventListener('load', async ()=>{
   const before=st.get('seq.pattern'); PR.mutate(1); PR.mutate(1);
   log('mutated '+before+' -> '+st.get('seq.pattern'));
   document.querySelector('[data-act=restore]').click(); log('restored='+(st.get('seq.pattern')===before));
+  // drag-move a note, click-to-delete still works
+  st.set('seq.pattern','2.5.2'); st.set('seq.slot','A');
+  const cx=(s)=>r.left+G.labelW+G.cw*(s+0.5), cy=(row)=>r.top+(PR.ROWS-1-row)*G.rowH+5;
+  const pe=(t,x,y)=>canvas.dispatchEvent(new PointerEvent(t,{clientX:x,clientY:y,pointerId:1,bubbles:true}));
+  pe('pointerdown',cx(2),cy(5)); pe('pointermove',cx(6),cy(8)); pe('pointerup',cx(6),cy(8));
+  log('moved='+st.get('seq.pattern'));
+  pe('pointerdown',cx(7),cy(8)); pe('pointermove',cx(10),cy(8)); pe('pointerup',cx(10),cy(8));
+  log('resized='+st.get('seq.pattern'));
+  pe('pointerdown',cx(6),cy(8)); pe('pointerup',cx(6),cy(8));
+  log('click-deleted='+JSON.stringify(st.get('seq.pattern')));
   // selection + copy/paste/transpose via keyboard
   st.set('seq.pattern','0.7.2,2.8.2,4.9.2'); st.set('seq.slot','A');
   const R=PR.roll; R.setSel(R.notes());
