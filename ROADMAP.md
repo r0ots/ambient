@@ -58,6 +58,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] v0.43 : piste d'Automation — courbe dessinée à la souris (32 points) sur 4–32 mesures pour n'importe quel paramètre continu, formes Montée/Descente/Vague/Hasard/Plat, tête de lecture, valeur utilisateur restaurée à l'arrêt.
 - [x] v0.44 : import MIDI dans le motif édité (piste la plus fournie hors batterie, quantification 1/16 et sur la gamme, longueur 1/2/4 mesures auto, octave ajustée, vélocités conservées, suit-accords coupé).
 - [x] v0.45 : lancement de motif quantifié — changer d'onglet A–D pendant la lecture démarre le nouveau motif au prochain tour (onglet clignotant en attente).
+- [x] v0.46 : mode Morceau — sections (instantané complet du son) de 4 à 64 mesures, renommables/réordonnables, lecture enchaînée avec fondu de 2 mesures des réglages continus, barre de progression, boucle, durée totale ; inclus dans l'export/import.
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
@@ -72,7 +73,6 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
-- [ ] Mode Morceau (arrangement) : suite de sections (ex. Intro 8 mes. / A 16 / B 16 / Outro 8), chacune = scène + motif + couches actives, avec transitions en fondu
 - [ ] Pulsations : vélocité par pas (clic long / molette), 32 pas, 2 kits (Feutré / Organique)
 - [ ] Piano roll : sélection rectangulaire, copier/coller, transposer la sélection
 Demande utilisateur (10/11) : « rajoute des trucs genre piano roll, sequencer etc. » → priorité aux outils de composition.

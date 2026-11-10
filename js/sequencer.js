@@ -198,6 +198,7 @@
       if (AMB.pianoRoll) AMB.pianoRoll.onStep(step, time, sd, this.chordDeg);
       if (AMB.pulses) AMB.pulses.onStep(step, time, sd);
       if (AMB.automation) AMB.automation.onStep(step);
+      if (AMB.song) AMB.song.onStep(step);
 
       // ---- evolve macro (every beat) ----
       if (step % 4 === 0) this.evolve();

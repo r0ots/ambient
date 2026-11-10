@@ -190,7 +190,7 @@
   function exportPatches() {
     let scenes = null;
     try { scenes = JSON.parse(localStorage.getItem('ambient.scenes.v1')); } catch (e) {}
-    const data = { app: 'ambient', version: 1, exported: new Date().toISOString(), patches: loadUser(), scenes, current: store.stableSnapshot() };
+    const data = { app: 'ambient', version: 1, exported: new Date().toISOString(), patches: loadUser(), scenes, current: store.stableSnapshot(), song: AMB.song ? { sections: AMB.song.sections, loop: AMB.song.loop } : null };
     AMB.rec.download(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }), 'json');
     toast(`${Object.keys(data.patches).length} patch(s) exporté(s)`);
   }
@@ -206,6 +206,9 @@
       saveUser(u); fillPresetSelect(); updatePatchButtons();
       if (data.scenes && (data.scenes.A || data.scenes.B) && AMB.scenes) {
         AMB.scenes.A = data.scenes.A; AMB.scenes.B = data.scenes.B; AMB.scenes.save(); AMB.scenes.render();
+      }
+      if (data.song && Array.isArray(data.song.sections) && AMB.song && (!AMB.song.sections.length || confirm('Remplacer le morceau actuel par celui du fichier ?'))) {
+        AMB.song.sections = data.song.sections; AMB.song.loop = data.song.loop !== false; AMB.song.save(); AMB.song.render();
       }
       toast(`${n} patch(s) importé(s)`);
     } catch (e) { toast('Fichier non reconnu'); console.warn(e); }
@@ -256,6 +259,7 @@
       AMB.pianoRoll.roll.build(sp);
     }
     if (seqRow && AMB.chords) AMB.chords.build(seqRow);
+    if (seqRow && AMB.song) AMB.song.build(seqRow);
     if (seqRow && AMB.automation) {
       const ap = section('auto');
       seqRow.append(ap);
