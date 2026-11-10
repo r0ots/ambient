@@ -97,6 +97,12 @@
         send: { label: 'Envoi FX', min: 0, max: 1, def: 0.6 },
         // notes as "step.row.len" (base36), comma separated; part of the patch so presets/links/undo include it
         pattern: { label: 'Motif', type: 'text', def: '', maxLen: 4000, hidden: true },
+        // pattern chain: slots A–D (A is `pattern` for backward compatibility)
+        patB: { label: 'Motif B', type: 'text', def: '', maxLen: 4000, hidden: true },
+        patC: { label: 'Motif C', type: 'text', def: '', maxLen: 4000, hidden: true },
+        patD: { label: 'Motif D', type: 'text', def: '', maxLen: 4000, hidden: true },
+        slot: { label: 'Édition', type: 'select', options: ['A', 'B', 'C', 'D'], def: 'A', hidden: true },
+        chain: { label: 'Chaîne', type: 'text', def: '', placeholder: 'ex. A A B C', maxLen: 64 },
       },
     },
     perc: {

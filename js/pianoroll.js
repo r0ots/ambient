@@ -30,13 +30,24 @@
     return t;
   }).join(',');
   const steps = () => parseInt(store.get('seq.steps'), 10) || 32;
+  const SLOTKEY = { A: 'seq.pattern', B: 'seq.patB', C: 'seq.patC', D: 'seq.patD' };
+  const editKey = () => SLOTKEY[store.get('seq.slot')] || 'seq.pattern';
+  const chainList = () => String(store.get('seq.chain') || '').toUpperCase().split(/[^ABCD]+|(?=[ABCD])/).filter((x) => SLOTKEY[x]);
+  // which slot plays during the pattern cycle that contains `step`
+  function slotAt(step) {
+    const chain = chainList();
+    if (!chain.length) return store.get('seq.slot');
+    return chain[Math.floor(step / steps()) % chain.length];
+  }
 
   // ---------- playback (called by the sequencer on every 16th) ----------
   function onStep(step, time, sd, chordDeg) {
     if (!store.get('seq.on')) return;
     const len = steps(), i = step % len;
-    if (i === 0 && step > 0 && store.get('seq.mutate') > 0) mutate(store.get('seq.mutate'));
-    const notes = parse(store.get('seq.pattern'));
+    const slot = slotAt(step), key = SLOTKEY[slot];
+    if (i === 0 && step > 0 && store.get('seq.mutate') > 0) mutate(store.get('seq.mutate'), key);
+    roll.playSlot = slot;
+    const notes = parse(store.get(key));
     if (!notes.length) return;
     const seq = AMB.seq, oct = parseInt(store.get('seq.octave'), 10) || 0;
     const swing = i % 2 === 1 ? store.get('seq.swing') * sd * 0.5 : 0;
@@ -52,10 +63,10 @@
   }
 
   // ---------- slow mutation (like the Phrase mode): notes drift by step, some vanish, some appear ----------
-  let original = null; // last pattern written by the user (to come back to)
-  store.on((k, v, source) => { if (k === 'seq.pattern' && source !== 'evolve') original = v; });
-  function mutate(m) {
-    const notes = parse(store.get('seq.pattern')).map((n) => ({ ...n }));
+  const original = {}; // last pattern written by the user per slot (to come back to)
+  store.on((k, v, source) => { if (Object.values(SLOTKEY).includes(k) && source !== 'evolve') original[k] = v; });
+  function mutate(m, key = editKey()) {
+    const notes = parse(store.get(key)).map((n) => ({ ...n }));
     const len = steps();
     for (const n of notes) {
       if (Math.random() < m * 0.25) n.r = Math.max(0, Math.min(ROWS - 1, n.r + [-2, -1, 1, 2][Math.floor(Math.random() * 4)]));
@@ -66,8 +77,8 @@
       const s = Math.floor(Math.random() * len);
       if (!out.some((x) => x.s === s)) out.push({ s, r: Math.max(0, Math.min(ROWS - 1, src.r + [-1, 1, 2][Math.floor(Math.random() * 3)])), l: Math.min(src.l, len - s), v: 5, p: 10 });
     }
-    if (!out.length && original) out = parse(original).map((n) => ({ ...n }));
-    store.set('seq.pattern', encode(out), 'evolve');
+    if (!out.length && original[key]) out = parse(original[key]).map((n) => ({ ...n }));
+    store.set(key, encode(out), 'evolve');
   }
 
   // ---------- editor ----------
@@ -78,6 +89,8 @@
       wrap.className = 'roll-wrap';
       wrap.innerHTML = `
         <div class="roll-tools">
+          <span class="slot-tabs">${['A', 'B', 'C', 'D'].map((x) => `<button class="slot-tab" data-slot="${x}" title="Éditer le motif ${x}">${x}</button>`).join('')}</span>
+          <button class="btn small" data-act="dup" title="Copier ce motif dans le prochain emplacement libre">⧉ Dupliquer</button>
           <button class="btn small" data-act="clear" title="Effacer toutes les notes">Effacer</button>
           <button class="btn small" data-act="random" title="Motif aléatoire dans la gamme">⚄ Motif</button>
           <button class="btn small" data-act="capture" title="Enregistre ce que joue la Mélodie pendant un tour de motif">● Capturer la mélodie</button>
@@ -93,15 +106,17 @@
       this.canvas = wrap.querySelector('canvas');
       this.g = this.canvas.getContext('2d');
       wrap.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => this.act(b.dataset.act, b)));
+      this.tabs = [...wrap.querySelectorAll('[data-slot]')];
+      this.tabs.forEach((b) => b.addEventListener('click', () => store.set('seq.slot', b.dataset.slot, 'user')));
       this.bindMouse();
       store.on((k) => { if (k.startsWith('seq.') || k === 'global.key' || k === 'global.scale') this.draw(); });
       window.addEventListener('resize', () => this.draw());
-      const loop = () => { if (this.playStep !== this.lastDrawn) this.draw(); requestAnimationFrame(loop); };
+      const loop = () => { if (this.playStep !== this.lastDrawn || this.playSlot !== this.lastSlot) { this.draw(); this.lastSlot = this.playSlot; } requestAnimationFrame(loop); };
       requestAnimationFrame(loop);
       this.draw();
     },
-    notes() { return parse(store.get('seq.pattern')).slice(); },
-    save(notes, source = 'user') { store.set('seq.pattern', encode(notes), source); },
+    notes() { return parse(store.get(editKey())).slice(); },
+    save(notes, source = 'user') { store.set(editKey(), encode(notes), source); },
     geom() {
       const n = steps();
       const labelW = 34;
@@ -178,11 +193,30 @@
       else if (a === 'shiftL' || a === 'shiftR') notes.forEach((x) => { x.s = (x.s + (a === 'shiftR' ? 1 : n - 1)) % n; });
       else if (a === 'up' || a === 'down') notes = notes.map((x) => ({ ...x, r: x.r + (a === 'up' ? 1 : -1) })).filter((x) => x.r >= 0 && x.r < ROWS);
       else if (a === 'capture') return capture(btn);
-      else if (a === 'restore') { if (original != null) notes = parse(original); }
+      else if (a === 'restore') { if (original[editKey()] != null) notes = parse(original[editKey()]); }
+      else if (a === 'dup') { // copy the edited slot into the next empty one and switch to it
+        const free = ['A', 'B', 'C', 'D'].find((x) => !parse(store.get(SLOTKEY[x])).length);
+        if (!free) { AMB.ui.toast('Les 4 motifs sont occupés'); return; }
+        store.set(SLOTKEY[free], store.get(editKey()), 'user');
+        store.set('seq.slot', free, 'user');
+        AMB.ui.toast(`Motif copié dans ${free}`);
+        return;
+      }
       this.save(notes);
       if (a === 'random' && !store.get('seq.on')) store.set('seq.on', true, 'user');
     },
+    renderTabs() {
+      if (!this.tabs) return;
+      const playing = AMB.seq.playing && store.get('seq.on') ? this.playSlot : null;
+      for (const b of this.tabs) {
+        const x = b.dataset.slot;
+        b.classList.toggle('sel', store.get('seq.slot') === x);
+        b.classList.toggle('filled', parse(store.get(SLOTKEY[x])).length > 0);
+        b.classList.toggle('now', playing === x);
+      }
+    },
     draw() {
+      this.renderTabs();
       const c = this.canvas; if (!c) return;
       const G = this.geom(), dpr = Math.min(2, window.devicePixelRatio || 1);
       if (c.width !== Math.round(G.w * dpr) || c.height !== Math.round(G.h * dpr)) {
@@ -209,13 +243,14 @@
         g.fillRect(G.labelW + s * G.cw, 0, s % 16 === 0 ? 1.5 : 1, G.h);
       }
       // playhead
-      const ps = this.playStep;
+      // the playhead is only meaningful when the edited slot is the one playing
+      const ps = this.playSlot === store.get('seq.slot') ? this.playStep : -1;
       if (seq.playing && store.get('seq.on') && ps >= 0 && ps < n) {
         g.fillStyle = 'rgba(255,159,214,0.12)';
         g.fillRect(G.labelW + ps * G.cw, 0, G.cw, G.h);
       }
       // notes
-      for (const nt of parse(store.get('seq.pattern'))) {
+      for (const nt of parse(store.get(editKey()))) {
         if (nt.s >= n) continue;
         const x = G.labelW + nt.s * G.cw + 1, y = (ROWS - 1 - nt.r) * G.rowH + 2;
         const w = Math.min(nt.l, n - nt.s) * G.cw - 2;
@@ -230,7 +265,7 @@
           if (w > 22) { g.fillStyle = '#2a0f20'; g.font = '9px system-ui'; g.fillText(nt.p * 10 + '%', x + 3, y + (G.rowH - 4) / 2); }
         }
       }
-      this.lastDrawn = ps;
+      this.lastDrawn = this.playStep;
     },
   };
 
@@ -287,5 +322,5 @@
     }, ms);
   }
 
-  AMB.pianoRoll = { roll, parse, encode, onStep, randomPattern, mutate, ROWS };
+  AMB.pianoRoll = { roll, parse, encode, onStep, randomPattern, mutate, slotAt, chainList, SLOTKEY, ROWS };
 })();

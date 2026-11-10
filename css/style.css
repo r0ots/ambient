@@ -190,6 +190,12 @@ canvas.roll { display: block; cursor: pointer; touch-action: none; }
 .chord-chip b { color: var(--c); margin-right: 3px; }
 @media (max-width: 760px) { .chord-slots { grid-template-columns: repeat(4, 1fr); } }
 
+.slot-tabs { display: inline-flex; gap: 3px; margin-right: 6px; }
+.slot-tab { width: 28px; height: 26px; border-radius: 7px; border: 1px dashed #3c4262; background: transparent; color: var(--muted); font: inherit; font-weight: 700; cursor: pointer; }
+.slot-tab.filled { border-style: solid; color: var(--text); }
+.slot-tab.sel { border-color: var(--c); color: var(--c); box-shadow: 0 0 0 1px var(--c) inset; }
+.slot-tab.now { background: color-mix(in srgb, var(--c) 25%, transparent); }
+
 footer { text-align: center; font-size: 11px; color: #4c5272; padding: 20px 0 8px; }
 
 @media (max-width: 760px) {

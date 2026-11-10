@@ -40,6 +40,13 @@ window.addEventListener('load', async ()=>{
   const before=st.get('seq.pattern'); PR.mutate(1); PR.mutate(1);
   log('mutated '+before+' -> '+st.get('seq.pattern'));
   document.querySelector('[data-act=restore]').click(); log('restored='+(st.get('seq.pattern')===before));
+  // chain: A has the drawn note, duplicate to B, edit B, chain "A B B"
+  document.querySelector('[data-act=dup]').click();
+  log('after dup slot='+st.get('seq.slot')+' B='+st.get('seq.patB'));
+  PR.roll.act('up');
+  st.set('seq.chain','A B B'); st.set('seq.steps','16');
+  log('chain='+PR.chainList().join('')+' slots at steps 0/16/32/48='+[0,16,32,48].map(PR.slotAt).join(''));
+  st.set('seq.chain',''); st.set('seq.slot','A');
   PR.roll.act('random');
   const pat=st.get('seq.pattern'); log('random notes='+PR.parse(pat).length+' seqOn='+st.get('seq.on')+' roundtrip='+(PR.encode(PR.parse(pat))===pat));
   ['drone','pad','bells','grains','texture'].forEach(l=>st.set(l+'.on',false));
