@@ -222,6 +222,13 @@
     nostalgia: { label: 'Nostalgie', min: 0, max: 1, def: 0.25 },
     nature: { label: 'Nature', min: 0, max: 1, def: 0.4 },
   } };
+  // Drawn automation lane: an absolute curve (32 points, base36 0..z) over N bars for one parameter
+  SCHEMA.auto = { label: 'Automation', color: '#8fe3a8', params: {
+    on: { label: 'On', type: 'toggle', def: false },
+    target: { label: 'Paramètre', type: 'select', options: targets, labels, def: 'fx.space' },
+    bars: { label: 'Durée', type: 'select', options: ['4', '8', '16', '32'], labels: { 4: '4 mesures', 8: '8 mesures', 16: '16 mesures', 32: '32 mesures' }, def: '8' },
+    curve: { label: 'Courbe', type: 'text', def: 'i'.repeat(32), maxLen: 32, hidden: true },
+  } };
   SCHEMA.mod = { label: 'Modulation', color: '#9fd0ff', params: { ...lfo(1, 'pad.tone', 0.45, 0.4), ...lfo(2, '—', 0.25, 0.3) } };
 
   // rate knob 0..1 -> period 4 s .. 10 min (log)

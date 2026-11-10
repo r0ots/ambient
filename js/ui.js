@@ -256,6 +256,11 @@
       AMB.pianoRoll.roll.build(sp);
     }
     if (seqRow && AMB.chords) AMB.chords.build(seqRow);
+    if (seqRow && AMB.automation) {
+      const ap = section('auto');
+      seqRow.append(ap);
+      AMB.automation.lane.build(ap);
+    }
     if (seqRow && AMB.pulses) {
       const pp = section('perc');
       seqRow.append(pp);

@@ -196,6 +196,8 @@ canvas.roll { display: block; cursor: pointer; touch-action: none; }
 .slot-tab.sel { border-color: var(--c); color: var(--c); box-shadow: 0 0 0 1px var(--c) inset; }
 .slot-tab.now { background: color-mix(in srgb, var(--c) 25%, transparent); }
 
+canvas.auto-lane { display: block; width: 100%; border-radius: 8px; border: 1px solid var(--line); cursor: crosshair; touch-action: none; }
+
 footer { text-align: center; font-size: 11px; color: #4c5272; padding: 20px 0 8px; }
 
 @media (max-width: 760px) {
