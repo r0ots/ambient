@@ -11,7 +11,7 @@
     onChange(key, v, source, prev) {
       if (!RECORDED.has(source)) return;
       if (!this.open) {
-        const before = store.snapshot();
+        const before = store.stableSnapshot();
         before[key] = prev; // state just before this gesture started
         this.past.push(before);
         if (this.past.length > MAX) this.past.shift();
@@ -29,7 +29,7 @@
       this.open = false;
       const snap = this.past.pop();
       if (!snap) return AMB.ui.toast('Rien à annuler');
-      this.future.push(store.snapshot());
+      this.future.push(store.stableSnapshot());
       this.restore(snap);
       AMB.ui.toast('↶ Annulé');
     },
@@ -37,7 +37,7 @@
       this.open = false;
       const snap = this.future.pop();
       if (!snap) return AMB.ui.toast('Rien à rétablir');
-      this.past.push(store.snapshot());
+      this.past.push(store.stableSnapshot());
       this.restore(snap);
       AMB.ui.toast('↷ Rétabli');
     },

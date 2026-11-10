@@ -138,6 +138,8 @@
   }
   function stop() {
     AMB.seq.stop();
+    if (AMB.song && AMB.song.playing) AMB.song.stop();
+    if (AMB.pianoRoll && AMB.pianoRoll.roll.recording) AMB.pianoRoll.roll.stopRecording();
     AMB.engine.fadeOut(2.5);
     started = false;
     document.body.classList.remove('playing');

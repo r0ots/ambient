@@ -47,6 +47,10 @@
         else discrete[k] = v;
       }
       store.setMany(discrete, 'morph');
+      // start the section's own progression and motif chain from their beginning, right now
+      AMB.seq.progIdx = -1;
+      if (!instant) AMB.seq.forceChordChange = true;
+      if (AMB.pianoRoll && AMB.pianoRoll.resetLatch) AMB.pianoRoll.resetLatch();
       if (instant || !cont.length) { for (const [k, , b] of cont) store.set(k, b, 'morph'); this.fade = null; }
       else this.fade = { cont, step: 0, steps: 32 }; // two bars of 16ths
       AMB.bus.emit('section', { index: i, name: sec.name });
@@ -58,7 +62,7 @@
       if (this.fade) {
         const f = this.fade, t = Math.min(1, ++f.step / f.steps);
         const e = t * t * (3 - 2 * t); // smoothstep
-        for (const [k, a, b] of f.cont) store.set(k, a + (b - a) * e, 'morph');
+        for (const [k, a, b] of f.cont) if (!AMB.isAutomated(k)) store.set(k, a + (b - a) * e, 'morph');
         if (t >= 1) this.fade = null;
       }
       if (step % 16 !== 0 || step === 0) return;

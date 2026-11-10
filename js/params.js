@@ -255,5 +255,7 @@
   AMB.periodSecs = periodSecs;
 
   AMB.SCHEMA = SCHEMA;
+  // a parameter driven by the drawn automation lane must not be touched by Evolve/LFO/morphs
+  AMB.isAutomated = (key) => AMB.store && AMB.store.get('auto.on') && AMB.store.get('auto.target') === key;
   AMB.store = new Store();
 })();

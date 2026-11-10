@@ -166,8 +166,12 @@
       const L = AMB.layers;
       const barLen = store.get('pad.length');
 
+      // song sections switch first, so this step's chord/motifs already use the new section
+      if (AMB.song) AMB.song.onStep(step);
+
       // ---- chord changes ----
-      if (step % (stepsPerBar * barLen) === 0 && !(this.lockUntil > step)) {
+      const forced = this.forceChordChange; this.forceChordChange = false;
+      if ((forced || step % (stepsPerBar * barLen) === 0) && !(this.lockUntil > step)) {
         if (step > 0) {
           const seq = this.progression();
           if (seq) {
@@ -203,7 +207,6 @@
       if (AMB.pulses) AMB.pulses.onStep(step, time, sd);
       if (AMB.bassSeq) AMB.bassSeq.onStep(step, time, sd, this.chordDeg);
       if (AMB.automation) AMB.automation.onStep(step);
-      if (AMB.song) AMB.song.onStep(step);
 
       // ---- evolve macro (every beat) ----
       if (step % 4 === 0) this.evolve();
@@ -339,7 +342,7 @@
           store.set(st.target, this.homes[st.target], 'lfo'); // release the old target
         }
         st.target = target;
-        if (!target || target === '—') continue;
+        if (!target || target === '—' || AMB.isAutomated(target)) continue;
         const sp = store.spec(target); if (!sp) continue;
         st.phase = (st.phase + dt / AMB.periodSecs(store.get(`mod.l${n}rate`))) % 1;
         const shape = store.get(`mod.l${n}shape`);
@@ -363,7 +366,7 @@
       if (amt <= 0) return;
       for (const [sec, s] of Object.entries(AMB.SCHEMA)) {
         for (const [k, sp] of Object.entries(s.params)) {
-          if (!sp.evolve) continue;
+          if (!sp.evolve || AMB.isAutomated(`${sec}.${k}`)) continue;
           const key = `${sec}.${k}`;
           if (Math.random() > 0.35) continue;
           const home = this.homes[key] !== undefined ? this.homes[key] : store.get(key);

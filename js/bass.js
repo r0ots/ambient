@@ -16,9 +16,10 @@
     if (role === 0) return rootM;
     if (role === 1) return T.degreeToMidi(chordDeg + 4, seq.root, seq.scale, oct); // diatonic fifth
     if (role === 2) return rootM + 12;
-    // approach: the scale step just below/above the next chord's root
-    const target = T.degreeToMidi(nextDeg, seq.root, seq.scale, oct);
-    return target + (target > rootM ? -1 : 1) * (Math.abs(target - rootM) > 2 ? 2 : 1);
+    // approach: the scale degree right next to the next chord's root (in key, never chromatic);
+    // when the chord doesn't change, a neighbour of the current root instead
+    if (nextDeg === chordDeg) return T.degreeToMidi(chordDeg + 1, seq.root, seq.scale, oct);
+    return T.degreeToMidi(nextDeg + (nextDeg > chordDeg ? -1 : 1), seq.root, seq.scale, oct);
   }
 
   let playStep = -1;
@@ -27,7 +28,10 @@
     const i = step % N; playStep = i;
     const g = parse(store.get('bass.pattern'));
     const seq = AMB.seq, prog = seq.progression && seq.progression();
-    const nextDeg = prog && prog.length ? prog[((seq.progIdx || 0) + 1) % prog.length] : chordDeg;
+    // aim at the next chord only during the last bar before it changes
+    const barLen = store.get('pad.length');
+    const lastBar = step % (16 * barLen) >= 16 * (barLen - 1);
+    const nextDeg = lastBar && prog && prog.length ? prog[((seq.progIdx || 0) + 1) % prog.length] : chordDeg;
     // note length: until the next active step in any row
     let len = 1; while (len < N && !g.some((row) => row[(i + len) % N])) len++;
     g.forEach((row, r) => { if (row[i]) AMB.layers.bass.note(noteFor(r, chordDeg, nextDeg), Math.max(time, time + AMB.util.human().dt * 0.5), len * sd); });

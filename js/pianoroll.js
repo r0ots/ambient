@@ -35,6 +35,7 @@
   const chainList = () => String(store.get('seq.chain') || '').toUpperCase().split(/[^ABCD]+|(?=[ABCD])/).filter((x) => SLOTKEY[x]);
   // which slot plays during the pattern cycle that contains `step`
   let latched = null;
+  const resetLatch = () => { latched = null; };
   function slotAt(step) {
     const chain = chainList();
     if (!chain.length) return store.get('seq.slot');
@@ -339,6 +340,7 @@
       else if (a === 'up' || a === 'down') notes = notes.map((x) => ({ ...x, r: x.r + (a === 'up' ? 1 : -1) })).filter((x) => x.r >= 0 && x.r < ROWS);
       else if (a === 'capture') return capture(btn);
       else if (a === 'liverec') {
+        if (this.recording) return this.stopRecording();
         this.recording = !this.recording;
         btn.classList.toggle('rec', this.recording);
         btn.textContent = this.recording ? '■ Stop rec' : '● Rec live';
@@ -348,7 +350,7 @@
           if (store.get('seq.mode') !== 'Piano roll') store.set('seq.mode', 'Piano roll', 'user');
           if (!AMB.seq.playing) AMB.ui.play();
           AMB.ui.toast('Rec live : joue avec les touches A–L / Q–P ou ton clavier MIDI');
-        } else AMB.ui.toast(`${this.recCount || 0} note(s) enregistrée(s)`);
+        }
         return;
       }
       else if (a === 'midi') { if (AMB.midiExport) AMB.midiExport.exportMidi(); return; }
@@ -434,6 +436,12 @@
       }
       this.lastDrawn = this.playStep;
     },
+    stopRecording() {
+      this.recording = false;
+      const btn = document.querySelector('[data-act=liverec]');
+      if (btn) { btn.classList.remove('rec'); btn.textContent = '● Rec live'; }
+      AMB.ui.toast(`${this.recCount || 0} note(s) enregistrée(s)`);
+    },
     updateBox() {
       const b = this.box, sa = Math.min(b.s0, b.s1), sb = Math.max(b.s0, b.s1), ra = Math.min(b.r0, b.r1), rb = Math.max(b.r0, b.r1);
       this.setSel(this.notes().filter((n) => n.r >= ra && n.r <= rb && n.s + n.l - 1 >= sa && n.s <= sb));
@@ -493,5 +501,5 @@
     }, ms);
   }
 
-  AMB.pianoRoll = { roll, rowForMidi, parse, encode, onStep, arpStep, randomPattern, mutate, slotAt, chainList, SLOTKEY, ROWS };
+  AMB.pianoRoll = { roll, resetLatch, rowForMidi, parse, encode, onStep, arpStep, randomPattern, mutate, slotAt, chainList, SLOTKEY, ROWS };
 })();

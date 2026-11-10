@@ -24,7 +24,7 @@
       for (const key of Object.keys(this.A)) {
         if (SKIP.has(key)) continue;
         const sp = store.spec(key);
-        if (!sp || !(key in this.B)) continue;
+        if (!sp || !(key in this.B) || AMB.isAutomated(key)) continue;
         const a = this.A[key], b = this.B[key];
         if (!sp.type || sp.type === 'knob') out[key] = a + (b - a) * x;
         else out[key] = x < 0.5 ? a : b;

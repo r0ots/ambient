@@ -50,12 +50,14 @@
 
     // chords (channel 0)
     const ch = [];
+    const savedUpper = seq.lastUpper; // chordMidis voice-leads from the previous chord: restore after export
+    seq.lastUpper = null;
     for (let s = 0; s < totalSteps; s += 16 * barLen) {
-      const savedUpper = seq.lastUpper; // chordMidis voice-leads from the previous chord: keep it local
       const midis = seq.chordMidis(chordAt(s));
-      seq.lastUpper = savedUpper;
       for (const m of midis) note(ch, 0, s * STEP, 16 * barLen * STEP - 4, m, 70);
     }
+
+    seq.lastUpper = savedUpper;
 
     // piano roll chain (channel 1)
     const pr = [];
@@ -63,6 +65,7 @@
     for (let s0 = 0, k = 0; s0 < totalSteps; s0 += steps, k++) {
       const notes = PR.parse(store.get(PR.SLOTKEY[chain[k % chain.length]]));
       for (const n of notes) {
+        if (n.s >= steps) continue; // beyond the current motif length: not played
         const s = s0 + n.s; if (s >= totalSteps) continue;
         const deg = n.r + (follow ? chordAt(s) : 0);
         note(pr, 1, s * STEP, n.l * STEP - 2, T.degreeToMidi(deg, seq.root, seq.scale, 3 + oct), 40 + n.v * 9);
@@ -75,7 +78,7 @@
     for (let s = 0; s < totalSteps; s++) grid.forEach((row, t) => { const lvl = row[s % row.length]; if (lvl) note(dr, 9, s * STEP, STEP - 2, DRUM[t], [0, 50, 85, 115][lvl] || 85); });
 
     const tracks = [track('Ambient', meta), track('Accords (Pad)', ch)];
-    if (pr.length) tracks.push(track('Séquenceur', pr));
+    if (pr.length && store.get('seq.on') && store.get('seq.mode') !== 'Arpège') tracks.push(track('Séquenceur', pr));
     if (dr.length && store.get('perc.on')) tracks.push(track('Pulsations', dr));
     const header = [...str('MThd'), ...u32(6), 0, 1, 0, tracks.length, (PPQ >> 8) & 255, PPQ & 255];
     return { bytes: new Uint8Array([...header, ...tracks.flat()]), bars, tracks: tracks.length };
@@ -118,7 +121,8 @@
     const notes = tracks.sort((a, b) => b.length - a.length)[0] || [];
     if (!notes.length) { AMB.ui.toast('Aucune note trouvée dans ce fichier'); return 0; }
     const q = ppq / 4;
-    const t0 = Math.floor(notes[0].tick / q / 16) * 16 * q; // start at the bar of the first note
+    notes.sort((a, b) => a.tick - b.tick);
+    const t0 = Math.floor(notes[0].tick / q / 16) * 16 * q; // start at the bar of the earliest note-on
     const lastStep = Math.max(...notes.map((n) => Math.round((n.tick - t0) / q)));
     const len = lastStep < 16 ? 16 : lastStep < 32 ? 32 : 64;
     // map pitches to scale degrees; pick the octave so the lowest note lands on the bottom rows
