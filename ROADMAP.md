@@ -56,6 +56,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] v0.41 : export MIDI (.mid type 1, 96 ppq) — tempo/tonalité, piste Accords (voicings du Pad), piste Séquenceur (chaîne A–D, suit les accords, vélocités), piste Pulsations (canal batterie GM) ; longueur = multiple commun des cycles (≤ 64 mesures).
 - [x] v0.42 : arpégiateur du Séquenceur (Jeu : Piano roll / Arpège) — monte, descend, aller-retour, aléatoire sur les notes de l'accord courant, 1/16 à 1/4, étendue 1–3 octaves, accents de temps, swing.
 - [x] v0.43 : piste d'Automation — courbe dessinée à la souris (32 points) sur 4–32 mesures pour n'importe quel paramètre continu, formes Montée/Descente/Vague/Hasard/Plat, tête de lecture, valeur utilisateur restaurée à l'arrêt.
+- [x] v0.44 : import MIDI dans le motif édité (piste la plus fournie hors batterie, quantification 1/16 et sur la gamme, longueur 1/2/4 mesures auto, octave ajustée, vélocités conservées, suit-accords coupé).
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
@@ -70,5 +71,4 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
-- [ ] Import MIDI : charger un .mid dans le piano roll (quantifié sur la gamme)
 Demande utilisateur (10/11) : « rajoute des trucs genre piano roll, sequencer etc. » → priorité aux outils de composition.

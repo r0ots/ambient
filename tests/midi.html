@@ -31,6 +31,11 @@ window.addEventListener('load', async ()=>{
   let p=14, counts=[];
   while(p<b.length){ const len=(b[p+4]<<24)|(b[p+5]<<16)|(b[p+6]<<8)|b[p+7]; const data=b.slice(p+8,p+8+len); let c=0; for(let i=0;i<data.length-2;i++) if((data[i]&0xf0)===0x90 && data[i+2]>0 && data[i+1]<128) c++; counts.push(c); p+=8+len; }
   log(`midi ${hdr} tracks=${ntr} ppq=${ppq} bars=${r.bars} bytes=${b.length} noteOns~=${counts.join('/')} endOk=${p===b.length}`);
+  // round-trip: import the file we just built into slot B
+  st.set('seq.slot','B');
+  const n=await AMB.midiExport.importMidi(new File([b],'x.mid'));
+  const imported=AMB.pianoRoll.parse(st.get('seq.patB'));
+  log('import count='+n+' steps='+st.get('seq.steps')+' first='+JSON.stringify(imported[0])+' follow='+st.get('seq.follow'));
   log('DONE');
   }catch(e){log('EXC '+e.stack)}
 });

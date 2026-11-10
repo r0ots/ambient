@@ -81,11 +81,80 @@
     return { bytes: new Uint8Array([...header, ...tracks.flat()]), bars, tracks: tracks.length };
   }
 
+  // ---------- import: Standard MIDI File -> piano-roll notes (quantised to 16ths and to the scale) ----------
+  function parseSmf(buf) {
+    const d = new DataView(buf); let p = 0;
+    const rd = (n) => { let v = 0; for (let i = 0; i < n; i++) v = (v << 8) | d.getUint8(p++); return v >>> 0; };
+    const vl = () => { let v = 0, b; do { b = d.getUint8(p++); v = (v << 7) | (b & 0x7f); } while (b & 0x80); return v; };
+    const tag = () => String.fromCharCode(rd(1), rd(1), rd(1), rd(1));
+    if (tag() !== 'MThd') throw new Error('not a MIDI file');
+    const hl = rd(4); rd(2); const ntr = rd(2); const ppq = rd(2); p += hl - 6;
+    const tracks = [];
+    for (let t = 0; t < ntr && p < d.byteLength; t++) {
+      if (tag() !== 'MTrk') break;
+      const len = rd(4), end = p + len; let tick = 0, run = 0; const on = {}, notes = [];
+      while (p < end) {
+        tick += vl();
+        let st = d.getUint8(p);
+        if (st & 0x80) p++; else st = run;
+        if (st === 0xff) { p++; const l = vl(); p += l; continue; }
+        if (st === 0xf0 || st === 0xf7) { const l = vl(); p += l; continue; }
+        run = st;
+        const type = st & 0xf0, ch = st & 15;
+        const a = d.getUint8(p++), b = type === 0xc0 || type === 0xd0 ? 0 : d.getUint8(p++);
+        if (ch === 9) continue; // ignore drums
+        if (type === 0x90 && b > 0) on[a] = { tick, vel: b };
+        else if ((type === 0x80 || (type === 0x90 && b === 0)) && on[a]) { notes.push({ tick: on[a].tick, dur: tick - on[a].tick, midi: a, vel: on[a].vel }); delete on[a]; }
+      }
+      p = end;
+      tracks.push(notes);
+    }
+    return { ppq, tracks };
+  }
+
+  async function importMidi(file) {
+    const PR = AMB.pianoRoll, seq = AMB.seq;
+    const { ppq, tracks } = parseSmf(await file.arrayBuffer());
+    const notes = tracks.sort((a, b) => b.length - a.length)[0] || [];
+    if (!notes.length) { AMB.ui.toast('Aucune note trouvée dans ce fichier'); return 0; }
+    const q = ppq / 4;
+    const t0 = Math.floor(notes[0].tick / q / 16) * 16 * q; // start at the bar of the first note
+    const lastStep = Math.max(...notes.map((n) => Math.round((n.tick - t0) / q)));
+    const len = lastStep < 16 ? 16 : lastStep < 32 ? 32 : 64;
+    // map pitches to scale degrees; pick the octave so the lowest note lands on the bottom rows
+    const minMidi = Math.min(...notes.map((n) => n.midi));
+    const oct = Math.max(1, Math.min(6, Math.floor(minMidi / 12) - 1));
+    const rowOf = (m) => {
+      let best = 0, bd = 99;
+      for (let r = 0; r < PR.ROWS; r++) {
+        const dm = Math.abs(T.degreeToMidi(r, seq.root, seq.scale, oct) - m);
+        if (dm < bd) { bd = dm; best = r; }
+      }
+      return best;
+    };
+    const out = []; let cut = 0;
+    for (const n of notes) {
+      const s = Math.round((n.tick - t0) / q);
+      if (s < 0 || s >= len) { cut++; continue; }
+      const r = rowOf(n.midi);
+      if (out.some((x) => x.s === s && x.r === r)) continue;
+      out.push({ s, r, l: Math.max(1, Math.min(len - s, Math.round(n.dur / q))), v: Math.max(1, Math.min(9, Math.round(n.vel / 14))), p: 10 });
+    }
+    store.set('seq.steps', String(len), 'user');
+    store.set('seq.octave', String(Math.max(-1, Math.min(1, oct - 3))), 'user');
+    store.set('seq.follow', false, 'user'); // play as written
+    store.set('seq.mode', 'Piano roll', 'user');
+    PR.roll.save(out);
+    store.set('seq.on', true, 'user');
+    AMB.ui.toast(`${out.length} notes importées (quantifiées sur la gamme)` + (cut ? ` · seules les 4 premières mesures sont gardées` : ''));
+    return out.length;
+  }
+
   function exportMidi() {
     const { bytes, bars } = build();
     AMB.rec.download(new Blob([bytes], { type: 'audio/midi' }), 'mid');
     AMB.ui.toast(`MIDI exporté · ${bars} mesures`);
   }
 
-  AMB.midiExport = { build, exportMidi };
+  AMB.midiExport = { build, exportMidi, parseSmf, importMidi };
 })();

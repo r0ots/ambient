@@ -125,6 +125,7 @@
           <button class="btn small" data-act="shiftR" title="Décaler à droite">▶</button>
           <button class="btn small" data-act="up" title="Monter d'un degré">▲</button>
           <button class="btn small" data-act="down" title="Descendre d'un degré">▼</button>
+          <label class="btn small" title="Importer un fichier .mid dans ce motif (quantifié sur la gamme)">⬆ MIDI<input type="file" accept=".mid,.midi,audio/midi" hidden data-midi-in></label>
           <button class="btn small" data-act="midi" title="Exporter progression + motifs + pulsations en fichier MIDI">⬇ MIDI</button>
           <button class="btn small" data-act="restore" title="Revenir au dernier motif dessiné (annule les mutations)">↺ Original</button>
           <span class="roll-hint">Clic : ajouter/retirer · glisser : longueur · molette : vélocité · clic droit : probabilité · Maj+clic : colonne</span>
@@ -134,6 +135,12 @@
       this.canvas = wrap.querySelector('canvas');
       this.g = this.canvas.getContext('2d');
       wrap.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => this.act(b.dataset.act, b)));
+      const mi = wrap.querySelector('[data-midi-in]');
+      mi.addEventListener('change', async () => {
+        if (!mi.files[0] || !AMB.midiExport) return;
+        try { await AMB.midiExport.importMidi(mi.files[0]); } catch (e) { AMB.ui.toast('Fichier MIDI illisible'); console.warn(e); }
+        mi.value = '';
+      });
       this.tabs = [...wrap.querySelectorAll('[data-slot]')];
       this.tabs.forEach((b) => b.addEventListener('click', () => store.set('seq.slot', b.dataset.slot, 'user')));
       this.bindMouse();
