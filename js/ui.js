@@ -312,6 +312,7 @@
     bind('#renamePatch', 'click', renamePatch);
     bind('#deletePatch', 'click', deletePatch);
     bind('#exportPatches', 'click', exportPatches);
+    bind('#exportMidi', 'click', () => AMB.midiExport && AMB.midiExport.exportMidi());
     bind('#importFile', 'change', (e) => { if (e.target.files[0]) importPatches(e.target.files[0]); e.target.value = ''; });
     bind('#preset', 'change', updatePatchButtons);
     updatePatchButtons();

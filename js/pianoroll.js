@@ -98,6 +98,7 @@
           <button class="btn small" data-act="shiftR" title="Décaler à droite">▶</button>
           <button class="btn small" data-act="up" title="Monter d'un degré">▲</button>
           <button class="btn small" data-act="down" title="Descendre d'un degré">▼</button>
+          <button class="btn small" data-act="midi" title="Exporter progression + motifs + pulsations en fichier MIDI">⬇ MIDI</button>
           <button class="btn small" data-act="restore" title="Revenir au dernier motif dessiné (annule les mutations)">↺ Original</button>
           <span class="roll-hint">Clic : ajouter/retirer · glisser : longueur · molette : vélocité · clic droit : probabilité · Maj+clic : colonne</span>
         </div>
@@ -193,6 +194,7 @@
       else if (a === 'shiftL' || a === 'shiftR') notes.forEach((x) => { x.s = (x.s + (a === 'shiftR' ? 1 : n - 1)) % n; });
       else if (a === 'up' || a === 'down') notes = notes.map((x) => ({ ...x, r: x.r + (a === 'up' ? 1 : -1) })).filter((x) => x.r >= 0 && x.r < ROWS);
       else if (a === 'capture') return capture(btn);
+      else if (a === 'midi') { if (AMB.midiExport) AMB.midiExport.exportMidi(); return; }
       else if (a === 'restore') { if (original[editKey()] != null) notes = parse(original[editKey()]); }
       else if (a === 'dup') { // copy the edited slot into the next empty one and switch to it
         const free = ['A', 'B', 'C', 'D'].find((x) => !parse(store.get(SLOTKEY[x])).length);

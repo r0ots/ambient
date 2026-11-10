@@ -53,6 +53,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] v0.38 : piano roll — vélocité par note (molette, opacité), probabilité 100/70/50/20 % (clic droit, contour pointillé), Mutation (le motif dérive à chaque tour, hors annulation) + « ↺ Original ».
 - [x] v0.39 : panneau Progression — 8 cases d'accords diatoniques (chiffrage + nom réel selon tonalité/gamme), palette I–VII, case en cours surlignée, « Suggérer » (marche fonctionnelle), écrit pad.custom/Perso.
 - [x] v0.40 : piano roll à 4 motifs A–D (onglets, ⧉ Dupliquer vers l'emplacement libre) + « Chaîne » (ex. « A A B C ») jouée en boucle ; onglet en cours de lecture surligné ; mutation par motif.
+- [x] v0.41 : export MIDI (.mid type 1, 96 ppq) — tempo/tonalité, piste Accords (voicings du Pad), piste Séquenceur (chaîne A–D, suit les accords, vélocités), piste Pulsations (canal batterie GM) ; longueur = multiple commun des cycles (≤ 64 mesures).
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
@@ -67,5 +68,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
+- [ ] Import MIDI : charger un .mid dans le piano roll (quantifié sur la gamme)
+- [ ] Arpégiateur pour le Séquenceur (monte/descend/aléatoire sur l'accord courant, vitesse 1/8–1/16)
+- [ ] Automation simple : dessiner une courbe sur 8 mesures pour un paramètre (comme un LFO dessiné)
 Demande utilisateur (10/11) : « rajoute des trucs genre piano roll, sequencer etc. » → priorité aux outils de composition.
-- [ ] Export MIDI (.mid) du motif et de la progression
