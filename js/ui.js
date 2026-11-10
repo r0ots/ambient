@@ -255,6 +255,7 @@
       seqRow.append(sp);
       AMB.pianoRoll.roll.build(sp);
     }
+    if (seqRow && AMB.chords) AMB.chords.build(seqRow);
     if (seqRow && AMB.pulses) {
       const pp = section('perc');
       seqRow.append(pp);

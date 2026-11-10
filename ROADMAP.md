@@ -51,6 +51,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] v0.36 : Séquenceur piano roll — voix dédiée (5 moteurs dont « Doux » tenu), grille 1/2/4 mesures en degrés de la gamme (toujours juste), suit les accords, swing, octave ; clic/glisser pour dessiner, décalages, motif aléatoire, « Capturer la mélodie » ; motif stocké dans le patch (presets, liens, scènes, ⌘Z).
 - [x] v0.37 : « Pulsations » — séquenceur rythmique 4 pistes × 16 pas (feutre, shaker, bois, clochette sur notes de l'accord), Présence (probabilité), swing, générateur euclidien, Aérer ; dispersé en temps Flottant ; le générateur l'active parfois (Nocturne/Lumineux/Aquatique).
 - [x] v0.38 : piano roll — vélocité par note (molette, opacité), probabilité 100/70/50/20 % (clic droit, contour pointillé), Mutation (le motif dérive à chaque tour, hors annulation) + « ↺ Original ».
+- [x] v0.39 : panneau Progression — 8 cases d'accords diatoniques (chiffrage + nom réel selon tonalité/gamme), palette I–VII, case en cours surlignée, « Suggérer » (marche fonctionnelle), écrit pad.custom/Perso.
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
@@ -67,5 +68,4 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 ## À faire (priorité décroissante)
 Demande utilisateur (10/11) : « rajoute des trucs genre piano roll, sequencer etc. » → priorité aux outils de composition.
 - [ ] Chaîne de motifs A/B/C/D dans le piano roll (enchaînement automatique)
-- [ ] Piano roll d'accords : dessiner la progression du Pad sur une timeline (remplace « Perso »)
 - [ ] Export MIDI (.mid) du motif et de la progression

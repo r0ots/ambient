@@ -178,6 +178,18 @@ canvas.roll { display: block; cursor: pointer; touch-action: none; }
 .pulse-cell.now { outline: 1px solid #ffffffaa; }
 .pulse-cell.on.now { filter: brightness(1.35); }
 
+.chords-mode { font-size: 11px; color: var(--muted); }
+.chord-slots { display: grid; grid-template-columns: repeat(8, minmax(70px, 1fr)); gap: 6px; }
+.chord-slot { background: #171a25; border: 1px solid #2a2f45; border-radius: 10px; padding: 8px 4px; color: var(--text); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; font: inherit; }
+.chord-slot b { font-size: 15px; color: var(--c); }
+.chord-slot span { font-size: 11px; color: var(--muted); min-height: 14px; }
+.chord-slot.empty b { color: #3d4363; }
+.chord-slot.sel { border-color: var(--c); box-shadow: 0 0 0 1px var(--c) inset; }
+.chord-slot.now { background: color-mix(in srgb, var(--c) 25%, #171a25); }
+.chord-palette { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+.chord-chip b { color: var(--c); margin-right: 3px; }
+@media (max-width: 760px) { .chord-slots { grid-template-columns: repeat(4, 1fr); } }
+
 footer { text-align: center; font-size: 11px; color: #4c5272; padding: 20px 0 8px; }
 
 @media (max-width: 760px) {
