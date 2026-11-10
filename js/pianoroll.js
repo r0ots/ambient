@@ -34,6 +34,7 @@
   const editKey = () => SLOTKEY[store.get('seq.slot')] || 'seq.pattern';
   const chainList = () => String(store.get('seq.chain') || '').toUpperCase().split(/[^ABCD]+|(?=[ABCD])/).filter((x) => SLOTKEY[x]);
   // which slot plays during the pattern cycle that contains `step`
+  let latched = null;
   function slotAt(step) {
     const chain = chainList();
     if (!chain.length) return store.get('seq.slot');
@@ -71,7 +72,9 @@
     if (!store.get('seq.on')) return;
     if (store.get('seq.mode') === 'Arpège') { roll.playStep = -1; return arpStep(step, time, sd, chordDeg); }
     const len = steps(), i = step % len;
-    const slot = slotAt(step), key = SLOTKEY[slot];
+    // slot changes are quantised: the new motif starts at the next pattern boundary (like clip launching)
+    if (i === 0 || latched == null) latched = slotAt(step);
+    const slot = latched, key = SLOTKEY[slot];
     if (i === 0 && step > 0 && store.get('seq.mutate') > 0) mutate(store.get('seq.mutate'), key);
     roll.playSlot = slot;
     const notes = parse(store.get(key));
@@ -249,6 +252,8 @@
         b.classList.toggle('sel', store.get('seq.slot') === x);
         b.classList.toggle('filled', parse(store.get(SLOTKEY[x])).length > 0);
         b.classList.toggle('now', playing === x);
+        // edited slot waiting for the next bar to start playing
+        b.classList.toggle('queued', !!playing && !chainList().length && store.get('seq.slot') === x && playing !== x);
       }
     },
     draw() {

@@ -194,6 +194,8 @@ canvas.roll { display: block; cursor: pointer; touch-action: none; }
 .slot-tab { width: 28px; height: 26px; border-radius: 7px; border: 1px dashed #3c4262; background: transparent; color: var(--muted); font: inherit; font-weight: 700; cursor: pointer; }
 .slot-tab.filled { border-style: solid; color: var(--text); }
 .slot-tab.sel { border-color: var(--c); color: var(--c); box-shadow: 0 0 0 1px var(--c) inset; }
+.slot-tab.queued { animation: blink .5s steps(2) infinite; }
+@keyframes blink { 50% { opacity: .35; } }
 .slot-tab.now { background: color-mix(in srgb, var(--c) 25%, transparent); }
 
 canvas.auto-lane { display: block; width: 100%; border-radius: 8px; border: 1px solid var(--line); cursor: crosshair; touch-action: none; }
