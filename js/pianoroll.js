@@ -131,7 +131,7 @@
           <label class="btn small" title="Importer un fichier .mid dans ce motif (quantifié sur la gamme)">⬆ MIDI<input type="file" accept=".mid,.midi,audio/midi" hidden data-midi-in></label>
           <button class="btn small" data-act="midi" title="Exporter progression + motifs + pulsations en fichier MIDI">⬇ MIDI</button>
           <button class="btn small" data-act="restore" title="Revenir au dernier motif dessiné (annule les mutations)">↺ Original</button>
-          <span class="roll-hint">Clic : ajouter/retirer · glisser : longueur · molette : vélocité · clic droit : probabilité · Maj+clic : colonne</span>
+          <span class="roll-hint">Clic : ajouter/retirer · glisser : longueur · molette : vélocité · clic droit : probabilité · Alt+glisser : sélection (⌘C ⌘V ⌘D, flèches, Suppr)</span>
         </div>
         <div class="roll-scroll"><canvas class="roll"></canvas></div>`;
       panel.append(wrap);
@@ -168,11 +168,72 @@
       if (x < 0) return null;
       return { s: Math.min(G.n - 1, Math.floor(x / G.cw)), r: ROWS - 1 - Math.min(ROWS - 1, Math.floor(y / G.rowH)) };
     },
+    // ---- selection (Alt+drag rectangle, ⌘A) with copy/paste/delete/transpose from the keyboard ----
+    sel: new Set(), clip: null, box: null, cursor: 0,
+    keyOf: (n) => `${n.s}.${n.r}`,
+    selected() { return this.notes().filter((n) => this.sel.has(this.keyOf(n))); },
+    setSel(notes) { this.sel = new Set(notes.map(this.keyOf)); this.draw(); },
+    transformSel(fn) {
+      const notes = this.notes(), out = [], moved = [];
+      for (const n of notes) {
+        if (!this.sel.has(this.keyOf(n))) { out.push(n); continue; }
+        const m = fn({ ...n });
+        if (m && m.r >= 0 && m.r < ROWS && m.s >= 0 && m.s < steps()) { out.push(m); moved.push(m); }
+      }
+      // drop unselected notes that now collide with moved ones
+      const keys = new Set(moved.map(this.keyOf));
+      const final = out.filter((n) => moved.includes(n) || !keys.has(this.keyOf(n)));
+      this.save(final); this.setSel(moved);
+    },
+    onKey(e) {
+      const mod = e.metaKey || e.ctrlKey, k = e.key;
+      const sel = this.selected(), len = steps();
+      const handled = () => { e.preventDefault(); e.stopPropagation(); };
+      if (mod && k.toLowerCase() === 'a') { handled(); this.setSel(this.notes()); }
+      else if (mod && k.toLowerCase() === 'c' && sel.length) { handled(); this.copySel(); }
+      else if (mod && k.toLowerCase() === 'x' && sel.length) { handled(); this.copySel(); this.transformSel(() => null); }
+      else if (mod && k.toLowerCase() === 'v' && this.clip) { handled(); this.paste(this.cursor); }
+      else if (mod && k.toLowerCase() === 'd' && sel.length) { handled(); this.copySel(); this.paste(Math.max(...sel.map((n) => n.s + n.l)) % len); }
+      else if ((k === 'Delete' || k === 'Backspace') && sel.length) { handled(); this.transformSel(() => null); }
+      else if (k === 'Escape') { handled(); this.setSel([]); }
+      else if (sel.length && (k === 'ArrowUp' || k === 'ArrowDown')) { handled(); const d = (k === 'ArrowUp' ? 1 : -1) * (e.shiftKey ? 7 : 1); this.transformSel((n) => ({ ...n, r: n.r + d })); }
+      else if (sel.length && (k === 'ArrowLeft' || k === 'ArrowRight')) { handled(); const d = (k === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? 4 : 1); this.transformSel((n) => ({ ...n, s: n.s + d })); }
+    },
+    copySel() {
+      const sel = this.selected(); if (!sel.length) return;
+      const s0 = Math.min(...sel.map((n) => n.s));
+      this.clip = sel.map((n) => ({ ...n, s: n.s - s0 }));
+      AMB.ui.toast(`${sel.length} note(s) copiée(s)`);
+    },
+    paste(at) {
+      const len = steps(), notes = this.notes(), pasted = [];
+      for (const c of this.clip) {
+        const s = at + c.s; if (s >= len) continue;
+        const n = { ...c, s, l: Math.min(c.l, len - s) };
+        const i = notes.findIndex((x) => x.s === n.s && x.r === n.r);
+        if (i >= 0) notes.splice(i, 1);
+        notes.push(n); pasted.push(n);
+      }
+      this.save(notes); this.setSel(pasted);
+    },
+
     bindMouse() {
       let drag = null;
+      this.canvas.tabIndex = 0;
+      this.canvas.setAttribute('aria-label', 'Piano roll : Alt+glisser pour sélectionner, ⌘C/⌘V, flèches pour transposer');
+      this.canvas.addEventListener('keydown', (e) => this.onKey(e));
       this.canvas.addEventListener('pointerdown', (e) => {
         const c = this.cellAt(e); if (!c) return;
+        this.canvas.focus({ preventScroll: true });
+        this.cursor = c.s;
         let notes = this.notes();
+        if (e.altKey) { // rectangle selection
+          this.box = { s0: c.s, r0: c.r, s1: c.s, r1: c.r };
+          try { this.canvas.setPointerCapture(e.pointerId); } catch (_) {}
+          this.updateBox();
+          return;
+        }
+        if (this.sel.size) this.sel = new Set();
         if (e.shiftKey) { // toggle a whole column off (or nothing to remove: no-op)
           this.save(notes.filter((n) => !(c.s >= n.s && c.s < n.s + n.l)));
           return;
@@ -183,10 +244,11 @@
         const note = { s: c.s, r: c.r, l: 1, v: 7, p: 10 };
         notes.push(note); this.save(notes);
         drag = { s: c.s, r: c.r };
-        this.canvas.setPointerCapture(e.pointerId);
+        try { this.canvas.setPointerCapture(e.pointerId); } catch (_) {}
         this.preview(c.r, c.s);
       });
       this.canvas.addEventListener('pointermove', (e) => {
+        if (this.box) { const c = this.cellAt(e); if (c) { this.box.s1 = c.s; this.box.r1 = c.r; this.updateBox(); } return; }
         if (!drag) return;
         const c = this.cellAt(e); if (!c) return;
         const notes = this.notes();
@@ -212,7 +274,7 @@
         notes[i] = { ...n, p: order[(order.indexOf(n.p) + 1) % order.length] || 10 };
         this.save(notes);
       });
-      const end = () => { drag = null; };
+      const end = () => { drag = null; if (this.box) { this.box = null; this.draw(); } };
       this.canvas.addEventListener('pointerup', end);
       this.canvas.addEventListener('pointercancel', end);
     },
@@ -300,13 +362,23 @@
         g.globalAlpha = (store.get('seq.on') && store.get('seq.mode') !== 'Arpège' ? 1 : 0.35) * (0.35 + 0.65 * (nt.v / 9));
         roundRect(g, x, y, w, G.rowH - 4, 3); g.fill();
         g.globalAlpha = 1;
+        if (this.sel.has(this.keyOf(nt))) { g.strokeStyle = '#ffffff'; g.lineWidth = 1.5; roundRect(g, x, y, w, G.rowH - 4, 3); g.stroke(); }
         if (nt.p < 10) { // dashed outline + percentage for probabilistic notes
           g.setLineDash([3, 2]); g.strokeStyle = '#fff8'; g.lineWidth = 1;
           roundRect(g, x + 0.5, y + 0.5, w - 1, G.rowH - 5, 3); g.stroke(); g.setLineDash([]);
           if (w > 22) { g.fillStyle = '#2a0f20'; g.font = '9px system-ui'; g.fillText(nt.p * 10 + '%', x + 3, y + (G.rowH - 4) / 2); }
         }
       }
+      if (this.box) { // selection rectangle
+        const b = this.box, sa = Math.min(b.s0, b.s1), sb = Math.max(b.s0, b.s1), ra = Math.min(b.r0, b.r1), rb = Math.max(b.r0, b.r1);
+        g.strokeStyle = '#ffffffcc'; g.setLineDash([4, 3]); g.lineWidth = 1;
+        g.strokeRect(G.labelW + sa * G.cw, (ROWS - 1 - rb) * G.rowH, (sb - sa + 1) * G.cw, (rb - ra + 1) * G.rowH); g.setLineDash([]);
+      }
       this.lastDrawn = this.playStep;
+    },
+    updateBox() {
+      const b = this.box, sa = Math.min(b.s0, b.s1), sb = Math.max(b.s0, b.s1), ra = Math.min(b.r0, b.r1), rb = Math.max(b.r0, b.r1);
+      this.setSel(this.notes().filter((n) => n.r >= ra && n.r <= rb && n.s + n.l - 1 >= sa && n.s <= sb));
     },
   };
 

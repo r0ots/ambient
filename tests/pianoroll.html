@@ -40,6 +40,18 @@ window.addEventListener('load', async ()=>{
   const before=st.get('seq.pattern'); PR.mutate(1); PR.mutate(1);
   log('mutated '+before+' -> '+st.get('seq.pattern'));
   document.querySelector('[data-act=restore]').click(); log('restored='+(st.get('seq.pattern')===before));
+  // selection + copy/paste/transpose via keyboard
+  st.set('seq.pattern','0.7.2,2.8.2,4.9.2'); st.set('seq.slot','A');
+  const R=PR.roll; R.setSel(R.notes());
+  const key=(k,o={})=>canvas.dispatchEvent(new KeyboardEvent('keydown',{key:k,bubbles:true,cancelable:true,...o}));
+  key('ArrowUp'); log('transposed='+st.get('seq.pattern'));
+  key('c',{metaKey:true}); R.cursor=8; key('v',{metaKey:true}); log('pasted='+PR.parse(st.get('seq.pattern')).length+' sel='+R.sel.size);
+  key('Delete'); log('after delete='+st.get('seq.pattern'));
+  // alt-drag rectangle select
+  canvas.dispatchEvent(new PointerEvent('pointerdown',{clientX:r.left+G.labelW+1,clientY:r.top+1,altKey:true,pointerId:2,bubbles:true}));
+  canvas.dispatchEvent(new PointerEvent('pointermove',{clientX:r.left+G.labelW+G.cw*3.5,clientY:r.bottom-2,pointerId:2,bubbles:true}));
+  log('rect sel='+R.sel.size); canvas.dispatchEvent(new PointerEvent('pointerup',{pointerId:2,bubbles:true}));
+  st.set('seq.pattern','0.7.4.8.7');
   // chain: A has the drawn note, duplicate to B, edit B, chain "A B B"
   document.querySelector('[data-act=dup]').click();
   log('after dup slot='+st.get('seq.slot')+' B='+st.get('seq.patB'));
