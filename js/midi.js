@@ -72,7 +72,7 @@
     // Pulsations on the GM drum channel (9): kick, maracas, hi wood block, triangle
     const dr = [], DRUM = [36, 70, 76, 81];
     const grid = PU.parse(store.get('perc.pattern'));
-    for (let s = 0; s < totalSteps; s++) grid.forEach((row, t) => { if (row[s % 16]) note(dr, 9, s * STEP, STEP - 2, DRUM[t], s % 4 === 0 ? 100 : 75); });
+    for (let s = 0; s < totalSteps; s++) grid.forEach((row, t) => { const lvl = row[s % row.length]; if (lvl) note(dr, 9, s * STEP, STEP - 2, DRUM[t], [0, 50, 85, 115][lvl] || 85); });
 
     const tracks = [track('Ambient', meta), track('Accords (Pad)', ch)];
     if (pr.length) tracks.push(track('Séquenceur', pr));

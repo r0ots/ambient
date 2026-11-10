@@ -60,6 +60,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - [x] v0.45 : lancement de motif quantifié — changer d'onglet A–D pendant la lecture démarre le nouveau motif au prochain tour (onglet clignotant en attente).
 - [x] v0.46 : mode Morceau — sections (instantané complet du son) de 4 à 64 mesures, renommables/réordonnables, lecture enchaînée avec fondu de 2 mesures des réglages continus, barre de progression, boucle, durée totale ; inclus dans l'export/import.
 - [x] v0.47 : piano roll — sélection (Alt+glisser, ⌘A), ⌘C/⌘X/⌘V (au dernier pas cliqué), ⌘D dupliquer à la suite, Suppr, flèches ↑↓ transposer (Maj = octave), ←→ décaler (Maj = temps) ; notes sélectionnées cerclées de blanc.
+- [x] v0.48 : Pulsations — intensité par pas (doux / normal / accent via clic droit ou molette), 16 ou 32 pas (⧉ Doubler), kit Organique (tambour, bâton de pluie, goutte, kalimba) ; ancien format de motif relu automatiquement ; export MIDI avec vélocités.
 
 ## Notes techniques
 - L'extension Chrome n'est pas connectée : tester avec `tests/run.sh` (Chrome headless + serveur python qui logge `/__log?...`).
@@ -74,5 +75,4 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 - Scripts classiques (pas de modules ES) pour que `index.html` marche aussi en file://.
 
 ## À faire (priorité décroissante)
-- [ ] Pulsations : vélocité par pas (clic long / molette), 32 pas, 2 kits (Feutré / Organique)
 Demande utilisateur (10/11) : « rajoute des trucs genre piano roll, sequencer etc. » → priorité aux outils de composition.

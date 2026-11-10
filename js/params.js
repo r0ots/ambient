@@ -119,8 +119,10 @@
         tone: { label: 'Couleur', min: 0, max: 1, def: 0.4 },
         swing: { label: 'Swing', min: 0, max: 1, def: 0.15 },
         send: { label: 'Envoi FX', min: 0, max: 1, def: 0.35 },
-        // 4 tracks × 16 steps as hex bitmasks: "kick.shaker.wood.bell"
-        pattern: { label: 'Motif', type: 'text', def: '8888.2222.0820.0001', maxLen: 40, hidden: true },
+        kit: { label: 'Kit', type: 'select', options: ['Feutré', 'Organique'], def: 'Feutré' },
+        steps: { label: 'Pas', type: 'select', options: ['16', '32'], def: '16' },
+        // 4 tracks "kick.shaker.wood.bell"; each a string of levels 0–3 per step (legacy: 4-char hex bitmask)
+        pattern: { label: 'Motif', type: 'text', def: '8888.2222.0820.0001', maxLen: 200, hidden: true },
       },
     },
     grains: {

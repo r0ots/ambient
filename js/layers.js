@@ -317,6 +317,47 @@
   // Step-sequencer voice: same synth family as the melody, own channel and settings
   class SeqVoice extends Bells { constructor() { super('seq'); } }
 
+  // Organic kit: hand drum, rain stick, water drop, kalimba
+  function hitOrganic(track, time, vel) {
+    const ctx = this.ctx, tone = P('perc', 'tone');
+    const env = ctx.createGain(); env.gain.value = 0;
+    const pan = ctx.createStereoPanner(); env.connect(pan); pan.connect(this.bus);
+    const nodes = []; let stopAt;
+    if (track === 0) { // hand drum: two damped sines, skin-like
+      [[1, 1], [1.6, 0.35]].forEach(([r, gn]) => {
+        const o = ctx.createOscillator(); o.frequency.setValueAtTime((90 + tone * 50) * r, time);
+        o.frequency.exponentialRampToValueAtTime((70 + tone * 40) * r, time + 0.25);
+        const g = ctx.createGain(); g.gain.value = gn; o.connect(g); g.connect(env); nodes.push(o);
+      });
+      env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(0.8 * vel, time + 0.005);
+      env.gain.setTargetAtTime(0, time + 0.006, 0.2); stopAt = time + 1.2;
+    } else if (track === 1) { // rain stick: long low-passed noise with a slow swell
+      const src = ctx.createBufferSource(); src.buffer = this.noise;
+      const lp = ctx.createBiquadFilter(); lp.type = 'bandpass'; lp.frequency.value = 2500 + tone * 3000; lp.Q.value = 0.8;
+      src.connect(lp); lp.connect(env); nodes.push(src);
+      env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(0.18 * vel, time + 0.12);
+      env.gain.setTargetAtTime(0, time + 0.15, 0.18); pan.pan.value = (Math.random() - 0.5) * 0.8; stopAt = time + 1;
+    } else if (track === 2) { // water drop: fast upward sine chirp
+      const o = ctx.createOscillator(); const f = 500 + tone * 900 + Math.random() * 300;
+      o.frequency.setValueAtTime(f, time); o.frequency.exponentialRampToValueAtTime(f * 2.2, time + 0.06);
+      o.connect(env); nodes.push(o);
+      env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(0.35 * vel, time + 0.003);
+      env.gain.setTargetAtTime(0, time + 0.004, 0.03); pan.pan.value = (Math.random() - 0.5) * 1.2; stopAt = time + 0.4;
+    } else { // kalimba on a chord tone
+      const chord = (AMB.seq && AMB.seq.chord && AMB.seq.chord.length) ? AMB.seq.chord : [62];
+      const f = mtof(chord[Math.floor(Math.random() * chord.length)] + 12);
+      const o = ctx.createOscillator(); o.frequency.value = f;
+      const m = ctx.createOscillator(); m.frequency.value = f * 4;
+      const mg = ctx.createGain(); mg.gain.setValueAtTime(f * (0.4 + tone), time); mg.gain.setTargetAtTime(0, time, 0.05);
+      m.connect(mg); mg.connect(o.frequency); o.connect(env); nodes.push(o, m);
+      env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(0.3 * vel, time + 0.003);
+      env.gain.setTargetAtTime(0, time + 0.004, 0.25); pan.pan.value = 0.35; stopAt = time + 1.6;
+    }
+    nodes.forEach((n) => { n.start(time); n.stop(stopAt); });
+    nodes[0].onended = () => { env.disconnect(); pan.disconnect(); };
+    AMB.bus.emit('perc', { track, time, vel });
+  }
+
   // ===================== PULSATIONS (soft percussion) =====================
   class Perc extends Layer {
     constructor() {
@@ -327,6 +368,7 @@
     }
     // track: 0 kick feutré, 1 shaker, 2 bois, 3 clochette
     hit(track, time, vel = 0.8) {
+      if (P('perc', 'kit') === 'Organique') return this.hitOrganic(track, time, vel);
       const ctx = this.ctx, tone = P('perc', 'tone');
       const env = ctx.createGain(); env.gain.value = 0;
       const pan = ctx.createStereoPanner();
@@ -372,6 +414,7 @@
   }
 
   // ===================== GRAINS =====================
+  // (Perc organic kit is attached below to keep the class definition readable)
   class Grains extends Layer {
     constructor() {
       super('grains');
@@ -678,5 +721,6 @@
     }
   }
 
+  Perc.prototype.hitOrganic = hitOrganic;
   AMB.layers = { Drone, Pad, Bells, SeqVoice, Perc, Grains, Texture };
 })();
