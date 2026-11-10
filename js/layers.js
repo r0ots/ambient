@@ -317,6 +317,35 @@
   // Step-sequencer voice: same synth family as the melody, own channel and settings
   class SeqVoice extends Bells { constructor() { super('seq'); } }
 
+  // ===================== BASS (step-sequenced, follows the chord root) =====================
+  class Bass extends Layer {
+    constructor() {
+      super('bass');
+      this.bus = this.ctx.createGain(); this.bus.gain.value = 0.12; // low end is dense: keep it under the pads
+      this.bus.connect(this.out);
+    }
+    note(midi, time, len) {
+      const ctx = this.ctx, type = P('bass', 'wave'), tone = P('bass', 'tone');
+      const f = mtof(midi);
+      const env = ctx.createGain(); env.gain.value = 0;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.8;
+      lp.frequency.value = 120 + tone * 1400;
+      lp.connect(env); env.connect(this.bus);
+      const nodes = [];
+      const osc = (wave, mult, gain) => { const o = ctx.createOscillator(); o.type = wave; o.frequency.value = f * mult; const g = ctx.createGain(); g.gain.value = gain; o.connect(g); g.connect(lp); nodes.push(o); };
+      if (type === 'Sub') { osc('sine', 1, 1); osc('sine', 2, 0.15); }
+      else if (type === 'Ronde') { osc('triangle', 1, 0.8); osc('sine', 1, 0.6); osc('sawtooth', 1, 0.08 + tone * 0.2); }
+      else { osc('sawtooth', 1, 0.6); lp.frequency.setValueAtTime(200 + tone * 3000, time); lp.frequency.setTargetAtTime(150, time, 0.08); }
+      const hold = Math.max(0.12, len * (0.3 + P('bass', 'decay') * 0.7));
+      env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(0.55, time + 0.012);
+      env.gain.setValueAtTime(0.55, time + hold); env.gain.setTargetAtTime(0, time + hold, 0.08);
+      const stopAt = time + hold + 0.6;
+      nodes.forEach((n) => { n.start(time); n.stop(stopAt); });
+      nodes[0].onended = () => { env.disconnect(); lp.disconnect(); };
+      AMB.bus.emit('note', { layer: 'bass', midi, time, vel: 0.8, dur: hold });
+    }
+  }
+
   // Organic kit: hand drum, rain stick, water drop, kalimba
   function hitOrganic(track, time, vel) {
     const ctx = this.ctx, tone = P('perc', 'tone');
@@ -722,5 +751,5 @@
   }
 
   Perc.prototype.hitOrganic = hitOrganic;
-  AMB.layers = { Drone, Pad, Bells, SeqVoice, Perc, Grains, Texture };
+  AMB.layers = { Drone, Pad, Bells, SeqVoice, Perc, Bass, Grains, Texture };
 })();

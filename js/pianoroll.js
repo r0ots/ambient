@@ -68,7 +68,19 @@
     AMB.layers.seq.note(uniq[idx], time + swing, vel, true, every * sd * 0.9);
   }
 
+  // soft metronome click straight into the dry bus (independent of the Pulsations layer)
+  function click(time, accent) {
+    const E = AMB.engine, ctx = E.ctx;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = accent ? 1760 : 1320;
+    g.gain.setValueAtTime(0, time); g.gain.linearRampToValueAtTime(accent ? 0.22 : 0.12, time + 0.002);
+    g.gain.setTargetAtTime(0, time + 0.003, 0.012);
+    o.connect(g); g.connect(E.dryBus); o.start(time); o.stop(time + 0.08);
+    o.onended = () => g.disconnect();
+  }
+
   function onStep(step, time, sd, chordDeg) {
+    if (roll.recording && roll.metro && step % 4 === 0 && AMB.engine.ctx) click(time, step % 16 === 0);
     if (!store.get('seq.on') || !AMB.layers.seq) return;
     if (store.get('seq.mode') === 'Arpège') { roll.playStep = -1; return arpStep(step, time, sd, chordDeg); }
     const len = steps(), i = step % len;
@@ -139,6 +151,7 @@
   // ---------- editor ----------
   const roll = {
     playStep: -1,
+    metro: true,
     build(panel) {
       const wrap = document.createElement('div');
       wrap.className = 'roll-wrap';
@@ -148,6 +161,7 @@
           <button class="btn small" data-act="dup" title="Copier ce motif dans le prochain emplacement libre">⧉ Dupliquer</button>
           <button class="btn small" data-act="clear" title="Effacer toutes les notes">Effacer</button>
           <button class="btn small" data-act="random" title="Motif aléatoire dans la gamme">⚄ Motif</button>
+          <label class="btn small" title="Clic doux sur les temps pendant l'enregistrement"><input type="checkbox" data-metro checked> Métronome</label>
           <button class="btn small rec-btn" data-act="liverec" title="Enregistre ce que tu joues au clavier (A–L, Q–P) ou en MIDI dans ce motif, quantifié, en boucle (overdub)">● Rec live</button>
           <button class="btn small" data-act="capture" title="Enregistre ce que joue la Mélodie pendant un tour de motif">● Capturer la mélodie</button>
           <button class="btn small" data-act="shiftL" title="Décaler à gauche">◀</button>
@@ -170,6 +184,9 @@
         try { await AMB.midiExport.importMidi(mi.files[0]); } catch (e) { AMB.ui.toast('Fichier MIDI illisible'); console.warn(e); }
         mi.value = '';
       });
+      const metro = wrap.querySelector('[data-metro]');
+      this.metro = metro.checked;
+      metro.addEventListener('change', () => { this.metro = metro.checked; });
       this.tabs = [...wrap.querySelectorAll('[data-slot]')];
       this.tabs.forEach((b) => b.addEventListener('click', () => store.set('seq.slot', b.dataset.slot, 'user')));
       this.bindMouse();

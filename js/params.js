@@ -109,6 +109,21 @@
         chain: { label: 'Chaîne', type: 'text', def: '', placeholder: 'ex. A A B C', maxLen: 64 },
       },
     },
+    bass: {
+      label: 'Basse',
+      color: '#6fa8ff',
+      params: {
+        on: { label: 'On', type: 'toggle', def: false },
+        wave: { label: 'Son', type: 'select', options: ['Sub', 'Ronde', 'Pluck'], def: 'Ronde' },
+        vol: { label: 'Niveau', min: 0, max: 1, def: 0.5 },
+        tone: { label: 'Brillance', min: 0, max: 1, def: 0.3 },
+        decay: { label: 'Tenue', min: 0, max: 1, def: 0.6 },
+        octave: { label: 'Octave', type: 'select', options: ['-1', '0', '+1'], def: '0' },
+        send: { label: 'Envoi FX', min: 0, max: 1, def: 0.15 },
+        // 4 rows (fondamentale, quinte, octave, approche) × 16 steps, "1"/"0" per step
+        pattern: { label: 'Motif', type: 'text', def: '1000000010000000.0000000000001000.0000000000000000.0000000000000000', maxLen: 80, hidden: true },
+      },
+    },
     perc: {
       label: 'Pulsations',
       color: '#ffb36b',

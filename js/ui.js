@@ -91,7 +91,7 @@
       E.init();
       const L = AMB.layers;
       AMB.layers = {
-        drone: new L.Drone(), pad: new L.Pad(), bells: new L.Bells(), seq: new L.SeqVoice(), perc: new L.Perc(), grains: new L.Grains(), texture: new L.Texture(),
+        drone: new L.Drone(), pad: new L.Pad(), bells: new L.Bells(), seq: new L.SeqVoice(), perc: new L.Perc(), bass: new L.Bass(), grains: new L.Grains(), texture: new L.Texture(),
         classes: L,
       };
     }
@@ -264,6 +264,11 @@
       const ap = section('auto');
       seqRow.append(ap);
       AMB.automation.lane.build(ap);
+    }
+    if (seqRow && AMB.bassSeq) {
+      const bp = section('bass');
+      seqRow.append(bp);
+      AMB.bassSeq.build(bp);
     }
     if (seqRow && AMB.pulses) {
       const pp = section('perc');
