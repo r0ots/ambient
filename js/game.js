@@ -15,6 +15,7 @@
     contracts: [], // completed contract ids
     puzzles: [], // solved puzzle ids
     active: [], prog: {}, // active contracts and their progress (contracts.js)
+    ended: false, // the end screen was shown (whole tree owned)
   });
 
   const game = {

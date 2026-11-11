@@ -82,6 +82,15 @@ f.addEventListener('load', async ()=>{
   d.querySelector('.ct-item .ct-skip').click(); await wait(20); ok(d.querySelector('.ct-item').dataset.id==='k.souffle', 'passer → l\'autre passe devant');
   d.querySelector('#contracts .ct-head').click(); ok(d.getElementById('contracts').classList.contains('min'), 'réduire'); d.querySelector('#contracts .ct-head').click();
   A.seq.playing=false;
+  // --- end screen (G6.3)
+  { A.game.reset(); A.game.earn(5000,'test'); A.puzzles.DEFS.filter(x=>!x.bonus).forEach(x=>A.game.solve(x.id));
+    const order=[]; let guard=0; while (A.tree.NODES.some(n=>!A.game.has(n.id)) && guard++<200) A.tree.NODES.forEach(n=>{ if(A.tree.status(n.id)==='available') A.tree.buy(n.id); });
+    ok(A.garden.complete() && d.getElementById('endDlg').hidden, 'arbre complet, écran pas encore là');
+    await wait(1100); const ed=d.getElementById('endDlg');
+    ok(!ed.hidden && /38 nœuds/.test(ed.textContent) && /Il reste en bonus/.test(ed.textContent) && A.game.s.ended, 'écran de fin : bilan + bonus restants');
+    ed.querySelector('[data-end=tree]').click(); ok(ed.hidden && /Jardin complet/.test(d.querySelector('#treeDlg .tree-sub').textContent), 'voir l\'arbre : « Jardin complet »');
+    A.garden.showTree(false); ok(!A.garden.checkEnd(), 'écran montré une seule fois');
+    A.game.reset(); A.garden.renderTree && A.garden.renderTree(); }
   // --- feedback (G6.2)
   A.game.earn(50,'test'); A.tree.buy('e.reverb'); await wait(400);
   ok(/REVERB DÉBLOQUÉ/.test(d.getElementById('lcdTop').textContent) && d.getElementById('lcdTop').classList.contains('lcd-flash'), 'LCD : « reverb débloqué » '+d.getElementById('lcdTop').textContent);

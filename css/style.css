@@ -489,3 +489,8 @@ body.listen .puzzle-card { display: none; }
 #lcdTop.lcd-flash { animation: lcd-flash 1.2s ease-out; text-shadow: 0 0 10px var(--lcd-fg); }
 @keyframes lcd-flash { 0%, 30% { opacity: 1; } 10%, 20% { opacity: .35; } 100% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { #lcdTop.lcd-flash { animation: none; } }
+.end-card h3 { color: var(--lcd-fg); font: 30px var(--f-lcd); letter-spacing: .04em; text-shadow: 0 0 12px var(--lcd-glow); }
+.end-stats { margin: 12px 0; padding: 10px 14px; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; background: var(--lcd-bg); border-radius: 6px; box-shadow: var(--bevel-in, none); font: 18px var(--f-lcd); color: var(--lcd-fg); }
+.end-left { color: var(--muted); font-size: 13px; }
+.end-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+@media (max-width: 560px) { .end-stats { grid-template-columns: 1fr; } }

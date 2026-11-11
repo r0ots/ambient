@@ -28,7 +28,7 @@
       const T = AMB.tree, g = AMB.game, memo = {};
       const all = this.notebook();
       $('#treeDlg .tree-shards').textContent = `✧ ${g.s.shards}`;
-      const sub = $('#treeDlg .tree-sub'); if (sub) sub.textContent = `${g.s.nodes.length}/${T.NODES.length} nœuds · ${all.done}/${all.total} découvertes · ✧ ${g.s.earned} gagnés en tout`;
+      const sub = $('#treeDlg .tree-sub'); if (sub) sub.textContent = `${this.complete() ? '✦ Jardin complet · ' : ''}${g.s.nodes.length}/${T.NODES.length} nœuds · ${all.done}/${all.total} découvertes · ✧ ${g.s.earned} gagnés en tout`;
       map.innerHTML = '';
       // puzzles: bonus ones you can try now, and how many are solved
       const pzEl = $('#treeDlg .tree-puzzles');
@@ -251,6 +251,41 @@
       }
       if (flashId) { const el = list.querySelector(`[data-id="${flashId}"]`); if (el) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); } }
     },
+    // ---- end of the path (G6.3) ----
+    complete() { const T = AMB.tree; return T.NODES.every((n) => AMB.game.has(n.id)); },
+    leftovers() {
+      const g = AMB.game, all = this.notebook();
+      return {
+        disc: all.total - all.done,
+        contracts: AMB.contracts ? AMB.contracts.DEFS.length - g.s.contracts.length : 0,
+        puzzles: AMB.puzzles ? AMB.puzzles.DEFS.filter((d) => !g.s.puzzles.includes(d.id)).length : 0,
+      };
+    },
+    showEnd(on = true) {
+      const dlg = $('#endDlg'); if (!dlg) return;
+      dlg.hidden = !on; if (!on) return;
+      const g = AMB.game, all = this.notebook(), L = this.leftovers();
+      const P = AMB.puzzles, C = AMB.contracts;
+      dlg.querySelector('.end-stats').innerHTML = [
+        `${AMB.tree.NODES.length} nœuds débloqués`,
+        `${all.done}/${all.total} découvertes`,
+        `${g.s.contracts.length}/${C ? C.DEFS.length : 0} contrats`,
+        `${g.s.puzzles.length}/${P ? P.DEFS.length : 0} énigmes`,
+        `✧ ${g.s.earned} gagnés en tout`,
+      ].map((x) => `<li>${x}</li>`).join('');
+      const rest = [L.disc && `${L.disc} découvertes`, L.contracts && `${L.contracts} contrats`, L.puzzles && `${L.puzzles} énigmes`].filter(Boolean);
+      dlg.querySelector('.end-left').textContent = rest.length
+        ? `Il reste en bonus : ${rest.join(', ')}. Ils restent dans le carnet, la carte des contrats et l'arbre, pour le plaisir de tout trouver.`
+        : 'Tu as absolument tout trouvé. Bravo.';
+    },
+    checkEnd() {
+      const g = AMB.game;
+      if (!g.path || g.s.ended || !this.complete()) return false;
+      g.s.ended = true; g.save();
+      setTimeout(() => { this.showTree(false); this.showEnd(true); this.chime('solve'); this.lcd('✦ jardin complet', 6000); }, 900);
+      return true;
+    },
+
     // ---- game feedback (G6.2): a chime tuned to the current key, and LCD messages ----
     // kind: 'unlock' (rising arpeggio), 'solve' (two chords), 'small' (one soft note)
     chime(kind = 'unlock') {
@@ -363,6 +398,7 @@
       if (AMB.bus) {
         AMB.bus.on('game:unlock', (d) => {
           const n = AMB.tree.byId[d.id]; if (!AMB.game.path || !n || !n.cost) return;
+          if (this.checkEnd()) return;
           this.chime('unlock'); this.lcd(`✦ ${n.name} débloqué`);
         });
         AMB.bus.on('game:puzzles', (d) => { if (!AMB.game.path) return; this.chime('solve'); this.lcd('◈ énigme résolue'); });
@@ -406,6 +442,7 @@
       if (td) td.addEventListener('click', (e) => { if (e.target === td || e.target.hasAttribute('data-close')) this.showTree(false); });
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && td && !td.hidden) this.showTree(false); });
       if (AMB.bus) ['earn', 'spend', 'unlock', 'reset', 'puzzles'].forEach((ev) => AMB.bus.on('game:' + ev, () => { if (td && !td.hidden) this.renderTree(); }));
+      document.querySelectorAll('[data-end]').forEach((b) => b.addEventListener('click', () => { this.showEnd(false); if (b.dataset.end === 'tree') this.showTree(true); }));
       document.querySelectorAll('[data-choose]').forEach((b) => b.addEventListener('click', () => this.choose(b.dataset.choose)));
       const sw = $('#gameMode');
       if (sw) sw.addEventListener('click', () => this.choose(AMB.game.path ? 'free' : 'path'));
