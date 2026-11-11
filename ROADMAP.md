@@ -94,7 +94,7 @@ Constat : ~120 réglages visibles sans hiérarchie, 7 façons de mémoriser un �
 
 **Phase B — Look rétro « synthé japonais fin 80, version nuit » (Juno-106/D-50)**
 - [x] B1. (v0.58) Tokens (anthracite, crème, ambre LCD), polices IBM Plex Sans Condensed / Plex Mono / VT323, panneaux biseautés numérotés, boutons membrane avec LED, knobs à anneau segmenté, selects en mini-LCD
-- [ ] B2. Écran LCD d'état dans la barre (patch, tonalité, tempo, accord, mesure, ▶/■, REC) ; visualiseur en CRT (cadre, scanlines discrètes) ; canvas piano roll ambre, automation vert phosphore ; prefers-reduced-motion respecté
+- [x] B2. (v0.59) Écran LCD d'état dans la barre (patch, tonalité, tempo, accord, mesure, ▶/■, REC) ; visualiseur en CRT (cadre, scanlines discrètes) ; canvas piano roll ambre, automation vert phosphore ; prefers-reduced-motion respecté
 
 **Phase C — Modèle de composition consolidé + bugs**
 - [ ] C1. Morceau : les sections ne copient plus les motifs/progression (partagés) → corriger un motif met à jour tout le morceau ; touches 1–8 = aller à la section (au prochain temps fort)

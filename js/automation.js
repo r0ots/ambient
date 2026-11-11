@@ -88,15 +88,15 @@
       if (c.width !== Math.round(W * dpr)) { c.width = Math.round(W * dpr); c.height = H * dpr; c.style.width = W + 'px'; c.style.height = H + 'px'; }
       const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
       g.clearRect(0, 0, W, H);
-      g.fillStyle = '#14161f'; g.fillRect(0, 0, W, H);
+      g.fillStyle = '#0d130c'; g.fillRect(0, 0, W, H);
       const bars = parseInt(store.get('auto.bars'), 10) || 8;
-      for (let b = 0; b <= bars; b++) { g.fillStyle = b % 4 === 0 ? '#2c3149' : '#1d2133'; g.fillRect((b / bars) * W, 0, 1, H); }
+      for (let b = 0; b <= bars; b++) { g.fillStyle = b % 4 === 0 ? '#2f3f2a' : '#1f2a1c'; g.fillRect((b / bars) * W, 0, 1, H); }
       const pts = decode(store.get('auto.curve')), on = store.get('auto.on');
       g.beginPath();
       pts.forEach((v, i) => { const x = ((i + 0.5) / N) * W, y = (1 - v) * (H - 8) + 4; i ? g.lineTo(x, y) : g.moveTo(x, y); });
-      g.strokeStyle = on ? '#8fe3a8' : '#4a6a55'; g.lineWidth = 2; g.stroke();
+      g.strokeStyle = on ? '#9fd36f' : '#4a6a38'; g.lineWidth = 2; g.stroke();
       g.lineTo(W, H); g.lineTo(0, H); g.closePath();
-      g.fillStyle = on ? 'rgba(143,227,168,0.12)' : 'rgba(143,227,168,0.05)'; g.fill();
+      g.fillStyle = on ? 'rgba(159,211,111,0.12)' : 'rgba(159,211,111,0.05)'; g.fill();
       if (on && pos >= 0 && AMB.seq.playing) { g.fillStyle = '#ffffffaa'; g.fillRect(pos * W, 0, 1.5, H); }
     },
   };

@@ -21,7 +21,7 @@
       const panel = document.createElement('section');
       panel.className = 'panel chords-panel';
       panel.style.setProperty('--c', '#b58cff');
-      panel.innerHTML = `<header><h2>Progression</h2>
+      panel.innerHTML = `<header><h2 data-n="09">Progression</h2>
           <span class="chords-mode"></span></header>
         <div class="chord-slots"></div>
         <div class="chord-palette"></div>
@@ -82,7 +82,7 @@
       for (let i = 0; i < SLOTS; i++) {
         const d = list[i];
         const b = document.createElement('button');
-        b.className = 'chord-slot' + (i === this.sel ? ' sel' : '') + (i === playing ? ' now' : '') + (d ? '' : ' empty');
+        b.className = 'chord-slot' + (i === this.sel ? ' is-sel' : '') + (i === playing ? ' now' : '') + (d ? '' : ' empty');
         b.innerHTML = d ? `<b>${ROMAN[d - 1]}</b><span>${chordLabel(d)}</span>` : `<b>+</b><span>${i < list.length + 1 ? 'ajouter' : ''}</span>`;
         b.addEventListener('click', () => { this.sel = Math.min(i, list.length); this.render(); });
         this.slotsEl.append(b);

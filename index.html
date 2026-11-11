@@ -23,6 +23,10 @@
           <p>machine à paysages sonores génératifs</p>
         </div>
       </div>
+      <div id="lcd" class="lcd" aria-live="polite" title="État du son">
+        <span id="lcdTop">AMBIENT</span>
+        <span id="lcdLine">■ STOP</span>
+      </div>
       <div class="transport">
         <div class="tgrp"><small>Lecture</small>
           <button id="play" class="btn primary">▶ Lecture</button>
@@ -99,7 +103,7 @@
         <button id="vizMode" class="chip" title="Changer de visuel">Orbes</button>
         <button id="listen" class="chip" title="Mode écoute plein écran (Échap pour sortir)">⤢ Écoute</button>
       </div>
-      <div class="hint">Glisser : pad XY · Espace : lecture/stop · jouer : rangée A–L (notes), Q–P (octave +), Z–M (accords)</div>
+      <div class="hint">Glisse sur l'écran pour changer la lumière et la densité · Espace : lecture/stop · touches A–L : jouer des notes · ? : aide</div>
     </div>
 
     <div id="scenes" class="scenes"></div>

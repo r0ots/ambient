@@ -453,6 +453,19 @@
         (started ? ` · mesure ${bar}` : '');
     };
     store.on(upd); setInterval(upd, 500); upd();
+    // LCD status screen in the top bar
+    const top = $('#lcdTop'), line = $('#lcdLine');
+    const abbr = (s) => s.split(' ')[0].slice(0, 4).toUpperCase();
+    const lcd = () => {
+      if (!top || !line) return;
+      const sel = $('#preset'), patch = sel && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.replace('✦ ', '') : 'AMBIENT';
+      const rec = document.querySelector('#rec.rec');
+      top.textContent = patch.toUpperCase().slice(0, 24) + (rec ? '  ● REC' : '');
+      const bar = String(Math.floor(AMB.seq.step / 16) + 1).padStart(3, '0');
+      line.textContent = `${started ? '▶' : '■'} ${store.get('global.key')} ${abbr(store.get('global.scale'))} · ${String(Math.round(store.get('global.tempo'))).padStart(3, '0')} BPM` +
+        (started ? ` · ${name.textContent} · M${bar}` : ' · STOP');
+    };
+    setInterval(lcd, 300); lcd();
   }
 
   AMB.ui = { build, play, stop, ensureStarted, applyPatch, widgets, encodePatch, toast, freezeNow, saveUserPatch, importPatches, exportPatches };

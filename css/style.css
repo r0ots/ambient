@@ -211,7 +211,7 @@ canvas.roll { display: block; cursor: pointer; touch-action: none; }
 .chord-slot b { font-size: 15px; color: var(--c); }
 .chord-slot span { font-size: 11px; color: var(--muted); min-height: 14px; }
 .chord-slot.empty b { color: #3d4363; }
-.chord-slot.sel { border-color: var(--c); box-shadow: 0 0 0 1px var(--c) inset; }
+.chord-slot.is-sel { border-color: var(--c); box-shadow: 0 0 0 1px var(--c) inset; }
 .chord-slot.now { background: color-mix(in srgb, var(--c) 25%, #171a25); }
 .chord-palette { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
 .chord-chip b { color: var(--c); margin-right: 3px; }
@@ -220,7 +220,7 @@ canvas.roll { display: block; cursor: pointer; touch-action: none; }
 .slot-tabs { display: inline-flex; gap: 3px; margin-right: 6px; }
 .slot-tab { width: 28px; height: 26px; border-radius: 7px; border: 1px dashed #3c4262; background: transparent; color: var(--muted); font: inherit; font-weight: 700; cursor: pointer; }
 .slot-tab.filled { border-style: solid; color: var(--text); }
-.slot-tab.sel { border-color: var(--c); color: var(--c); box-shadow: 0 0 0 1px var(--c) inset; }
+.slot-tab.is-sel { border-color: var(--c); color: var(--c); box-shadow: 0 0 0 1px var(--c) inset; }
 .slot-tab.queued { animation: blink .5s steps(2) infinite; }
 @keyframes blink { 50% { opacity: .35; } }
 .slot-tab.now { background: color-mix(in srgb, var(--c) 25%, transparent); }
@@ -345,7 +345,7 @@ select option, select optgroup { background: #1d1407; color: var(--lcd-fg); font
 .pulse-cell, .chord-slot { background: #1b1812; border-color: #000; border-radius: var(--radius-btn); box-shadow: var(--bevel-in); }
 .pulse-cell.beat { background: #221e16; }
 .chord-slot b { font: 24px var(--f-lcd); }
-.chord-slot.sel { box-shadow: 0 0 0 1px var(--c) inset, var(--bevel-in); }
+.chord-slot.is-sel { box-shadow: 0 0 0 1px var(--c) inset, var(--bevel-in); }
 .slot-tab { border-radius: var(--radius-btn); font-family: var(--f-num); }
 .song-card { background: #1b1812; border: 1px solid #000; border-radius: var(--radius-btn); box-shadow: var(--bevel-in); }
 .song-btns button { background: linear-gradient(#3a3936, #2c2b29); border-color: #111; border-radius: var(--radius-btn); }
@@ -374,3 +374,9 @@ footer { color: #6e6757; font-family: var(--f-num); letter-spacing: .08em; text-
 .sc-morph { accent-color: var(--accent); }
 .journal.empty .moments::before, .song-empty, .roll-hint, .menu-note { color: var(--muted); }
 .sc-auto, .chords-mode { color: var(--muted); }
+
+/* LCD status screen */
+.top { flex-wrap: wrap; }
+.lcd { background: var(--lcd-bg); box-shadow: var(--bevel-in); border: 1px solid #000; border-radius: var(--radius-btn); padding: 4px 12px; min-width: 300px; display: grid; font: 21px/1.05 var(--f-lcd); color: var(--lcd-fg); text-shadow: 0 0 6px var(--lcd-glow); white-space: nowrap; overflow: hidden; }
+.lcd #lcdLine { color: #d9953a; font-size: 19px; }
+@media (max-width: 760px) { .lcd { min-width: 0; width: 100%; order: 3; } }

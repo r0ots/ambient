@@ -2,7 +2,7 @@
 (function () {
   const AMB = (window.AMB = window.AMB || {});
 
-  const COLORS = { pad: [181, 140, 255], bells: [255, 210, 127], grains: [127, 255, 212], drone: [127, 184, 255] };
+  const COLORS = { pad: [212, 150, 210], bells: [255, 196, 110], grains: [111, 207, 159], drone: [111, 159, 216], seq: [255, 179, 71], bass: [127, 159, 224] };
 
   const visual = {
     orbs: [],
@@ -46,7 +46,7 @@
     // layered drifting ridges, like a horizon breathing with the music
     drawHorizon(g, W, H) {
       const lvl = this.level();
-      const hue = 250 + 40 * Math.sin(this.t * 0.03);
+      const hue = 28 + 14 * Math.sin(this.t * 0.03);
       for (let L = 0; L < 5; L++) {
         const base = H * (0.45 + L * 0.12);
         const amp = H * (0.05 + lvl * 1.4) * (1 - L * 0.12);
@@ -57,7 +57,7 @@
           g.lineTo(x, y);
         }
         g.lineTo(W, H); g.closePath();
-        g.fillStyle = `hsla(${hue - L * 12}, 55%, ${18 + L * 6}%, 0.10)`;
+        g.fillStyle = `hsla(${hue - L * 6}, 55%, ${14 + L * 5}%, 0.10)`;
         g.fill();
       }
     },
@@ -77,7 +77,7 @@
         const v = Math.max(0, (m + 100) / 70);
         this.bars[i] = this.bars[i] * 0.85 + v * 0.15;
         const h = this.bars[i] * H * 0.8;
-        const hue = 200 + (i / N) * 120;
+        const hue = 20 + (i / N) * 150;
         const grd = g.createLinearGradient(0, H, 0, H - h);
         grd.addColorStop(0, `hsla(${hue}, 80%, 65%, 0.35)`);
         grd.addColorStop(1, `hsla(${hue}, 80%, 65%, 0)`);
@@ -93,7 +93,7 @@
       const now = eng.ctx ? eng.ctx.currentTime : 0;
       // fade previous frame -> trails
       g.globalCompositeOperation = 'source-over';
-      g.fillStyle = 'rgba(8, 9, 16, 0.14)';
+      g.fillStyle = 'rgba(12, 10, 8, 0.14)';
       g.fillRect(0, 0, W, H);
       this.t = (this.t || 0) + 1 / 60;
       if (this.mode === 'Horizon') this.drawHorizon(g, W, H);
@@ -154,7 +154,7 @@
           grd.addColorStop(0, `rgba(255,255,255,${0.25 * a})`);
           grd.addColorStop(1, 'rgba(255,255,255,0)');
           g.fillStyle = grd; g.beginPath(); g.arc(px, py, 40 * this.dpr, 0, Math.PI * 2); g.fill();
-          g.strokeStyle = `rgba(200,190,255,${0.12 * a})`; g.lineWidth = this.dpr;
+          g.strokeStyle = `rgba(255,214,160,${0.12 * a})`; g.lineWidth = this.dpr;
           g.beginPath(); g.moveTo(px, 0); g.lineTo(px, H); g.moveTo(0, py); g.lineTo(W, py); g.stroke();
         }
       }
@@ -169,7 +169,7 @@
         this.rms = rms;
         const cx = W / 2, cy = H / 2, R = Math.min(W, H) * (0.22 + rms * 0.6);
         g.globalCompositeOperation = 'source-over';
-        g.strokeStyle = `rgba(220, 225, 255, ${0.15 + Math.min(0.5, rms * 3)})`;
+        g.strokeStyle = `rgba(255, 214, 160, ${0.15 + Math.min(0.5, rms * 3)})`;
         g.lineWidth = 1.2 * this.dpr;
         g.beginPath();
         const N = 256, step = Math.floor(this.wave.length / N);

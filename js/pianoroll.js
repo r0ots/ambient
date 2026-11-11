@@ -406,7 +406,7 @@
       const playing = AMB.seq.playing && store.get('seq.on') ? this.playSlot : null;
       for (const b of this.tabs) {
         const x = b.dataset.slot;
-        b.classList.toggle('sel', store.get('seq.slot') === x);
+        b.classList.toggle('is-sel', store.get('seq.slot') === x);
         b.classList.toggle('filled', parse(store.get(SLOTKEY[x])).length > 0);
         b.classList.toggle('now', playing === x);
         // edited slot waiting for the next bar to start playing
@@ -429,28 +429,28 @@
       for (let r = 0; r < ROWS; r++) {
         const y = (ROWS - 1 - r) * G.rowH;
         const isRoot = r % seq.scale.length === 0;
-        g.fillStyle = isRoot ? '#1d1a30' : r % 2 ? '#14161f' : '#171a25';
+        g.fillStyle = isRoot ? '#2a2010' : r % 2 ? '#17140f' : '#1b1812';
         g.fillRect(G.labelW, y, G.w - G.labelW, G.rowH);
         // rows that are tones of the chord playing now (relative to the motif when following chords)
         if (chordPcs.has(((T.degreeToMidi(r + (store.get('seq.follow') ? seq.chordDeg : 0), seq.root, seq.scale, 3)) % 12 + 12) % 12)) {
-          g.fillStyle = 'rgba(181,140,255,0.07)'; g.fillRect(G.labelW, y, G.w - G.labelW, G.rowH);
-          g.fillStyle = '#b58cff'; g.fillRect(G.labelW - 3, y + 4, 2, G.rowH - 8);
+          g.fillStyle = 'rgba(242,162,58,0.08)'; g.fillRect(G.labelW, y, G.w - G.labelW, G.rowH);
+          g.fillStyle = '#f2a23a'; g.fillRect(G.labelW - 3, y + 4, 2, G.rowH - 8);
         }
         const midi = T.degreeToMidi(r, seq.root, seq.scale, 3);
-        g.fillStyle = isRoot ? '#c9b6ff' : '#5c6384';
+        g.fillStyle = isRoot ? '#ffcf7a' : '#8a7f66';
         g.font = '10px system-ui, sans-serif'; g.textBaseline = 'middle';
         g.fillText(T.NOTE_NAMES[midi % 12] + (Math.floor(midi / 12) - 1), 4, y + G.rowH / 2);
       }
       // beat / bar lines
       for (let s = 0; s <= n; s++) {
-        g.fillStyle = s % 16 === 0 ? '#4a5078' : s % 4 === 0 ? '#2c3149' : '#1f2335';
+        g.fillStyle = s % 16 === 0 ? '#5a4f33' : s % 4 === 0 ? '#3a3424' : '#2a261c';
         g.fillRect(G.labelW + s * G.cw, 0, s % 16 === 0 ? 1.5 : 1, G.h);
       }
       // playhead
       // the playhead is only meaningful when the edited slot is the one playing
       const ps = this.playSlot === store.get('seq.slot') ? this.playStep : -1;
       if (seq.playing && store.get('seq.on') && ps >= 0 && ps < n) {
-        g.fillStyle = 'rgba(255,159,214,0.12)';
+        g.fillStyle = 'rgba(255,179,71,0.12)';
         g.fillRect(G.labelW + ps * G.cw, 0, G.cw, G.h);
       }
       // notes
@@ -459,20 +459,20 @@
         const x = G.labelW + nt.s * G.cw + 1, y = (ROWS - 1 - nt.r) * G.rowH + 2;
         const w = Math.min(nt.l, n - nt.s) * G.cw - 2;
         const active = seq.playing && ps >= nt.s && ps < nt.s + nt.l;
-        g.fillStyle = active ? '#ffd0ec' : '#ff9fd6';
+        g.fillStyle = active ? '#ffe0a8' : '#ffb347';
         g.globalAlpha = (store.get('seq.on') && store.get('seq.mode') !== 'Arpège' ? 1 : 0.35) * (0.35 + 0.65 * (nt.v / 9));
         roundRect(g, x, y, w, G.rowH - 4, 3); g.fill();
         g.globalAlpha = 1;
-        if (this.sel.has(this.keyOf(nt))) { g.strokeStyle = '#ffffff'; g.lineWidth = 1.5; roundRect(g, x, y, w, G.rowH - 4, 3); g.stroke(); }
+        if (this.sel.has(this.keyOf(nt))) { g.strokeStyle = '#fff3dc'; g.lineWidth = 1.5; roundRect(g, x, y, w, G.rowH - 4, 3); g.stroke(); }
         if (nt.p < 10) { // dashed outline + percentage for probabilistic notes
           g.setLineDash([3, 2]); g.strokeStyle = '#fff8'; g.lineWidth = 1;
           roundRect(g, x + 0.5, y + 0.5, w - 1, G.rowH - 5, 3); g.stroke(); g.setLineDash([]);
-          if (w > 22) { g.fillStyle = '#2a0f20'; g.font = '9px system-ui'; g.fillText(nt.p * 10 + '%', x + 3, y + (G.rowH - 4) / 2); }
+          if (w > 22) { g.fillStyle = '#1d1407'; g.font = '9px "IBM Plex Mono", monospace'; g.fillText(nt.p * 10 + '%', x + 3, y + (G.rowH - 4) / 2); }
         }
       }
       if (this.box) { // selection rectangle
         const b = this.box, sa = Math.min(b.s0, b.s1), sb = Math.max(b.s0, b.s1), ra = Math.min(b.r0, b.r1), rb = Math.max(b.r0, b.r1);
-        g.strokeStyle = '#ffffffcc'; g.setLineDash([4, 3]); g.lineWidth = 1;
+        g.strokeStyle = '#fff3dccc'; g.setLineDash([4, 3]); g.lineWidth = 1;
         g.strokeRect(G.labelW + sa * G.cw, (ROWS - 1 - rb) * G.rowH, (sb - sa + 1) * G.cw, (rb - ra + 1) * G.rowH); g.setLineDash([]);
       }
       this.lastDrawn = this.playStep;

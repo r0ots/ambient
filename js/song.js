@@ -83,7 +83,7 @@
       const panel = document.createElement('section');
       panel.className = 'panel song-panel';
       panel.style.setProperty('--c', '#7fd6ff');
-      panel.innerHTML = `<header><h2>Morceau</h2><span class="chords-mode song-total"></span></header>
+      panel.innerHTML = `<header><h2 data-n="14">Morceau</h2><span class="chords-mode song-total"></span></header>
         <div class="song-sections"></div>
         <div class="roll-tools">
           <button class="btn small" data-s="add" title="Nouvelle section = état actuel du son">+ Section</button>
