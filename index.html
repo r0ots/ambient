@@ -22,24 +22,38 @@
         </div>
       </div>
       <div class="transport">
-        <button id="play" class="btn primary">▶ Lecture</button>
-        <select id="preset" title="Presets"></select>
-        <span class="gengrp">
-          <button id="dice" class="btn" title="Générer un nouveau paysage cohérent">✦ Paysage</button>
-          <select id="mood" title="Humeur du paysage généré">
-            <option value="">toutes humeurs</option><option value="__day">☀ du jour</option><option>Lumineux</option><option>Mélancolique</option><option>Mystérieux</option>
-            <option>Contemplatif</option><option>Nocturne</option><option>Aquatique</option>
-          </select>
-        </span>
-        <span class="recgrp">
-          <button id="rec" class="btn" title="Enregistrer la sortie">● Rec</button>
-          <select id="recFmt" title="Format"><option value="wav">WAV</option><option value="comp">Compressé</option></select>
-          <select id="recDur" title="Durée (fondu de sortie automatique)"><option value="0">libre</option><option value="1">1 min</option><option value="3">3 min</option><option value="10">10 min</option><option value="20">20 min</option></select>
-        </span>
-        <div class="modes" role="group" aria-label="Mode">
-          <button class="mode-btn" data-mode="listen" title="Écouter : l'écran, 5 grands réglages et les couches">Écouter</button>
-          <button class="mode-btn" data-mode="sculpt" title="Sculpter : tous les réglages du son">Sculpter</button>
-          <button class="mode-btn" data-mode="compose" title="Composer : accords, mélodie écrite, basse, rythmes, morceau">Composer</button>
+        <div class="tgrp"><small>Lecture</small>
+          <button id="play" class="btn primary">▶ Lecture</button>
+        </div>
+        <div class="tgrp"><small>Son</small>
+          <div class="tgrp-row">
+            <select id="preset" title="Choisir un son prêt à l'emploi (preset)" aria-label="Son"></select>
+            <button id="dice" class="btn" title="Créer un nouveau paysage cohérent selon l'humeur choisie">✦ Nouveau paysage</button>
+            <select id="mood" title="Humeur du prochain paysage" aria-label="Humeur">
+              <option value="">toutes humeurs</option><option value="__day">☀ du jour</option><option>Lumineux</option><option>Mélancolique</option><option>Mystérieux</option>
+              <option>Contemplatif</option><option>Nocturne</option><option>Aquatique</option>
+            </select>
+          </div>
+        </div>
+        <div class="tgrp"><small>Enregistrer</small>
+          <div class="tgrp-row recgrp">
+            <button id="rec" class="btn" title="Enregistrer ce que tu entends dans un fichier">● Rec</button>
+            <details class="rec-opts">
+              <summary class="btn" title="Format et durée de l'enregistrement">▾</summary>
+              <div class="menu">
+                <label class="menu-row">Format <select id="recFmt"><option value="wav">WAV (sans perte)</option><option value="comp">Compressé (léger)</option></select></label>
+                <label class="menu-row">Durée <select id="recDur"><option value="0">libre (j'arrête moi-même)</option><option value="1">1 min</option><option value="3">3 min</option><option value="10">10 min</option><option value="20">20 min</option></select></label>
+                <p class="menu-note">Avec une durée fixe, le son fait un fondu et le fichier se télécharge tout seul.</p>
+              </div>
+            </details>
+          </div>
+        </div>
+        <div class="tgrp"><small>Mode</small>
+          <div class="modes" role="group" aria-label="Mode">
+            <button class="mode-btn" data-mode="listen" title="Écouter : l'écran, 5 grands réglages et les couches">Écouter</button>
+            <button class="mode-btn" data-mode="sculpt" title="Sculpter : tous les réglages du son">Sculpter</button>
+            <button class="mode-btn" data-mode="compose" title="Composer : accords, mélodie écrite, basse, rythmes, morceau">Composer</button>
+          </div>
         </div>
         <span id="sleepLeft" class="sleep-left" title="Minuteur de sommeil"></span>
         <details class="more">

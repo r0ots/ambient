@@ -34,6 +34,16 @@ h1 { margin: 0; font-size: 18px; letter-spacing: 0.5em; font-weight: 600; }
 @keyframes pulse { 50% { box-shadow: 0 0 0 4px #ff5e7a33; } }
 .btn.on { border-color: #7fffd4; color: #7fffd4; }
 .btn.small { padding: 5px 9px; font-size: 12px; }
+.tgrp { display: flex; flex-direction: column; gap: 3px; }
+.tgrp > small { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); padding-left: 2px; }
+.tgrp-row { display: flex; gap: 4px; align-items: center; }
+.transport { align-items: flex-end; }
+.rec-opts { position: relative; }
+.rec-opts summary { list-style: none; padding: 8px 9px; }
+.rec-opts summary::-webkit-details-marker { display: none; }
+.rec-opts .menu { left: 0; right: auto; min-width: 260px; }
+.menu-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; color: var(--text); }
+.menu-note { font-size: 11px; color: var(--muted); margin: 2px 0 0; }
 .gengrp { display: flex; gap: 4px; }
 .recgrp { display: flex; gap: 4px; }
 .recgrp select { padding: 8px 6px; }

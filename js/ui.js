@@ -357,6 +357,8 @@
       more.querySelectorAll('.menu button').forEach((b) => b.addEventListener('click', () => { more.open = false; }));
       document.addEventListener('click', (e) => { if (more.open && !more.contains(e.target)) more.open = false; });
     }
+    const recOpts = $('.rec-opts');
+    if (recOpts) document.addEventListener('click', (e) => { if (recOpts.open && !recOpts.contains(e.target)) recOpts.open = false; });
     bind('#helpDlg', 'click', (e) => { if (e.target.id === 'helpDlg' || e.target.hasAttribute('data-close')) showHelp(false); });
     try {
       if (!localStorage.getItem('ambient.seenHelp')) { localStorage.setItem('ambient.seenHelp', '1'); setTimeout(() => toast('Première visite ? Appuie sur ? pour l\'aide'), 1200); }
