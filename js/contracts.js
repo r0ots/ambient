@@ -31,6 +31,79 @@
     C('k.timbres', ['t.son'], 'Écoute les 4 timbres du drone', 8, 4, {
       param(st, k, v, src) { if (k === 'drone.wave' && src === 'user') distinct(st, v); },
     }),
+    C('k.ecran', ['t.viz'], 'Passe par les 3 visuels de l\'écran', 5, 3, {
+      act(st, id) { if (id === 'viz') st.n = (st.n || 0) + 1; },
+    }, 'Bouton en haut à droite de l\'écran'),
+    C('k.moments', ['t.journal'], 'Garde un moment (♥), puis reviens à un moment passé', 8, 2, {
+      act(st, id) { if (id === 'keep') st.n = Math.max(st.n || 0, 1); else if (id === 'restore' && st.n === 1) st.n = 2; },
+    }, 'Sculpter > Journal'),
+    C('k.enreg', ['t.rec'], 'Enregistre au moins 30 secondes', 10, 1, {
+      act(st, id) {
+        if (id !== 'rec') return;
+        if (!st.start) st.start = Date.now();
+        else { if (Date.now() - st.start >= 30000) st.n = 1; st.start = 0; }
+      },
+    }, '● Rec, puis ● Rec à nouveau pour arrêter'),
+    C('k.xy', ['t.macros'], 'Glisse sur l\'écran pendant 4 mesures', 8, 4, {
+      act(st, id) { if (id === 'xy') st.last = Date.now(); },
+      bar(st) { if (st.last && Date.now() - st.last < 4000) st.n = (st.n || 0) + 1; },
+    }),
+    C('k.paysages', ['t.dice', 't.journal'], 'Génère 3 paysages, puis garde celui qui te plaît', 10, 4, {
+      act(st, id) {
+        if (id === 'dice' && (st.n || 0) < 3) st.n = (st.n || 0) + 1;
+        else if ((id === 'keep' || id === 'save') && st.n >= 3) st.n = 4;
+      },
+    }),
+
+    // Harmonie
+    C('h.forcer', ['h.pad'], 'Force 3 accords au clavier (touches Z à M)', 6, 3, {
+      act(st, id) { if (id === 'chord' && gesture(st, 'chord', 600)) st.n = (st.n || 0) + 1; },
+    }),
+    C('h.ombre', ['h.pad'], 'Rends le Pad très sombre, puis très brillant', 6, 2, {
+      param(st, k, v, src) { if (k !== 'pad.tone' || src !== 'user') return; if (v < 0.15) st.n = Math.max(st.n || 0, 1); else if (v > 0.85 && st.n === 1) st.n = 2; },
+    }),
+    C('h.suivre', ['h.drone'], 'Fais suivre les accords au drone, puis force un accord', 6, 2, {
+      param(st, k, v, src) { if (k === 'drone.follow' && src === 'user' && v) st.n = Math.max(st.n || 0, 1); },
+      act(st, id) { if (id === 'chord' && st.n === 1 && store.get('drone.follow')) st.n = 2; },
+    }),
+    C('h.riches', ['h.pad2'], 'Écoute 2 changements d\'accord avec « Accords riches » au maximum', 8, 2, {
+      chord(st) { if (store.get('pad.voicing') > 0.9 && store.get('pad.on')) st.n = (st.n || 0) + 1; },
+    }),
+    C('h.tonalite', ['h.key'], 'Change 3 fois de tonalité pendant la lecture', 8, 3, {
+      param(st, k, v, src) { if (k === 'global.key' && src === 'user' && playing()) distinct(st, v); },
+    }),
+    C('h.gammes', ['h.scale'], 'Essaie 4 gammes différentes', 10, 4, {
+      param(st, k, v, src) { if (k === 'global.scale' && src === 'user') distinct(st, v); },
+    }),
+    C('h.ecrire', ['h.prog'], 'Écris une progression de 4 accords et écoute-la', 12, 2, {
+      param(st, k, v, src) {
+        if (k === 'pad.custom' && src === 'user' && String(v).trim().split(/\s+/).filter(Boolean).length >= 4) st.n = Math.max(st.n || 0, 1);
+      },
+      chord(st) { if (st.n === 1 && store.get('pad.prog') === 'Perso') st.n = 2; },
+    }, 'Composer > Progression'),
+
+    // Espace
+    C('e.extremes', ['e.reverb'], 'Mets la reverb au minimum, puis au maximum', 6, 2, {
+      param(st, k, v, src) { if (k !== 'fx.space' || src !== 'user') return; if (v < 0.1) st.n = Math.max(st.n || 0, 1); else if (v > 0.9 && st.n === 1) st.n = 2; },
+    }),
+    C('e.envois', ['e.reverb'], 'Règle l\'espace de 3 couches différentes', 6, 3, {
+      param(st, k, v, src) { if (k.endsWith('.send') && src === 'user') distinct(st, k); },
+    }, 'Le réglage « Espace » de chaque couche'),
+    C('e.textures', ['e.texture'], 'Écoute 4 textures différentes', 8, 4, {
+      param(st, k, v, src) { if (k === 'texture.type' && src === 'user') distinct(st, v); },
+    }),
+    C('e.salles', ['e.salle'], 'Écoute les 3 salles', 8, 3, {
+      param(st, k, v, src) { if (k === 'fx.revType' && src === 'user') distinct(st, v); },
+    }),
+    C('e.echo', ['e.echo'], 'Change la vitesse de l\'écho 3 fois pendant la lecture', 8, 3, {
+      param(st, k, v, src) { if (k === 'fx.echoTime' && src === 'user' && playing()) st.n = (st.n || 0) + 1; },
+    }),
+    C('e.halo', ['e.halo'], 'Laisse le Halo au-dessus des trois quarts pendant 2 mesures', 8, 2, {
+      bar(st) { if (store.get('fx.shimmer') > 0.75) st.n = (st.n || 0) + 1; else st.n = 0; },
+    }),
+    C('e.vieux', ['e.tape', 'e.lofi'], 'Pousse Cassette et Usure au-dessus de la moitié en même temps', 10, 1, {
+      param(st, k) { if ((k === 'fx.tape' || k === 'fx.lofi') && store.get('fx.tape') > 0.5 && store.get('fx.lofi') > 0.5) st.n = 1; },
+    }),
   ];
   const byId = Object.fromEntries(DEFS.map((d) => [d.id, d]));
 

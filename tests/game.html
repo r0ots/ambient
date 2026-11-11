@@ -48,6 +48,9 @@ window.addEventListener('load', ()=>{
   const gr=T.grants('c.seq'); ok(gr.includes('Mélodie écrite') && gr.includes('Piano roll') && !gr.some(x=>/Motif$/.test(x)), 'ce que débloque un nœud : '+gr.join(' / '));
   ok(T.grants('e.reverb').some(x=>/chaque couche/.test(x)) && T.dependents('h.pad').includes('c.seq'), 'grants *.send, dépendants');
   // --- contracts engine (G4.1)
+  { const K0=AMB.contracts, ids=K0.DEFS.map(d=>d.id);
+    ok(new Set(ids).size===ids.length && K0.DEFS.every(d=>d.title && d.goal>0 && d.reward>0 && d.need.every(n=>T.byId[n])), 'contrats valides ('+ids.length+')');
+    const br={}; K0.DEFS.forEach(d=>{const b=T.byId[d.need[d.need.length-1]].branch; br[b]=(br[b]||0)+1}); log('contrats par branche '+JSON.stringify(br)); }
   const K=AMB.contracts; g.reset(); g.setMode('path'); K.refill();
   ok(g.s.active.length===2 && g.s.active[0]==='k.couleur', 'contrats actifs = ceux dont les nœuds sont acquis : '+g.s.active.join(','));
   AMB.seq.playing=true;
@@ -59,6 +62,11 @@ window.addEventListener('load', ()=>{
   ['Creux','Orgue','Sub','Chaud'].forEach(w=>AMB.store.set('drone.wave',w,'user')); ok(g.s.contracts.includes('k.timbres'), 'contrat « valeurs distinctes »');
   K.skip('k.souffle'); ok(g.s.skipped.includes('k.souffle') && g.s.active.includes('k.souffle'), 'passer : remis en fin de file (seul éligible ici)');
   AMB.store.set('drone.on',false,'user'); AMB.store.set('drone.on',true,'user'); ok(g.s.contracts.includes('k.souffle'), 'contrat en deux temps');
+  g.earn(200,'test'); ['h.pad','e.reverb','e.salle','h.pad2'].forEach(i=>T.buy(i)); K.refill();
+  const force=(id)=>{ if(!g.s.active.includes(id)){ g.s.active=[id].concat(g.s.active).slice(0,3); g.s.prog[id]={n:0}; } };
+  force('e.extremes'); AMB.store.set('fx.space',0.95,'user'); AMB.store.set('fx.space',0.05,'user'); AMB.store.set('fx.space',0.95,'user'); ok(g.s.contracts.includes('e.extremes'), 'min puis max');
+  force('e.salles'); ['Plate','Cloud','Hall'].forEach(v=>AMB.store.set('fx.revType',v,'user')); ok(g.s.contracts.includes('e.salles'), '3 salles');
+  force('h.riches'); AMB.store.set('pad.voicing',1,'user'); AMB.bus.emit('chord',{time:0,deg:0,midis:[60]}); AMB.bus.emit('chord',{time:0,deg:1,midis:[62]}); ok(g.s.contracts.includes('h.riches'), 'accords riches sur 2 changements');
   AMB.seq.playing=false; g.setMode('free'); AMB.store.set('drone.tone',0.1,'user'); ok(true,'libre : pas de suivi');
   g.reset();
   g.setMode('free'); ok(T.paramUnlocked('fx.echo') && T.uiUnlocked('song'), 'mode libre : tout ouvert');

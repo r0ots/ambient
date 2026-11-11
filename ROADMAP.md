@@ -139,7 +139,7 @@ Technique : `js/game.js` (état `localStorage` `ambient.game.v1`, clé surcharg�
 
 **G4 — Contrats d'usage**
 - [x] G4.1 (v0.77) Moteur : contrats = conditions sur événements/état, 3 actifs à la fois, récompense, renouvellement. Fait : `js/contracts.js` — définitions `{id, need, title, reward, goal, on:{param|act|chord|bar|note}}`, 3 actifs choisis dans l'ordre parmi ceux dont les nœuds sont acquis, progrès dans `game.s.prog`, « passer » = fin de file (`s.skipped`), événement `game:contract`. Aide `gesture()` : un glisser de knob = 1 geste (900 ms). Toutes les actions passent maintenant par `bus 'act'` à chaque fois (découverte = la 1re, contrats = toutes). 3 contrats de départ (Tronc), aucun ne récompense l'attente
-- [ ] G4.2 Contrats Tronc / Harmonie / Espace (~12)
+- [x] G4.2 (v0.78) Contrats Tronc / Harmonie / Espace (~12). Fait : 22 contrats (Tronc 8, Harmonie 7, Espace 7) : extrêmes (min puis max), valeurs distinctes (timbres, gammes, salles, textures), gestes pendant la lecture, enchaînements en 2 temps (garder puis revenir, suivre puis forcer), états tenus sur N mesures ; gains 5–12 ✧. Un seul contrat chronométré (Rec ≥ 30 s) et aucun ne paie l'attente seule
 - [ ] G4.3 Contrats Mouvement / Composer (~12, dont durées en mesures de lecture)
 - [ ] G4.4 Carte des contrats dans l'écran principal (progression visible, réduite pendant l'écoute)
 
