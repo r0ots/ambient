@@ -208,7 +208,31 @@
       const todo = items.filter((x) => !found.has(x.id) && g.has(x.node)); // waiting, already within reach
       return { total: items.length, done: done.length, todo };
     },
+    // ---- contracts card (G4.4) ----
+    renderContracts(flashId) {
+      const box = $('#contracts'); if (!box || !AMB.contracts) return;
+      const K = AMB.contracts, g = AMB.game;
+      box.hidden = !g.path;
+      if (!g.path) return;
+      const act = K.state().active;
+      box.querySelector('.ct-count').textContent = `${g.s.contracts.length}/${K.DEFS.length}`;
+      const list = box.querySelector('.ct-list');
+      list.innerHTML = act.length ? '' : '<p class="ct-empty">Débloque des nœuds pour recevoir de nouveaux contrats.</p>';
+      for (const id of act) {
+        const d = K.byId[id], n = K.progress(id), pct = Math.round((n / d.goal) * 100);
+        const it = document.createElement('div');
+        it.className = 'ct-item'; it.dataset.id = id;
+        if (d.hint) it.title = d.hint;
+        it.innerHTML = `<p>${d.title}</p><div class="ct-bar"><i style="width:${pct}%"></i></div>
+          <span class="ct-meta">${d.goal > 1 ? `${n}/${d.goal}` : n ? 'fait' : 'à faire'} · ✧ ${d.reward}</span>
+          <button class="ct-skip" title="Passer ce contrat (il reviendra plus tard)">↷</button>`;
+        it.querySelector('.ct-skip').addEventListener('click', () => K.skip(id));
+        list.append(it);
+      }
+      if (flashId) { const el = list.querySelector(`[data-id="${flashId}"]`); if (el) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); } }
+    },
     gainText(d) {
+      if (d.reason === 'contrat' && AMB.contracts && AMB.contracts.byId[d.id]) return `+${d.n} ✧ contrat rempli : ${AMB.contracts.byId[d.id].title}`;
       if (d.reason === 'découverte' && d.id && d.id.startsWith('a:')) { const a = this.ACTS[d.id.slice(2)]; return `+${d.n} ✧ découverte : ${a ? a[2] : d.id}`; }
       if (d.reason === 'découverte' && d.id && d.id.startsWith('p:')) return `+${d.n} ✧ découverte : ${this.paramLabel(d.id.slice(2))}`;
       return `+${d.n} ✧ ${d.reason || ''}`;
@@ -223,6 +247,21 @@
         ['spend', 'unlock', 'reset', 'mode', 'puzzles'].forEach((ev) => AMB.bus.on('game:' + ev, () => this.renderCounter()));
       }
       this.renderCounter();
+      const ct = $('#contracts');
+      if (ct) {
+        let collapsed = false; try { collapsed = localStorage.getItem('ambient.contracts.min') === '1'; } catch (e) {}
+        ct.classList.toggle('min', collapsed);
+        ct.querySelector('.ct-head').addEventListener('click', () => {
+          const m = !ct.classList.contains('min'); ct.classList.toggle('min', m);
+          try { localStorage.setItem('ambient.contracts.min', m ? '1' : '0'); } catch (e) {}
+        });
+      }
+      if (AMB.bus) {
+        AMB.bus.on('game:contract', (d) => this.renderContracts(d && d.id));
+        ['contracts', 'mode', 'reset', 'unlock'].forEach((ev) => AMB.bus.on('game:' + ev, () => this.renderContracts()));
+      }
+      if (AMB.contracts) AMB.contracts.refill();
+      this.renderContracts();
       const tmap = $('#treeDlg .tree-map');
       // hovering a node lights up its prerequisites and what it leads to
       const mark = (id) => {

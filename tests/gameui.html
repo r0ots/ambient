@@ -74,6 +74,14 @@ f.addEventListener('load', async ()=>{
   ok(d.querySelectorAll('.tree-nb').length===5 && /Pad · Brillance/.test(d.querySelectorAll('.tree-nb')[1].title) && /découvertes/.test(d.querySelector('.tree-sub').textContent), 'carnet affiché par branche : '+d.querySelectorAll('.tree-nb')[1].textContent);
   A.garden.showTree(false);
   A.game.setMode('free'); A.store.set('drone.motion',0.2,'user'); A.game.setMode('path'); ok(!A.game.s.found.includes('p:drone.motion'), 'rien en mode libre');
+  // --- contracts card (G4.4)
+  A.game.reset(); await wait(30);
+  ok(shown('#contracts') && d.querySelectorAll('.ct-item').length===2 && /couleur du drone/.test(d.querySelector('.ct-item p').textContent), 'carte contrats : 2 actifs au départ');
+  A.seq.playing=true; A.store.set('drone.tone',0.3,'user'); await wait(20);
+  ok(/1\/3/.test(d.querySelector('.ct-item .ct-meta').textContent), 'progression affichée '+d.querySelector('.ct-item .ct-meta').textContent);
+  d.querySelector('.ct-item .ct-skip').click(); await wait(20); ok(d.querySelector('.ct-item').dataset.id==='k.souffle', 'passer → l\'autre passe devant');
+  d.querySelector('#contracts .ct-head').click(); ok(d.getElementById('contracts').classList.contains('min'), 'réduire'); d.querySelector('#contracts .ct-head').click();
+  A.seq.playing=false;
   // --- sound locking (G1.5)
   const St=A.store, g=A.game;
   g.setMode('free'); St.set('fx.echo',0.6,'user'); St.set('pad.on',true,'user');
@@ -85,7 +93,7 @@ f.addEventListener('load', async ()=>{
   g.setMode('free'); ok(Math.abs(St.get('fx.echo')-0.6)<0.02 && St.get('pad.on')===true, 'retour en libre : son libre rendu');
   St.set('pad.on',false,'user'); ok(St.get('pad.on')===false, 'libre : tout modifiable');
   g.setMode('path'); ok(St.get('fx.echo')===0 && St.get('pad.on')===true, 'retour au parcours : son du parcours rendu');
-  g.setMode('free'); ok(!shown('#treeBtn') && !shown('#lcdShards'), 'pas d\'arbre ni d\'éclats en libre');
+  g.setMode('free'); ok(!shown('#treeBtn') && !shown('#lcdShards') && !shown('#contracts'), 'pas d\'arbre, d\'éclats ni de contrats en libre');
   localStorage.removeItem('ambient.game.uitest');
   for (const k of Object.keys(localStorage)) if (k.startsWith('ambient.game.uitest')) localStorage.removeItem(k);
   log('DONE');

@@ -445,3 +445,23 @@ body:not(.game) #lcdShards { display: none !important; }
 .tree-nb { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; font-size: 11px; color: var(--muted); cursor: help; margin-bottom: 4px; }
 .tree-nb i { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--c) var(--p), #ffffff14 var(--p)); }
 .tree-nb em { font-style: normal; color: var(--lcd-fg); }
+.contracts { position: fixed; left: 16px; bottom: 16px; z-index: 30; width: 290px; max-width: calc(100vw - 32px); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius, 10px); box-shadow: var(--bevel, none), 0 12px 30px #000a; }
+.contracts[hidden], body.listen .contracts { display: none; }
+.ct-head { width: 100%; display: flex; justify-content: space-between; align-items: center; background: none; border: 0; color: var(--lcd-fg); font: 20px var(--f-lcd); padding: 6px 12px; cursor: pointer; letter-spacing: .05em; }
+.ct-head b { font: 13px var(--f-mono, monospace); color: var(--muted); }
+.ct-head span::before { content: '▾ '; }
+.contracts.min .ct-head span::before { content: '▸ '; }
+.contracts.min .ct-list { display: none; }
+.ct-list { display: grid; gap: 8px; padding: 0 12px 12px; }
+.ct-item { position: relative; display: grid; gap: 4px; padding-right: 22px; }
+.ct-item p { margin: 0; font-size: 12.5px; line-height: 1.35; color: var(--text); }
+.ct-bar { height: 5px; border-radius: 3px; background: #ffffff14; overflow: hidden; }
+.ct-bar i { display: block; height: 100%; background: var(--lcd-fg); transition: width .4s; }
+.ct-meta { font: 11px var(--f-mono, monospace); color: var(--muted); }
+.ct-skip { position: absolute; top: 0; right: 0; background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 14px; }
+.ct-skip:hover { color: var(--lcd-fg); }
+.ct-empty { margin: 0; font-size: 12px; color: var(--muted); }
+.ct-item.bump { animation: ct-bump .7s; }
+@keyframes ct-bump { 30% { transform: scale(1.03); } }
+@media (max-width: 560px) { .contracts { left: 8px; right: 8px; width: auto; bottom: 8px; } }
+@media (prefers-reduced-motion: reduce) { .ct-item.bump { animation: none; } .ct-bar i { transition: none; } }
