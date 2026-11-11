@@ -42,8 +42,13 @@
             const st = T.status(n.id);
             const b = document.createElement('button');
             b.className = `tree-node st-${st}`; b.dataset.id = n.id;
-            b.innerHTML = `<b>${n.name}</b><span>${st === 'owned' ? '✓' : n.cost ? `✧ ${n.cost}` : 'offert'}${n.gate && st !== 'owned' ? ' · 🔒 énigme' : ''}</span>`;
-            b.title = n.desc;
+            // prerequisites from another branch are spelled out under the name
+            const ext = n.req.filter((r) => T.byId[r].branch !== n.branch).map((r) => T.byId[r].name);
+            b.innerHTML = `<b>${n.name}</b><span>${st === 'owned' ? '✓' : n.cost ? `✧ ${n.cost}` : 'offert'}${n.gate && st !== 'owned' ? ' · 🔒 énigme' : ''}</span>`
+              + (ext.length && st !== 'owned' ? `<em>← ${ext.join(', ')}</em>` : '');
+            b.title = `${n.desc}\n\nDébloque : ${T.grants(n.id).join(', ') || '—'}`
+              + (n.req.length ? `\nDemande : ${n.req.map((r) => T.byId[r].name).join(', ')}` : '')
+              + (n.gate ? `\nPorte : une énigme d'écoute à résoudre` : '');
             row.append(b);
           }
           col.append(row);
@@ -108,6 +113,20 @@
       }
       this.renderCounter();
       const tmap = $('#treeDlg .tree-map');
+      // hovering a node lights up its prerequisites and what it leads to
+      const mark = (id) => {
+        tmap.querySelectorAll('.is-req, .is-dep, .is-focus').forEach((e) => e.classList.remove('is-req', 'is-dep', 'is-focus'));
+        if (!id) return;
+        const q = (x) => tmap.querySelector(`.tree-node[data-id="${x}"]`);
+        const me = q(id); if (me) me.classList.add('is-focus');
+        AMB.tree.byId[id].req.forEach((r) => { const e = q(r); if (e) e.classList.add('is-req'); });
+        AMB.tree.dependents(id).forEach((r) => { const e = q(r); if (e) e.classList.add('is-dep'); });
+      };
+      if (tmap) {
+        tmap.addEventListener('mouseover', (e) => { const b = e.target.closest('.tree-node'); mark(b && b.dataset.id); });
+        tmap.addEventListener('mouseleave', () => mark(null));
+        tmap.addEventListener('focusin', (e) => { const b = e.target.closest('.tree-node'); mark(b && b.dataset.id); });
+      }
       if (tmap) tmap.addEventListener('click', (e) => { const b = e.target.closest('.tree-node'); if (b) this.tryBuy(b.dataset.id); });
       const tb = $('#treeBtn'); if (tb) tb.addEventListener('click', () => this.showTree(true));
       const td = $('#treeDlg');

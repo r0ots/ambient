@@ -15,7 +15,7 @@ f.addEventListener('load', async ()=>{
   try{
   const w=f.contentWindow, d=f.contentDocument, A=w.AMB;
   w.addEventListener('error',e=>log('ERROR '+e.message+' @'+e.filename+':'+e.lineno));
-  const shown=(sel)=>{ const e=d.querySelector(sel); return !!e && w.getComputedStyle(e).display!=='none' && !e.closest('.is-locked'); };
+  const shown=(sel)=>{ const e=d.querySelector(sel); return !!e && e.getClientRects().length>0 && !e.closest('.is-locked'); };
   const locked=(sel)=>{ const e=d.querySelector(sel); return !!e && !!e.closest('.is-locked'); };
   ok(!d.body.classList.contains('game') && !d.querySelector('.is-locked'), 'mode non choisi : rien de verrouillé');
   ok(!d.getElementById('welcomeDlg').hidden, 'accueil affiché à la 1re visite');
@@ -26,6 +26,8 @@ f.addEventListener('load', async ()=>{
   ok(shown('#treeBtn'), 'bouton Arbre visible en parcours'); d.getElementById('treeBtn').click(); await wait(50);
   const tn=(id)=>d.querySelector('.tree-node[data-id="'+id+'"]');
   ok(!d.getElementById('treeDlg').hidden && d.querySelectorAll('.tree-node').length===A.tree.NODES.length && d.querySelectorAll('.tree-col').length===5, 'écran Arbre : 5 branches, tous les nœuds');
+  ok(/Débloque : .*Pad/.test(tn('h.pad').title) && /← Pad, Mélodie auto/.test(tn('c.seq').textContent), 'infobulle « débloque » + prérequis d\'une autre branche');
+  tn('h.pad').dispatchEvent(new w.MouseEvent('mouseover',{bubbles:true})); ok(tn('racine').classList.contains('is-req') && tn('h.key').classList.contains('is-dep'), 'survol : prérequis et suites surlignés');
   ok(tn('racine').classList.contains('st-owned') && tn('h.pad').classList.contains('st-available') && tn('h.scale').classList.contains('st-locked'), 'états acquis / disponible / verrouillé');
   const badge=d.querySelector('#treeBtn .tree-badge'), lcdS=d.getElementById('lcdShards');
   ok(badge.hidden && lcdS.textContent==='✧ 0', 'LCD ✧ 0, pas de pastille');

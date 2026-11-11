@@ -431,3 +431,9 @@ body.game .lcd-shards { display: block; }
 .tree-badge[hidden] { display: none; }
 @keyframes badge-pulse { 50% { transform: scale(1.15); } }
 @media (prefers-reduced-motion: reduce) { .tree-badge, .lcd-shards.bump { animation: none; } }
+.tree-node em { font-style: normal; font-size: 10.5px; color: var(--muted); }
+.tree-map:has(.is-focus) .tree-node:not(.is-focus):not(.is-req):not(.is-dep) { opacity: .3; }
+.tree-node.is-req { outline: 2px solid #8fe3a0; outline-offset: 1px; opacity: 1 !important; }
+.tree-node.is-dep { outline: 2px dashed var(--lcd-fg); outline-offset: 1px; opacity: 1 !important; }
+.tree-legend::after { content: 'Survole un nœud : vert = ce qu\'il demande, pointillés = ce qu\'il ouvre'; flex-basis: 100%; font-size: 11px; }
+body:not(.game) #lcdShards { display: none !important; }
