@@ -59,6 +59,15 @@ f.addEventListener('load', async ()=>{
   ok(A.game.s.shards===s0+5 && A.game.s.found.includes('p:drone.tone'), 'découvertes : 1re fois seulement (+2 knob, +3 interrupteur) = '+(A.game.s.shards-s0));
   A.store.set('fx.echo',0.5,'user'); A.store.set('drone.vol',0.4,'preset'); ok(A.game.s.shards===s0+5, 'rien pour un réglage verrouillé ou une écriture non-utilisateur');
   await wait(30); ok(/découverte : Drone · Couleur/.test(d.getElementById('gainFeed').textContent), 'note « +2 ✧ découverte » affichée');
+  // --- action discoveries (G3.2)
+  ok(Object.values(A.garden.ACTS).every(a=>A.tree.byId[a[0]]) && A.garden.CLICKS.every(([sel,id])=>A.garden.ACTS[id] && (sel==='.moment' || d.querySelector(sel))), 'actions : nœuds et boutons existent '+A.garden.CLICKS.filter(([sel])=>!d.querySelector(sel)).map(x=>x[0]).join(' | '));
+  const s1=A.game.s.shards;
+  A.garden.act('chord'); ok(A.game.s.shards===s1, 'action d\'un nœud non acquis : rien');
+  d.getElementById('vizMode').click(); ok(A.game.s.shards===s1, 'visuels pas encore acquis : rien');
+  A.game.earn(20,'test'); A.tree.buy('t.viz'); A.tree.buy('h.pad'); const s2=A.game.s.shards;
+  d.getElementById('vizMode').click(); d.getElementById('vizMode').click(); ok(A.game.s.shards===s2+3 && A.game.s.found.includes('a:viz'), 'clic Visuel : +3 une seule fois');
+  A.seq.forceChord(3); ok(A.game.s.found.includes('a:chord'), 'forcer un accord (clavier/MIDI) compte');
+  await wait(30); ok(/forcer un accord/.test(d.getElementById('gainFeed').textContent), 'note de découverte d\'action');
   A.game.setMode('free'); A.store.set('drone.motion',0.2,'user'); A.game.setMode('path'); ok(!A.game.s.found.includes('p:drone.motion'), 'rien en mode libre');
   // --- sound locking (G1.5)
   const St=A.store, g=A.game;

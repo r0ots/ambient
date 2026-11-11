@@ -131,13 +131,61 @@
       while (feed.children.length > 4) feed.firstChild.remove();
       setTimeout(() => it.remove(), 3200);
     },
+    // ---- action discoveries (G3.2): doing something for the first time pays too ----
+    // id: [node that must be owned, reward, label]
+    ACTS: {
+      play: ['racine', 5, 'lancer le paysage'], note: ['m.bells', 5, 'jouer une note au clavier'],
+      chord: ['h.pad', 5, 'forcer un accord (Z–M)'], xy: ['t.macros', 5, 'glisser sur l\'écran'],
+      viz: ['t.viz', 3, 'changer de visuel'], listen: ['t.viz', 3, 'écoute plein écran'],
+      keep: ['t.journal', 5, 'garder un moment'], restore: ['t.journal', 5, 'revenir à un moment'], save: ['t.journal', 5, 'sauver un patch'],
+      rec: ['t.rec', 8, 'enregistrer'], share: ['t.share', 5, 'partager un lien'],
+      dice: ['t.dice', 5, 'nouveau paysage'], preset: ['t.dice', 3, 'choisir un preset'],
+      freeze: ['m.grains2', 8, 'figer le son'], sceneStore: ['m.scenes', 5, 'mémoriser une scène'], sceneRecall: ['m.scenes', 5, 'rappeler une scène'],
+      suggest: ['h.prog', 5, 'suggérer une progression'], random: ['c.seq', 3, 'motif aléatoire'],
+      section: ['c.song', 8, 'créer une section'], song: ['c.song', 8, 'jouer le morceau'],
+      midiExport: ['c.midi', 5, 'exporter en MIDI'], midiConnect: ['c.midi', 3, 'connecter un clavier MIDI'],
+      reclive: ['c.motifs', 8, 'Rec live'],
+    },
+    // clicks that count as an action (checked in the capture phase, before any handler runs)
+    CLICKS: [
+      ['#play, #bigPlay', 'play'], ['#vizMode', 'viz'], ['#listen', 'listen'],
+      ['#keepMoment', 'keep'], ['.moment', 'restore'], ['#save', 'save'], ['#rec', 'rec'], ['#share', 'share'], ['#dice', 'dice'],
+      ['.sc-store', 'sceneStore'], ['[data-c=random]', 'suggest'], ['.roll-wrap [data-act=random]', 'random'],
+      ['[data-s=add]', 'section'], ['[data-s=play]', 'song'], ['#exportMidi, .roll-wrap [data-act=midi]', 'midiExport'], ['#midi', 'midiConnect'],
+      ['[data-act=liverec]', 'reclive'],
+    ],
+    act(id) {
+      const a = this.ACTS[id], g = AMB.game;
+      if (!a || !g.path || !g.has(a[0])) return false;
+      return g.discover('a:' + id, a[1]);
+    },
+    hookActions() {
+      document.addEventListener('click', (e) => {
+        if (!AMB.game.path) return;
+        const t = e.target.closest && e.target.closest('button, label, .moment'); if (!t) return;
+        if (t.matches('.sc-slot')) return this.act(e.shiftKey ? 'sceneStore' : 'sceneRecall');
+        for (const [sel, id] of this.CLICKS) if (t.matches(sel)) return this.act(id);
+      }, true);
+      const pre = $('#preset'); if (pre) pre.addEventListener('change', () => this.act('preset'));
+      if (AMB.bus) AMB.bus.on('act', (id) => this.act(id));
+      // live playing (computer keyboard and MIDI) goes through these two sequencer calls
+      const seq = AMB.seq, me = this;
+      if (seq) {
+        const fc = seq.forceChord, pm = seq.playMidi;
+        seq.forceChord = function (...a) { me.act('chord'); return fc.apply(this, a); };
+        seq.playMidi = function (...a) { me.act('note'); return pm.apply(this, a); };
+      }
+      AMB.store.on((k, v, src) => { if (src === 'xy') this.act('xy'); });
+    },
     gainText(d) {
+      if (d.reason === 'découverte' && d.id && d.id.startsWith('a:')) { const a = this.ACTS[d.id.slice(2)]; return `+${d.n} ✧ découverte : ${a ? a[2] : d.id}`; }
       if (d.reason === 'découverte' && d.id && d.id.startsWith('p:')) return `+${d.n} ✧ découverte : ${this.paramLabel(d.id.slice(2))}`;
       return `+${d.n} ✧ ${d.reason || ''}`;
     },
 
     build() {
       AMB.store.on((k, v, src) => this.onParam(k, v, src));
+      this.hookActions();
       if (AMB.bus) AMB.bus.on('game:earn', (d) => { if (AMB.game.path && d.reason !== 'test') this.pop(this.gainText(d)); });
       if (AMB.bus) {
         AMB.bus.on('game:earn', () => this.renderCounter(true));

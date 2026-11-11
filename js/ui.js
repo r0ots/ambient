@@ -64,6 +64,7 @@
     if (!started) { toast('Lance la lecture avant de figer le son'); return; }
     if (AMB.layers.grains.freeze(4)) {
       toast('❄ Son figé → nuage de grains');
+      if (AMB.bus) AMB.bus.emit('act', 'freeze');
       const n = nameEl || document.querySelector('.sample-name');
       if (n) n.textContent = 'figé ' + new Date().toLocaleTimeString();
     } else toast('Rien à figer (silence)');
