@@ -7,13 +7,14 @@
   const store = AMB.store;
   const PASS = 0.9;
 
-  // knob closeness: 1 at the target, 0 at a quarter of the range away (or further)
-  const TOL = 0.25;
+  // knob closeness, forgiving near the target (what an ear can do): ±0.05 → 98 %, ±0.1 → 92 %,
+  // ±0.2 → 67 %, 0 from 35 % of the range away
+  const TOL = 0.35;
   function keyScore(key, v, target) {
     const sp = store.spec(key); if (!sp) return 0;
     if (sp.type === 'select' || sp.type === 'toggle' || sp.type === 'text') return v === target ? 1 : 0;
     const span = (sp.max - sp.min) || 1, d = Math.abs(Number(v) - Number(target)) / span;
-    return Math.max(0, 1 - d / TOL);
+    return Math.max(0, 1 - (d / TOL) ** 2);
   }
 
   // puzzle: { id, title, intro, need: [node ids to attempt], target: {key: value}, reward, opens }
@@ -22,6 +23,18 @@
     P('p.premier', ['t.son', 'h.pad'], 'Premier reflet',
       'Un drone d\'orgue clair sous un Pad de verre très sombre. Retrouve ce son.',
       { 'drone.wave': 'Orgue', 'drone.tone': 0.75, 'pad.wave': 'Verre', 'pad.tone': 0.2 }, 15, 't.macros'),
+    P('p.gamme', ['h.key'], 'Autre lumière',
+      'Le même paysage, transposé ailleurs : un chœur assez brillant au-dessus d\'un drone sombre. Trouve la bonne tonalité.',
+      { 'global.key': 'F', 'pad.wave': 'Chœur', 'pad.tone': 0.65, 'drone.tone': 0.25 }, 20, 'h.scale'),
+    P('p.espace', ['e.echo'], 'La grotte',
+      'Un grand espace où le Pad se noie, et un écho pointé qui revient longtemps.',
+      { 'fx.space': 0.85, 'pad.send': 0.9, 'fx.echo': 0.6, 'fx.echoTime': '1/8.', 'fx.feedback': 0.75 }, 25, 'e.tape'),
+    P('p.mouvement', ['m.evolve'], 'Pluie de notes',
+      'Des cloches nombreuses, sans pulsation, lentes, qui dérivent toutes seules.',
+      { 'bells.wave': 'Cloche', 'bells.density': 0.75, 'global.time': 'Flottant', 'global.tempo': 50, 'global.evolve': 0.6 }, 25, 'm.lfo'),
+    P('p.composer', ['h.pad', 'm.bells'], 'Boîte à musique',
+      'Pas de Pad : une mélodie pincée, aiguë et claire, posée sur un drone très sombre.',
+      { 'pad.on': false, 'bells.wave': 'Pluck', 'bells.range': 0.85, 'bells.tone': 0.75, 'drone.tone': 0.12 }, 25, 'c.seq'),
   ];
   const byId = Object.fromEntries(DEFS.map((d) => [d.id, d]));
 

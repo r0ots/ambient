@@ -81,7 +81,8 @@ window.addEventListener('load', ()=>{
     const bad=Object.entries(d.target).filter(([k,v])=>{ const sp=AMB.store.spec(k); if(!sp) return true; if(sp.type==='select'&&!sp.options.includes(v)) return true; const n=T.nodeFor(k); return n && !anc.has(n); });
     ok(!bad.length && (!d.opens || T.byId[d.opens].gate===d.id), 'énigme '+d.id+' jouable avec ses prérequis '+bad.map(x=>x[0]).join(','));
   }
-  ok(T.NODES.filter(n=>n.gate).every(n=>!Pz.DEFS.length || Pz.byId[n.gate] || true), 'portes');
+  ok(T.NODES.filter(n=>n.gate).every(n=>Pz.byId[n.gate] && Pz.byId[n.gate].opens===n.id), 'chaque porte a son énigme');
+  { const def=AMB.store.snapshot(); for (const d of Pz.DEFS) { const sd=Pz.score(d.id, def).total, st=Pz.score(d.id, {...def, ...d.target}).total; ok(sd<0.9 && st===1, d.id+' pas résolue d\'avance ('+sd.toFixed(2)+'), cible = 100 %'); } }
   g.reset(); g.setMode('path'); g.earn(100,'test'); T.buy('t.son'); T.buy('h.pad');
   ok(Pz.available().some(d=>d.id==='p.premier') && Pz.forNode('t.macros').id==='p.premier', 'énigme disponible et liée à sa porte');
   Pz.start('p.premier'); let last=null; AMB.bus.on('game:puzzle',e=>last=e);
