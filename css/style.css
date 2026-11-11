@@ -384,3 +384,6 @@ footer { color: #6e6757; font-family: var(--f-num); letter-spacing: .08em; text-
 .chord-slot em { font-style: normal; font-size: 10px; color: var(--muted); font-family: var(--f-num); }
 .chords-auto .chord-slots, .chords-auto .chord-palette, .chords-auto .chord-durs { opacity: .45; }
 .chord-modes, .chord-durs { margin: 0 0 8px; }
+
+/* ---------- Jardin sonore : parcours ---------- */
+body.game .is-locked { display: none !important; }

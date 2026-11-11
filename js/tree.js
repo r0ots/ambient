@@ -17,7 +17,7 @@
   const N = (id, branch, name, cost, req, params, ui, desc, gate) => ({ id, branch, name, cost, req, params, ui, desc, gate: gate || null });
   const NODES = [
     // Tronc — the starting point and the tools to keep / share a sound
-    N('racine', 'tronc', 'Graine', 0, [], ['drone.on', 'drone.vol', 'drone.tone', 'global.volume'], ['play'], 'Une note tenue et sa couleur. Tout part de là.'),
+    N('racine', 'tronc', 'Graine', 0, [], ['drone.on', 'drone.vol', 'drone.tone', 'global.volume'], ['play', 'mode-sculpt'], 'Une note tenue et sa couleur. Tout part de là.'),
     N('t.son', 'tronc', 'Timbre du drone', 5, ['racine'], ['drone.wave', 'drone.motion'], [], 'Choisir le son du drone et le faire respirer.'),
     N('t.viz', 'tronc', 'Écran', 5, ['racine'], [], ['viz', 'listen'], 'Changer de visuel, passer en plein écran.'),
     N('t.journal', 'tronc', 'Journal', 10, ['t.son'], [], ['journal', 'save'], 'Revenir à un moment passé, garder un son comme patch.'),
@@ -35,7 +35,7 @@
     N('h.prog', 'harmonie', 'Progression', 40, ['h.scale', 'h.pad2'], ['pad.prog', 'pad.custom'], ['chords', 'mode-compose'], 'Écrire sa suite d\'accords case par case.'),
 
     // Espace — reverb, echo, tape, textures
-    N('e.reverb', 'espace', 'Reverb', 10, ['racine'], ['fx.space', '*.send'], ['mode-sculpt'], 'Une salle autour du son, et combien chaque couche y envoie.'),
+    N('e.reverb', 'espace', 'Reverb', 10, ['racine'], ['fx.space', '*.send'], [], 'Une salle autour du son, et combien chaque couche y envoie.'),
     N('e.texture', 'espace', 'Texture', 15, ['e.reverb'], ['texture.*'], [], 'Pluie, vent, océan, feu, oiseaux…'),
     N('e.salle', 'espace', 'Salles', 20, ['e.reverb'], ['fx.revType', 'fx.size', 'fx.predelay'], [], 'Hall, Plate ou Cloud, taille et pré-délai.'),
     N('e.echo', 'espace', 'Écho', 20, ['e.reverb'], ['fx.echo', 'fx.echoTime', 'fx.feedback'], [], 'Des répétitions calées sur le tempo.'),
@@ -128,7 +128,29 @@
     },
   };
 
+  // hide what is not unlocked yet (path mode only; free mode = the full app, untouched)
+  tree.applyLocks = function (g = AMB.game) {
+    if (typeof document === 'undefined' || !document.body) return;
+    const on = g.path;
+    document.body.classList.toggle('game', on);
+    document.querySelectorAll('[data-node]').forEach((el) => {
+      const locked = on && (el.dataset.ui ? !this.uiUnlocked(el.dataset.ui, g) : !g.isUnlocked(el.dataset.node));
+      el.classList.toggle('is-locked', locked);
+    });
+    // a panel with nothing unlocked inside disappears as a whole
+    document.querySelectorAll('.panel').forEach((p) => {
+      if (p.dataset.node) return; // feature panels (chords, song) follow their own node
+      const tagged = p.querySelectorAll('[data-node]');
+      p.classList.toggle('is-locked', on && tagged.length > 0 && !p.querySelector('[data-node]:not(.is-locked)'));
+    });
+    // never stay in a mode that is locked
+    const cur = AMB.mode;
+    if (on && cur && cur !== 'listen' && !this.uiUnlocked('mode-' + cur, g) && AMB.perform) AMB.perform.setMode('listen');
+  };
+
   AMB.tree = tree;
+  if (AMB.bus) ['mode', 'unlock', 'reset'].forEach((e) => AMB.bus.on('game:' + e, () => tree.applyLocks()));
   // the root is free: own it as soon as the path starts
-  if (AMB.game && AMB.bus) AMB.bus.on('game:mode', (m) => { if (m === 'path' && !AMB.game.has('racine')) AMB.game.unlock('racine'); });
+  const giveRoot = () => { if (AMB.game.path && !AMB.game.has('racine')) AMB.game.unlock('racine'); };
+  if (AMB.game && AMB.bus) { AMB.bus.on('game:mode', giveRoot); AMB.bus.on('game:reset', giveRoot); }
 })();

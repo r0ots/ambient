@@ -1,0 +1,40 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body>
+<script>
+const TAG=location.pathname.split('/').pop().replace('.html','');
+const S=+(new URLSearchParams(location.search).get('s')||0.4);
+const log=(m)=>fetch('/__log?'+encodeURIComponent(TAG+'|'+m)).catch(()=>{});
+const wait=(ms)=>new Promise(r=>setTimeout(r,ms));
+window.onerror=(m,s,l)=>log('ERROR '+m+' @'+s+':'+l);
+localStorage.removeItem('ambient.game.uitest');
+</script>
+<iframe id="f" src="../index.html?gamekey=ambient.game.uitest" style="width:1300px;height:900px"></iframe>
+<script>
+const ok=(c,m)=>log((c?'ok ':'ERROR fail ')+m);
+const f=document.getElementById('f');
+f.addEventListener('load', async ()=>{
+  try{
+  const w=f.contentWindow, d=f.contentDocument, A=w.AMB;
+  w.addEventListener('error',e=>log('ERROR '+e.message+' @'+e.filename+':'+e.lineno));
+  const shown=(sel)=>{ const e=d.querySelector(sel); return !!e && w.getComputedStyle(e).display!=='none' && !e.closest('.is-locked'); };
+  const locked=(sel)=>{ const e=d.querySelector(sel); return !!e && !!e.closest('.is-locked'); };
+  ok(!d.body.classList.contains('game') && !d.querySelector('.is-locked'), 'mode non choisi : rien de verrouillé');
+  A.game.setMode('path'); await wait(50);
+  ok(d.body.classList.contains('game'), 'body.game');
+  ok(!locked('#play') && !locked('[data-key="drone.vol"]') && !locked('[data-mode=sculpt]'), 'racine visible (lecture, drone, Sculpter)');
+  ok(locked('#dice') && locked('[data-key="fx.echo"]') && locked('[data-mode=compose]') && locked('#scenes') && locked('.recgrp'), 'le reste caché');
+  ok(locked('.panel[data-sec=fx]') && locked('.panel[data-sec=pad]') && !locked('.panel[data-sec=drone]') && locked('.chords-panel'), 'panneaux vides cachés');
+  A.perform.setMode('sculpt'); await wait(50);
+  ok(shown('.panel[data-sec=drone]') && shown('[data-key="drone.tone"]') && !shown('[data-key="drone.wave"]'), 'Sculpter : seul le drone de base');
+  A.game.earn(100,'test'); ok(A.tree.buy('h.pad') && A.tree.buy('t.son'), 'achats'); await wait(50);
+  ok(shown('.panel[data-sec=pad]') && shown('[data-key="drone.wave"]') && !shown('[data-key="pad.attack"]'), 'achat → réglages révélés');
+  A.game.earn(100,'test'); A.game.solve('p.composer'); A.tree.buy('m.bells'); ok(A.tree.buy('c.seq'), 'Mélodie écrite achetée'); await wait(50);
+  ok(!locked('[data-mode=compose]') && !locked('.roll-wrap') && locked('.slot-tabs') && locked('.song-panel'), 'Composer ouvert, motifs/morceau encore fermés');
+  A.game.setMode('free'); await wait(50);
+  ok(!d.body.classList.contains('game') && d.querySelectorAll('.is-locked').length===0, 'mode libre : appli intacte');
+  A.game.setMode('path'); A.game.reset(); A.perform.setMode('compose'); A.tree.applyLocks(); await wait(50);
+  ok(A.mode==='listen', 'mode verrouillé → retour Écouter');
+  localStorage.removeItem('ambient.game.uitest');
+  log('DONE');
+  }catch(e){log('EXC '+e.stack)}
+});
+</script></body></html>

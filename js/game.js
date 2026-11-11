@@ -3,7 +3,8 @@
 // and spent to unlock nodes of the tree. "Free mode" unlocks everything (the classic app).
 (function () {
   const AMB = (window.AMB = window.AMB || {});
-  const KEY = window.AMB_GAME_KEY || 'ambient.game.v1'; // tests use their own key
+  // tests use their own key (window.AMB_GAME_KEY, or ?gamekey= for the real page in an iframe)
+  const KEY = window.AMB_GAME_KEY || new URLSearchParams(location.search).get('gamekey') || 'ambient.game.v1';
 
   const fresh = () => ({
     v: 1,
@@ -25,7 +26,8 @@
       return this;
     },
     save() { try { localStorage.setItem(KEY, JSON.stringify(this.s)); } catch (e) {} },
-    reset() { this.s = fresh(); this.save(); this.emit('reset'); },
+    // restart the path (the chosen mode is kept; the root is given back by tree.js)
+    reset() { const m = this.s.mode; this.s = fresh(); this.s.mode = m; this.save(); this.emit('reset'); },
     emit(ev, data) { if (AMB.bus) AMB.bus.emit('game:' + ev, data); },
 
     // mode

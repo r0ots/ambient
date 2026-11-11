@@ -27,7 +27,7 @@ window.addEventListener('load', ()=>{
   ok(saved.nodes.includes('x') && saved.shards===12, 'persistant');
   g.setMode('free'); ok(g.isUnlocked('y'), 'mode libre = tout ouvert');
   log('events='+ev.join(','));
-  g.reset(); ok(g.s.shards===0 && !g.s.nodes.length, 'reset');
+  g.setMode('free'); g.reset(); ok(g.s.shards===0 && !g.s.nodes.length && g.s.mode==='free', 'reset (mode gardé)');
   // --- tree (G1.2)
   const T=AMB.tree, ids=T.NODES.map(n=>n.id);
   ok(new Set(ids).size===ids.length, 'ids uniques ('+ids.length+' nœuds)');
@@ -44,7 +44,7 @@ window.addEventListener('load', ()=>{
   const keys=[]; for(const [sec,o] of Object.entries(AMB.SCHEMA)) for(const k of Object.keys(o.params)) keys.push(sec+'.'+k);
   const orphan=keys.filter(k=>!T.nodeFor(k)); ok(!orphan.length, 'tout réglage a un nœud '+orphan.join(','));
   ok(T.nodeFor('pad.send')==='e.reverb' && T.nodeFor('seq.send')==='c.seq' && T.nodeFor('macro.light')==='t.macros', 'résolution exact > suffixe > section');
-  g.reset(); g.setMode('path'); ok(!T.paramUnlocked('fx.echo') && T.paramUnlocked('drone.vol') && T.status('h.pad')==='available' && T.status('h.scale')==='locked', 'statuts au départ');
+  g.reset(); ok(g.has('racine'), 'reset en parcours rend la racine'); ok(!T.paramUnlocked('fx.echo') && T.paramUnlocked('drone.vol') && T.status('h.pad')==='available' && T.status('h.scale')==='locked', 'statuts au départ');
   g.setMode('free'); ok(T.paramUnlocked('fx.echo') && T.uiUnlocked('song'), 'mode libre : tout ouvert');
   g.reset();
   localStorage.removeItem('ambient.game.test');
