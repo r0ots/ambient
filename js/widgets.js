@@ -12,6 +12,7 @@
   // ---------- Knob ----------
   function knob(key, sp, color) {
     const wrap = h('div', 'ctl knob');
+    wrap.dataset.key = key;
     wrap.title = (sp.hint ? sp.hint + '\n' : '') + 'Glisser verticalement · double-clic : valeur par défaut · Maj : réglage fin';
     const secLabel = (AMB.SCHEMA[key.split('.')[0]] || {}).label || '';
     wrap.setAttribute('role', 'slider');
@@ -92,6 +93,7 @@
 
   function select(key, sp) {
     const wrap = h('div', 'ctl sel');
+    wrap.dataset.key = key;
     if (sp.hint) wrap.title = sp.hint;
     const s = h('select');
     s.setAttribute('aria-label', `${(AMB.SCHEMA[key.split('.')[0]] || {}).label || ''} · ${sp.label}`);
@@ -105,6 +107,7 @@
 
   function textField(key, sp) {
     const wrap = h('div', 'ctl sel txt');
+    wrap.dataset.key = key;
     if (sp.hint) wrap.title = sp.hint;
     const inp = h('input'); inp.type = 'text'; inp.placeholder = sp.placeholder || ''; inp.spellcheck = false;
     inp.addEventListener('change', () => store.set(key, inp.value.trim(), 'user'));
@@ -117,6 +120,7 @@
 
   function toggle(key, sp, color) {
     const b = h('button', 'tog', sp.label);
+    b.dataset.key = key;
     if (sp.hint) b.title = sp.hint;
     if (color) b.style.setProperty('--c', color);
     b.addEventListener('click', () => store.set(key, !store.get(key), 'user'));

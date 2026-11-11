@@ -302,6 +302,7 @@
         // own button (not toggle()) so the expert panel's widget registration is untouched
         const b = h('button', 'tog', sp.label); b.style.setProperty('--c', sp.color);
         const key = `${l}.on`;
+        b.dataset.key = key;
         const r = () => b.classList.toggle('on', !!store.get(key));
         b.addEventListener('click', () => store.set(key, !store.get(key), 'user'));
         store.on((k) => { if (k === key) r(); }); r();
@@ -326,6 +327,7 @@
     const showCustom = () => { if (widgets['pad.custom']) widgets['pad.custom'].el.style.display = store.get('pad.prog') === 'Perso' ? '' : 'none'; };
     store.on((key) => { if (key === 'pad.prog') showCustom(); });
     showCustom();
+    if (AMB.tree) AMB.tree.tagDom(); // Jardin sonore: every control knows its unlock node
 
     bind('#play', 'click', () => (started ? stop() : play()));
     fillPresetSelect();

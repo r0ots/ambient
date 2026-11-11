@@ -12,6 +12,12 @@ f.addEventListener('load', async ()=>{
   try{
   const w=f.contentWindow, d=f.contentDocument, A=w.AMB;
   w.addEventListener('error',e=>log('ERROR '+e.message+' @'+e.filename+':'+e.lineno+' '+(e.error&&e.error.stack||'').slice(0,300)));
+  // Jardin sonore (G1.3): every control and feature is tied to an unlock node
+  const untagged=[...d.querySelectorAll('[data-key]:not([data-node])')].map(e=>e.dataset.key);
+  log((untagged.length?'ERROR untagged ':'tagged ok ')+untagged.join(','));
+  const noEl=Object.entries(A.tree.UI_SEL).filter(([n,sel])=>!d.querySelector(sel)).map(([n])=>n);
+  log((noEl.length?'ERROR ui sans élément ':'ui ok ')+noEl.join(',')+' nodes='+d.querySelectorAll('[data-node]').length);
+  const noUi=A.tree.NODES.flatMap(n=>n.ui).filter(u=>!A.tree.UI_SEL[u]); log((noUi.length?'ERROR ui sans sélecteur ':'ui map ok ')+noUi.join(','));
   log('loaded knobs='+d.querySelectorAll('.knob').length+' sliders='+d.querySelectorAll('[role=slider]').length);
   await wait(1500);
   log('playing='+A.seq.playing+' chord='+d.getElementById('chordName').textContent);

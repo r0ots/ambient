@@ -56,7 +56,7 @@
     // Composer — written melody, bass, pulses, automation, song
     N('c.seq', 'composer', 'Mélodie écrite', 40, ['h.pad', 'm.bells'], ['seq.on', 'seq.wave', 'seq.vol', 'seq.steps', 'seq.octave', 'seq.tone', 'seq.decay', 'seq.send', 'seq.pattern'], ['pianoroll', 'mode-compose'], 'Dessiner ses notes dans le piano roll.', 'p.composer'),
     N('c.arp', 'composer', 'Arpège', 35, ['c.seq'], ['seq.mode', 'seq.arpDir', 'seq.arpRate', 'seq.arpOct'], [], 'Égrener l\'accord en cours.'),
-    N('c.motifs', 'composer', 'Motifs A–D', 50, ['c.seq'], ['seq.patB', 'seq.patC', 'seq.patD', 'seq.slot', 'seq.chain', 'seq.mutate', 'seq.follow'], ['reclive'], '4 motifs, une chaîne, la variation, l\'enregistrement live.'),
+    N('c.motifs', 'composer', 'Motifs A–D', 50, ['c.seq'], ['seq.patB', 'seq.patC', 'seq.patD', 'seq.slot', 'seq.chain', 'seq.mutate', 'seq.follow'], ['motifs', 'reclive'], '4 motifs, une chaîne, la variation, l\'enregistrement live.'),
     N('c.bass', 'composer', 'Basse', 45, ['c.seq'], ['bass.*'], [], 'Une ligne de basse qui suit les accords.'),
     N('c.perc', 'composer', 'Pulsations', 45, ['c.seq'], ['perc.*'], [], '4 pistes rythmiques douces.'),
     N('c.groove', 'composer', 'Groove', 30, ['c.perc'], ['global.swing', 'global.humanize', 'seq.swing'], [], 'Swing et imprécision humaine.'),
@@ -75,8 +75,31 @@
   const uiNode = {};
   for (const n of NODES) for (const u of n.ui) if (!uiNode[u]) uiNode[u] = n.id; // first node that grants it
 
+  // interface features (node `ui` names) -> elements; params are tagged through their data-key
+  const UI_SEL = {
+    play: '#play, #bigPlay',
+    viz: '#vizMode', listen: '#listen',
+    journal: '#journal', save: '#save, #renamePatch, #deletePatch',
+    rec: '.recgrp', share: '#share', patches: '#exportPatches, label:has(#importFile)',
+    dice: '#dice, #mood', preset: '#preset', xy: '#xyTip',
+    freeze: '.sample-row', scenes: '#scenes', automation: '[data-sec=auto]',
+    chords: '.chords-panel', song: '.song-panel', pianoroll: '.roll-wrap',
+    motifs: '.slot-tabs, .roll-wrap [data-act=dup]',
+    reclive: '.roll-wrap [data-act=liverec], .roll-wrap label:has([data-metro])',
+    midi: '#midi, #exportMidi, .roll-wrap label:has([data-midi-in]), .roll-wrap [data-act=midi]',
+    'mode-sculpt': '[data-mode=sculpt]', 'mode-compose': '[data-mode=compose]',
+  };
+
   const tree = {
-    BRANCHES, NODES, byId,
+    BRANCHES, NODES, byId, UI_SEL,
+    // write data-node on every control (data-key) and feature element; untagged = always there
+    tagDom(root = document) {
+      root.querySelectorAll('[data-key]').forEach((el) => { const n = this.nodeFor(el.dataset.key); if (n) el.dataset.node = n; });
+      for (const [name, sel] of Object.entries(UI_SEL)) {
+        const n = this.nodeForUi(name);
+        root.querySelectorAll(sel).forEach((el) => { el.dataset.node = n; el.dataset.ui = name; });
+      }
+    },
     // node owning a parameter key, or null (always available)
     nodeFor(key) {
       if (exact[key]) return exact[key];
