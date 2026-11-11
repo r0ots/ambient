@@ -25,10 +25,10 @@
       'Un drone d\'orgue clair sous un Pad de verre très sombre. Retrouve ce son.',
       { 'drone.wave': 'Orgue', 'drone.tone': 0.75, 'pad.wave': 'Verre', 'pad.tone': 0.2 }, 15, 't.macros'),
     P('p.gamme', ['h.key'], 'Autre lumière',
-      'Le même paysage, transposé ailleurs : un chœur assez brillant au-dessus d\'un drone sombre. Trouve la bonne tonalité.',
+      'Le même paysage, transposé ailleurs : un chœur assez brillant au-dessus d\'un drone sombre. Trouve la bonne tonalité : un peu plus haut que celle de départ.',
       { 'global.key': 'F', 'pad.wave': 'Chœur', 'pad.tone': 0.65, 'drone.tone': 0.25 }, 20, 'h.scale'),
-    P('p.espace', ['e.echo'], 'La grotte',
-      'Un grand espace où le Pad se noie, et un écho pointé qui revient longtemps.',
+    P('p.espace', ['e.echo', 'h.pad'], 'La grotte',
+      'Un grand espace où le Pad se noie, et un écho un peu boiteux qui revient longtemps.',
       { 'fx.space': 0.85, 'pad.send': 0.9, 'fx.echo': 0.6, 'fx.echoTime': '1/8.', 'fx.feedback': 0.75 }, 25, 'e.tape'),
     P('p.mouvement', ['m.evolve'], 'Pluie de notes',
       'Des cloches nombreuses, sans pulsation, lentes, qui dérivent toutes seules.',
@@ -58,7 +58,7 @@
   const puzzles = {
     DEFS, byId, PASS, keyScore,
     // per-key detail and overall score of the current sound against a puzzle
-    score(id, values = store.snapshot()) {
+    score(id, values = store.stableSnapshot()) {
       const d = byId[id]; if (!d) return { total: 0, keys: [] };
       const keys = Object.entries(d.target).map(([k, t]) => ({ key: k, target: t, value: values[k], s: keyScore(k, values[k], t) }));
       const total = keys.reduce((a, x) => a + x.s, 0) / keys.length;
@@ -73,7 +73,7 @@
     ab: null,
     side() { return this.ab ? 'target' : 'mine'; },
     // the player's values (what the score is about), even while the target is playing
-    values() { return this.ab ? { ...store.snapshot(), ...this.ab.mine } : store.snapshot(); },
+    values() { return this.ab ? { ...store.stableSnapshot(), ...this.ab.mine } : store.stableSnapshot(); },
     currentScore() { return this.current ? this.score(this.current, this.values()) : { total: 0, keys: [] }; },
     listen(side) {
       const d = byId[this.current]; if (!d) return false;
@@ -82,12 +82,22 @@
         for (const k of Object.keys(d.target)) mine[k] = store.get(k);
         this.ab = { mine };
         this.applying = true; store.setMany(d.target, 'game'); this.applying = false;
+        this.veil(true);
       } else if (side === 'mine' && this.ab) {
         const mine = this.ab.mine; this.ab = null;
         this.applying = true; store.setMany(mine, 'game'); this.applying = false;
+        this.veil(false);
       }
       AMB.game.emit('puzzle', { id: this.current, side: this.side(), ...this.currentScore() });
       return true;
+    },
+    // the target's values stay hidden on the controls (listening, not copying)
+    veil(on) {
+      if (typeof document === 'undefined') return;
+      document.body.classList.toggle('pz-veil', on);
+      document.querySelectorAll('.pz-veiled').forEach((e) => e.classList.remove('pz-veiled'));
+      const d = byId[this.current];
+      if (on && d) for (const k of Object.keys(d.target)) document.querySelectorAll(`[data-key="${k}"]`).forEach((e) => e.classList.add('pz-veiled'));
     },
     start(id) {
       if (!byId[id]) return false;
@@ -111,10 +121,11 @@
   // live score while a puzzle is open; touching a control while hearing the target brings your
   // own sound back first (your values, plus the change you just made) — no copying the target
   store.on((k, v, src) => {
-    if (!puzzles.current) return;
+    if (!puzzles.current || src === 'lfo' || src === 'evolve') return;
     if (puzzles.ab && src === 'user' && !puzzles.applying) {
       const mine = { ...puzzles.ab.mine }; delete mine[k]; puzzles.ab = null;
       puzzles.applying = true; store.setMany(mine, 'game'); puzzles.applying = false;
+      puzzles.veil(false);
     }
     AMB.game.emit('puzzle', { id: puzzles.current, side: puzzles.side(), ...puzzles.currentScore() });
   });

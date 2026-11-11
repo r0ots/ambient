@@ -141,7 +141,7 @@
     paramLabel(key) {
       const [sec, k] = key.split('.'); const S = AMB.SCHEMA[sec]; if (!S) return key;
       const sp = S.params[k];
-      return k === 'on' ? S.label : sp && !sp.hidden ? `${S.label} · ${sp.label}` : S.label;
+      return k === 'on' ? S.label : sp ? `${S.label} · ${sp.label}` : S.label;
     },
     onParam(key, v, source) {
       const g = AMB.game;
@@ -275,7 +275,7 @@
       ].map((x) => `<li>${x}</li>`).join('');
       const rest = [L.disc && `${L.disc} découvertes`, L.contracts && `${L.contracts} contrats`, L.puzzles && `${L.puzzles} énigmes`].filter(Boolean);
       dlg.querySelector('.end-left').textContent = rest.length
-        ? `Il reste en bonus : ${rest.join(', ')}. Ils restent dans le carnet, la carte des contrats et l'arbre, pour le plaisir de tout trouver.`
+        ? `Il reste en bonus : ${rest.join(', ')}. Tout reste jouable dans le carnet, la carte des contrats et l'arbre, pour le plaisir de tout trouver.`
         : 'Tu as absolument tout trouvé. Bravo.';
     },
     checkEnd() {
@@ -295,7 +295,7 @@
       const scale = Th.SCALES[AMB.store.get('global.scale')] || Th.SCALES['Ionien (majeur)'];
       const degs = kind === 'small' ? [4] : kind === 'solve' ? [0, 2, 4, 7, 9, 11] : [0, 2, 4, 7];
       const out = ctx.createGain(); out.gain.value = 0.16;
-      out.connect(E.dryBus); if (E.revIn) out.connect(E.revIn);
+      out.connect(ctx.destination); // straight to the speakers: never recorded nor frozen
       const t0 = ctx.currentTime + 0.02;
       degs.forEach((dg, i) => {
         const f = Th.mtof(Th.degreeToMidi(dg, root, scale, 5));
@@ -330,7 +330,11 @@
       this.renderPuzzle();
       if (!this.pzTimer) this.pzTimer = setInterval(() => { if (this.pz) this.renderPuzzle(); }, 5000);
     },
-    closePuzzle() { if (AMB.puzzles) AMB.puzzles.stop(); this.pz = null; const c = $('#puzzle'); if (c) c.hidden = true; },
+    closePuzzle() {
+      if (AMB.puzzles) AMB.puzzles.stop(); this.pz = null;
+      if (this.pzTimer) { clearInterval(this.pzTimer); this.pzTimer = null; }
+      const c = $('#puzzle'); if (c) c.hidden = true;
+    },
     // hints grow with failed validations and time spent
     hintLevel() { const p = this.pz; if (!p) return 0; const t = (Date.now() - p.t0) / 1000; return p.fails >= 3 || t > 120 ? 2 : p.fails >= 1 || t > 45 ? 1 : 0; },
     hintText(sc) {
@@ -339,10 +343,13 @@
       if (lvl === 0) return 'Écoute la cible, reviens à ton son, ajuste.';
       const word = (k) => {
         const sp = AMB.store.spec(k.key);
+        if (sp.type === 'select' && sp.options && sp.options.indexOf(k.value) >= 0 && /^(global\.key|fx\.echoTime)$/.test(k.key))
+          return sp.options.indexOf(k.value) < sp.options.indexOf(k.target) ? 'plus haut' : 'plus bas';
         if (sp.type) return 'essaie une autre option';
         return Number(k.value) < Number(k.target) ? 'plus haut' : 'plus bas';
       };
-      if (lvl === 1) return `Le plus éloigné : ${this.paramLabel(off[0].key)}`;
+      const bonus = AMB.puzzles && AMB.puzzles.byId[this.pz.id] && AMB.puzzles.byId[this.pz.id].bonus;
+      if (lvl === 1) return bonus ? `Un réglage est encore loin (${off.length} à revoir)` : `Le plus éloigné : ${this.paramLabel(off[0].key)}`;
       return off.map((k) => `${this.paramLabel(k.key)} : ${word(k)}`).join(' · ');
     },
     renderPuzzle() {
@@ -405,6 +412,7 @@
         AMB.bus.on('game:contracts', () => { if (!AMB.game.path) return; this.chime('small'); this.lcd('✓ contrat rempli', 2500); });
         AMB.bus.on('game:puzzle', () => this.renderPuzzle());
         AMB.bus.on('game:mode', () => { if (!AMB.game.path) this.closePuzzle(); });
+        AMB.bus.on('game:reset', () => this.closePuzzle());
       }
       const ct = $('#contracts');
       if (ct) {

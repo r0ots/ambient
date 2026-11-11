@@ -45,7 +45,7 @@
 
     // Mouvement — melody, time, drift, grains, slow movements, scenes
     N('m.bells', 'mouvement', 'Mélodie auto', 5, ['racine'], ['bells.on', 'bells.vol', 'bells.wave', 'bells.density', 'bells.tone', 'bells.decay', 'bells.range'], [], 'Des notes qui improvisent sur les accords.'),
-    N('m.tempo', 'mouvement', 'Tempo', 10, ['m.bells'], ['global.tempo', 'global.time'], [], 'Vitesse, et rythme régulier ou libre.'),
+    N('m.tempo', 'mouvement', 'Tempo', 10, ['m.bells'], ['global.tempo', 'global.time'], [], 'Vitesse, et rythme pulsé ou flottant.'),
     N('m.phrase', 'mouvement', 'Phrases', 20, ['m.bells'], ['bells.mode', 'bells.phraseLen', 'bells.mutate'], [], 'Un motif qui se répète et varie lentement.'),
     N('m.evolve', 'mouvement', 'Dérive', 20, ['m.tempo'], ['global.evolve'], [], 'Tes réglages dérivent tout seuls autour de leur valeur.'),
     N('m.grains', 'mouvement', 'Grains', 20, ['m.bells'], ['grains.on', 'grains.vol', 'grains.density', 'grains.size', 'grains.scan', 'grains.spray', 'grains.pitch'], [], 'Un nuage de minuscules fragments de son.'),
@@ -146,7 +146,12 @@
       if (this.status(id, g) !== 'available') return false;
       return g.unlock(id, byId[id].cost);
     },
-    paramUnlocked(key, g = AMB.game) { return g.isUnlocked(this.nodeFor(key)); },
+    paramUnlocked(key, g = AMB.game) {
+      if (!g.isUnlocked(this.nodeFor(key))) return false;
+      // a layer's « Espace » send only matters once the layer itself is there
+      if (g.path && key.endsWith('.send')) { const on = key.replace(/\.send$/, '.on'); if (AMB.store.spec(on)) return g.isUnlocked(this.nodeFor(on)); }
+      return true;
+    },
     uiUnlocked(name, g = AMB.game) {
       if (!g.path) return true;
       // a feature granted by several nodes (e.g. Composer mode) opens with any of them
@@ -160,7 +165,7 @@
     const on = g.path;
     document.body.classList.toggle('game', on);
     document.querySelectorAll('[data-node]').forEach((el) => {
-      const locked = on && (el.dataset.ui ? !this.uiUnlocked(el.dataset.ui, g) : !g.isUnlocked(el.dataset.node));
+      const locked = on && (el.dataset.ui ? !this.uiUnlocked(el.dataset.ui, g) : el.dataset.key ? !this.paramUnlocked(el.dataset.key, g) : !g.isUnlocked(el.dataset.node));
       el.classList.toggle('is-locked', locked);
     });
     // a panel with nothing unlocked inside disappears as a whole
@@ -185,7 +190,7 @@
   const NEUTRAL = {
     'fx.space': 0.35, 'fx.shimmer': 0, 'fx.echo': 0, 'fx.tape': 0, 'fx.lofi': 0,
     'global.evolve': 0, 'global.swing': 0, 'global.humanize': 0, 'pad.counter': 0,
-    'mod.l1depth': 0, 'mod.l2depth': 0, 'mod.l1target': '—', 'mod.l2target': '—',
+    'mod.l1depth': 0, 'mod.l2depth': 0, 'mod.l1target': '—', 'mod.l2target': '—', 'drone.follow': false,
   };
   tree.lockedValue = function (key) {
     if (key in NEUTRAL) return NEUTRAL[key];
@@ -209,6 +214,7 @@
   let wasPath = AMB.game ? AMB.game.path : false;
   tree.onMode = function () {
     const g = AMB.game, nowPath = g.path;
+    if (AMB.puzzles && AMB.puzzles.ab) AMB.puzzles.listen('mine'); // never save / carry the target sound
     if (nowPath && !g.has('racine')) g.unlock('racine'); // the root is free
     if (nowPath !== wasPath) {
       saveSnap(wasPath ? 'path' : 'free');
@@ -222,6 +228,13 @@
   tree.onUnlock = function (id) {
     const n = byId[id]; if (!n) return;
     for (const p of n.params) if (p.endsWith('.on') && p !== 'auto.on') AMB.store.set(p, true, 'game');
+    // effects held at a neutral value while locked come back at their default, so the purchase is heard
+    for (const k of this.allKeys()) {
+      if (!(k in NEUTRAL) || this.nodeFor(k) !== id || AMB.store.get(k) !== NEUTRAL[k]) continue;
+      const sp = AMB.store.spec(k); if (sp && sp.def !== NEUTRAL[k]) AMB.store.set(k, sp.def, 'game');
+    }
+    // sends of layers that were waiting for this layer
+    for (const k of this.allKeys()) if (k.endsWith('.send') && this.nodeFor(k.replace(/\.send$/, '.on')) === id && this.paramUnlocked(k)) AMB.store.set(k, AMB.store.spec(k).def, 'game');
   };
 
   AMB.tree = tree;

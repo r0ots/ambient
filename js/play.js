@@ -14,6 +14,10 @@
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
     if (!AMB.engine.ctx) return; // audition works when stopped too, once audio has been started once
     let i;
+    // in the path, playing notes needs the Melody, forcing chords needs the Pad
+    const g = AMB.game, can = (id) => !g || g.isUnlocked(id);
+    if ((MELODY_LOW.includes(e.code) || MELODY_HIGH.includes(e.code)) && !can('m.bells')) return;
+    if (CHORDS.includes(e.code) && !can('h.pad')) return;
     if ((i = MELODY_LOW.indexOf(e.code)) >= 0) AMB.seq.playDegree(i, e.shiftKey ? 0.5 : 0.85);
     else if ((i = MELODY_HIGH.indexOf(e.code)) >= 0) AMB.seq.playDegree(i + 7, e.shiftKey ? 0.5 : 0.85);
     else if ((i = CHORDS.indexOf(e.code)) >= 0) AMB.seq.forceChord(i);

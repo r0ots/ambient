@@ -98,10 +98,10 @@
     C('e.echo', ['e.echo'], 'Change la vitesse de l\'écho 3 fois pendant la lecture', 8, 3, {
       param(st, k, v, src) { if (k === 'fx.echoTime' && src === 'user' && playing()) st.n = (st.n || 0) + 1; },
     }),
-    C('e.halo', ['e.halo'], 'Laisse le Halo au-dessus des trois quarts pendant 2 mesures', 8, 2, {
+    C('e.halo', ['e.halo'], 'Laisse le Halo au-dessus de 75 pendant 2 mesures', 8, 2, {
       bar(st) { if (store.get('fx.shimmer') > 0.75) st.n = (st.n || 0) + 1; else st.n = 0; },
     }),
-    C('e.vieux', ['e.tape', 'e.lofi'], 'Pousse Cassette et Usure au-dessus de la moitié en même temps', 10, 1, {
+    C('e.vieux', ['e.tape', 'e.lofi'], 'Pousse Cassette et Usure au-dessus de 50 en même temps', 10, 1, {
       param(st, k) { if ((k === 'fx.tape' || k === 'fx.lofi') && store.get('fx.tape') > 0.5 && store.get('fx.lofi') > 0.5) st.n = 1; },
     }),
 
@@ -112,14 +112,14 @@
     C('m.densite', ['m.bells'], 'Rends la mélodie très clairsemée, puis très dense', 6, 2, {
       param(st, k, v, src) { if (k !== 'bells.density' || src !== 'user') return; if (v < 0.1) st.n = Math.max(st.n || 0, 1); else if (v > 0.8 && st.n === 1) st.n = 2; },
     }),
-    C('m.libre', ['m.tempo'], 'Passe en rythme Libre, puis reviens en Régulier', 6, 2, {
+    C('m.libre', ['m.tempo'], 'Passe le Rythme en Flottant, puis reviens en Pulsé', 6, 2, {
       param(st, k, v, src) { if (k !== 'global.time' || src !== 'user') return; if (v === 'Flottant') st.n = Math.max(st.n || 0, 1); else if (st.n === 1) st.n = 2; },
     }),
     C('m.phrase', ['m.phrase'], 'Mets la mélodie en mode Phrase et écoute-la tourner 2 fois', 8, 3, {
       param(st, k, v, src) { if (k === 'bells.mode' && src === 'user' && v === 'Phrase') st.n = Math.max(st.n || 0, 1); },
       phrase(st) { if (st.n >= 1 && store.get('bells.mode') === 'Phrase') st.n += 1; },
     }),
-    C('m.derive', ['m.evolve'], 'Monte la Dérive au-delà de la moitié et laisse-la travailler 4 mesures', 8, 4, {
+    C('m.derive', ['m.evolve'], 'Monte la Dérive au-delà de 50 et laisse-la travailler 4 mesures', 8, 4, {
       bar(st) { if (store.get('global.evolve') > 0.5) st.n = (st.n || 0) + 1; else st.n = 0; },
     }),
     C('m.grains', ['m.grains'], 'Essaie les 3 réglages de Hauteurs des grains', 8, 3, {
@@ -166,7 +166,7 @@
     C('c.pulses', ['c.perc'], 'Modifie 6 fois la grille des pulsations', 8, 6, {
       param(st, k, v, src) { if (k === 'perc.pattern' && src === 'user' && gesture(st, k, 150)) st.n = (st.n || 0) + 1; },
     }),
-    C('c.swing', ['c.groove'], 'Garde un swing au-dessus de 0,4 pendant 2 mesures', 8, 2, {
+    C('c.swing', ['c.groove'], 'Garde un swing au-dessus de 40 pendant 2 mesures', 8, 2, {
       bar(st) { if (store.get('global.swing') > 0.4) st.n = (st.n || 0) + 1; else st.n = 0; },
     }),
     C('c.export', ['c.midi'], 'Exporte ton morceau en fichier MIDI', 8, 1, {
@@ -206,6 +206,8 @@
     // route an event to every active contract; complete those that reach their goal
     dispatch(ev, ...args) {
       const g = AMB.game; if (!g.path) return;
+      if (AMB.puzzles && AMB.puzzles.ab) return; // hearing a puzzle's target is not doing it
+      if (ev === 'param' && args[2] === 'game') return;
       const s = this.state(g); let changed = false;
       for (const id of s.active.slice()) {
         const d = byId[id]; const fn = d && d.on[ev]; if (!fn) continue;

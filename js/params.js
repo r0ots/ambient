@@ -13,7 +13,7 @@
         key: { label: 'Tonalité', hint: 'Note de départ de la gamme : tout le morceau est construit dessus.', type: 'select', options: NOTE_NAMES, def: 'D' },
         scale: { label: 'Gamme', hint: 'Couleur harmonique : Lydien lumineux, Éolien mélancolique, Pentatonique toujours doux…', type: 'select', options: Object.keys(SCALES), def: 'Lydien' },
         evolve: { label: 'Dérive', hint: 'Fait bouger lentement et tout seul les réglages autour de tes valeurs.', min: 0, max: 1, def: 0.35 },
-        time: { label: 'Rythme', hint: 'Régulier : notes sur les temps. Libre : notes qui flottent sans pulsation.', type: 'select', options: ['Pulsé', 'Flottant'], def: 'Pulsé' },
+        time: { label: 'Rythme', hint: 'Pulsé : notes sur les temps. Flottant : notes qui flottent sans pulsation.', type: 'select', options: ['Pulsé', 'Flottant'], def: 'Pulsé' },
         swing: { label: 'Swing', min: 0, max: 1, def: 0.12, hint: 'Chaloupé général : retarde une double-croche sur deux, pour toutes les pistes.' },
         humanize: { label: 'Imprécision', hint: 'Petits décalages de temps et de force pour un jeu moins mécanique.', min: 0, max: 1, def: 0.2 },
         tuning: { label: 'Diapason', hint: 'Fréquence de référence du La (440 Hz standard, 432 Hz un peu plus grave).', type: 'select', options: ['440 Hz', '432 Hz'], def: '440 Hz' },
@@ -218,6 +218,8 @@
       // motifs mutated by the piano roll's « Variation » are saved as the user drew them
       const orig = AMB.pianoRoll && AMB.pianoRoll.originals ? AMB.pianoRoll.originals() : {};
       for (const [k, v] of Object.entries(orig)) if (v != null && k in snap) snap[k] = v;
+      // while a puzzle's target is being heard, the player's own values are what counts
+      if (AMB.puzzles && AMB.puzzles.ab) Object.assign(snap, AMB.puzzles.ab.mine);
       return snap;
     }
     on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }

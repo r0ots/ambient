@@ -357,7 +357,7 @@
     document.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
       if (e.code === 'Space') { e.preventDefault(); started ? stop() : play(); }
-      if (e.code === 'Enter' && e.target.tagName !== 'BUTTON') { e.preventDefault(); freezeNow(); }
+      if (e.code === 'Enter' && e.target.tagName !== 'BUTTON') { e.preventDefault(); if (!AMB.tree || AMB.tree.uiUnlocked('freeze')) freezeNow(); }
       if (e.code === 'Escape') { showHelp(false); if (document.body.classList.contains('listen')) setListen(false); }
       if (e.key === '?') { const d = $('#helpDlg'); showHelp(d && d.hidden); }
     });

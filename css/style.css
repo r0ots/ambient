@@ -494,3 +494,5 @@ body.listen .puzzle-card { display: none; }
 .end-left { color: var(--muted); font-size: 13px; }
 .end-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
 @media (max-width: 560px) { .end-stats { grid-template-columns: 1fr; } }
+/* puzzle A/B: the target's values are heard, not shown */
+body.pz-veil .pz-veiled { filter: blur(4px) grayscale(.6); opacity: .55; }

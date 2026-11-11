@@ -165,6 +165,7 @@
     if (e.metaKey || e.ctrlKey || e.altKey || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
     const n = parseInt(e.key, 10);
     if (!(n >= 1 && n <= 8) || !song.sections[n - 1]) return;
+    if (AMB.tree && !AMB.tree.uiUnlocked('song')) return; // locked in the path
     e.preventDefault();
     if (!song.playing) { song.start(); song.idx = n - 1; song.enter(n - 1, true); song.render(); return; }
     song.pending = n - 1;

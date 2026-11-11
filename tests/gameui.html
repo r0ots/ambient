@@ -91,6 +91,15 @@ f.addEventListener('load', async ()=>{
     ed.querySelector('[data-end=tree]').click(); ok(ed.hidden && /Jardin complet/.test(d.querySelector('#treeDlg .tree-sub').textContent), 'voir l\'arbre : « Jardin complet »');
     A.garden.showTree(false); ok(!A.garden.checkEnd(), 'écran montré une seule fois');
     A.game.reset(); A.garden.renderTree && A.garden.renderTree(); }
+  // --- review fixes (G6.5): mode switch while hearing a target, sends, neutral effects
+  { A.game.reset(); A.game.earn(300,'test'); ['t.son','h.pad'].forEach(i=>A.tree.buy(i));
+    A.store.set('pad.wave','Nappe','user'); A.garden.openPuzzle('p.premier'); A.puzzles.listen('target');
+    A.game.setMode('free'); await wait(30); ok(!A.puzzles.ab && d.getElementById('puzzle').hidden, 'passage en libre pendant la cible : écoute arrêtée');
+    A.game.setMode('path'); await wait(30); ok(A.store.get('pad.wave')==='Nappe', 'retour au parcours : mon son, pas la cible');
+    ok(!A.tree.paramUnlocked('bells.send') && A.game.has('h.pad') , 'pré-achat');
+    A.tree.buy('e.reverb'); ok(A.tree.paramUnlocked('pad.send') && !A.tree.paramUnlocked('bells.send'), 'Espace d\'une couche seulement si la couche est là');
+    A.tree.buy('e.echo'); ok(A.store.get('fx.echo')===A.store.spec('fx.echo').def, 'écho acheté = on l\'entend (valeur par défaut)');
+    A.game.reset(); }
   // --- feedback (G6.2)
   A.game.earn(50,'test'); A.tree.buy('e.reverb'); await wait(400);
   ok(/REVERB DÉBLOQUÉ/.test(d.getElementById('lcdTop').textContent) && d.getElementById('lcdTop').classList.contains('lcd-flash'), 'LCD : « reverb débloqué » '+d.getElementById('lcdTop').textContent);
@@ -106,7 +115,9 @@ f.addEventListener('load', async ()=>{
   ok(!pzc.hidden && /Premier reflet/.test(pzc.textContent) && d.getElementById('treeDlg').hidden, 'nœud-porte → carte d\'énigme ouverte');
   ok(/Joue sur : Drone · Son/.test(pzc.querySelector('.pz-keys').textContent) && parseInt(pzc.querySelector('.pz-pct').textContent)<50, 'réglages en jeu + jauge basse '+pzc.querySelector('.pz-pct').textContent);
   pzc.querySelector('.pz-ab').click(); await wait(20); ok(/Revenir/.test(pzc.querySelector('.pz-ab').textContent) && pzc.querySelector('.pz-ok').disabled && A.store.get('pad.wave')==='Verre', 'écoute de la cible');
-  pzc.querySelector('.pz-ab').click(); await wait(20); ok(A.store.get('pad.wave')==='Nappe', 'retour à mon son');
+  ok(d.body.classList.contains('pz-veil') && d.querySelector('[data-key="pad.wave"]').classList.contains('pz-veiled'), 'cible : valeurs masquées sur les réglages');
+  ok(A.store.stableSnapshot()['pad.wave']==='Nappe', 'instantanés (journal, annuler, partage) = mon son, pas la cible');
+  pzc.querySelector('.pz-ab').click(); await wait(20); ok(A.store.get('pad.wave')==='Nappe' && !d.querySelector('.pz-veiled'), 'retour à mon son');
   pzc.querySelector('.pz-ok').click(); await wait(20); ok(!A.game.s.puzzles.includes('p.premier') && /plus éloigné/.test(pzc.querySelector('.pz-hint').textContent), 'échec → indice : '+pzc.querySelector('.pz-hint').textContent);
   pzc.querySelector('.pz-ok').click(); pzc.querySelector('.pz-ok').click(); await wait(20); ok(/plus haut|plus bas|autre option/.test(pzc.querySelector('.pz-hint').textContent), 'indices détaillés après 3 échecs');
   A.store.setMany({'drone.wave':'Orgue','pad.wave':'Verre','drone.tone':0.73,'pad.tone':0.22},'user'); await wait(20);
