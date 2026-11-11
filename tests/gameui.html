@@ -82,6 +82,22 @@ f.addEventListener('load', async ()=>{
   d.querySelector('.ct-item .ct-skip').click(); await wait(20); ok(d.querySelector('.ct-item').dataset.id==='k.souffle', 'passer → l\'autre passe devant');
   d.querySelector('#contracts .ct-head').click(); ok(d.getElementById('contracts').classList.contains('min'), 'réduire'); d.querySelector('#contracts .ct-head').click();
   A.seq.playing=false;
+  // --- puzzle card (G5.3)
+  A.game.reset(); A.game.earn(100,'test'); A.tree.buy('t.son'); A.tree.buy('h.pad');
+  A.store.setMany({'drone.wave':'Chaud','drone.tone':0.35,'pad.wave':'Nappe','pad.tone':0.4},'user');
+  A.garden.showTree(true); await wait(30); tn('t.macros').click(); await wait(30);
+  const pzc=d.getElementById('puzzle');
+  ok(!pzc.hidden && /Premier reflet/.test(pzc.textContent) && d.getElementById('treeDlg').hidden, 'nœud-porte → carte d\'énigme ouverte');
+  ok(/Joue sur : Drone · Son/.test(pzc.querySelector('.pz-keys').textContent) && parseInt(pzc.querySelector('.pz-pct').textContent)<50, 'réglages en jeu + jauge basse '+pzc.querySelector('.pz-pct').textContent);
+  pzc.querySelector('.pz-ab').click(); await wait(20); ok(/Revenir/.test(pzc.querySelector('.pz-ab').textContent) && pzc.querySelector('.pz-ok').disabled && A.store.get('pad.wave')==='Verre', 'écoute de la cible');
+  pzc.querySelector('.pz-ab').click(); await wait(20); ok(A.store.get('pad.wave')==='Nappe', 'retour à mon son');
+  pzc.querySelector('.pz-ok').click(); await wait(20); ok(!A.game.s.puzzles.includes('p.premier') && /plus éloigné/.test(pzc.querySelector('.pz-hint').textContent), 'échec → indice : '+pzc.querySelector('.pz-hint').textContent);
+  pzc.querySelector('.pz-ok').click(); pzc.querySelector('.pz-ok').click(); await wait(20); ok(/plus haut|plus bas|autre option/.test(pzc.querySelector('.pz-hint').textContent), 'indices détaillés après 3 échecs');
+  A.store.setMany({'drone.wave':'Orgue','pad.wave':'Verre','drone.tone':0.73,'pad.tone':0.22},'user'); await wait(20);
+  ok(pzc.querySelector('.pz-ok').classList.contains('ready'), 'jauge ≥ 90 % → Valider s\'allume');
+  pzc.querySelector('.pz-ok').click(); await wait(40);
+  ok(A.game.s.puzzles.includes('p.premier') && pzc.hidden && !d.getElementById('treeDlg').hidden && tn('t.macros').classList.contains('st-available'), 'résolue → arbre rouvert, nœud achetable');
+  A.garden.showTree(false);
   // --- sound locking (G1.5)
   const St=A.store, g=A.game;
   g.setMode('free'); St.set('fx.echo',0.6,'user'); St.set('pad.on',true,'user');

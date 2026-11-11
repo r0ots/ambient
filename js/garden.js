@@ -72,7 +72,12 @@
       const shake = () => { if (el) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); } };
       if (st === 'owned') return false;
       if (st === 'locked') { shake(); AMB.ui.toast(`D'abord : ${n.req.filter((r) => !g.has(r)).map((r) => T.byId[r].name).join(', ')}`); return false; }
-      if (st === 'gated') { shake(); AMB.ui.toast('🔒 Résous l\'énigme de ce nœud pour l\'ouvrir'); return false; }
+      if (st === 'gated') {
+        const pz = AMB.puzzles && AMB.puzzles.forNode(id);
+        if (pz && pz.need.every((r) => g.has(r))) { this.openPuzzle(pz.id); return false; }
+        shake(); AMB.ui.toast(pz ? `🔒 Énigme : débloque d'abord ${pz.need.filter((r) => !g.has(r)).map((r) => T.byId[r].name).join(', ')}` : '🔒 Énigme bientôt disponible');
+        return false;
+      }
       if (!g.canAfford(n.cost)) { shake(); AMB.ui.toast(`Il te manque ✧ ${n.cost - g.s.shards}`); return false; }
       T.buy(id);
       AMB.ui.toast(`🌱 ${n.name} débloqué`);
@@ -135,6 +140,9 @@
     pop(text) {
       let feed = $('#gainFeed');
       if (!feed) { feed = document.createElement('div'); feed.id = 'gainFeed'; feed.className = 'gain-feed'; feed.setAttribute('aria-live', 'polite'); document.body.append(feed); }
+      // float just under the LCD (wherever the header layout puts it)
+      const lcd = $('#lcd');
+      if (lcd) { const r = lcd.getBoundingClientRect(); feed.style.top = `${Math.round(r.bottom + 6)}px`; feed.style.left = `${Math.round(r.left)}px`; feed.style.right = 'auto'; }
       const it = document.createElement('div'); it.className = 'gain'; it.textContent = text;
       feed.append(it);
       while (feed.children.length > 4) feed.firstChild.remove();
@@ -231,7 +239,64 @@
       }
       if (flashId) { const el = list.querySelector(`[data-id="${flashId}"]`); if (el) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); } }
     },
+    // ---- puzzle card (G5.3) ----
+    pz: null, // { id, fails, t0 }
+    openPuzzle(id) {
+      const P = AMB.puzzles; if (!P || !P.byId[id]) return;
+      this.showTree(false);
+      this.pz = { id, fails: 0, t0: Date.now() };
+      P.start(id);
+      const card = $('#puzzle'); card.hidden = false;
+      const d = P.byId[id];
+      card.querySelector('.pz-title').textContent = `Énigme · ${d.title}`;
+      card.querySelector('.pz-intro').textContent = d.intro;
+      card.querySelector('.pz-keys').textContent = `Joue sur : ${Object.keys(d.target).map((k) => this.paramLabel(k)).join(', ')}`;
+      this.renderPuzzle();
+      if (!this.pzTimer) this.pzTimer = setInterval(() => { if (this.pz) this.renderPuzzle(); }, 5000);
+    },
+    closePuzzle() { if (AMB.puzzles) AMB.puzzles.stop(); this.pz = null; const c = $('#puzzle'); if (c) c.hidden = true; },
+    // hints grow with failed validations and time spent
+    hintLevel() { const p = this.pz; if (!p) return 0; const t = (Date.now() - p.t0) / 1000; return p.fails >= 3 || t > 120 ? 2 : p.fails >= 1 || t > 45 ? 1 : 0; },
+    hintText(sc) {
+      const lvl = this.hintLevel(), off = sc.keys.filter((k) => k.s < 0.9).sort((a, b) => a.s - b.s);
+      if (!off.length) return 'Tout y est : valide !';
+      if (lvl === 0) return 'Écoute la cible, reviens à ton son, ajuste.';
+      const word = (k) => {
+        const sp = AMB.store.spec(k.key);
+        if (sp.type) return 'essaie une autre option';
+        return Number(k.value) < Number(k.target) ? 'plus haut' : 'plus bas';
+      };
+      if (lvl === 1) return `Le plus éloigné : ${this.paramLabel(off[0].key)}`;
+      return off.map((k) => `${this.paramLabel(k.key)} : ${word(k)}`).join(' · ');
+    },
+    renderPuzzle() {
+      const card = $('#puzzle'), P = AMB.puzzles; if (!card || !this.pz || !P) return;
+      const sc = P.currentScore(), pct = Math.round(sc.total * 100), ready = sc.total >= P.PASS;
+      card.querySelector('.pz-gauge i').style.width = pct + '%';
+      card.querySelector('.pz-gauge').classList.toggle('ready', ready);
+      card.querySelector('.pz-pct').textContent = `${pct} %`;
+      const target = P.side() === 'target';
+      const ab = card.querySelector('.pz-ab');
+      ab.textContent = target ? '◀ Revenir à mon son' : '▶ Écouter la cible';
+      ab.classList.toggle('on', target);
+      const okb = card.querySelector('.pz-ok'); okb.classList.toggle('ready', ready && !target); okb.disabled = target;
+      card.querySelector('.pz-hint').textContent = target ? 'Tu entends la cible. Touche un réglage ou reviens à ton son pour continuer.' : this.hintText(sc);
+    },
+    validatePuzzle() {
+      const P = AMB.puzzles; if (!this.pz || !P) return;
+      const id = this.pz.id, d = P.byId[id];
+      if (P.check(id)) {
+        this.closePuzzle();
+        AMB.ui.toast(`✓ Énigme résolue : ${d.title}${d.opens ? ` · « ${AMB.tree.byId[d.opens].name} » peut s'acheter` : ''}`);
+        if (d.opens) this.showTree(true);
+      } else {
+        this.pz.fails++;
+        const c = $('#puzzle'); c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake');
+        this.renderPuzzle();
+      }
+    },
     gainText(d) {
+      if (d.reason === 'énigme' && AMB.puzzles && AMB.puzzles.byId[d.id]) return `+${d.n} ✧ énigme résolue : ${AMB.puzzles.byId[d.id].title}`;
       if (d.reason === 'contrat' && AMB.contracts && AMB.contracts.byId[d.id]) return `+${d.n} ✧ contrat rempli : ${AMB.contracts.byId[d.id].title}`;
       if (d.reason === 'découverte' && d.id && d.id.startsWith('a:')) { const a = this.ACTS[d.id.slice(2)]; return `+${d.n} ✧ découverte : ${a ? a[2] : d.id}`; }
       if (d.reason === 'découverte' && d.id && d.id.startsWith('p:')) return `+${d.n} ✧ découverte : ${this.paramLabel(d.id.slice(2))}`;
@@ -247,6 +312,16 @@
         ['spend', 'unlock', 'reset', 'mode', 'puzzles'].forEach((ev) => AMB.bus.on('game:' + ev, () => this.renderCounter()));
       }
       this.renderCounter();
+      const pzc = $('#puzzle');
+      if (pzc) {
+        pzc.querySelector('.pz-x').addEventListener('click', () => this.closePuzzle());
+        pzc.querySelector('.pz-ab').addEventListener('click', () => AMB.puzzles.listen(AMB.puzzles.side() === 'target' ? 'mine' : 'target'));
+        pzc.querySelector('.pz-ok').addEventListener('click', () => this.validatePuzzle());
+      }
+      if (AMB.bus) {
+        AMB.bus.on('game:puzzle', () => this.renderPuzzle());
+        AMB.bus.on('game:mode', () => { if (!AMB.game.path) this.closePuzzle(); });
+      }
       const ct = $('#contracts');
       if (ct) {
         let collapsed = false; try { collapsed = localStorage.getItem('ambient.contracts.min') === '1'; } catch (e) {}
