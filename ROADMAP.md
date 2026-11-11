@@ -144,7 +144,7 @@ Technique : `js/game.js` (état `localStorage` `ambient.game.v1`, clé surcharg�
 - [x] G4.4 (v0.80) Carte des contrats dans l'écran principal (progression visible, réduite pendant l'écoute). Fait : `#contracts` flottante en bas à gauche (parcours seulement, cachée en Écoute plein écran), 3 contrats avec barre, n/objectif, gain, indice en infobulle, ↷ passer ; repliable (mémorisé) ; compteur x/41 ; note « +n ✧ contrat rempli : … ». À revoir : le panneau « Macros » affiche son titre alors que seules les puces de couches sont débloquées
 
 **G5 — Énigmes à cible**
-- [ ] G5.1 Moteur : cible = sous-ensemble de clés, ressemblance par clé (knob : distance normalisée ; select : égalité), jauge 0–100 %, réussite à 90 %
+- [x] G5.1 (v0.81) Moteur : cible = sous-ensemble de clés, ressemblance par clé (knob : distance normalisée ; select : égalité), jauge 0–100 %, réussite à 90 %. Fait : `js/puzzles.js` — `{id, need, title, intro, target, reward, opens}`, knob : 1 à la cible → 0 à un quart de la plage, moyenne des clés, `score()` détaillé par clé, `start/stop/check`, jauge en direct (`game:puzzle`). Règle vérifiée par le test : une énigme n'utilise que des réglages débloqués par ses prérequis. 1re énigme « Premier reflet » (porte des Grands réglages)
 - [ ] G5.2 Écouter la cible ↔ mon son (bascule A/B sans perdre son état)
 - [ ] G5.3 Interface d'énigme : jauge, indices progressifs (la zone la plus éloignée) après quelques essais
 - [ ] G5.4 Énigmes-portes (une par branche + tronc)
