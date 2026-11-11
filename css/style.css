@@ -82,7 +82,10 @@ body.playing .big-play { opacity: 0; pointer-events: none; transform: scale(0.9)
 body.listen .app > :not(.stage) { display: none; }
 body.listen .app { max-width: none; padding: 0; }
 body.listen .stage { height: 100vh; margin: 0; border-radius: 0; border: 0; }
-body.listen .hint, body.listen .xy-label { display: none; }
+body.listen .hint, body.listen .xy-label { font-size: 12px !important; color: #8a90b8 !important; }
+.xy-tip { position: absolute; left: 50%; top: 58%; transform: translate(-50%,-50%); font-size: 14px; color: #e9e4ff; background: #120f26cc; border: 1px solid #8f7aff88; border-radius: 10px; padding: 8px 14px; pointer-events: none; opacity: 0; transition: opacity .6s; }
+.xy-tip.show { opacity: 1; }
+.xy-label { display: none; }
 body.listen .chord { font-size: 44px; }
 body.listen .hud { top: 28px; left: 32px; }
 .xy-label { position: absolute; font-size: 10px; color: #3d4363; pointer-events: none; letter-spacing: .1em; }

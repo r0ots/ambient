@@ -53,10 +53,11 @@
   const setView = (simple) => setMode(simple ? 'listen' : 'sculpt');
 
   // ---------- XY performance pad on the visualizer ----------
-  const XY_MAP = {
-    x: [['pad.tone', 0.08, 0.9], ['bells.tone', 0.05, 1], ['drone.tone', 0.08, 0.7], ['texture.tone', 0.15, 0.85]],
-    y: [['bells.density', 0.04, 0.8], ['grains.density', 0.08, 0.9], ['fx.echo', 0.12, 0.55]],
-  };
+  // the XY pad and MIDI CCs drive the macros themselves (one mapping, knobs stay in sync)
+  function setMacro(key, v) {
+    store.set(key, Math.max(0, Math.min(1, v)), 'sync'); // move the macro knob without re-triggering
+    applyMacro(key, store.get(key));
+  }
   function setupXY(canvas) {
     let down = false;
     const applyXY = (e) => {
@@ -64,8 +65,9 @@
       const x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
       const y = Math.max(0, Math.min(1, 1 - (e.clientY - r.top) / r.height));
       AMB.visual.xy = { x, y, t: performance.now() };
-      for (const [k, a, b] of XY_MAP.x) store.set(k, a + (b - a) * x, 'user');
-      for (const [k, a, b] of XY_MAP.y) store.set(k, a + (b - a) * y, 'user');
+      setMacro('macro.light', x);
+      setMacro('macro.density', y);
+      AMB.perform.xyUsed = true;
     };
     canvas.addEventListener('pointerdown', (e) => {
       if (!AMB.seq.playing) return;
@@ -76,5 +78,5 @@
     canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
   }
 
-  AMB.perform = { MACROS, setView, setMode, MODES, setupXY, syncMacros };
+  AMB.perform = { MACROS, setMacro, applyMacro, setView, setMode, MODES, setupXY, syncMacros };
 })();

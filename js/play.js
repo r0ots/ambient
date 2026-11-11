@@ -40,14 +40,9 @@
       else AMB.seq.playMidi(d1, 0.25 + (d2 / 127) * 0.75);
     } else if (type === 0xb0) {
       const v = d2 / 127;
-      if (d1 === 1) { // mod wheel -> density (XY Y axis)
-        store.set('bells.density', 0.04 + 0.76 * v, 'user');
-        store.set('grains.density', 0.08 + 0.82 * v, 'user');
-      } else if (d1 === 74) { // brightness
-        store.set('pad.tone', 0.08 + 0.82 * v, 'user');
-        store.set('bells.tone', 0.05 + 0.95 * v, 'user');
-      } else if (d1 === 91) store.set('fx.space', v, 'user');
-      else if (d1 === 93) store.set('fx.shimmer', v, 'user');
+      // CCs drive the same macros as the XY pad: mod wheel = Densité, CC74 = Lumière, CC91 = Espace, CC93 = Nostalgie
+      const cc = { 1: 'macro.density', 74: 'macro.light', 91: 'macro.space', 93: 'macro.nostalgia' }[d1];
+      if (cc) AMB.perform.setMacro(cc, v);
     }
   }
 

@@ -89,8 +89,8 @@ Constat : ~120 réglages visibles sans hiérarchie, 7 façons de mémoriser un �
 - [x] A2. (v0.55) Barre du haut : groupes légendés (Lecture / Son / Enreg. / Vue), Rec + format + durée regroupés, « ✦ Nouveau paysage » + Humeur
 - [x] A3. (v0.56) Renommer le jargon (Evolve→Dérive, Shimmer→Halo, Tape→Cassette, Lo-fi→Usure, Envoi FX→Espace, Moteur→Son, Tonalité(timbre)→Couleur, Temps Pulsé/Flottant→Rythme Régulier/Libre, Temps(delay)→Vitesse écho, Caractère→Salle, Mutation→Variation, Gel→Figer, Humain→Imprécision, LFO→Mouvement lent, Séquenceur→Mélodie écrite, Mélodie→Mélodie auto…)
 - [x] A4. (v0.56) Infobulles d'explication (`hint` dans SCHEMA) sur les ~40 réglages principaux
-- [ ] A5. Pad XY visible (légendes lisibles, bulle d'aide après le 1er Play) et branché sur les macros Lumière/Densité (plus de table en double)
-- [ ] A6. Piano roll : « Suit accords » désactivé par défaut (activé seulement pour l'arpège)
+- [x] A5. (v0.57) Pad XY visible (légendes lisibles, bulle d'aide après le 1er Play) et branché sur les macros Lumière/Densité (plus de table en double)
+- [x] A6. (v0.57) Piano roll : « Suit accords » désactivé par défaut (activé seulement pour l'arpège)
 
 **Phase B — Look rétro « synthé japonais fin 80, version nuit » (Juno-106/D-50)**
 - [ ] B1. Tokens (anthracite, crème, ambre LCD), polices IBM Plex Sans Condensed / Plex Mono / VT323, panneaux biseautés numérotés, boutons membrane avec LED, knobs à anneau segmenté, selects en mini-LCD

@@ -134,8 +134,18 @@
     started = true;
     document.body.classList.add('playing');
     mediaSession();
+    showXyTip();
     $('#play').textContent = '■ Stop';
   }
+  // one-time hint so people discover the XY pad
+  function showXyTip() {
+    let seen = false; try { seen = !!localStorage.getItem('ambient.xyTip'); } catch (e) {}
+    const tip = $('#xyTip'); if (!tip || seen || AMB.perform.xyUsed) return;
+    setTimeout(() => tip.classList.add('show'), 1500);
+    setTimeout(() => tip.classList.remove('show'), 9000);
+    try { localStorage.setItem('ambient.xyTip', '1'); } catch (e) {}
+  }
+
   function stop() {
     AMB.seq.stop();
     if (AMB.song && AMB.song.playing) AMB.song.stop();

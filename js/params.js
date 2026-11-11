@@ -94,7 +94,7 @@
         vol: { label: 'Niveau', min: 0, max: 1, def: 0.5 },
         steps: { label: 'Longueur', hint: 'Longueur du motif.', type: 'select', options: ['16', '32', '64'], labels: { 16: '1 mesure', 32: '2 mesures', 64: '4 mesures' }, def: '32' },
         octave: { label: 'Octave', type: 'select', options: ['-1', '0', '+1'], def: '0' },
-        follow: { label: 'Suit accords', hint: 'Transpose tes notes avec chaque accord (pratique pour les arpèges, déroutant pour une mélodie).', type: 'toggle', def: true },
+        follow: { label: 'Suit accords', hint: 'Transpose tes notes avec chaque accord (pratique pour les arpèges, déroutant pour une mélodie).', type: 'toggle', def: false },
         tone: { label: 'Brillance', min: 0, max: 1, def: 0.45 },
         decay: { label: 'Résonance', min: 0, max: 1, def: 0.45 },
         swing: { label: 'Swing', hint: 'Retarde une double-croche sur deux : jeu plus chaloupé.', min: 0, max: 1, def: 0.1 },
