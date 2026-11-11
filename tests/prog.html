@@ -29,7 +29,7 @@ window.addEventListener('load', async ()=>{
   log('prog degs='+degs.join(','));
   degs.length=0; AMB.store.set('pad.prog','Perso'); AMB.store.set('pad.custom','2 5 1');
   await new Promise(r=>setTimeout(r,7000*S));
-  log('custom degs='+degs.join(',')+' customVisible='+(AMB.ui.widgets['pad.custom'].el.style.display!=='none'));
+  log('custom degs='+degs.join(','));
   document.getElementById('dice').click();
   log('dice custom='+AMB.store.get('pad.custom')+' tempo='+AMB.store.get('global.tempo'));
   log('DONE');
