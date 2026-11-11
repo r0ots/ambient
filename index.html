@@ -26,6 +26,7 @@
       <div id="lcd" class="lcd" aria-live="polite" title="État du son">
         <span id="lcdTop">AMBIENT</span>
         <span id="lcdLine">■ STOP</span>
+        <span id="lcdShards" class="lcd-shards" title="Éclats : à dépenser dans l'arbre"></span>
       </div>
       <div class="transport">
         <div class="tgrp"><small>Lecture</small>
@@ -60,7 +61,9 @@
             <button class="mode-btn" data-mode="sculpt" title="Sculpter : tous les réglages du son">Sculpter</button>
             <button class="mode-btn" data-mode="compose" title="Composer : accords, mélodie écrite, basse, rythmes, morceau">Composer</button>
           </div>
-          <button id="treeBtn" class="btn tree-btn" title="L'arbre du jardin : ce que tu as débloqué et ce qui t'attend">🌱 Arbre</button>
+        </div>
+        <div class="tgrp tree-grp"><small>Jardin</small>
+          <div class="tgrp-row"><button id="treeBtn" class="btn tree-btn" title="L'arbre du jardin : ce que tu as débloqué et ce qui t'attend">🌱 Arbre<i class="tree-badge" hidden></i></button></div>
         </div>
         <span id="sleepLeft" class="sleep-left" title="Minuteur de sommeil"></span>
         <details class="more">

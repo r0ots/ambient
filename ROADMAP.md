@@ -129,7 +129,7 @@ Technique : `js/game.js` (état `localStorage` `ambient.game.v1`, clé surcharg�
 **G2 — Arbre**
 - [x] G2.1 (v0.70) Écran Arbre (superposition) : carte des 4 branches, états verrouillé / disponible / acquis, style rétro. Fait : `#treeDlg` + bouton `#treeBtn` (visible seulement en parcours), 5 colonnes (tronc + 4 branches), nœuds rangés par profondeur de prérequis, compteur x/n par branche, 4 états dont « énigme à résoudre ». Capture de dev : `tests/shot-tree.html` (hors suite)
 - [x] G2.2 (v0.71) Acheter un nœud : coût, animation, révélation de l'élément dans l'interface (surlignage + défilement + étiquette « Nouveau »). Fait : `garden.tryBuy` (refus expliqués : prérequis manquants, énigme, éclats manquants + secousse), `garden.reveal` (bascule vers le mode qui contient l'élément, préfère le panneau complet aux raccourcis d'Écouter, classe `is-new` 6 s)
-- [ ] G2.3 Éclats affichés dans le LCD ; bouton Arbre avec pastille quand un nœud est abordable
+- [x] G2.3 (v0.72) Éclats affichés dans le LCD ; bouton Arbre avec pastille quand un nœud est abordable. Fait : `#lcdShards` (sursaut à chaque gain), groupe « Jardin » dans la barre (visible seulement en parcours) avec pastille = nombre de nœuds achetables ; les groupes de la barre dont tout est verrouillé disparaissent avec leur légende
 - [ ] G2.4 Liens et prérequis visibles, nœuds-portes marqués (énigme requise), infobulle « ce que ça débloque »
 
 **G3 — Découvertes**

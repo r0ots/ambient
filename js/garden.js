@@ -84,7 +84,29 @@
       try { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { first.scrollIntoView(); }
     },
 
+    // ---- shard counter + "something to buy" badge (G2.3) ----
+    affordable() {
+      const T = AMB.tree, g = AMB.game;
+      return T.NODES.filter((n) => T.status(n.id) === 'available' && g.canAfford(n.cost));
+    },
+    renderCounter(gain) {
+      const el = $('#lcdShards'), badge = $('#treeBtn .tree-badge');
+      if (!AMB.game.path) { if (el) el.textContent = ''; if (badge) badge.hidden = true; return; }
+      if (el) {
+        el.textContent = `✧ ${AMB.game.s.shards}`;
+        if (gain) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+      }
+      const n = this.affordable().length;
+      if (badge) { badge.hidden = !n; badge.textContent = n; }
+      const tb = $('#treeBtn'); if (tb) tb.title = n ? `${n} nœud${n > 1 ? 's' : ''} à débloquer dans l'arbre` : 'L\'arbre du jardin : ce que tu as débloqué et ce qui t\'attend';
+    },
+
     build() {
+      if (AMB.bus) {
+        AMB.bus.on('game:earn', () => this.renderCounter(true));
+        ['spend', 'unlock', 'reset', 'mode', 'puzzles'].forEach((ev) => AMB.bus.on('game:' + ev, () => this.renderCounter()));
+      }
+      this.renderCounter();
       const tmap = $('#treeDlg .tree-map');
       if (tmap) tmap.addEventListener('click', (e) => { const b = e.target.closest('.tree-node'); if (b) this.tryBuy(b.dataset.id); });
       const tb = $('#treeBtn'); if (tb) tb.addEventListener('click', () => this.showTree(true));

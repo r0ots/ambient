@@ -27,6 +27,10 @@ f.addEventListener('load', async ()=>{
   const tn=(id)=>d.querySelector('.tree-node[data-id="'+id+'"]');
   ok(!d.getElementById('treeDlg').hidden && d.querySelectorAll('.tree-node').length===A.tree.NODES.length && d.querySelectorAll('.tree-col').length===5, 'écran Arbre : 5 branches, tous les nœuds');
   ok(tn('racine').classList.contains('st-owned') && tn('h.pad').classList.contains('st-available') && tn('h.scale').classList.contains('st-locked'), 'états acquis / disponible / verrouillé');
+  const badge=d.querySelector('#treeBtn .tree-badge'), lcdS=d.getElementById('lcdShards');
+  ok(badge.hidden && lcdS.textContent==='✧ 0', 'LCD ✧ 0, pas de pastille');
+  A.game.earn(5,'t'); await wait(20); ok(!badge.hidden && badge.textContent==='2' && lcdS.textContent==='✧ 5', 'pastille = nœuds abordables ('+badge.textContent+')');
+  A.game.spend(5); await wait(20); ok(badge.hidden, 'plus rien d\'abordable → pas de pastille');
   tn('h.scale').click(); ok(!A.game.has('h.scale') && !d.getElementById('treeDlg').hidden, 'clic sur verrouillé : rien');
   tn('h.pad').click(); ok(!A.game.has('h.pad') && /manque/.test(d.getElementById('toast').textContent), 'pas assez d\'éclats : refus '+d.getElementById('toast').textContent);
   A.game.earn(10,'t'); A.perform.setMode('listen'); tn('h.pad').click(); await wait(80);
@@ -58,7 +62,7 @@ f.addEventListener('load', async ()=>{
   g.setMode('free'); ok(Math.abs(St.get('fx.echo')-0.6)<0.02 && St.get('pad.on')===true, 'retour en libre : son libre rendu');
   St.set('pad.on',false,'user'); ok(St.get('pad.on')===false, 'libre : tout modifiable');
   g.setMode('path'); ok(St.get('fx.echo')===0 && St.get('pad.on')===true, 'retour au parcours : son du parcours rendu');
-  g.setMode('free'); ok(!shown('#treeBtn'), 'pas de bouton Arbre en libre');
+  g.setMode('free'); ok(!shown('#treeBtn') && !shown('#lcdShards'), 'pas d\'arbre ni d\'éclats en libre');
   localStorage.removeItem('ambient.game.uitest');
   for (const k of Object.keys(localStorage)) if (k.startsWith('ambient.game.uitest')) localStorage.removeItem(k);
   log('DONE');

@@ -394,8 +394,9 @@ body.game .is-locked { display: none !important; }
 .welcome-choice span { font-size: 13px; line-height: 1.45; color: #c4c9e0; }
 .welcome-choice:hover, .welcome-choice:focus-visible { border-color: var(--lcd-fg); }
 @media (max-width: 560px) { .welcome-choices { grid-template-columns: 1fr; } }
-.tree-btn { display: none; margin-left: 6px; }
-body.game .tree-btn { display: inline-flex; }
+.tree-grp { display: none !important; }
+body.game .tree-grp { display: flex !important; }
+
 .tree-card { max-width: 1100px; }
 .tree-shards { float: right; font: 26px var(--f-lcd); color: var(--lcd-fg); margin-right: 32px; }
 .tree-legend { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
@@ -420,3 +421,13 @@ body.game .tree-btn { display: inline-flex; }
 .is-new::after { content: 'NOUVEAU'; position: absolute; top: -9px; right: -6px; font: 11px var(--f-lcd); letter-spacing: .08em; padding: 0 4px; border-radius: 3px; background: var(--lcd-fg); color: #1a1408; pointer-events: none; z-index: 2; }
 @keyframes is-new-glow { 50% { box-shadow: 0 0 18px color-mix(in srgb, var(--lcd-fg) 60%, transparent); } }
 @media (prefers-reduced-motion: reduce) { .is-new, .tree-node.shake { animation: none; } }
+.lcd-shards { display: none; position: absolute; right: 10px; top: 4px; font-size: 21px; }
+body.game .lcd-shards { display: block; }
+.lcd { position: relative; }
+.lcd-shards.bump { animation: lcd-bump .6s; }
+@keyframes lcd-bump { 30% { transform: scale(1.35); color: #fff3c4; } }
+.tree-btn { position: relative; }
+.tree-badge { position: absolute; top: -7px; right: -7px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: var(--lcd-fg); color: #1a1408; font: 600 11px/18px var(--f-mono, monospace); font-style: normal; text-align: center; box-shadow: 0 0 10px var(--lcd-glow, #f2a23a88); animation: badge-pulse 2s ease-in-out infinite; }
+.tree-badge[hidden] { display: none; }
+@keyframes badge-pulse { 50% { transform: scale(1.15); } }
+@media (prefers-reduced-motion: reduce) { .tree-badge, .lcd-shards.bump { animation: none; } }

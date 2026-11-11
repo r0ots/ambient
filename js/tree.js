@@ -143,6 +143,11 @@
       const tagged = p.querySelectorAll('[data-node]');
       p.classList.toggle('is-locked', on && tagged.length > 0 && !p.querySelector('[data-node]:not(.is-locked)'));
     });
+    // top-bar groups whose buttons are all locked disappear with their caption
+    document.querySelectorAll('.tgrp').forEach((t) => {
+      const tagged = t.querySelectorAll('[data-node]');
+      t.classList.toggle('is-locked', on && tagged.length > 0 && !t.querySelector('[data-node]:not(.is-locked)'));
+    });
     // never stay in a mode that is locked
     const cur = AMB.mode;
     if (on && cur && cur !== 'listen' && !this.uiUnlocked('mode-' + cur, g) && AMB.perform) AMB.perform.setMode('listen');
