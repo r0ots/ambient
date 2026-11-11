@@ -97,8 +97,8 @@ Constat : ~120 réglages visibles sans hiérarchie, 7 façons de mémoriser un �
 - [x] B2. (v0.59) Écran LCD d'état dans la barre (patch, tonalité, tempo, accord, mesure, ▶/■, REC) ; visualiseur en CRT (cadre, scanlines discrètes) ; canvas piano roll ambre, automation vert phosphore ; prefers-reduced-motion respecté
 
 **Phase C — Modèle de composition consolidé + bugs**
-- [ ] C1. Morceau : les sections ne copient plus les motifs/progression (partagés) → corriger un motif met à jour tout le morceau ; touches 1–8 = aller à la section (au prochain temps fort)
-- [ ] C2. Transitions de section : pas relatif au début de section (accords, chaîne A–D, approche de basse non tronqués)
+- [x] C1. (v0.60) Morceau : les sections ne copient plus les motifs/progression (partagés) → corriger un motif met à jour tout le morceau ; touches 1–8 = aller à la section (au prochain temps fort)
+- [x] C2. (v0.60) Transitions de section : pas relatif au début de section (accords, chaîne A–D, approche de basse non tronqués)
 - [ ] C3. Progression : une seule source (le panneau), retirer le select/texte du Pad ; durée par case
 - [ ] C4. Bugs revue : journal en stableSnapshot ; XY/CC MIDI en source non-annulable ; degrés > 7 ; jeu clavier audible à l'arrêt ; mutation qui écrase le motif sauvegardé ; swing unifié
 - [ ] C5. Export MIDI : piste Basse + export du Morceau entier

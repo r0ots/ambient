@@ -39,7 +39,7 @@
   let playStep = -1;
   function onStep(step, time, sd) {
     if (!store.get('perc.on')) return;
-    const n = nSteps(), i = step % n;
+    const n = nSteps(), i = (step - (AMB.seq.origin || 0)) % n;
     playStep = i;
     const grid = parse(store.get('perc.pattern'), n);
     const prob = store.get('perc.prob');

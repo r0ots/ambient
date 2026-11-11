@@ -25,12 +25,13 @@
   let playStep = -1;
   function onStep(step, time, sd, chordDeg) {
     if (!store.get('bass.on') || !AMB.layers.bass) return;
-    const i = step % N; playStep = i;
+    const rel = step - (AMB.seq.origin || 0);
+    const i = rel % N; playStep = i;
     const g = parse(store.get('bass.pattern'));
     const seq = AMB.seq, prog = seq.progression && seq.progression();
     // aim at the next chord only during the last bar before it changes
     const barLen = store.get('pad.length');
-    const lastBar = step % (16 * barLen) >= 16 * (barLen - 1);
+    const lastBar = rel % (16 * barLen) >= 16 * (barLen - 1);
     const nextDeg = lastBar && prog && prog.length ? prog[((seq.progIdx || 0) + 1) % prog.length] : chordDeg;
     // note length: until the next active step in any row
     let len = 1; while (len < N && !g.some((row) => row[(i + len) % N])) len++;

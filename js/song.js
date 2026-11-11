@@ -6,12 +6,15 @@
   const store = AMB.store;
   const LS = 'ambient.song.v1';
   const SKIP = new Set(['global.volume']);
+  // composition material is shared by all sections (edit a motif once, the whole song follows);
+  // sections only choose sound, which motif slot/chain plays, which layers are on, etc.
+  const SHARED = new Set(['seq.pattern', 'seq.patB', 'seq.patC', 'seq.patD', 'bass.pattern', 'perc.pattern', 'pad.custom', 'auto.curve']);
 
   const song = {
     sections: [], playing: false, loop: true, idx: 0, barInSection: 0, fade: null,
     load() { try { const o = JSON.parse(localStorage.getItem(LS)); if (o && Array.isArray(o.sections)) { this.sections = o.sections; this.loop = o.loop !== false; } } catch (e) {} },
     save() { try { localStorage.setItem(LS, JSON.stringify({ sections: this.sections, loop: this.loop })); } catch (e) {} },
-    snap() { const s = store.stableSnapshot(); for (const k of SKIP) delete s[k]; return s; },
+    snap() { const s = store.stableSnapshot(); for (const k of SKIP) delete s[k]; for (const k of SHARED) delete s[k]; return s; },
 
     add() {
       const names = ['Intro', 'A', 'B', 'Pont', 'C', 'Final'];
@@ -42,13 +45,14 @@
       const from = store.snapshot(), to = sec.snap;
       const discrete = {}, cont = [];
       for (const [k, v] of Object.entries(to)) {
-        const sp = store.spec(k); if (!sp || SKIP.has(k)) continue;
+        const sp = store.spec(k); if (!sp || SKIP.has(k) || SHARED.has(k)) continue;
         if (!sp.type || sp.type === 'knob') { if (from[k] !== v) cont.push([k, from[k], v]); }
         else discrete[k] = v;
       }
       store.setMany(discrete, 'morph');
       // start the section's own progression and motif chain from their beginning, right now
       AMB.seq.progIdx = -1;
+      AMB.seq.origin = AMB.seq.step; // bars, chords and motif chains restart at the section start
       if (!instant) AMB.seq.forceChordChange = true;
       if (AMB.pianoRoll && AMB.pianoRoll.resetLatch) AMB.pianoRoll.resetLatch();
       if (instant || !cont.length) { for (const [k, , b] of cont) store.set(k, b, 'morph'); this.fade = null; }
@@ -66,6 +70,11 @@
         if (t >= 1) this.fade = null;
       }
       if (step % 16 !== 0 || step === 0) return;
+      // queued jump (keys 1–8): switch on the next bar line
+      if (this.pending != null && this.sections[this.pending]) {
+        this.idx = this.pending; this.pending = null; this.barInSection = 0;
+        this.enter(this.idx); this.renderProgress(); return;
+      }
       this.barInSection++;
       const sec = this.sections[this.idx];
       if (sec && this.barInSection >= sec.bars) {
@@ -89,7 +98,7 @@
           <button class="btn small" data-s="add" title="Nouvelle section = état actuel du son">+ Section</button>
           <button class="btn small" data-s="play">▶ Jouer le morceau</button>
           <label class="btn small"><input type="checkbox" data-s="loop"> Boucler</label>
-          <span class="roll-hint">Chaque section mémorise tout le son (couches, effets, motifs, progression). Règle le son, puis « ⟲ » pour la mettre à jour.</span>
+          <span class="roll-hint">Chaque section mémorise le son (couches, effets, motif joué) ; les motifs et la progression sont partagés. Touches 1–8 : aller à une section.</span>
         </div>`;
       container.prepend(panel);
       this.panel = panel;
@@ -150,6 +159,17 @@
       });
     },
   };
+
+  // keys 1–8 jump to a section at the next bar (starts the song if needed)
+  document.addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+    const n = parseInt(e.key, 10);
+    if (!(n >= 1 && n <= 8) || !song.sections[n - 1]) return;
+    e.preventDefault();
+    if (!song.playing) { song.start(); song.idx = n - 1; song.enter(n - 1, true); song.render(); return; }
+    song.pending = n - 1;
+    AMB.ui.toast(`→ ${song.sections[n - 1].name} à la prochaine mesure`);
+  });
 
   song.load();
   AMB.song = song;

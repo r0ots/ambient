@@ -39,7 +39,7 @@
   function slotAt(step) {
     const chain = chainList();
     if (!chain.length) return store.get('seq.slot');
-    return chain[Math.floor(step / steps()) % chain.length];
+    return chain[Math.floor((step - (AMB.seq.origin || 0)) / steps()) % chain.length];
   }
 
   // ---------- playback (called by the sequencer on every 16th) ----------
@@ -48,7 +48,7 @@
   let arpIdx = 0, arpUp = true;
   function arpStep(step, time, sd, chordDeg) {
     const every = ARP_RATE[store.get('seq.arpRate')] || 2;
-    if (step % every) return;
+    if ((step - (AMB.seq.origin || 0)) % every) return;
     const seq = AMB.seq, oct = parseInt(store.get('seq.octave'), 10) || 0;
     const span = parseInt(store.get('seq.arpOct'), 10) || 2;
     const n = seq.scale.length;
@@ -85,7 +85,7 @@
     if (roll.recording && roll.metro && step % 4 === 0 && AMB.engine.ctx) click(time, step % 16 === 0);
     if (!store.get('seq.on') || !AMB.layers.seq) return;
     if (store.get('seq.mode') === 'Arpège') { roll.playStep = -1; return arpStep(step, time, sd, chordDeg); }
-    const len = steps(), i = step % len;
+    const len = steps(), i = (step - (AMB.seq.origin || 0)) % len;
     // slot changes are quantised: the new motif starts at the next pattern boundary (like clip launching)
     if (i === 0 || latched == null) latched = slotAt(step);
     const slot = latched, key = SLOTKEY[slot];

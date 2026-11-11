@@ -38,6 +38,7 @@
       if (this.playing) return;
       this.playing = true;
       this.step = 0;
+      this.origin = 0; // step where the current song section started (bars count from here)
       this.lockUntil = 0;
       this.nextTime = ctx.currentTime + 0.1;
       this.chordDeg = 0;
@@ -171,7 +172,8 @@
 
       // ---- chord changes ----
       const forced = this.forceChordChange; this.forceChordChange = false;
-      if ((forced || step % (stepsPerBar * barLen) === 0) && !(this.lockUntil > step)) {
+      const rel = step - (this.origin || 0);
+      if ((forced || rel % (stepsPerBar * barLen) === 0) && !(this.lockUntil > step)) {
         if (step > 0) {
           const seq = this.progression();
           if (seq) {

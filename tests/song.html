@@ -35,6 +35,9 @@ window.addEventListener('load', async ()=>{
   log('section0 space='+st.get('fx.space').toFixed(2)+' wave='+st.get('pad.wave'));
   await new Promise(r=>setTimeout(r,2600));
   log('section1 space='+st.get('fx.space').toFixed(2)+' wave='+st.get('pad.wave')+' sections='+secs.join(','));
+  // shared motifs: a motif edited after capture is used by every section
+  st.set('seq.pattern','0.7.2','user'); log('section snaps have pattern='+SG.sections.some(s=>'seq.pattern' in s.snap)+' origin='+AMB.seq.origin);
+  document.dispatchEvent(new KeyboardEvent('keydown',{key:'1',bubbles:true})); log('pending='+SG.pending);
   log('DONE');
   }catch(e){log('EXC '+e.stack)}
 });
