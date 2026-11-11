@@ -169,22 +169,24 @@
       return g.discover('a:' + id, a[1]);
     },
     hookActions() {
+      // every action goes on the bus (discoveries count the first one, contracts count them all)
+      const emit = (id) => AMB.bus.emit('act', id);
       document.addEventListener('click', (e) => {
         if (!AMB.game.path) return;
         const t = e.target.closest && e.target.closest('button, label, .moment'); if (!t) return;
-        if (t.matches('.sc-slot')) return this.act(e.shiftKey ? 'sceneStore' : 'sceneRecall');
-        for (const [sel, id] of this.CLICKS) if (t.matches(sel)) return this.act(id);
+        if (t.matches('.sc-slot')) return emit(e.shiftKey ? 'sceneStore' : 'sceneRecall');
+        for (const [sel, id] of this.CLICKS) if (t.matches(sel)) return emit(id);
       }, true);
-      const pre = $('#preset'); if (pre) pre.addEventListener('change', () => this.act('preset'));
+      const pre = $('#preset'); if (pre) pre.addEventListener('change', () => emit('preset'));
       if (AMB.bus) AMB.bus.on('act', (id) => this.act(id));
       // live playing (computer keyboard and MIDI) goes through these two sequencer calls
       const seq = AMB.seq, me = this;
       if (seq) {
         const fc = seq.forceChord, pm = seq.playMidi;
-        seq.forceChord = function (...a) { me.act('chord'); return fc.apply(this, a); };
-        seq.playMidi = function (...a) { me.act('note'); return pm.apply(this, a); };
+        seq.forceChord = function (...a) { emit('chord'); return fc.apply(this, a); };
+        seq.playMidi = function (...a) { emit('note'); return pm.apply(this, a); };
       }
-      AMB.store.on((k, v, src) => { if (src === 'xy') this.act('xy'); });
+      AMB.store.on((k, v, src) => { if (src === 'xy') emit('xy'); });
     },
     // ---- discovery notebook (G3.3) ----
     // every discoverable thing: visible controls and actions, each tied to a node (hence a branch)

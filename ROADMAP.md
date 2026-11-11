@@ -138,7 +138,7 @@ Technique : `js/game.js` (état `localStorage` `ambient.game.v1`, clé surcharg�
 - [x] G3.3 (v0.76) Carnet des découvertes dans l'écran Arbre (x / total par branche). Fait : 133 découvertes (réglages visibles + 23 actions), barre « Découvertes x/n » par colonne, « n à essayer » = déjà débloqué mais jamais touché (liste en infobulle, sert d'indice), ligne de synthèse nœuds / découvertes / ✧ gagnés
 
 **G4 — Contrats d'usage**
-- [ ] G4.1 Moteur : contrats = conditions sur événements/état, 3 actifs à la fois, récompense, renouvellement
+- [x] G4.1 (v0.77) Moteur : contrats = conditions sur événements/état, 3 actifs à la fois, récompense, renouvellement. Fait : `js/contracts.js` — définitions `{id, need, title, reward, goal, on:{param|act|chord|bar|note}}`, 3 actifs choisis dans l'ordre parmi ceux dont les nœuds sont acquis, progrès dans `game.s.prog`, « passer » = fin de file (`s.skipped`), événement `game:contract`. Aide `gesture()` : un glisser de knob = 1 geste (900 ms). Toutes les actions passent maintenant par `bus 'act'` à chaque fois (découverte = la 1re, contrats = toutes). 3 contrats de départ (Tronc), aucun ne récompense l'attente
 - [ ] G4.2 Contrats Tronc / Harmonie / Espace (~12)
 - [ ] G4.3 Contrats Mouvement / Composer (~12, dont durées en mesures de lecture)
 - [ ] G4.4 Carte des contrats dans l'écran principal (progression visible, réduite pendant l'écoute)

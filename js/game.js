@@ -14,6 +14,7 @@
     found: [], // discovery ids
     contracts: [], // completed contract ids
     puzzles: [], // solved puzzle ids
+    active: [], prog: {}, // active contracts and their progress (contracts.js)
   });
 
   const game = {

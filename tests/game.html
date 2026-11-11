@@ -8,7 +8,7 @@ const oe=console.error;console.error=(...a)=>{log('CONSOLE.ERROR '+a.join(' '));
 window.AMB_GAME_KEY='ambient.game.test';
 localStorage.removeItem('ambient.game.test');
 </script>
-<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/game.js"></script><script src="../js/tree.js"></script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/game.js"></script><script src="../js/tree.js"></script><script src="../js/contracts.js"></script>
 <script>
 const ok=(c,m)=>log((c?'ok ':'ERROR fail ')+m);
 window.addEventListener('load', ()=>{
@@ -47,6 +47,20 @@ window.addEventListener('load', ()=>{
   g.reset(); ok(g.has('racine'), 'reset en parcours rend la racine'); ok(!T.paramUnlocked('fx.echo') && T.paramUnlocked('drone.vol') && T.status('h.pad')==='available' && T.status('h.scale')==='locked', 'statuts au départ');
   const gr=T.grants('c.seq'); ok(gr.includes('Mélodie écrite') && gr.includes('Piano roll') && !gr.some(x=>/Motif$/.test(x)), 'ce que débloque un nœud : '+gr.join(' / '));
   ok(T.grants('e.reverb').some(x=>/chaque couche/.test(x)) && T.dependents('h.pad').includes('c.seq'), 'grants *.send, dépendants');
+  // --- contracts engine (G4.1)
+  const K=AMB.contracts; g.reset(); g.setMode('path'); K.refill();
+  ok(g.s.active.length===2 && g.s.active[0]==='k.couleur', 'contrats actifs = ceux dont les nœuds sont acquis : '+g.s.active.join(','));
+  AMB.seq.playing=true;
+  AMB.store.set('drone.tone',0.2,'user'); AMB.store.set('drone.tone',0.25,'user'); ok(K.progress('k.couleur')===1, 'un geste = 1 (glisser ne compte qu\'une fois)');
+  const kc=g.s.prog['k.couleur']; kc.t_drone_tone=0; kc['t_drone.tone']=0; AMB.store.set('drone.tone',0.5,'user'); kc['t_drone.tone']=0; AMB.store.set('drone.tone',0.6,'user');
+  const sh=g.s.shards; ok(g.s.contracts.includes('k.couleur') && g.s.shards===sh, 'contrat accompli (la récompense est déjà comptée)');
+  ok(!g.s.active.includes('k.couleur') && g.s.active.length===1, 'remplacé par le suivant éligible : '+g.s.active.join(','));
+  g.earn(10,'test'); T.buy('t.son'); ok(g.s.active.includes('k.timbres'), 'nouveau nœud → nouveau contrat');
+  ['Creux','Orgue','Sub','Chaud'].forEach(w=>AMB.store.set('drone.wave',w,'user')); ok(g.s.contracts.includes('k.timbres'), 'contrat « valeurs distinctes »');
+  K.skip('k.souffle'); ok(g.s.skipped.includes('k.souffle') && g.s.active.includes('k.souffle'), 'passer : remis en fin de file (seul éligible ici)');
+  AMB.store.set('drone.on',false,'user'); AMB.store.set('drone.on',true,'user'); ok(g.s.contracts.includes('k.souffle'), 'contrat en deux temps');
+  AMB.seq.playing=false; g.setMode('free'); AMB.store.set('drone.tone',0.1,'user'); ok(true,'libre : pas de suivi');
+  g.reset();
   g.setMode('free'); ok(T.paramUnlocked('fx.echo') && T.uiUnlocked('song'), 'mode libre : tout ouvert');
   g.reset();
   localStorage.removeItem('ambient.game.test');
