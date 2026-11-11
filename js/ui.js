@@ -48,7 +48,7 @@
         } catch (e) { name.textContent = 'Micro indisponible'; console.error(e); }
         mic.disabled = false; mic.textContent = '● Micro 8 s';
       });
-      const frz = h('button', 'btn small', '❄ Geler la sortie');
+      const frz = h('button', 'btn small', '❄ Figer le son');
       frz.title = 'Capture les 4 dernières secondes du mix comme source de grains (touche Entrée)';
       frz.addEventListener('click', () => freezeNow(name));
       row.append(lbl, mic, frz, name);
@@ -58,12 +58,12 @@
   }
 
   function freezeNow(nameEl) {
-    if (!started) { toast('Lance la lecture avant de geler'); return; }
+    if (!started) { toast('Lance la lecture avant de figer le son'); return; }
     if (AMB.layers.grains.freeze(4)) {
-      toast('❄ Sortie gelée → nuage de grains');
+      toast('❄ Son figé → nuage de grains');
       const n = nameEl || document.querySelector('.sample-name');
-      if (n) n.textContent = 'gel ' + new Date().toLocaleTimeString();
-    } else toast('Rien à geler (silence)');
+      if (n) n.textContent = 'figé ' + new Date().toLocaleTimeString();
+    } else toast('Rien à figer (silence)');
   }
 
   // ---------- mic capture for the grain sampler ----------

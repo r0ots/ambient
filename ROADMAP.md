@@ -87,8 +87,8 @@ Constat : ~120 réglages visibles sans hiérarchie, 7 façons de mémoriser un �
 **Phase A — Clarté (priorité 1)**
 - [x] A1. (v0.54) 3 modes en sélecteur segmenté (état visible) : **Écouter** (défaut 1re visite : écran + 5 macros + couches + humeur), **Sculpter** (couches, Global, Espace, Modulation, Scènes, Journal), **Composer** (Progression → Mélodie écrite → Basse → Pulsations → Automation → Morceau, dans cet ordre)
 - [x] A2. (v0.55) Barre du haut : groupes légendés (Lecture / Son / Enreg. / Vue), Rec + format + durée regroupés, « ✦ Nouveau paysage » + Humeur
-- [ ] A3. Renommer le jargon (Evolve→Dérive, Shimmer→Halo, Tape→Cassette, Lo-fi→Usure, Envoi FX→Espace, Moteur→Son, Tonalité(timbre)→Couleur, Temps Pulsé/Flottant→Rythme Régulier/Libre, Temps(delay)→Vitesse écho, Caractère→Salle, Mutation→Variation, Gel→Figer, Humain→Imprécision, LFO→Mouvement lent, Séquenceur→Mélodie écrite, Mélodie→Mélodie auto…)
-- [ ] A4. Infobulles d'explication (`hint` dans SCHEMA) sur les ~40 réglages principaux
+- [x] A3. (v0.56) Renommer le jargon (Evolve→Dérive, Shimmer→Halo, Tape→Cassette, Lo-fi→Usure, Envoi FX→Espace, Moteur→Son, Tonalité(timbre)→Couleur, Temps Pulsé/Flottant→Rythme Régulier/Libre, Temps(delay)→Vitesse écho, Caractère→Salle, Mutation→Variation, Gel→Figer, Humain→Imprécision, LFO→Mouvement lent, Séquenceur→Mélodie écrite, Mélodie→Mélodie auto…)
+- [x] A4. (v0.56) Infobulles d'explication (`hint` dans SCHEMA) sur les ~40 réglages principaux
 - [ ] A5. Pad XY visible (légendes lisibles, bulle d'aide après le 1er Play) et branché sur les macros Lumière/Densité (plus de table en double)
 - [ ] A6. Piano roll : « Suit accords » désactivé par défaut (activé seulement pour l'arpège)
 
