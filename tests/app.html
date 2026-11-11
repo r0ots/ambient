@@ -11,7 +11,7 @@ const f=document.getElementById('f');
 f.addEventListener('load', async ()=>{
   try{
   const w=f.contentWindow, d=f.contentDocument, A=w.AMB;
-  w.addEventListener('error',e=>log('ERROR '+e.message));
+  w.addEventListener('error',e=>log('ERROR '+e.message+' @'+e.filename+':'+e.lineno+' '+(e.error&&e.error.stack||'').slice(0,300)));
   log('loaded knobs='+d.querySelectorAll('.knob').length+' sliders='+d.querySelectorAll('[role=slider]').length);
   await wait(1500);
   log('playing='+A.seq.playing+' chord='+d.getElementById('chordName').textContent);
