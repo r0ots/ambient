@@ -17,6 +17,7 @@
   });
 
   const game = {
+    key: KEY,
     s: fresh(),
     load() {
       try {

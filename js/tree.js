@@ -148,9 +148,58 @@
     if (on && cur && cur !== 'listen' && !this.uiUnlocked('mode-' + cur, g) && AMB.perform) AMB.perform.setMode('listen');
   };
 
+  // ---- sound locking (G1.5) ----
+  // While locked, a parameter is pinned to a neutral value; the store refuses any other write
+  // (presets, generator, links, scenes, journal, undo, macros, LFO…) except from the game itself.
+  const NEUTRAL = {
+    'fx.space': 0.35, 'fx.shimmer': 0, 'fx.echo': 0, 'fx.tape': 0, 'fx.lofi': 0,
+    'global.evolve': 0, 'global.swing': 0, 'global.humanize': 0, 'pad.counter': 0,
+    'mod.l1depth': 0, 'mod.l2depth': 0, 'mod.l1target': '—', 'mod.l2target': '—',
+  };
+  tree.lockedValue = function (key) {
+    if (key in NEUTRAL) return NEUTRAL[key];
+    if (key.endsWith('.on')) return false; // locked layers are silent
+    const sp = AMB.store.spec(key);
+    return sp ? sp.def : undefined;
+  };
+  tree.allKeys = function () {
+    const out = [];
+    for (const [sec, o] of Object.entries(AMB.SCHEMA)) for (const k of Object.keys(o.params)) out.push(`${sec}.${k}`);
+    return out;
+  };
+  tree.pinLocked = function (g = AMB.game) {
+    if (!g.path) return;
+    for (const k of this.allKeys()) if (!this.paramUnlocked(k, g)) AMB.store.set(k, this.lockedValue(k), 'game');
+  };
+  // each mode keeps its own sound: leaving the path gives the free sound back, and vice versa
+  const snapKey = (m) => `${AMB.game.key}.snap.${m}`;
+  const saveSnap = (m) => { try { localStorage.setItem(snapKey(m), JSON.stringify(AMB.store.stableSnapshot())); } catch (e) {} };
+  const loadSnap = (m) => { try { return JSON.parse(localStorage.getItem(snapKey(m))); } catch (e) { return null; } };
+  let wasPath = AMB.game ? AMB.game.path : false;
+  tree.onMode = function () {
+    const g = AMB.game, nowPath = g.path;
+    if (nowPath && !g.has('racine')) g.unlock('racine'); // the root is free
+    if (nowPath !== wasPath) {
+      saveSnap(wasPath ? 'path' : 'free');
+      const back = loadSnap(nowPath ? 'path' : 'free');
+      if (back) AMB.store.setMany(back, 'game');
+      wasPath = nowPath;
+    }
+    this.pinLocked();
+  };
+  // a freshly bought layer starts playing right away
+  tree.onUnlock = function (id) {
+    const n = byId[id]; if (!n) return;
+    for (const p of n.params) if (p.endsWith('.on') && p !== 'auto.on') AMB.store.set(p, true, 'game');
+  };
+
   AMB.tree = tree;
+  if (AMB.store) AMB.store.guard = (key) => !AMB.game || !AMB.game.path || tree.paramUnlocked(key);
+  if (AMB.bus) {
+    AMB.bus.on('game:mode', () => tree.onMode());
+    AMB.bus.on('game:reset', () => { if (AMB.game.path && !AMB.game.has('racine')) AMB.game.unlock('racine'); tree.pinLocked(); });
+    AMB.bus.on('game:unlock', (d) => tree.onUnlock(d.id));
+  }
   if (AMB.bus) ['mode', 'unlock', 'reset'].forEach((e) => AMB.bus.on('game:' + e, () => tree.applyLocks()));
   // the root is free: own it as soon as the path starts
-  const giveRoot = () => { if (AMB.game.path && !AMB.game.has('racine')) AMB.game.unlock('racine'); };
-  if (AMB.game && AMB.bus) { AMB.bus.on('game:mode', giveRoot); AMB.bus.on('game:reset', giveRoot); }
 })();

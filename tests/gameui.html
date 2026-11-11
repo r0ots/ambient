@@ -33,7 +33,20 @@ f.addEventListener('load', async ()=>{
   ok(!d.body.classList.contains('game') && d.querySelectorAll('.is-locked').length===0, 'mode libre : appli intacte');
   A.game.setMode('path'); A.game.reset(); A.perform.setMode('compose'); A.tree.applyLocks(); await wait(50);
   ok(A.mode==='listen', 'mode verrouillé → retour Écouter');
+  // --- sound locking (G1.5)
+  const St=A.store, g=A.game;
+  g.setMode('free'); St.set('fx.echo',0.6,'user'); St.set('pad.on',true,'user');
+  g.setMode('path'); g.reset(); await wait(50);
+  ok(St.get('pad.on')===false && St.get('fx.echo')===0 && St.get('global.evolve')===0 && St.get('drone.on')===true, 'verrouillé = neutre (pad muet, pas d\'écho), drone joue');
+  St.set('pad.on',true,'user'); A.ui.applyPatch({'pad.on':true,'fx.echo':0.8,'drone.tone':0.9});
+  ok(St.get('pad.on')===false && St.get('fx.echo')===0 && Math.abs(St.get('drone.tone')-0.9)<0.02, 'presets/utilisateur ne touchent pas le verrouillé '+St.get('drone.tone'));
+  g.earn(50,'t'); A.tree.buy('h.pad'); ok(St.get('pad.on')===true, 'acheter le Pad le fait jouer');
+  g.setMode('free'); ok(Math.abs(St.get('fx.echo')-0.6)<0.02 && St.get('pad.on')===true, 'retour en libre : son libre rendu');
+  St.set('pad.on',false,'user'); ok(St.get('pad.on')===false, 'libre : tout modifiable');
+  g.setMode('path'); ok(St.get('fx.echo')===0 && St.get('pad.on')===true, 'retour au parcours : son du parcours rendu');
+  g.setMode('free');
   localStorage.removeItem('ambient.game.uitest');
+  for (const k of Object.keys(localStorage)) if (k.startsWith('ambient.game.uitest')) localStorage.removeItem(k);
   log('DONE');
   }catch(e){log('EXC '+e.stack)}
 });

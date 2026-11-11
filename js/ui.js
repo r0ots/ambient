@@ -327,7 +327,7 @@
     const showCustom = () => { if (widgets['pad.custom']) widgets['pad.custom'].el.style.display = store.get('pad.prog') === 'Perso' ? '' : 'none'; };
     store.on((key) => { if (key === 'pad.prog') showCustom(); });
     showCustom();
-    if (AMB.tree) { AMB.tree.tagDom(); AMB.tree.applyLocks(); } // Jardin sonore: every control knows its unlock node
+    if (AMB.tree) { AMB.tree.tagDom(); AMB.tree.applyLocks(); AMB.tree.pinLocked(); } // Jardin sonore: every control knows its unlock node
 
     bind('#play', 'click', () => (started ? stop() : play()));
     fillPresetSelect();

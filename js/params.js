@@ -201,6 +201,8 @@
         if (sp.step) v = Math.round(v / sp.step) * sp.step;
       }
       if (this.values[key] === v) return;
+      // Jardin sonore: locked parameters only change through the game itself
+      if (this.guard && source !== 'game' && !this.guard(key)) return;
       const prev = this.values[key];
       this.values[key] = v;
       for (const fn of this.listeners) fn(key, v, source, prev);
