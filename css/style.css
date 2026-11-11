@@ -484,3 +484,5 @@ body.listen .puzzle-card { display: none; }
 .pz-hint { font: 12px var(--f-mono, monospace) !important; color: var(--lcd-fg) !important; }
 .puzzle-card.shake { animation: tree-shake .35s; }
 @media (max-width: 560px) { .puzzle-card { left: 8px; right: 8px; width: auto; bottom: 8px; } }
+.tree-puzzles { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 6px; font: 12px var(--f-mono, monospace); color: var(--muted); }
+.tree-puzzles .btn { color: var(--lcd-fg); }

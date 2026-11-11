@@ -98,6 +98,13 @@ f.addEventListener('load', async ()=>{
   pzc.querySelector('.pz-ok').click(); await wait(40);
   ok(A.game.s.puzzles.includes('p.premier') && pzc.hidden && !d.getElementById('treeDlg').hidden && tn('t.macros').classList.contains('st-available'), 'résolue → arbre rouvert, nœud achetable');
   A.garden.showTree(false);
+  // bonus puzzles (G5.5)
+  A.game.earn(500,'test'); A.game.solve('p.gamme'); ['h.key','h.scale'].forEach(i=>A.tree.buy(i)); A.garden.showTree(true); await wait(30);
+  const bb=[...d.querySelectorAll('.tree-puzzles .btn')]; ok(bb.some(b=>/Quelle couleur/.test(b.textContent)), 'énigme bonus proposée dans l\'arbre');
+  bb.find(b=>/Quelle couleur/.test(b.textContent)).click(); await wait(30);
+  ok(!pzc.hidden && /bonus : 2 réglages/.test(pzc.querySelector('.pz-keys').textContent), 'bonus : réglages tenus secrets');
+  A.garden.pz.fails=3; A.garden.renderPuzzle(); ok(/Joue sur : Global · Tonalité/.test(pzc.querySelector('.pz-keys').textContent), 'révélés au dernier indice');
+  A.garden.closePuzzle();
   // --- sound locking (G1.5)
   const St=A.store, g=A.game;
   g.setMode('free'); St.set('fx.echo',0.6,'user'); St.set('pad.on',true,'user');

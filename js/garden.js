@@ -30,6 +30,18 @@
       $('#treeDlg .tree-shards').textContent = `✧ ${g.s.shards}`;
       const sub = $('#treeDlg .tree-sub'); if (sub) sub.textContent = `${g.s.nodes.length}/${T.NODES.length} nœuds · ${all.done}/${all.total} découvertes · ✧ ${g.s.earned} gagnés en tout`;
       map.innerHTML = '';
+      // puzzles: bonus ones you can try now, and how many are solved
+      const pzEl = $('#treeDlg .tree-puzzles');
+      if (pzEl && AMB.puzzles) {
+        const P = AMB.puzzles, solved = P.DEFS.filter((x) => g.s.puzzles.includes(x.id)).length;
+        const open = P.available().filter((x) => x.bonus);
+        pzEl.innerHTML = `<span>Énigmes ${solved}/${P.DEFS.length}</span>` + (open.length ? ' · bonus :' : '');
+        for (const x of open) {
+          const b = document.createElement('button'); b.className = 'btn small'; b.textContent = `◈ ${x.title} · ✧ ${x.reward}`;
+          b.title = x.intro; b.addEventListener('click', () => this.openPuzzle(x.id));
+          pzEl.append(b);
+        }
+      }
       for (const [bid, br] of Object.entries(T.BRANCHES)) {
         const col = document.createElement('div');
         col.className = 'tree-col'; col.style.setProperty('--c', br.color);
@@ -250,7 +262,9 @@
       const d = P.byId[id];
       card.querySelector('.pz-title').textContent = `Énigme · ${d.title}`;
       card.querySelector('.pz-intro').textContent = d.intro;
-      card.querySelector('.pz-keys').textContent = `Joue sur : ${Object.keys(d.target).map((k) => this.paramLabel(k)).join(', ')}`;
+      this.pzKeys = () => (d.bonus && this.hintLevel() < 2 ? `Énigme bonus : ${Object.keys(d.target).length} réglages en jeu, à toi de trouver lesquels`
+        : `Joue sur : ${Object.keys(d.target).map((k) => this.paramLabel(k)).join(', ')}`);
+      card.querySelector('.pz-keys').textContent = this.pzKeys();
       this.renderPuzzle();
       if (!this.pzTimer) this.pzTimer = setInterval(() => { if (this.pz) this.renderPuzzle(); }, 5000);
     },
@@ -280,6 +294,7 @@
       ab.textContent = target ? '◀ Revenir à mon son' : '▶ Écouter la cible';
       ab.classList.toggle('on', target);
       const okb = card.querySelector('.pz-ok'); okb.classList.toggle('ready', ready && !target); okb.disabled = target;
+      if (this.pzKeys) card.querySelector('.pz-keys').textContent = this.pzKeys();
       card.querySelector('.pz-hint').textContent = target ? 'Tu entends la cible. Touche un réglage ou reviens à ton son pour continuer.' : this.hintText(sc);
     },
     validatePuzzle() {
