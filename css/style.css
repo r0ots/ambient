@@ -414,3 +414,9 @@ body.game .tree-btn { display: inline-flex; }
 .st-locked { opacity: .45; }
 .tree-legend .st-owned { --c: #8fe3a0; }
 @media (max-width: 760px) { .tree-map { grid-template-columns: repeat(5, 160px); } }
+.tree-node.shake { animation: tree-shake .35s; }
+@keyframes tree-shake { 0%,100% { transform: none; } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+.is-new { position: relative; animation: is-new-glow 1.2s ease-in-out 4; outline: 2px solid var(--lcd-fg); outline-offset: 3px; border-radius: 8px; }
+.is-new::after { content: 'NOUVEAU'; position: absolute; top: -9px; right: -6px; font: 11px var(--f-lcd); letter-spacing: .08em; padding: 0 4px; border-radius: 3px; background: var(--lcd-fg); color: #1a1408; pointer-events: none; z-index: 2; }
+@keyframes is-new-glow { 50% { box-shadow: 0 0 18px color-mix(in srgb, var(--lcd-fg) 60%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .is-new, .tree-node.shake { animation: none; } }

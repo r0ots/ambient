@@ -51,7 +51,42 @@
         map.append(col);
       }
     },
+    // ---- buying (G2.2) ----
+    tryBuy(id) {
+      const T = AMB.tree, g = AMB.game, n = T.byId[id], st = T.status(id);
+      const el = document.querySelector(`.tree-node[data-id="${id}"]`);
+      const shake = () => { if (el) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); } };
+      if (st === 'owned') return false;
+      if (st === 'locked') { shake(); AMB.ui.toast(`D'abord : ${n.req.filter((r) => !g.has(r)).map((r) => T.byId[r].name).join(', ')}`); return false; }
+      if (st === 'gated') { shake(); AMB.ui.toast('🔒 Résous l\'énigme de ce nœud pour l\'ouvrir'); return false; }
+      if (!g.canAfford(n.cost)) { shake(); AMB.ui.toast(`Il te manque ✧ ${n.cost - g.s.shards}`); return false; }
+      T.buy(id);
+      AMB.ui.toast(`🌱 ${n.name} débloqué`);
+      this.showTree(false);
+      this.reveal(id);
+      return true;
+    },
+    // show what a node just opened: go to the right mode, scroll to it, make it glow for a while
+    revealTargets(id) {
+      const n = AMB.tree.byId[id]; if (!n) return [];
+      const els = [...document.querySelectorAll(`[data-node="${id}"]`)];
+      for (const u of n.ui) document.querySelectorAll(`[data-ui="${u}"]`).forEach((e) => { if (!els.includes(e)) els.push(e); });
+      return els.filter((e) => !e.closest('.is-locked') && !e.closest('.menu'));
+    },
+    reveal(id) {
+      const els = this.revealTargets(id); if (!els.length) return;
+      // prefer the full panel over the Écouter shortcuts (layer chips, macros)
+      const first = els.find((e) => !e.closest('.macros')) || els[0];
+      const want = first.closest('.seqrow') ? 'compose' : first.closest('.globals, .layers, #scenes, #journal') ? 'sculpt' : first.closest('.macros') ? 'listen' : null;
+      if (want && AMB.mode !== want && AMB.perform) AMB.perform.setMode(want);
+      els.forEach((e) => { e.classList.remove('is-new'); void e.offsetWidth; e.classList.add('is-new'); });
+      setTimeout(() => els.forEach((e) => e.classList.remove('is-new')), 6000);
+      try { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { first.scrollIntoView(); }
+    },
+
     build() {
+      const tmap = $('#treeDlg .tree-map');
+      if (tmap) tmap.addEventListener('click', (e) => { const b = e.target.closest('.tree-node'); if (b) this.tryBuy(b.dataset.id); });
       const tb = $('#treeBtn'); if (tb) tb.addEventListener('click', () => this.showTree(true));
       const td = $('#treeDlg');
       if (td) td.addEventListener('click', (e) => { if (e.target === td || e.target.hasAttribute('data-close')) this.showTree(false); });
