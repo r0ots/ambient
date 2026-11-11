@@ -251,6 +251,33 @@
       }
       if (flashId) { const el = list.querySelector(`[data-id="${flashId}"]`); if (el) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); } }
     },
+    // ---- game feedback (G6.2): a chime tuned to the current key, and LCD messages ----
+    // kind: 'unlock' (rising arpeggio), 'solve' (two chords), 'small' (one soft note)
+    chime(kind = 'unlock') {
+      const E = AMB.engine, ctx = E && E.ctx;
+      if (!ctx || ctx.state !== 'running' || !AMB.game.path) return 0;
+      const Th = AMB.theory, root = Th.NOTE_NAMES.indexOf(AMB.store.get('global.key'));
+      const scale = Th.SCALES[AMB.store.get('global.scale')] || Th.SCALES['Ionien (majeur)'];
+      const degs = kind === 'small' ? [4] : kind === 'solve' ? [0, 2, 4, 7, 9, 11] : [0, 2, 4, 7];
+      const out = ctx.createGain(); out.gain.value = 0.16;
+      out.connect(E.dryBus); if (E.revIn) out.connect(E.revIn);
+      const t0 = ctx.currentTime + 0.02;
+      degs.forEach((dg, i) => {
+        const f = Th.mtof(Th.degreeToMidi(dg, root, scale, 5));
+        const at = t0 + (kind === 'solve' ? (i < 3 ? 0 : 0.35) + i % 3 * 0.02 : i * 0.09);
+        for (const [mul, amp] of [[1, 1], [2.76, 0.25], [5.4, 0.08]]) { // bell-ish partials
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = 'sine'; o.frequency.value = f * mul;
+          g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(amp * 0.5, at + 0.008);
+          g.gain.exponentialRampToValueAtTime(0.0001, at + 1.6 / mul);
+          o.connect(g); g.connect(out); o.start(at); o.stop(at + 1.7);
+        }
+      });
+      setTimeout(() => out.disconnect(), 3000);
+      return degs.length;
+    },
+    lcd(text, ms = 3500) { AMB.lcdMsg = { text, until: Date.now() + ms }; },
+
     // ---- puzzle card (G5.3) ----
     pz: null, // { id, fails, t0 }
     openPuzzle(id) {
@@ -334,6 +361,12 @@
         pzc.querySelector('.pz-ok').addEventListener('click', () => this.validatePuzzle());
       }
       if (AMB.bus) {
+        AMB.bus.on('game:unlock', (d) => {
+          const n = AMB.tree.byId[d.id]; if (!AMB.game.path || !n || !n.cost) return;
+          this.chime('unlock'); this.lcd(`✦ ${n.name} débloqué`);
+        });
+        AMB.bus.on('game:puzzles', (d) => { if (!AMB.game.path) return; this.chime('solve'); this.lcd('◈ énigme résolue'); });
+        AMB.bus.on('game:contracts', () => { if (!AMB.game.path) return; this.chime('small'); this.lcd('✓ contrat rempli', 2500); });
         AMB.bus.on('game:puzzle', () => this.renderPuzzle());
         AMB.bus.on('game:mode', () => { if (!AMB.game.path) this.closePuzzle(); });
       }

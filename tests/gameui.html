@@ -82,6 +82,13 @@ f.addEventListener('load', async ()=>{
   d.querySelector('.ct-item .ct-skip').click(); await wait(20); ok(d.querySelector('.ct-item').dataset.id==='k.souffle', 'passer → l\'autre passe devant');
   d.querySelector('#contracts .ct-head').click(); ok(d.getElementById('contracts').classList.contains('min'), 'réduire'); d.querySelector('#contracts .ct-head').click();
   A.seq.playing=false;
+  // --- feedback (G6.2)
+  A.game.earn(50,'test'); A.tree.buy('e.reverb'); await wait(400);
+  ok(/REVERB DÉBLOQUÉ/.test(d.getElementById('lcdTop').textContent) && d.getElementById('lcdTop').classList.contains('lcd-flash'), 'LCD : « reverb débloqué » '+d.getElementById('lcdTop').textContent);
+  await A.ui.ensureStarted(); const ctx=A.engine.ctx; if (ctx.state!=='running') await ctx.resume();
+  ok(ctx.state!=='running' || A.garden.chime('unlock')===4 && A.garden.chime('solve')===6, 'carillon joué ('+ctx.state+')');
+  A.game.setMode('free'); ok(A.garden.chime('unlock')===0, 'pas de carillon en mode libre'); A.game.setMode('path');
+  A.ui.stop && A.ui.stop();
   // --- puzzle card (G5.3)
   A.game.reset(); A.game.earn(100,'test'); A.tree.buy('t.son'); A.tree.buy('h.pad');
   A.store.setMany({'drone.wave':'Chaud','drone.tone':0.35,'pad.wave':'Nappe','pad.tone':0.4},'user');

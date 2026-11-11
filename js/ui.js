@@ -463,7 +463,10 @@
       if (!top || !line) return;
       const sel = $('#preset'), patch = sel && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.replace('✦ ', '') : 'AMBIENT';
       const rec = document.querySelector('#rec.rec');
-      top.textContent = patch.toUpperCase().slice(0, 24) + (rec ? '  ● REC' : '');
+      // short game messages (G6.2) take over the top line for a few seconds
+      const m = AMB.lcdMsg, on = m && Date.now() < m.until;
+      top.classList.toggle('lcd-flash', !!on);
+      top.textContent = on ? m.text.toUpperCase().slice(0, 26) : patch.toUpperCase().slice(0, 24) + (rec ? '  ● REC' : '');
       const bar = String(Math.floor(AMB.seq.step / 16) + 1).padStart(3, '0');
       line.textContent = `${started ? '▶' : '■'} ${store.get('global.key')} ${abbr(store.get('global.scale'))} · ${String(Math.round(store.get('global.tempo'))).padStart(3, '0')} BPM` +
         (started ? ` · ${name.textContent} · M${bar}` : ' · STOP');
