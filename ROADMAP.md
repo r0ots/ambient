@@ -151,7 +151,7 @@ Technique : `js/game.js` (état `localStorage` `ambient.game.v1`, clé surcharg�
 - [x] G5.5 (v0.85) Énigmes bonus plus difficiles (retrouver la gamme, reproduire une progression, recréer un son de Pad…). Fait : 7 énigmes bonus (gamme + tonalité, progression connue, cordes lentes, cathédrale de verre, vieille radio, nuage à l'envers, chaloupé), 30–35 ✧, n'ouvrent rien. Plus dures : les réglages en jeu restent secrets jusqu'au dernier indice (seul leur nombre est donné). Proposées dans l'arbre (ligne « Énigmes n/12 · bonus : … ») dès que leurs prérequis sont achetés
 
 **G6 — Équilibrage et finitions**
-- [ ] G6.1 Simulation d'équilibrage (parcours type scripté → durée estimée ~1 h à 1 h 30), ajuster les coûts
+- [x] G6.1 (v0.86) Simulation d'équilibrage (parcours type scripté → durée estimée ~1 h à 1 h 30), ajuster les coûts. Fait : `tests/balance.html` (dans la suite) — joueur glouton sur les vraies données, modèle de temps (réglage 15 s, action 20 s, contrat 40 s + 12 s/étape, énigme-porte 3 min, bonus 5 min, achat 20 s). Avant : coût 1033 ✧ pour 1066 ✧ gagnables (marge 3 %), 2 h 28, 13 min sans achat. Coûts × 0,7 (arrondis à 5, minimum 5), Automation 35, Morceau 45 → coût 710 ✧, marge 50 % (pas besoin de tout faire), tout l'arbre en ~94 min, jamais plus de 7 min sans achat. Le test garde ces bornes (marge ≥ 20 %, 55–95 min, attente ≤ 8 min)
 - [ ] G6.2 Retours de jeu : petit carillon accordé à la tonalité au déblocage, animations LCD
 - [ ] G6.3 Arbre complet : écran de fin, défis restants en bonus
 - [ ] G6.4 Aide et README ; `tests/app.html` en mode libre et en parcours

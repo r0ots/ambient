@@ -31,11 +31,11 @@ f.addEventListener('load', async ()=>{
   ok(tn('racine').classList.contains('st-owned') && tn('h.pad').classList.contains('st-available') && tn('h.scale').classList.contains('st-locked'), 'états acquis / disponible / verrouillé');
   const badge=d.querySelector('#treeBtn .tree-badge'), lcdS=d.getElementById('lcdShards');
   ok(badge.hidden && lcdS.textContent==='✧ 0', 'LCD ✧ 0, pas de pastille');
-  A.game.earn(5,'t'); await wait(20); ok(!badge.hidden && badge.textContent==='2' && lcdS.textContent==='✧ 5', 'pastille = nœuds abordables ('+badge.textContent+')');
+  A.game.earn(5,'t'); await wait(20); ok(!badge.hidden && +badge.textContent===A.tree.NODES.filter(n=>A.tree.status(n.id)==='available'&&n.cost<=5).length && lcdS.textContent==='✧ 5', 'pastille = nœuds abordables ('+badge.textContent+')');
   A.game.spend(5); await wait(20); ok(badge.hidden, 'plus rien d\'abordable → pas de pastille');
   tn('h.scale').click(); ok(!A.game.has('h.scale') && !d.getElementById('treeDlg').hidden, 'clic sur verrouillé : rien');
   tn('h.pad').click(); ok(!A.game.has('h.pad') && /manque/.test(d.getElementById('toast').textContent), 'pas assez d\'éclats : refus '+d.getElementById('toast').textContent);
-  A.game.earn(10,'t'); A.perform.setMode('listen'); tn('h.pad').click(); await wait(80);
+  A.game.earn(A.tree.byId['h.pad'].cost,'t'); A.perform.setMode('listen'); tn('h.pad').click(); await wait(80);
   ok(A.game.has('h.pad') && A.game.s.shards===0 && d.getElementById('treeDlg').hidden, 'achat au clic, arbre fermé');
   ok(A.mode==='sculpt' && d.querySelector('.panel[data-sec=pad] .is-new'), 'révélé : mode Sculpter, réglages du Pad en surbrillance');
   d.getElementById('treeBtn').click(); await wait(30);
