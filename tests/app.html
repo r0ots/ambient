@@ -4,7 +4,8 @@ const TAG='app'; const S=+(new URLSearchParams(location.search).get('s')||0.4);
 const log=(m)=>fetch('/__log?'+encodeURIComponent(TAG+'|'+m)).catch(()=>{});
 const wait=(ms)=>new Promise(r=>setTimeout(r,ms));
 </script>
-<iframe id="f" src="../index.html?autoplay=1&view=expert" style="width:1300px;height:900px"></iframe>
+<script>localStorage.removeItem('ambient.game.apptest');</script>
+<iframe id="f" src="../index.html?autoplay=1&view=expert&gamekey=ambient.game.apptest" style="width:1300px;height:900px"></iframe>
 <script>
 // Drives the real app (full DOM) through its buttons and reports errors.
 const f=document.getElementById('f');
@@ -31,6 +32,16 @@ f.addEventListener('load', async ()=>{
   log('simple='+d.body.classList.contains('simple')+' viz='+d.getElementById('vizMode').textContent);
   w.dispatchEvent(new w.KeyboardEvent('keydown',{key:'z',metaKey:true})); d.dispatchEvent(new w.KeyboardEvent('keydown',{key:'z',metaKey:true}));
   await wait(200); log('undo toast='+d.getElementById('toast').textContent);
+  // Jardin sonore (G6.4): free mode = the whole app; a round trip through the path leaves it intact
+  const ok=(c,m)=>log((c?'ok ':'ERROR fail ')+m);
+  ok(!d.body.classList.contains('game') && !d.querySelector('.is-locked') && d.getElementById('contracts').hidden && d.getElementById('welcomeDlg').hidden, 'mode libre : rien de verrouillé, pas de jeu à l\'écran');
+  const before=JSON.stringify(A.store.snapshot()), ctrls=d.querySelectorAll('[data-key]').length;
+  A.game.setMode('path'); await wait(100);
+  ok(d.body.classList.contains('game') && d.querySelectorAll('.is-locked').length>20 && !A.store.get('pad.on'), 'parcours : outil réduit à la graine');
+  A.game.setMode('free'); await wait(100);
+  const same=(()=>{ const b=JSON.parse(before), a=A.store.snapshot(); const bad=Object.keys(a).filter(k=>typeof a[k]==='number'?Math.abs(a[k]-b[k])>0.03:JSON.stringify(a[k])!==JSON.stringify(b[k])); if(bad.length) log('diff '+bad.join(',')); return !bad.length; })(); // the drift (Évolution) keeps moving knobs a little
+  ok(!d.querySelector('.is-locked') && same && d.querySelectorAll('[data-key]').length===ctrls, 'retour au mode libre : son et interface intacts');
+  ok(/Jardin sonore/.test(d.getElementById('helpDlg').textContent), 'aide : section Jardin sonore');
   log('DONE');
   }catch(e){log('EXC '+e.stack)}
 });

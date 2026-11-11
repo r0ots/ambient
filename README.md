@@ -17,6 +17,8 @@ Trois modes (en haut) :
 - **Sculpter** — tous les réglages du son (couches, espace, mouvements lents, scènes, journal).
 - **Composer** — progression d'accords, mélodie écrite (piano roll), basse, pulsations, automation, morceau.
 
+**Jardin sonore** (au premier lancement, ou menu ⋯) : un parcours pour découvrir l'outil. On commence avec une seule note et on débloque le reste dans un arbre de 38 nœuds (5 branches : Tronc, Harmonie, Espace, Mouvement, Composer). Les ✧ éclats se gagnent en jouant, jamais en attendant : découvrir un réglage, remplir un contrat (« coupe le drone puis rallume-le »), résoudre une énigme d'écoute (reproduire un son cible, jauge de ressemblance, indices progressifs). On juge l'usage ou la cible, jamais le goût. Environ 1 h 30 pour tout l'arbre. Le **mode libre** ouvre tout, à tout moment, sans perdre son parcours.
+
 Look : façade de synthé japonais fin 80 (version nuit), écran LCD d'état en haut à droite.
 
 ## Ce qu'il y a dedans
@@ -36,6 +38,6 @@ Lien « kiosque » : `?mood=Contemplatif&viz=Horizon&listen=1&autoplay=1`
 
 ## Développement
 
-- Code : `js/` (un fichier par domaine : `engine` audio, `layers` sons, `sequencer` génératif, `ui`, etc.), styles dans `css/style.css`.
-- Tests : `python3 -u -m http.server 8765 2> /tmp/srv.log` puis `LOG=/tmp/srv.log tests/run-all.sh` (Chrome headless, ~1 min 20, mesure niveaux/spectres et échoue sur toute erreur JS). Endurance : `tests/run.sh endurance.html 1`.
+- Code : `js/` (un fichier par domaine : `engine` audio, `layers` sons, `sequencer` génératif, `ui`, etc. ; jeu : `game` état, `tree` arbre et verrous, `garden` interface, `contracts`, `puzzles`), styles dans `css/style.css`.
+- Tests : `python3 -u -m http.server 8765 2> /tmp/srv.log` puis `LOG=/tmp/srv.log tests/run-all.sh` (Chrome headless, ~1 min 30–2 min, dont `balance.html` = simulation d'équilibrage du parcours, mesure niveaux/spectres et échoue sur toute erreur JS). Endurance : `tests/run.sh endurance.html 1`.
 - Feuille de route et journal des versions : `ROADMAP.md`.
