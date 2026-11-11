@@ -21,7 +21,7 @@ f.addEventListener('load', async ()=>{
   log('rec='+d.getElementById('rec').textContent);
   d.getElementById('rec').click(); await wait(300);
   log('afterRec='+d.getElementById('rec').textContent+' toast='+d.getElementById('toast').textContent);
-  d.getElementById('vizMode').click(); d.getElementById('viewMode').click(); await wait(200);
+  d.getElementById('vizMode').click(); d.querySelector('[data-mode=listen]').click(); await wait(200);
   log('simple='+d.body.classList.contains('simple')+' viz='+d.getElementById('vizMode').textContent);
   w.dispatchEvent(new w.KeyboardEvent('keydown',{key:'z',metaKey:true})); d.dispatchEvent(new w.KeyboardEvent('keydown',{key:'z',metaKey:true}));
   await wait(200); log('undo toast='+d.getElementById('toast').textContent);

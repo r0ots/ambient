@@ -7,7 +7,7 @@ window.onerror=(m,s,l,c,e)=>log('ERROR '+m+' @'+s+':'+l);
 window.addEventListener('unhandledrejection',e=>log('REJECT '+(e.reason&&e.reason.stack||e.reason)));
 const oe=console.error;console.error=(...a)=>{log('CONSOLE.ERROR '+a.join(' '));oe(...a)};
 </script>
-<div id="scenes"></div><div id="journal"></div><div id="layers"></div><div id="macros"></div><div id="globals"></div><button id="viewMode"></button>
+<div id="scenes"></div><div id="journal"></div><div id="layers"></div><div id="macros"></div><div id="globals"></div><button data-mode="listen"></button><button data-mode="sculpt"></button><button data-mode="compose"></button>
 <button id="play"></button><button id="bigPlay"></button><div id="chordName"></div><div id="hudInfo"></div><select id="preset"></select><button id="dice"></button><button id="save"></button><button id="rec"></button><select id="recFmt"><option value="wav">w</option></select><select id="recDur"><option value="0">0</option></select><button id="share"></button><div id="toast"></div><select id="sleep"></select><span id="sleepLeft"></span><canvas id="viz" style="width:400px;height:200px"></canvas>
 <script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/presets.js"></script><script src="../js/generator.js"></script><script src="../js/visual.js"></script><script src="../js/scenes.js"></script><script src="../js/journal.js"></script><script src="../js/pianoroll.js"></script><script src="../js/pulses.js"></script><script src="../js/bass.js"></script><script src="../js/chords.js"></script><script src="../js/midi.js"></script><script src="../js/automation.js"></script><script src="../js/song.js"></script><script src="../js/widgets.js"></script><script src="../js/perform.js"></script><script src="../js/rec.js"></script><script src="../js/ui.js"></script><script src="../js/play.js"></script>
 <script>
@@ -22,7 +22,7 @@ let notes=0;
 window.addEventListener('load', async ()=>{
   try{
   await AMB.ui.play();
-  document.getElementById('viewMode').click();
+  document.querySelector('[data-mode=listen]').click();
   log('simple='+document.body.classList.contains('simple')+' macroKnobs='+document.querySelectorAll('#macros .knob').length);
   AMB.store.set('macro.space',1,'user'); AMB.store.set('macro.nostalgia',0,'user'); AMB.store.set('macro.nature',0,'user');
   log('space='+AMB.store.get('fx.space').toFixed(2)+' shimmer='+AMB.store.get('fx.shimmer').toFixed(2)+' tape='+AMB.store.get('fx.tape').toFixed(2)+' texOn='+AMB.store.get('texture.on'));
@@ -35,7 +35,7 @@ window.addEventListener('load', async ()=>{
   const chips=document.querySelectorAll('.layer-chips .tog'); chips[0].click();
   log('chips='+chips.length+' droneOn='+AMB.store.get('drone.on')+' chipOn='+chips[0].classList.contains('on'));
   AMB.store.set('global.tuning','432 Hz','user'); log('A4='+AMB.theory.A4+' mtof69='+AMB.theory.mtof(69));
-  document.getElementById('viewMode').click();
+  document.querySelector('[data-mode=sculpt]').click();
   log('DONE');
   }catch(e){log('EXC '+e.stack)}
 });

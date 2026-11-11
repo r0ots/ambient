@@ -85,7 +85,7 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 Constat : ~120 réglages visibles sans hiérarchie, 7 façons de mémoriser un état, 5 façons de bouger les mêmes knobs, libellés jargon. Gel des nouvelles features tant que la refonte n'est pas finie.
 
 **Phase A — Clarté (priorité 1)**
-- [ ] A1. 3 modes en sélecteur segmenté (état visible) : **Écouter** (défaut 1re visite : écran + 5 macros + couches + humeur), **Sculpter** (couches, Global, Espace, Modulation, Scènes, Journal), **Composer** (Progression → Mélodie écrite → Basse → Pulsations → Automation → Morceau, dans cet ordre)
+- [x] A1. (v0.54) 3 modes en sélecteur segmenté (état visible) : **Écouter** (défaut 1re visite : écran + 5 macros + couches + humeur), **Sculpter** (couches, Global, Espace, Modulation, Scènes, Journal), **Composer** (Progression → Mélodie écrite → Basse → Pulsations → Automation → Morceau, dans cet ordre)
 - [ ] A2. Barre du haut : groupes légendés (Lecture / Son / Enreg. / Vue), Rec + format + durée regroupés, « ✦ Nouveau paysage » + Humeur
 - [ ] A3. Renommer le jargon (Evolve→Dérive, Shimmer→Halo, Tape→Cassette, Lo-fi→Usure, Envoi FX→Espace, Moteur→Son, Tonalité(timbre)→Couleur, Temps Pulsé/Flottant→Rythme Régulier/Libre, Temps(delay)→Vitesse écho, Caractère→Salle, Mutation→Variation, Gel→Figer, Humain→Imprécision, LFO→Mouvement lent, Séquenceur→Mélodie écrite, Mélodie→Mélodie auto…)
 - [ ] A4. Infobulles d'explication (`hint` dans SCHEMA) sur les ~40 réglages principaux

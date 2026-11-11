@@ -150,8 +150,19 @@ kbd { background: #23273b; border: 1px solid #383e5c; border-bottom-width: 2px; 
 .moment:last-child { outline: 2px solid #ffffff55; outline-offset: 2px; }
 
 .macros { display: none; }
-body.simple .macros { display: grid; }
-body.simple .globals, body.simple .layers { display: none; }
+/* ---- modes ---- */
+.modes { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.mode-btn { background: var(--panel2); color: var(--muted); border: 0; padding: 8px 14px; font: inherit; font-size: 13px; cursor: pointer; }
+.mode-btn + .mode-btn { border-left: 1px solid var(--line); }
+.mode-btn.on { background: var(--accent); color: #0b0c12; font-weight: 600; }
+body.mode-listen .macros { display: grid; }
+body.mode-listen .globals, body.mode-listen .layers, body.mode-listen .seqrow,
+body.mode-listen #scenes, body.mode-listen #journal { display: none; }
+body.mode-sculpt .seqrow { display: none; }
+body.mode-compose .globals, body.mode-compose .layers, body.mode-compose #scenes, body.mode-compose #journal { display: none; }
+/* composition order: chords → written melody → bass → rhythm → automation → song */
+.seqrow .chords-panel { order: 1; } .seqrow [data-sec="seq"] { order: 2; } .seqrow [data-sec="bass"] { order: 3; }
+.seqrow [data-sec="perc"] { order: 4; } .seqrow [data-sec="auto"] { order: 5; } .seqrow .song-panel { order: 6; }
 .layer-chips { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
 .layer-chips .tog { margin: 0; padding: 6px 14px; font-size: 12px; }
 .macros .ctls { justify-content: space-around; }

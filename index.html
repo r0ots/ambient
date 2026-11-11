@@ -36,7 +36,11 @@
           <select id="recFmt" title="Format"><option value="wav">WAV</option><option value="comp">Compressé</option></select>
           <select id="recDur" title="Durée (fondu de sortie automatique)"><option value="0">libre</option><option value="1">1 min</option><option value="3">3 min</option><option value="10">10 min</option><option value="20">20 min</option></select>
         </span>
-        <button id="viewMode" class="btn" title="Vue simple (5 macros) ou experte (tous les réglages)">Simple</button>
+        <div class="modes" role="group" aria-label="Mode">
+          <button class="mode-btn" data-mode="listen" title="Écouter : l'écran, 5 grands réglages et les couches">Écouter</button>
+          <button class="mode-btn" data-mode="sculpt" title="Sculpter : tous les réglages du son">Sculpter</button>
+          <button class="mode-btn" data-mode="compose" title="Composer : accords, mélodie écrite, basse, rythmes, morceau">Composer</button>
+        </div>
         <span id="sleepLeft" class="sleep-left" title="Minuteur de sommeil"></span>
         <details class="more">
           <summary class="btn" title="Plus d'options">⋯</summary>

@@ -4,7 +4,7 @@
   const store = AMB.store;
   const { $, h, bind } = AMB.dom;
   const { registry: widgets, knob, select, textField, toggle } = AMB.widgets;
-  const { setView, setupXY } = AMB.perform;
+  const { setView, setMode, setupXY } = AMB.perform;
   const { toggleRec, setSleep } = AMB.rec;
 
   function section(secKey) {
@@ -303,8 +303,11 @@
     };
     store.on((k) => { if (k === 'global.tuning') applyTuning(); });
     AMB.theory.A4 = store.get('global.tuning') === '432 Hz' ? 432 : 440;
-    bind('#viewMode', 'click', () => setView(!document.body.classList.contains('simple')));
-    try { setView(localStorage.getItem('ambient.view') === 'simple'); } catch (e) {}
+    document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+    // first visit = "Écouter"; returning users get their last mode (old 'ambient.view' mapped)
+    let saved = null;
+    try { saved = localStorage.getItem('ambient.mode') || ({ simple: 'listen', expert: 'sculpt' })[localStorage.getItem('ambient.view')]; } catch (e) {}
+    setMode(saved || 'listen');
 
     store.on((key) => { const w = widgets[key]; if (w) w.render(); });
     const showCustom = () => { widgets['pad.custom'].el.style.display = store.get('pad.prog') === 'Perso' ? '' : 'none'; };
@@ -370,6 +373,7 @@
     if (q.get('viz') && AMB.visual.MODES.includes(q.get('viz'))) { AMB.visual.mode = q.get('viz'); if (vm) vm.textContent = AMB.visual.mode; }
     if (q.get('mood')) { const m = $('#mood'); if (m) m.value = q.get('mood'); randomize(); }
     if (q.get('view')) setView(q.get('view') === 'simple');
+    if (q.get('mode')) setMode(q.get('mode'));
     if (q.get('listen')) setListen(true);
     if (q.get('autoplay')) play().catch(() => toast('Clique sur Lecture pour démarrer'));
   }

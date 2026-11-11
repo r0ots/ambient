@@ -38,11 +38,19 @@
   });
 
   // Simple / Expert view
-  function setView(simple) {
-    document.body.classList.toggle('simple', simple);
-    const b = $('#viewMode'); if (b) b.textContent = simple ? 'Expert' : 'Simple';
-    try { localStorage.setItem('ambient.view', simple ? 'simple' : 'expert'); } catch (e) {}
+  // Three modes: listen (5 macros), sculpt (every sound setting), compose (progression, tracks, song)
+  const MODES = ['listen', 'sculpt', 'compose'];
+  function setMode(mode) {
+    if (!MODES.includes(mode)) mode = 'listen';
+    for (const m of MODES) document.body.classList.toggle('mode-' + m, m === mode);
+    document.body.classList.toggle('simple', mode === 'listen'); // legacy class
+    document.querySelectorAll('[data-mode]').forEach((b) => { const on = b.dataset.mode === mode; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+    try { localStorage.setItem('ambient.mode', mode); } catch (e) {}
+    AMB.mode = mode;
+    window.dispatchEvent(new Event('resize')); // canvases re-measure when shown
   }
+  // legacy API: setView(true) = listen, setView(false) = sculpt
+  const setView = (simple) => setMode(simple ? 'listen' : 'sculpt');
 
   // ---------- XY performance pad on the visualizer ----------
   const XY_MAP = {
@@ -68,5 +76,5 @@
     canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
   }
 
-  AMB.perform = { MACROS, setView, setupXY, syncMacros };
+  AMB.perform = { MACROS, setView, setMode, MODES, setupXY, syncMacros };
 })();
