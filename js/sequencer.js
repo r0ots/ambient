@@ -38,6 +38,7 @@
       if (this.playing) return;
       this.playing = true;
       this.step = 0;
+      this.nextChordAt = null;
       this.origin = 0; // step where the current song section started (bars count from here)
       this.lockUntil = 0;
       this.nextTime = ctx.currentTime + 0.1;
@@ -111,10 +112,24 @@
       };
       const name = store.get('pad.prog');
       if (name === 'Perso') {
-        const degs = String(store.get('pad.custom')).split(/[\s,;-]+/).map((x) => parseInt(x, 10)).filter((x) => x >= 1 && x <= 14).map((x) => x - 1);
+        const degs = this.customSteps().map((c) => c.deg);
         return degs.length ? degs : null;
       }
       return P[name] || null;
+    }
+    // "Perso" progression as [{deg, bars}] from pad.custom: "1 6:2 4 5:8" (bars optional, default pad.length)
+    customSteps() {
+      return String(store.get('pad.custom')).split(/[\s,;]+/).map((tok) => {
+        const [d, b] = tok.split(':').map((x) => parseInt(x, 10));
+        return d >= 1 && d <= 14 ? { deg: d - 1, bars: b >= 1 && b <= 16 ? b : null } : null;
+      }).filter(Boolean);
+    }
+    // bars held by the chord at progression index i
+    chordBars(i) {
+      const def = store.get('pad.length');
+      if (store.get('pad.prog') !== 'Perso') return def;
+      const cs = this.customSteps();
+      return (cs.length && cs[((i % cs.length) + cs.length) % cs.length].bars) || def;
     }
 
     // Player-forced chord (keyboard / MIDI): plays now and holds for one chord length
@@ -130,6 +145,7 @@
       // hold until the next natural chord boundary after a full chord length
       const span = 16 * barLen;
       this.lockUntil = Math.ceil((this.step + span * 0.5) / span) * span;
+      this.nextChordAt = this.lockUntil;
     }
     // Player note: scale degree (quantized) or raw midi
     playDegree(deg, vel = 0.85) {
@@ -172,8 +188,9 @@
 
       // ---- chord changes ----
       const forced = this.forceChordChange; this.forceChordChange = false;
-      const rel = step - (this.origin || 0);
-      if ((forced || rel % (stepsPerBar * barLen) === 0) && !(this.lockUntil > step)) {
+      // a chord lasts chordBars() bars (per-slot durations in the chord panel), counted from its own start
+      const due = this.nextChordAt == null || step >= this.nextChordAt;
+      if ((forced || due) && !(this.lockUntil > step)) {
         if (step > 0) {
           const seq = this.progression();
           if (seq) {
@@ -190,8 +207,11 @@
           this.progIdx = 0;
           if (seq) this.chordDeg = seq[0];
         }
+        const bars = this.chordBars(this.progIdx || 0);
+        this.chordStart = step;
+        this.nextChordAt = step + stepsPerBar * bars;
         const midis = this.applyHarmony(time);
-        const dur = sd * stepsPerBar * barLen + 0.5;
+        const dur = sd * stepsPerBar * bars + 0.5;
         // floating time: chords arrive late and loosely, never exactly on the bar
         L.pad.playChord(midis, time + (this.floating ? rand(0, sd * 6) : 0), dur);
         AMB.bus.emit('chord', { time, deg: this.chordDeg, midis });

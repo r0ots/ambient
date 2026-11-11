@@ -380,3 +380,7 @@ footer { color: #6e6757; font-family: var(--f-num); letter-spacing: .08em; text-
 .lcd { background: var(--lcd-bg); box-shadow: var(--bevel-in); border: 1px solid #000; border-radius: var(--radius-btn); padding: 4px 12px; min-width: 300px; display: grid; font: 21px/1.05 var(--f-lcd); color: var(--lcd-fg); text-shadow: 0 0 6px var(--lcd-glow); white-space: nowrap; overflow: hidden; }
 .lcd #lcdLine { color: #d9953a; font-size: 19px; }
 @media (max-width: 760px) { .lcd { min-width: 0; width: 100%; order: 3; } }
+
+.chord-slot em { font-style: normal; font-size: 10px; color: var(--muted); font-family: var(--f-num); }
+.chords-auto .chord-slots, .chords-auto .chord-palette, .chords-auto .chord-durs { opacity: .45; }
+.chord-modes, .chord-durs { margin: 0 0 8px; }

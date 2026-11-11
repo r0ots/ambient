@@ -323,7 +323,7 @@
     setMode(saved || 'listen');
 
     store.on((key) => { const w = widgets[key]; if (w) w.render(); });
-    const showCustom = () => { widgets['pad.custom'].el.style.display = store.get('pad.prog') === 'Perso' ? '' : 'none'; };
+    const showCustom = () => { if (widgets['pad.custom']) widgets['pad.custom'].el.style.display = store.get('pad.prog') === 'Perso' ? '' : 'none'; };
     store.on((key) => { if (key === 'pad.prog') showCustom(); });
     showCustom();
 

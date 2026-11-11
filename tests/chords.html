@@ -33,6 +33,9 @@ window.addEventListener('load', async ()=>{
   await AMB.ui.play(); await new Promise(r=>setTimeout(r,6000));
   log('played degs='+degs.join(',')+' nowSlot='+[...document.querySelectorAll('.chord-slot')].findIndex(b=>b.classList.contains('now')));
   document.querySelector('[data-c=random]').click(); log('suggested='+st.get('pad.custom'));
+  // per-slot duration: slot 0 = 2 bars
+  st.set('pad.custom','1 5'); AMB.chords.sel=0; AMB.chords.setBars(2); log('with dur='+st.get('pad.custom')+' bars0='+AMB.seq.chordBars(0)+' bars1='+AMB.seq.chordBars(1));
+  log('mode chips='+document.querySelectorAll('.chord-modes .btn').length);
   log('DONE');
   }catch(e){log('EXC '+e.stack)}
 });

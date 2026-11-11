@@ -99,7 +99,7 @@ Constat : ~120 réglages visibles sans hiérarchie, 7 façons de mémoriser un �
 **Phase C — Modèle de composition consolidé + bugs**
 - [x] C1. (v0.60) Morceau : les sections ne copient plus les motifs/progression (partagés) → corriger un motif met à jour tout le morceau ; touches 1–8 = aller à la section (au prochain temps fort)
 - [x] C2. (v0.60) Transitions de section : pas relatif au début de section (accords, chaîne A–D, approche de basse non tronqués)
-- [ ] C3. Progression : une seule source (le panneau), retirer le select/texte du Pad ; durée par case
+- [x] C3. (v0.61) Progression : une seule source (le panneau), retirer le select/texte du Pad ; durée par case
 - [ ] C4. Bugs revue : journal en stableSnapshot ; XY/CC MIDI en source non-annulable ; degrés > 7 ; jeu clavier audible à l'arrêt ; mutation qui écrase le motif sauvegardé ; swing unifié
 - [ ] C5. Export MIDI : piste Basse + export du Morceau entier
 

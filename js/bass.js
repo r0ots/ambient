@@ -30,8 +30,8 @@
     const g = parse(store.get('bass.pattern'));
     const seq = AMB.seq, prog = seq.progression && seq.progression();
     // aim at the next chord only during the last bar before it changes
-    const barLen = store.get('pad.length');
-    const lastBar = rel % (16 * barLen) >= 16 * (barLen - 1);
+    // last bar before the next chord change
+    const lastBar = seq.nextChordAt != null && seq.nextChordAt - step <= 16;
     const nextDeg = lastBar && prog && prog.length ? prog[((seq.progIdx || 0) + 1) % prog.length] : chordDeg;
     // note length: until the next active step in any row
     let len = 1; while (len < N && !g.some((row) => row[(i + len) % N])) len++;

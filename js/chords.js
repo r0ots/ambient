@@ -8,7 +8,14 @@
   const SLOTS = 8;
   const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
 
-  const degrees = () => String(store.get('pad.custom') || '').split(/[\s,;-]+/).map((x) => parseInt(x, 10)).filter((x) => x >= 1 && x <= 7);
+  // slots as [{d: 1..7, b: bars|null}] from pad.custom ("1 6:2 4 5:8")
+  const slots = () => String(store.get('pad.custom') || '').split(/[\s,;]+/).map((t) => {
+    const [d, b] = t.split(':').map((x) => parseInt(x, 10));
+    return d >= 1 && d <= 14 ? { d: ((d - 1) % 7) + 1, b: b >= 1 && b <= 16 ? b : null } : null;
+  }).filter(Boolean);
+  const degrees = () => slots().map((x) => x.d);
+  const MODES = ['Aléatoire', 'Plane (I)', 'Pendule I–IV', 'I–V–vi–IV', 'i–VI–III–VII', 'Montée I–ii–iii–IV', 'Perso'];
+  const MODE_LABEL = { 'Aléatoire': '⚄ Aléatoire', 'Perso': '✎ Mes accords' };
   const chordLabel = (d) => {
     const seq = AMB.seq;
     const midis = T.chordDegrees(d - 1, 4, seq.scale).map((x) => T.degreeToMidi(x, seq.root, seq.scale, 3));
@@ -23,25 +30,31 @@
       panel.style.setProperty('--c', '#b58cff');
       panel.innerHTML = `<header><h2 data-n="09">Progression</h2>
           <span class="chords-mode"></span></header>
+        <div class="chord-modes roll-tools"></div>
         <div class="chord-slots"></div>
         <div class="chord-palette"></div>
+        <div class="chord-durs roll-tools"></div>
         <div class="roll-tools chord-tools">
           <button class="btn small" data-c="use">▶ Jouer cette progression</button>
           <button class="btn small" data-c="random">⚄ Suggérer</button>
           <button class="btn small" data-c="clear">Effacer</button>
-          <span class="roll-hint">Choisis une case puis un accord · « — » coupe la progression à cet endroit</span>
+          <span class="roll-hint">Choisis une case puis un accord et sa durée · « — » coupe la progression à cet endroit</span>
         </div>`;
       container.prepend(panel);
       this.panel = panel;
       this.slotsEl = panel.querySelector('.chord-slots');
       this.paletteEl = panel.querySelector('.chord-palette');
+      this.modesEl = panel.querySelector('.chord-modes');
+      this.dursEl = panel.querySelector('.chord-durs');
       panel.querySelectorAll('[data-c]').forEach((b) => b.addEventListener('click', () => this.act(b.dataset.c)));
       store.on((k) => { if (['pad.custom', 'pad.prog', 'global.key', 'global.scale', 'pad.length'].includes(k)) this.render(); });
       AMB.bus.on('chord', () => setTimeout(() => this.render(), 50));
       this.render();
     },
     write(list, activate = true) {
-      store.set('pad.custom', list.join(' '), 'user');
+      // list items: degree number or {d, b}
+      const str = list.map((x) => (typeof x === 'object' ? (x.b ? `${x.d}:${x.b}` : `${x.d}`) : `${x}`)).join(' ');
+      store.set('pad.custom', str, 'user');
       if (activate && list.length) store.set('pad.prog', 'Perso', 'user');
     },
     act(a) {
@@ -62,28 +75,45 @@
       }
     },
     pick(deg) {
-      const list = degrees();
+      const list = slots();
       if (deg === 0) list.splice(this.sel); // "—": cut here
       else {
-        while (list.length < this.sel) list.push(list[list.length - 1] || 1);
-        list[this.sel] = deg;
+        while (list.length < this.sel) list.push({ d: (list[list.length - 1] || { d: 1 }).d, b: null });
+        list[this.sel] = { d: deg, b: list[this.sel] ? list[this.sel].b : null };
         this.sel = Math.min(SLOTS - 1, this.sel + 1);
       }
       this.write(list);
     },
+    setBars(bars) {
+      const list = slots(); const i = Math.min(this.sel, list.length - 1);
+      if (i < 0) return;
+      list[i] = { ...list[i], b: bars };
+      this.write(list);
+    },
     render() {
       if (!this.panel || !AMB.seq) return;
-      const list = degrees();
-      const active = store.get('pad.prog') === 'Perso';
-      this.panel.querySelector('.chords-mode').textContent = active
-        ? `Perso · ${store.get('pad.length')} mes. par accord` : `Progression actuelle : ${store.get('pad.prog')}`;
+      const list = degrees(), sl = slots();
+      const mode = store.get('pad.prog'), active = mode === 'Perso';
+      const def = store.get('pad.length');
+      const total = active ? sl.reduce((a, x) => a + (x.b || def), 0) : 0;
+      this.panel.querySelector('.chords-mode').textContent = active ? `${sl.length} accords · ${total} mesures` : `Suite automatique · ${def} mes. par accord`;
+      // mode chips (single source of truth for the progression)
+      this.modesEl.innerHTML = '<span class="roll-hint" style="margin:0 6px 0 0">Mode :</span>';
+      for (const m of MODES) {
+        const b = document.createElement('button');
+        b.className = 'btn small' + (m === mode ? ' on' : '');
+        b.textContent = MODE_LABEL[m] || m;
+        b.addEventListener('click', () => { if (m === 'Perso' && !sl.length) this.write([1, 6, 4, 5]); store.set('pad.prog', m, 'user'); });
+        this.modesEl.append(b);
+      }
+      this.panel.classList.toggle('chords-auto', !active);
       const playing = AMB.seq.playing && active && list.length ? (AMB.seq.progIdx || 0) % list.length : -1;
       this.slotsEl.innerHTML = '';
       for (let i = 0; i < SLOTS; i++) {
         const d = list[i];
         const b = document.createElement('button');
         b.className = 'chord-slot' + (i === this.sel ? ' is-sel' : '') + (i === playing ? ' now' : '') + (d ? '' : ' empty');
-        b.innerHTML = d ? `<b>${ROMAN[d - 1]}</b><span>${chordLabel(d)}</span>` : `<b>+</b><span>${i < list.length + 1 ? 'ajouter' : ''}</span>`;
+        b.innerHTML = d ? `<b>${ROMAN[d - 1]}</b><span>${chordLabel(d)}</span><em>${sl[i].b || def} mes.</em>` : `<b>+</b><span>${i < list.length + 1 ? 'ajouter' : ''}</span>`;
         b.addEventListener('click', () => { this.sel = Math.min(i, list.length); this.render(); });
         this.slotsEl.append(b);
       }
@@ -100,6 +130,16 @@
       cut.title = 'Couper la progression à cette case';
       cut.addEventListener('click', () => this.pick(0));
       this.paletteEl.append(cut);
+      // duration of the selected chord
+      this.dursEl.innerHTML = '<span class="roll-hint" style="margin:0 6px 0 0">Durée de la case :</span>';
+      const cur = sl[Math.min(this.sel, sl.length - 1)];
+      for (const n of [1, 2, 4, 8]) {
+        const b = document.createElement('button');
+        b.className = 'btn small' + (cur && (cur.b || def) === n ? ' on' : '');
+        b.textContent = `${n} mes.`;
+        b.addEventListener('click', () => this.setBars(n));
+        this.dursEl.append(b);
+      }
     },
   };
 

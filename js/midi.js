@@ -32,13 +32,14 @@
     const prog = (seq.progression && seq.progression()) || [seq.chordDeg || 0];
     const steps = parseInt(store.get('seq.steps'), 10) || 32;
     const chain = PR.chainList().length ? PR.chainList() : [store.get('seq.slot')];
-    const progBars = prog.length * barLen, seqBars = (chain.length * steps) / 16;
+    const durs = prog.map((_, i) => (seq.chordBars ? seq.chordBars(i) : barLen));
+    const progBars = durs.reduce((a, b) => a + b, 0), seqBars = (chain.length * steps) / 16;
     // a whole number of both cycles, capped to 64 bars
     let bars = Math.max(progBars, seqBars, 4);
     for (let b = bars; b <= 64; b++) if (b % progBars === 0 && b % seqBars === 0) { bars = b; break; }
     bars = Math.min(64, bars);
     const totalSteps = bars * 16;
-    const chordAt = (step) => prog[Math.floor(step / (16 * barLen)) % prog.length];
+    const chordAt = (step) => { let b = Math.floor(step / 16) % progBars; for (let i = 0; i < prog.length; i++) { if (b < durs[i]) return prog[i]; b -= durs[i]; } return prog[0]; };
 
     // tempo + time signature + key name
     const usq = Math.round(60000000 / bpm);
@@ -52,9 +53,11 @@
     const ch = [];
     const savedUpper = seq.lastUpper; // chordMidis voice-leads from the previous chord: restore after export
     seq.lastUpper = null;
-    for (let s = 0; s < totalSteps; s += 16 * barLen) {
+    for (let s = 0, k = 0; s < totalSteps; k++) {
+      const len = 16 * durs[k % durs.length];
       const midis = seq.chordMidis(chordAt(s));
-      for (const m of midis) note(ch, 0, s * STEP, 16 * barLen * STEP - 4, m, 70);
+      for (const m of midis) note(ch, 0, s * STEP, len * STEP - 4, m, 70);
+      s += len;
     }
 
     seq.lastUpper = savedUpper;
