@@ -238,7 +238,7 @@
     // timing offset of a note: light swing when pulsed, wide free drift when floating
     offset(step, sd) {
       if (this.floating) return rand(0, sd * 3.5);
-      return (step % 2 === 1 ? sd * 0.12 : 0) + rand(0, 0.015);
+      return (step % 2 === 1 ? sd * store.get('global.swing') : 0) + rand(0, 0.015);
     }
 
     counterStep(time, sd) {

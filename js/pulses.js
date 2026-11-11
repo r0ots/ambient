@@ -43,7 +43,7 @@
     playStep = i;
     const grid = parse(store.get('perc.pattern'), n);
     const prob = store.get('perc.prob');
-    const swing = i % 2 === 1 ? store.get('perc.swing') * sd * 0.5 : 0;
+    const swing = i % 2 === 1 ? Math.min(1, store.get('global.swing') + store.get('perc.swing')) * sd * 0.5 : 0;
     // floating time loosens the grid a lot: percussion becomes scattered "found sounds"
     const loose = AMB.seq.floating ? Math.random() * sd * 1.5 : 0;
     grid.forEach((row, t) => {

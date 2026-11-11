@@ -100,7 +100,7 @@ Constat : ~120 réglages visibles sans hiérarchie, 7 façons de mémoriser un �
 - [x] C1. (v0.60) Morceau : les sections ne copient plus les motifs/progression (partagés) → corriger un motif met à jour tout le morceau ; touches 1–8 = aller à la section (au prochain temps fort)
 - [x] C2. (v0.60) Transitions de section : pas relatif au début de section (accords, chaîne A–D, approche de basse non tronqués)
 - [x] C3. (v0.61) Progression : une seule source (le panneau), retirer le select/texte du Pad ; durée par case
-- [ ] C4. Bugs revue : journal en stableSnapshot ; XY/CC MIDI en source non-annulable ; degrés > 7 ; jeu clavier audible à l'arrêt ; mutation qui écrase le motif sauvegardé ; swing unifié
+- [x] C4. (v0.62) Bugs revue : journal en stableSnapshot ; XY/CC MIDI en source non-annulable ; degrés > 7 ; jeu clavier audible à l'arrêt ; mutation qui écrase le motif sauvegardé ; swing unifié
 - [ ] C5. Export MIDI : piste Basse + export du Morceau entier
 
 **Backlog (après la refonte)** : horloge MIDI + note-off, MIDI learn, mute/solo, parameter locks, stems WAV par couche, banc de scènes 8 slots.

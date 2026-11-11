@@ -64,7 +64,7 @@
       if (arpIdx >= uniq.length - 1) arpUp = false; else if (arpIdx <= 0) arpUp = true;
       idx = Math.max(0, Math.min(uniq.length - 1, arpIdx)); arpIdx += arpUp ? 1 : -1;
     } else idx = arpIdx++ % uniq.length;
-    const swing = (step / every) % 2 === 1 ? store.get('seq.swing') * sd * every * 0.5 : 0;
+    const swing = (step / every) % 2 === 1 ? Math.min(1, store.get('global.swing') + store.get('seq.swing')) * sd * every * 0.5 : 0;
     const vel = 0.55 + (step % 16 === 0 ? 0.3 : step % 4 === 0 ? 0.15 : 0) + Math.random() * 0.08;
     const hu = AMB.util.human();
     AMB.layers.seq.note(uniq[idx], Math.max(time, time + swing + hu.dt), vel * hu.dv, true, every * sd * 0.9);
@@ -94,7 +94,7 @@
     const notes = parse(store.get(key));
     if (!notes.length) return;
     const seq = AMB.seq, oct = parseInt(store.get('seq.octave'), 10) || 0;
-    const swing = i % 2 === 1 ? store.get('seq.swing') * sd * 0.5 : 0;
+    const swing = i % 2 === 1 ? Math.min(1, store.get('global.swing') + store.get('seq.swing')) * sd * 0.5 : 0;
     for (const n of notes) {
       if (n.s !== i) continue;
       if (n.p < 10 && Math.random() * 10 >= n.p) continue;
@@ -542,5 +542,5 @@
     }, ms);
   }
 
-  AMB.pianoRoll = { roll, resetLatch, rowForMidi, parse, encode, onStep, arpStep, randomPattern, mutate, slotAt, chainList, SLOTKEY, ROWS };
+  AMB.pianoRoll = { originals: () => ({ ...original }), roll, resetLatch, rowForMidi, parse, encode, onStep, arpStep, randomPattern, mutate, slotAt, chainList, SLOTKEY, ROWS };
 })();

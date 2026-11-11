@@ -14,6 +14,7 @@
         scale: { label: 'Gamme', hint: 'Couleur harmonique : Lydien lumineux, Éolien mélancolique, Pentatonique toujours doux…', type: 'select', options: Object.keys(SCALES), def: 'Lydien' },
         evolve: { label: 'Dérive', hint: 'Fait bouger lentement et tout seul les réglages autour de tes valeurs.', min: 0, max: 1, def: 0.35 },
         time: { label: 'Rythme', hint: 'Régulier : notes sur les temps. Libre : notes qui flottent sans pulsation.', type: 'select', options: ['Pulsé', 'Flottant'], def: 'Pulsé' },
+        swing: { label: 'Swing', min: 0, max: 1, def: 0.12, hint: 'Chaloupé général : retarde une double-croche sur deux, pour toutes les pistes.' },
         humanize: { label: 'Imprécision', hint: 'Petits décalages de temps et de force pour un jeu moins mécanique.', min: 0, max: 1, def: 0.2 },
         tuning: { label: 'Diapason', hint: 'Fréquence de référence du La (440 Hz standard, 432 Hz un peu plus grave).', type: 'select', options: ['440 Hz', '432 Hz'], def: '440 Hz' },
         volume: { label: 'Volume', hint: 'Volume général.', min: 0, max: 1, def: 0.8 },
@@ -97,7 +98,7 @@
         follow: { label: 'Suit accords', hint: 'Transpose tes notes avec chaque accord (pratique pour les arpèges, déroutant pour une mélodie).', type: 'toggle', def: false },
         tone: { label: 'Brillance', min: 0, max: 1, def: 0.45 },
         decay: { label: 'Résonance', min: 0, max: 1, def: 0.45 },
-        swing: { label: 'Swing', hint: 'Retarde une double-croche sur deux : jeu plus chaloupé.', min: 0, max: 1, def: 0.1 },
+        swing: { label: 'Swing +', hint: 'Swing en plus du swing général, pour cette piste seulement.', min: 0, max: 1, def: 0 },
         mutate: { label: 'Variation', hint: 'Le motif change un peu à chaque tour (↺ Original pour revenir).', min: 0, max: 1, def: 0 },
         send: { label: 'Espace', hint: 'Part de cette couche envoyée dans la réverbération et l\'écho.', min: 0, max: 1, def: 0.6 },
         // notes as "step.row.len" (base36), comma separated; part of the patch so presets/links/undo include it
@@ -133,7 +134,7 @@
         vol: { label: 'Niveau', min: 0, max: 1, def: 0.45 },
         prob: { label: 'Présence', hint: 'Chance que chaque coup soit joué : moins = plus aéré et imprévisible.', min: 0, max: 1, def: 0.85, evolve: true },
         tone: { label: 'Couleur', min: 0, max: 1, def: 0.4 },
-        swing: { label: 'Swing', min: 0, max: 1, def: 0.15 },
+        swing: { label: 'Swing +', hint: 'Swing en plus du swing général, pour cette piste seulement.', min: 0, max: 1, def: 0 },
         send: { label: 'Espace', hint: 'Part de cette couche envoyée dans la réverbération et l\'écho.', min: 0, max: 1, def: 0.35 },
         kit: { label: 'Kit', hint: 'Feutré : sons doux électroniques. Organique : tambour, bâton de pluie, gouttes, kalimba.', type: 'select', options: ['Feutré', 'Organique'], def: 'Feutré' },
         steps: { label: 'Pas', type: 'select', options: ['16', '32'], def: '16' },
@@ -212,6 +213,9 @@
     stableSnapshot() {
       const snap = this.snapshot(), homes = (AMB.seq && AMB.seq.homes) || {};
       for (const k of Object.keys(snap)) if (homes[k] !== undefined && this.spec(k) && !this.spec(k).type) snap[k] = homes[k];
+      // motifs mutated by the piano roll's « Variation » are saved as the user drew them
+      const orig = AMB.pianoRoll && AMB.pianoRoll.originals ? AMB.pianoRoll.originals() : {};
+      for (const [k, v] of Object.entries(orig)) if (v != null && k in snap) snap[k] = v;
       return snap;
     }
     on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }

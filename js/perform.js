@@ -12,9 +12,9 @@
     'macro.nostalgia': [['fx.tape', 0.05, 0.85], ['fx.lofi', 0, 0.6, 2]],
     'macro.nature': [['texture.vol', 0, 0.55]],
   };
-  function applyMacro(key, v) {
-    for (const [k, a, b, pow] of MACROS[key]) store.set(k, a + (b - a) * Math.pow(v, pow || 1), 'macro');
-    if (key === 'macro.nature') store.set('texture.on', v > 0.02, 'macro');
+  function applyMacro(key, v, source = 'macro') {
+    for (const [k, a, b, pow] of MACROS[key]) store.set(k, a + (b - a) * Math.pow(v, pow || 1), source);
+    if (key === 'macro.nature') store.set('texture.on', v > 0.02, source);
   }
   store.on((key, v, source) => { if (source === 'user' && MACROS[key]) applyMacro(key, v); });
 
@@ -56,7 +56,7 @@
   // the XY pad and MIDI CCs drive the macros themselves (one mapping, knobs stay in sync)
   function setMacro(key, v) {
     store.set(key, Math.max(0, Math.min(1, v)), 'sync'); // move the macro knob without re-triggering
-    applyMacro(key, store.get(key));
+    applyMacro(key, store.get(key), 'xy'); // performance gestures: not recorded in undo history
   }
   function setupXY(canvas) {
     let down = false;

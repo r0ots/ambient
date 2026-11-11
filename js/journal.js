@@ -13,7 +13,7 @@
       if (!this.t0) this.t0 = now;
       const last = this.items[this.items.length - 1];
       if (last && now - last.at < MIN_GAP) return;
-      this.items.push({ at: now, label: chordName, state: store.snapshot(), mood: (document.querySelector('#preset')?.selectedOptions[0]?.textContent || '').replace('✦ ', '') });
+      this.items.push({ at: now, label: chordName, state: store.stableSnapshot(), mood: (document.querySelector('#preset')?.selectedOptions[0]?.textContent || '').replace('✦ ', '') });
       if (this.items.length > MAX) this.items.shift();
       this.render();
     },
@@ -26,7 +26,7 @@
     },
     keep() {
       const it = this.items[this.items.length - 1];
-      const state = store.snapshot();
+      const state = store.stableSnapshot();
       const name = `♥ ${it ? it.label : 'Moment'} · ${new Date().toLocaleTimeString().slice(0, 5)}`;
       AMB.ui.saveUserPatch(name, state);
       AMB.ui.toast(`Gardé dans « Mes patchs » : ${name}`);
