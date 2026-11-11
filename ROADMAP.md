@@ -120,7 +120,7 @@ Technique : `js/game.js` (état `localStorage` `ambient.game.v1`, clé surcharg�
 
 **G1 — Fondations**
 - [x] G1.1 (v0.64) `game.js` : état persistant (éclats, nœuds achetés, découvertes, contrats, énigmes, mode libre), API earn/spend/unlock/isUnlocked, événements bus ; `tests/game.html`
-- [ ] G1.2 Arbre en données (~30 nœuds, tronc + 4 branches, coûts, prérequis, portes) ; le test vérifie : pas de cycle, tout nœud atteignable
+- [x] G1.2 (v0.65) Arbre en données (`js/tree.js` : 38 nœuds, coût total ~1030 ✧, 5 portes p.premier/p.gamme/p.espace/p.mouvement/p.composer ; tout réglage du SCHEMA résolu exact > `*.suffixe` > `section.*` ; `ui` = noms de fonctions pour `data-node` ; racine offerte au démarrage du parcours) (~30 nœuds, tronc + 4 branches, coûts, prérequis, portes) ; le test vérifie : pas de cycle, tout nœud atteignable
 - [ ] G1.3 Rattacher chaque réglage (param → nœud) et chaque élément d'UI (`data-node`) à un nœud ; le test vérifie que tout réglage visible appartient à un nœud
 - [ ] G1.4 Masquage visuel : `body.game`, éléments verrouillés cachés, modes Sculpter/Composer verrouillés au départ
 - [ ] G1.5 Verrouillage sonore : couches/fonctions verrouillées coupées ; presets, générateur, liens, scènes, journal et undo n'écrivent pas les clés verrouillées

@@ -8,7 +8,7 @@ const oe=console.error;console.error=(...a)=>{log('CONSOLE.ERROR '+a.join(' '));
 window.AMB_GAME_KEY='ambient.game.test';
 localStorage.removeItem('ambient.game.test');
 </script>
-<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/game.js"></script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/game.js"></script><script src="../js/tree.js"></script>
 <script>
 const ok=(c,m)=>log((c?'ok ':'ERROR fail ')+m);
 window.addEventListener('load', ()=>{
@@ -28,6 +28,25 @@ window.addEventListener('load', ()=>{
   g.setMode('free'); ok(g.isUnlocked('y'), 'mode libre = tout ouvert');
   log('events='+ev.join(','));
   g.reset(); ok(g.s.shards===0 && !g.s.nodes.length, 'reset');
+  // --- tree (G1.2)
+  const T=AMB.tree, ids=T.NODES.map(n=>n.id);
+  ok(new Set(ids).size===ids.length, 'ids uniques ('+ids.length+' nœuds)');
+  ok(T.NODES.every(n=>n.req.every(r=>T.byId[r]) && T.BRANCHES[n.branch]), 'prérequis et branches valides');
+  // cycle check by DFS
+  const seen={}, cyc=(id,st)=>{ if(st.has(id)) return true; if(seen[id]) return false; seen[id]=1; st.add(id); const r=T.byId[id].req.some(x=>cyc(x,st)); st.delete(id); return r; };
+  ok(!ids.some(id=>cyc(id,new Set())), 'pas de cycle');
+  g.setMode('path'); ok(g.has('racine'), 'racine offerte au démarrage du parcours');
+  // buy everything, solving gates as they come, with unlimited shards
+  g.earn(1e6,'test'); let progress=true;
+  while(progress){ progress=false; for(const n of T.NODES){ const st=T.status(n.id); if(st==='gated'){ g.solve(n.gate); progress=true; } else if(st==='available'){ T.buy(n.id); progress=true; } } }
+  const missing=ids.filter(id=>!g.has(id)); ok(!missing.length, 'tout atteignable '+missing.join(','));
+  const total=T.NODES.reduce((a,n)=>a+n.cost,0); log('coût total='+total+' portes='+T.NODES.filter(n=>n.gate).map(n=>n.gate).join(','));
+  const keys=[]; for(const [sec,o] of Object.entries(AMB.SCHEMA)) for(const k of Object.keys(o.params)) keys.push(sec+'.'+k);
+  const orphan=keys.filter(k=>!T.nodeFor(k)); ok(!orphan.length, 'tout réglage a un nœud '+orphan.join(','));
+  ok(T.nodeFor('pad.send')==='e.reverb' && T.nodeFor('seq.send')==='c.seq' && T.nodeFor('macro.light')==='t.macros', 'résolution exact > suffixe > section');
+  g.reset(); g.setMode('path'); ok(!T.paramUnlocked('fx.echo') && T.paramUnlocked('drone.vol') && T.status('h.pad')==='available' && T.status('h.scale')==='locked', 'statuts au départ');
+  g.setMode('free'); ok(T.paramUnlocked('fx.echo') && T.uiUnlocked('song'), 'mode libre : tout ouvert');
+  g.reset();
   localStorage.removeItem('ambient.game.test');
   log('DONE');
   }catch(e){log('EXC '+e.stack)}
