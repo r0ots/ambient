@@ -53,6 +53,13 @@ f.addEventListener('load', async ()=>{
   ok(!d.body.classList.contains('game') && d.querySelectorAll('.is-locked').length===0, 'mode libre : appli intacte');
   A.game.setMode('path'); A.game.reset(); A.perform.setMode('compose'); A.tree.applyLocks(); await wait(50);
   ok(A.mode==='listen', 'mode verrouillé → retour Écouter');
+  // --- discoveries (G3.1)
+  A.game.reset(); await wait(20); const s0=A.game.s.shards;
+  A.store.set('drone.tone',0.5,'user'); A.store.set('drone.tone',0.6,'user'); A.store.set('drone.on',false,'user'); A.store.set('drone.on',true,'user');
+  ok(A.game.s.shards===s0+5 && A.game.s.found.includes('p:drone.tone'), 'découvertes : 1re fois seulement (+2 knob, +3 interrupteur) = '+(A.game.s.shards-s0));
+  A.store.set('fx.echo',0.5,'user'); A.store.set('drone.vol',0.4,'preset'); ok(A.game.s.shards===s0+5, 'rien pour un réglage verrouillé ou une écriture non-utilisateur');
+  await wait(30); ok(/découverte : Drone · Couleur/.test(d.getElementById('gainFeed').textContent), 'note « +2 ✧ découverte » affichée');
+  A.game.setMode('free'); A.store.set('drone.motion',0.2,'user'); A.game.setMode('path'); ok(!A.game.s.found.includes('p:drone.motion'), 'rien en mode libre');
   // --- sound locking (G1.5)
   const St=A.store, g=A.game;
   g.setMode('free'); St.set('fx.echo',0.6,'user'); St.set('pad.on',true,'user');

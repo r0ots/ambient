@@ -106,7 +106,39 @@
       const tb = $('#treeBtn'); if (tb) tb.title = n ? `${n} nœud${n > 1 ? 's' : ''} à débloquer dans l'arbre` : 'L\'arbre du jardin : ce que tu as débloqué et ce qui t\'attend';
     },
 
+    // ---- discoveries (G3.1): the first time you touch a control, it pays ----
+    REWARD: { toggle: 3, select: 3, text: 3, knob: 2 },
+    paramReward(key) {
+      const sp = AMB.store.spec(key); if (!sp) return 0;
+      return this.REWARD[sp.type || 'knob'] || 2;
+    },
+    paramLabel(key) {
+      const [sec, k] = key.split('.'); const S = AMB.SCHEMA[sec]; if (!S) return key;
+      const sp = S.params[k];
+      return k === 'on' ? S.label : sp && !sp.hidden ? `${S.label} · ${sp.label}` : S.label;
+    },
+    onParam(key, v, source) {
+      const g = AMB.game;
+      if (source !== 'user' || !g.path || !AMB.tree.paramUnlocked(key)) return;
+      g.discover('p:' + key, this.paramReward(key));
+    },
+    // small "+n ✧" notes that float under the LCD, one per gain
+    pop(text) {
+      let feed = $('#gainFeed');
+      if (!feed) { feed = document.createElement('div'); feed.id = 'gainFeed'; feed.className = 'gain-feed'; feed.setAttribute('aria-live', 'polite'); document.body.append(feed); }
+      const it = document.createElement('div'); it.className = 'gain'; it.textContent = text;
+      feed.append(it);
+      while (feed.children.length > 4) feed.firstChild.remove();
+      setTimeout(() => it.remove(), 3200);
+    },
+    gainText(d) {
+      if (d.reason === 'découverte' && d.id && d.id.startsWith('p:')) return `+${d.n} ✧ découverte : ${this.paramLabel(d.id.slice(2))}`;
+      return `+${d.n} ✧ ${d.reason || ''}`;
+    },
+
     build() {
+      AMB.store.on((k, v, src) => this.onParam(k, v, src));
+      if (AMB.bus) AMB.bus.on('game:earn', (d) => { if (AMB.game.path && d.reason !== 'test') this.pop(this.gainText(d)); });
       if (AMB.bus) {
         AMB.bus.on('game:earn', () => this.renderCounter(true));
         ['spend', 'unlock', 'reset', 'mode', 'puzzles'].forEach((ev) => AMB.bus.on('game:' + ev, () => this.renderCounter()));

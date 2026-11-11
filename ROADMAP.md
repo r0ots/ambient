@@ -133,7 +133,7 @@ Technique : `js/game.js` (état `localStorage` `ambient.game.v1`, clé surcharg�
 - [x] G2.4 (v0.73) Liens et prérequis visibles, nœuds-portes marqués (énigme requise), infobulle « ce que ça débloque ». Fait : `tree.grants(id)` (libellés lisibles des réglages et fonctions) et `tree.dependents(id)` ; infobulle Débloque / Demande / Porte ; prérequis d'une autre branche écrits sous le nom (« ← Pad, Mélodie auto ») ; survol = prérequis en vert, suites en pointillés, le reste estompé. Plutôt que des traits SVG entre colonnes (illisibles avec les liens croisés)
 
 **G3 — Découvertes**
-- [ ] G3.1 Découverte d'un réglage (1re modification utilisateur) : gain, toast discret, pas de gain en double
+- [x] G3.1 (v0.74) Découverte d'un réglage (1re modification utilisateur) : gain, toast discret, pas de gain en double. Fait : écoute du store, seulement source 'user' (pas les macros, presets, LFO…), seulement en parcours et sur un réglage débloqué ; +2 ✧ knob, +3 ✧ interrupteur/liste ; id `p:<clé>` ; notes « +n ✧ découverte : … » flottantes sous le LCD (`#gainFeed`, 4 max)
 - [ ] G3.2 Découvertes d'actions (forcer un accord, Figer, Garder un moment, enregistrer, exporter MIDI, créer une section…)
 - [ ] G3.3 Carnet des découvertes dans l'écran Arbre (x / total par branche)
 
