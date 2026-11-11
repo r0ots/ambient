@@ -23,6 +23,11 @@ f.addEventListener('load', async ()=>{
   ok(A.game.s.mode==='path' && d.getElementById('welcomeDlg').hidden && /libre/.test(d.getElementById('gameMode').textContent), 'choix Parcours → dialogue fermé, bascule « mode libre » dans ⋯');
   d.getElementById('gameMode').click(); ok(A.game.s.mode==='free', 'bascule ⋯ → libre'); d.getElementById('gameMode').click();
   ok(d.body.classList.contains('game'), 'body.game');
+  ok(shown('#treeBtn'), 'bouton Arbre visible en parcours'); d.getElementById('treeBtn').click(); await wait(50);
+  const tn=(id)=>d.querySelector('.tree-node[data-id="'+id+'"]');
+  ok(!d.getElementById('treeDlg').hidden && d.querySelectorAll('.tree-node').length===A.tree.NODES.length && d.querySelectorAll('.tree-col').length===5, 'écran Arbre : 5 branches, tous les nœuds');
+  ok(tn('racine').classList.contains('st-owned') && tn('h.pad').classList.contains('st-available') && tn('h.scale').classList.contains('st-locked'), 'états acquis / disponible / verrouillé');
+  d.querySelector('#treeDlg [data-close]').click(); ok(d.getElementById('treeDlg').hidden, 'fermeture');
   ok(!locked('#play') && !locked('[data-key="drone.vol"]') && !locked('[data-mode=sculpt]'), 'racine visible (lecture, drone, Sculpter)');
   ok(locked('#dice') && locked('[data-key="fx.echo"]') && locked('[data-mode=compose]') && locked('#scenes') && locked('.recgrp'), 'le reste caché');
   ok(locked('.panel[data-sec=fx]') && locked('.panel[data-sec=pad]') && !locked('.panel[data-sec=drone]') && locked('.chords-panel'), 'panneaux vides cachés');
@@ -47,7 +52,7 @@ f.addEventListener('load', async ()=>{
   g.setMode('free'); ok(Math.abs(St.get('fx.echo')-0.6)<0.02 && St.get('pad.on')===true, 'retour en libre : son libre rendu');
   St.set('pad.on',false,'user'); ok(St.get('pad.on')===false, 'libre : tout modifiable');
   g.setMode('path'); ok(St.get('fx.echo')===0 && St.get('pad.on')===true, 'retour au parcours : son du parcours rendu');
-  g.setMode('free');
+  g.setMode('free'); ok(!shown('#treeBtn'), 'pas de bouton Arbre en libre');
   localStorage.removeItem('ambient.game.uitest');
   for (const k of Object.keys(localStorage)) if (k.startsWith('ambient.game.uitest')) localStorage.removeItem(k);
   log('DONE');

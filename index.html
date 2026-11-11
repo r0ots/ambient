@@ -60,6 +60,7 @@
             <button class="mode-btn" data-mode="sculpt" title="Sculpter : tous les réglages du son">Sculpter</button>
             <button class="mode-btn" data-mode="compose" title="Composer : accords, mélodie écrite, basse, rythmes, morceau">Composer</button>
           </div>
+          <button id="treeBtn" class="btn tree-btn" title="L'arbre du jardin : ce que tu as débloqué et ce qui t'attend">🌱 Arbre</button>
         </div>
         <span id="sleepLeft" class="sleep-left" title="Minuteur de sommeil"></span>
         <details class="more">
@@ -122,6 +123,15 @@
           <button class="welcome-choice" data-choose="path"><b>🌱 Parcours</b><span>Commence avec une seule note. Explore, relève des défis, résous des énigmes d'écoute, et débloque l'outil pièce par pièce.</span></button>
           <button class="welcome-choice" data-choose="free"><b>◎ Mode libre</b><span>Tout est ouvert tout de suite : couches, effets, composition. Tu pourras commencer le parcours plus tard (menu ⋯).</span></button>
         </div>
+      </div>
+    </div>
+
+    <div id="treeDlg" class="modal" hidden>
+      <div class="modal-card tree-card" role="dialog" aria-label="Arbre du jardin">
+        <button class="modal-x" data-close>✕</button>
+        <h3>Arbre du jardin <span class="tree-shards"></span></h3>
+        <p class="tree-legend"><i class="st-owned"></i> acquis <i class="st-available"></i> disponible <i class="st-gated"></i> énigme à résoudre <i class="st-locked"></i> pas encore accessible</p>
+        <div class="tree-map"></div>
       </div>
     </div>
 

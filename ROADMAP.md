@@ -127,7 +127,7 @@ Technique : `js/game.js` (état `localStorage` `ambient.game.v1`, clé surcharg�
 - [x] G1.6 (v0.69) Accueil : choix « Parcours » / « Mode libre » à la 1re visite (et pour les anciens utilisateurs), bascule dans le menu ⋯. Fait : `js/garden.js` (interface du jeu, chargé après ui.js), dialogue `#welcomeDlg`, bouton `#gameMode` dans ⋯. Les URL kiosque/tests (`autoplay`, `listen`) sautent la question et restent en libre. Le toast « Première visite ? » attend que le mode soit choisi
 
 **G2 — Arbre**
-- [ ] G2.1 Écran Arbre (superposition) : carte des 4 branches, états verrouillé / disponible / acquis, style rétro
+- [x] G2.1 (v0.70) Écran Arbre (superposition) : carte des 4 branches, états verrouillé / disponible / acquis, style rétro. Fait : `#treeDlg` + bouton `#treeBtn` (visible seulement en parcours), 5 colonnes (tronc + 4 branches), nœuds rangés par profondeur de prérequis, compteur x/n par branche, 4 états dont « énigme à résoudre ». Capture de dev : `tests/shot-tree.html` (hors suite)
 - [ ] G2.2 Acheter un nœud : coût, animation, révélation de l'élément dans l'interface (surlignage + défilement + étiquette « Nouveau »)
 - [ ] G2.3 Éclats affichés dans le LCD ; bouton Arbre avec pastille quand un nœud est abordable
 - [ ] G2.4 Liens et prérequis visibles, nœuds-portes marqués (énigme requise), infobulle « ce que ça débloque »

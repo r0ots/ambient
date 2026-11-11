@@ -394,3 +394,23 @@ body.game .is-locked { display: none !important; }
 .welcome-choice span { font-size: 13px; line-height: 1.45; color: #c4c9e0; }
 .welcome-choice:hover, .welcome-choice:focus-visible { border-color: var(--lcd-fg); }
 @media (max-width: 560px) { .welcome-choices { grid-template-columns: 1fr; } }
+.tree-btn { display: none; margin-left: 6px; }
+body.game .tree-btn { display: inline-flex; }
+.tree-card { max-width: 1100px; }
+.tree-shards { float: right; font: 26px var(--f-lcd); color: var(--lcd-fg); margin-right: 32px; }
+.tree-legend { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
+.tree-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line); margin-right: -8px; vertical-align: -2px; }
+.tree-map { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 12px; margin-top: 10px; overflow-x: auto; }
+.tree-col { display: flex; flex-direction: column; gap: 8px; padding: 8px; border-radius: 10px; background: #0003; border-top: 3px solid var(--c); }
+.tree-col h4 { color: var(--c); margin: 0 0 4px; display: flex; justify-content: space-between; }
+.tree-col h4 small { color: var(--muted); font-weight: 400; letter-spacing: 0; }
+.tree-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.tree-node { flex: 1 1 120px; text-align: left; display: grid; gap: 2px; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: var(--muted); font: inherit; font-size: 12px; cursor: default; }
+.tree-node b { font-weight: 600; font-size: 13px; }
+.tree-node span { font-family: var(--f-mono, monospace); font-size: 11px; }
+.st-owned { background: color-mix(in srgb, var(--c, #8fe3a0) 22%, var(--panel2)) !important; border-color: var(--c, #8fe3a0) !important; color: var(--text, #eee) !important; }
+.st-available { border-color: var(--lcd-fg) !important; color: var(--lcd-fg) !important; cursor: pointer !important; box-shadow: 0 0 10px color-mix(in srgb, var(--lcd-fg) 35%, transparent); }
+.st-gated { border-style: dashed !important; color: #c4c9e0 !important; }
+.st-locked { opacity: .45; }
+.tree-legend .st-owned { --c: #8fe3a0; }
+@media (max-width: 760px) { .tree-map { grid-template-columns: repeat(5, 160px); } }
