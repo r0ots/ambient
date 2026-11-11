@@ -26,7 +26,9 @@
     renderTree() {
       const map = $('#treeDlg .tree-map'); if (!map) return;
       const T = AMB.tree, g = AMB.game, memo = {};
+      const all = this.notebook();
       $('#treeDlg .tree-shards').textContent = `✧ ${g.s.shards}`;
+      const sub = $('#treeDlg .tree-sub'); if (sub) sub.textContent = `${g.s.nodes.length}/${T.NODES.length} nœuds · ${all.done}/${all.total} découvertes · ✧ ${g.s.earned} gagnés en tout`;
       map.innerHTML = '';
       for (const [bid, br] of Object.entries(T.BRANCHES)) {
         const col = document.createElement('div');
@@ -34,6 +36,13 @@
         const nodes = T.NODES.filter((n) => n.branch === bid);
         const owned = nodes.filter((n) => g.has(n.id)).length;
         col.innerHTML = `<h4>${br.name} <small>${owned}/${nodes.length}</small></h4>`;
+        const nb = this.notebook(bid), pct = nb.total ? Math.round((nb.done / nb.total) * 100) : 0;
+        const nbEl = document.createElement('div');
+        nbEl.className = 'tree-nb';
+        nbEl.innerHTML = `<span>Découvertes ${nb.done}/${nb.total}</span><i style="--p:${pct}%"></i>`
+          + (nb.todo.length ? `<em>${nb.todo.length} à essayer</em>` : '');
+        nbEl.title = nb.todo.length ? `À essayer (déjà débloqué) :\n${nb.todo.map((x) => '· ' + x.label).join('\n')}` : 'Rien à essayer pour l\'instant : débloque d\'autres nœuds';
+        col.append(nbEl);
         const rows = {};
         for (const n of nodes) (rows[this.depth(n.id, memo)] = rows[this.depth(n.id, memo)] || []).push(n);
         for (const d of Object.keys(rows).sort((a, b) => a - b)) {
@@ -176,6 +185,26 @@
         seq.playMidi = function (...a) { me.act('note'); return pm.apply(this, a); };
       }
       AMB.store.on((k, v, src) => { if (src === 'xy') this.act('xy'); });
+    },
+    // ---- discovery notebook (G3.3) ----
+    // every discoverable thing: visible controls and actions, each tied to a node (hence a branch)
+    discoverables() {
+      if (this._disc) return this._disc;
+      const T = AMB.tree, out = [];
+      for (const k of T.allKeys()) {
+        const sp = AMB.store.spec(k), node = T.nodeFor(k);
+        if (!sp || sp.hidden || !node) continue;
+        out.push({ id: 'p:' + k, node, label: this.paramLabel(k) });
+      }
+      for (const [id, [node, , label]] of Object.entries(this.ACTS)) out.push({ id: 'a:' + id, node, label });
+      return (this._disc = out);
+    },
+    notebook(branch) {
+      const T = AMB.tree, g = AMB.game, found = new Set(g.s.found);
+      const items = this.discoverables().filter((x) => !branch || T.byId[x.node].branch === branch);
+      const done = items.filter((x) => found.has(x.id));
+      const todo = items.filter((x) => !found.has(x.id) && g.has(x.node)); // waiting, already within reach
+      return { total: items.length, done: done.length, todo };
     },
     gainText(d) {
       if (d.reason === 'découverte' && d.id && d.id.startsWith('a:')) { const a = this.ACTS[d.id.slice(2)]; return `+${d.n} ✧ découverte : ${a ? a[2] : d.id}`; }

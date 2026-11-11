@@ -68,6 +68,11 @@ f.addEventListener('load', async ()=>{
   d.getElementById('vizMode').click(); d.getElementById('vizMode').click(); ok(A.game.s.shards===s2+3 && A.game.s.found.includes('a:viz'), 'clic Visuel : +3 une seule fois');
   A.seq.forceChord(3); ok(A.game.s.found.includes('a:chord'), 'forcer un accord (clavier/MIDI) compte');
   await wait(30); ok(/forcer un accord/.test(d.getElementById('gainFeed').textContent), 'note de découverte d\'action');
+  const nb=A.garden.notebook(), nbH=A.garden.notebook('harmonie');
+  ok(nb.total>100 && nb.done===A.game.s.found.filter(x=>A.garden.discoverables().some(y=>y.id===x)).length && nbH.todo.some(x=>/Pad · Brillance/.test(x.label)), 'carnet : '+nb.done+'/'+nb.total+', Harmonie à essayer '+nbH.todo.length);
+  A.garden.showTree(true); await wait(30);
+  ok(d.querySelectorAll('.tree-nb').length===5 && /Pad · Brillance/.test(d.querySelectorAll('.tree-nb')[1].title) && /découvertes/.test(d.querySelector('.tree-sub').textContent), 'carnet affiché par branche : '+d.querySelectorAll('.tree-nb')[1].textContent);
+  A.garden.showTree(false);
   A.game.setMode('free'); A.store.set('drone.motion',0.2,'user'); A.game.setMode('path'); ok(!A.game.s.found.includes('p:drone.motion'), 'rien en mode libre');
   // --- sound locking (G1.5)
   const St=A.store, g=A.game;

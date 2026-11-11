@@ -135,7 +135,7 @@ Technique : `js/game.js` (état `localStorage` `ambient.game.v1`, clé surcharg�
 **G3 — Découvertes**
 - [x] G3.1 (v0.74) Découverte d'un réglage (1re modification utilisateur) : gain, toast discret, pas de gain en double. Fait : écoute du store, seulement source 'user' (pas les macros, presets, LFO…), seulement en parcours et sur un réglage débloqué ; +2 ✧ knob, +3 ✧ interrupteur/liste ; id `p:<clé>` ; notes « +n ✧ découverte : … » flottantes sous le LCD (`#gainFeed`, 4 max)
 - [x] G3.2 (v0.75) Découvertes d'actions (forcer un accord, Figer, Garder un moment, enregistrer, exporter MIDI, créer une section…). Fait : table `garden.ACTS` (23 actions, nœud requis, gain 3–8 ✧, libellé), clics captés en phase de capture via `garden.CLICKS`, jeu live via enveloppe de `seq.forceChord`/`seq.playMidi`, pad XY via la source 'xy', Figer via `bus.emit('act','freeze')` ; id `a:<action>`, ne compte que si le nœud est acquis
-- [ ] G3.3 Carnet des découvertes dans l'écran Arbre (x / total par branche)
+- [x] G3.3 (v0.76) Carnet des découvertes dans l'écran Arbre (x / total par branche). Fait : 133 découvertes (réglages visibles + 23 actions), barre « Découvertes x/n » par colonne, « n à essayer » = déjà débloqué mais jamais touché (liste en infobulle, sert d'indice), ligne de synthèse nœuds / découvertes / ✧ gagnés
 
 **G4 — Contrats d'usage**
 - [ ] G4.1 Moteur : contrats = conditions sur événements/état, 3 actifs à la fois, récompense, renouvellement
