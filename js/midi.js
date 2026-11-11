@@ -24,67 +24,113 @@
     events.push({ t: t + Math.max(1, dur), bytes: [0x80 | ch, n, 0], off: true });
   };
 
-  function build() {
-    const seq = AMB.seq, PR = AMB.pianoRoll, PU = AMB.pulses;
-    const bpm = store.get('global.tempo');
-    const barLen = store.get('pad.length');
-    // progression: fixed list when available, otherwise the chord playing now
-    const prog = (seq.progression && seq.progression()) || [seq.chordDeg || 0];
-    const steps = parseInt(store.get('seq.steps'), 10) || 32;
-    const chain = PR.chainList().length ? PR.chainList() : [store.get('seq.slot')];
-    const durs = prog.map((_, i) => (seq.chordBars ? seq.chordBars(i) : barLen));
-    const progBars = durs.reduce((a, b) => a + b, 0), seqBars = (chain.length * steps) / 16;
-    // a whole number of both cycles, capped to 64 bars
-    let bars = Math.max(progBars, seqBars, 4);
-    for (let b = bars; b <= 64; b++) if (b % progBars === 0 && b % seqBars === 0) { bars = b; break; }
-    bars = Math.min(64, bars);
-    const totalSteps = bars * 16;
-    const chordAt = (step) => { let b = Math.floor(step / 16) % progBars; for (let i = 0; i < prog.length; i++) { if (b < durs[i]) return prog[i]; b -= durs[i]; } return prog[0]; };
+  // Render a span of music into the event arrays, reading parameters through `get`
+  // (live store for loop export, a section snapshot for song export).
+  function renderSpan(get, s0, span, out) {
+    const PR = AMB.pianoRoll, PU = AMB.pulses, BS = AMB.bassSeq;
+    const root = T.NOTE_NAMES.indexOf(get('global.key')), scale = T.SCALES[get('global.scale')] || T.SCALES['Lydien'];
+    const barLen = get('pad.length');
+    // progression (same rules as the sequencer)
+    const FIXED = { 'Plane (I)': [0], 'Pendule I–IV': [0, 3], 'I–V–vi–IV': [0, 4, 5, 3], 'i–VI–III–VII': [0, 5, 2, 6], 'Montée I–ii–iii–IV': [0, 1, 2, 3] };
+    let prog = [], durs = [];
+    if (get('pad.prog') === 'Perso') {
+      for (const tok of String(store.get('pad.custom')).split(/[\s,;]+/)) {
+        const [d, bb] = tok.split(':').map((x) => parseInt(x, 10));
+        if (d >= 1 && d <= 14) { prog.push(d - 1); durs.push(bb >= 1 && bb <= 16 ? bb : barLen); }
+      }
+    } else if (FIXED[get('pad.prog')]) { prog = FIXED[get('pad.prog')]; durs = prog.map(() => barLen); }
+    if (!prog.length) { prog = [AMB.seq.chordDeg || 0]; durs = [barLen]; }
+    const progBars = durs.reduce((x, y) => x + y, 0);
+    const chordAt = (rel) => { let b = Math.floor(rel / 16) % progBars; for (let i = 0; i < prog.length; i++) { if (b < durs[i]) return prog[i]; b -= durs[i]; } return prog[0]; };
+    const dm = (deg, oct) => T.degreeToMidi(deg, root, scale, oct);
 
-    // tempo + time signature + key name
-    const usq = Math.round(60000000 / bpm);
+    // chords: stacked thirds, 3–5 notes depending on « Accords riches »
+    if (get('pad.on')) {
+      const size = 3 + Math.round(get('pad.voicing') * 2);
+      for (let rel = 0, k = 0; rel < span; k++) {
+        const len = Math.min(16 * durs[k % durs.length], span - rel);
+        T.chordDegrees(chordAt(rel), size, scale).forEach((d, i) => note(out.ch, 0, (s0 + rel) * STEP, len * STEP - 4, dm(d, 3) + (i === 0 ? -12 : 0), 70));
+        rel += 16 * durs[k % durs.length];
+      }
+    }
+    // written melody (piano roll chain); the arpeggio is not exported
+    if (get('seq.on') && get('seq.mode') !== 'Arpège') {
+      const steps = parseInt(get('seq.steps'), 10) || 32;
+      const chainStr = String(get('seq.chain') || '').toUpperCase().match(/[ABCD]/g);
+      const chain = chainStr && chainStr.length ? chainStr : [get('seq.slot')];
+      const oct = parseInt(get('seq.octave'), 10) || 0, follow = get('seq.follow');
+      for (let r0 = 0, k = 0; r0 < span; r0 += steps, k++) {
+        for (const n of PR.parse(store.get(PR.SLOTKEY[chain[k % chain.length]]))) {
+          if (n.s >= steps) continue;
+          const rel = r0 + n.s; if (rel >= span) continue;
+          note(out.pr, 1, (s0 + rel) * STEP, Math.min(n.l, span - rel) * STEP - 2, dm(n.r + (follow ? chordAt(rel) : 0), 3 + oct), 40 + n.v * 9);
+        }
+      }
+    }
+    // bass grid (follows the chords)
+    if (get('bass.on') && BS) {
+      const g = BS.parse(store.get('bass.pattern')), oct = 2 + (parseInt(get('bass.octave'), 10) || 0);
+      for (let rel = 0; rel < span; rel++) {
+        const i = rel % 16;
+        let len = 1; while (len < 16 && !g.some((row) => row[(i + len) % 16])) len++;
+        const cd = chordAt(rel), nd = chordAt(rel + 16);
+        g.forEach((row, r) => {
+          if (!row[i]) return;
+          const m = r === 0 ? dm(cd, oct) : r === 1 ? dm(cd + 4, oct) : r === 2 ? dm(cd, oct) + 12 : dm(nd !== cd ? nd + (nd > cd ? -1 : 1) : cd + 1, oct);
+          note(out.bs, 2, (s0 + rel) * STEP, Math.min(len, span - rel) * STEP - 2, m, 90);
+        });
+      }
+    }
+    // Pulsations on the GM drum channel (9): kick, maracas, hi wood block, triangle
+    if (get('perc.on')) {
+      const DRUM = [36, 70, 76, 81], grid = PU.parse(store.get('perc.pattern'), parseInt(get('perc.steps'), 10) || 16);
+      for (let rel = 0; rel < span; rel++) grid.forEach((row, t) => { const lvl = row[rel % row.length]; if (lvl) note(out.dr, 9, (s0 + rel) * STEP, STEP - 2, DRUM[t], [0, 50, 85, 115][lvl] || 85); });
+    }
+    return { progBars };
+  }
+
+  // whole song when it has sections, otherwise the current loop (a whole number of cycles, ≤ 64 bars)
+  function build(opts = {}) {
+    const song = AMB.song, useSong = opts.song !== false && song && song.sections.length;
+    const out = { ch: [], pr: [], bs: [], dr: [] };
+    let totalSteps = 0, bars;
+    const live = (k) => store.get(k);
+    if (useSong) {
+      for (const sec of song.sections) {
+        const get = (k) => (k in sec.snap ? sec.snap[k] : store.get(k));
+        renderSpan(get, totalSteps, sec.bars * 16, out);
+        totalSteps += sec.bars * 16;
+      }
+      bars = totalSteps / 16;
+    } else {
+      const steps = parseInt(store.get('seq.steps'), 10) || 32;
+      const chain = AMB.pianoRoll.chainList().length ? AMB.pianoRoll.chainList() : [store.get('seq.slot')];
+      const probe = renderSpan(live, 0, 0, { ch: [], pr: [], bs: [], dr: [] });
+      const seqBars = (chain.length * steps) / 16;
+      bars = Math.max(probe.progBars, seqBars, 4);
+      for (let b = bars; b <= 64; b++) if (b % probe.progBars === 0 && b % seqBars === 0) { bars = b; break; }
+      bars = Math.min(64, bars);
+      totalSteps = bars * 16;
+      renderSpan(live, 0, totalSteps, out);
+    }
+    const bpm = store.get('global.tempo'), usq = Math.round(60000000 / bpm);
+    const title = useSong ? 'Ambient · morceau' : `${store.get('global.key')} ${store.get('global.scale')}`;
     const meta = [
       { t: 0, bytes: [0xff, 0x51, 3, (usq >> 16) & 255, (usq >> 8) & 255, usq & 255] },
       { t: 0, bytes: [0xff, 0x58, 4, 4, 2, 24, 8] },
-      { t: 0, bytes: [0xff, 0x01, ...vlq(str(`${store.get('global.key')} ${store.get('global.scale')}`).length), ...str(`${store.get('global.key')} ${store.get('global.scale')}`)] },
+      { t: 0, bytes: [0xff, 0x01, ...vlq(str(title).length), ...str(title)] },
     ];
-
-    // chords (channel 0)
-    const ch = [];
-    const savedUpper = seq.lastUpper; // chordMidis voice-leads from the previous chord: restore after export
-    seq.lastUpper = null;
-    for (let s = 0, k = 0; s < totalSteps; k++) {
-      const len = 16 * durs[k % durs.length];
-      const midis = seq.chordMidis(chordAt(s));
-      for (const m of midis) note(ch, 0, s * STEP, len * STEP - 4, m, 70);
-      s += len;
+    if (useSong) { // section names as markers
+      let t = 0;
+      for (const sec of song.sections) { meta.push({ t, bytes: [0xff, 0x06, ...vlq(str(sec.name).length), ...str(sec.name)] }); t += sec.bars * 16 * STEP; }
     }
-
-    seq.lastUpper = savedUpper;
-
-    // piano roll chain (channel 1)
-    const pr = [];
-    const oct = parseInt(store.get('seq.octave'), 10) || 0, follow = store.get('seq.follow');
-    for (let s0 = 0, k = 0; s0 < totalSteps; s0 += steps, k++) {
-      const notes = PR.parse(store.get(PR.SLOTKEY[chain[k % chain.length]]));
-      for (const n of notes) {
-        if (n.s >= steps) continue; // beyond the current motif length: not played
-        const s = s0 + n.s; if (s >= totalSteps) continue;
-        const deg = n.r + (follow ? chordAt(s) : 0);
-        note(pr, 1, s * STEP, n.l * STEP - 2, T.degreeToMidi(deg, seq.root, seq.scale, 3 + oct), 40 + n.v * 9);
-      }
-    }
-
-    // Pulsations on the GM drum channel (9): kick, maracas, hi wood block, triangle
-    const dr = [], DRUM = [36, 70, 76, 81];
-    const grid = PU.parse(store.get('perc.pattern'));
-    for (let s = 0; s < totalSteps; s++) grid.forEach((row, t) => { const lvl = row[s % row.length]; if (lvl) note(dr, 9, s * STEP, STEP - 2, DRUM[t], [0, 50, 85, 115][lvl] || 85); });
-
-    const tracks = [track('Ambient', meta), track('Accords (Pad)', ch)];
-    if (pr.length && store.get('seq.on') && store.get('seq.mode') !== 'Arpège') tracks.push(track('Séquenceur', pr));
-    if (dr.length && store.get('perc.on')) tracks.push(track('Pulsations', dr));
+    const tracks = [track('Ambient', meta)];
+    if (out.ch.length) tracks.push(track('Accords (Pad)', out.ch));
+    if (out.pr.length) tracks.push(track('Mélodie écrite', out.pr));
+    if (out.bs.length) tracks.push(track('Basse', out.bs));
+    if (out.dr.length) tracks.push(track('Pulsations', out.dr));
     const header = [...str('MThd'), ...u32(6), 0, 1, 0, tracks.length, (PPQ >> 8) & 255, PPQ & 255];
-    return { bytes: new Uint8Array([...header, ...tracks.flat()]), bars, tracks: tracks.length };
+    return { bytes: new Uint8Array([...header, ...tracks.flat()]), bars, tracks: tracks.length, song: !!useSong };
   }
 
   // ---------- import: Standard MIDI File -> piano-roll notes (quantised to 16ths and to the scale) ----------
@@ -158,9 +204,9 @@
   }
 
   function exportMidi() {
-    const { bytes, bars } = build();
+    const { bytes, bars, song } = build();
     AMB.rec.download(new Blob([bytes], { type: 'audio/midi' }), 'mid');
-    AMB.ui.toast(`MIDI exporté · ${bars} mesures`);
+    AMB.ui.toast(`MIDI exporté · ${song ? 'morceau entier, ' : ''}${bars} mesures`);
   }
 
   AMB.midiExport = { build, exportMidi, parseSmf, importMidi };

@@ -84,6 +84,8 @@ Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html`
 ### Refonte « lisible + rétro » (11/11) — décidée après 3 revues (débutant, musicien, designer)
 Constat : ~120 réglages visibles sans hiérarchie, 7 façons de mémoriser un état, 5 façons de bouger les mêmes knobs, libellés jargon. Gel des nouvelles features tant que la refonte n'est pas finie.
 
+**✅ Refonte terminée (v0.54 → v0.63).**
+
 **Phase A — Clarté (priorité 1)**
 - [x] A1. (v0.54) 3 modes en sélecteur segmenté (état visible) : **Écouter** (défaut 1re visite : écran + 5 macros + couches + humeur), **Sculpter** (couches, Global, Espace, Modulation, Scènes, Journal), **Composer** (Progression → Mélodie écrite → Basse → Pulsations → Automation → Morceau, dans cet ordre)
 - [x] A2. (v0.55) Barre du haut : groupes légendés (Lecture / Son / Enreg. / Vue), Rec + format + durée regroupés, « ✦ Nouveau paysage » + Humeur
@@ -101,7 +103,7 @@ Constat : ~120 réglages visibles sans hiérarchie, 7 façons de mémoriser un �
 - [x] C2. (v0.60) Transitions de section : pas relatif au début de section (accords, chaîne A–D, approche de basse non tronqués)
 - [x] C3. (v0.61) Progression : une seule source (le panneau), retirer le select/texte du Pad ; durée par case
 - [x] C4. (v0.62) Bugs revue : journal en stableSnapshot ; XY/CC MIDI en source non-annulable ; degrés > 7 ; jeu clavier audible à l'arrêt ; mutation qui écrase le motif sauvegardé ; swing unifié
-- [ ] C5. Export MIDI : piste Basse + export du Morceau entier
+- [x] C5. (v0.63) Export MIDI : piste Basse + export du Morceau entier
 
 **Backlog (après la refonte)** : horloge MIDI + note-off, MIDI learn, mute/solo, parameter locks, stems WAV par couche, banc de scènes 8 slots.
 

@@ -24,13 +24,17 @@ window.addEventListener('load', async ()=>{
   const st=AMB.store;
   st.set('pad.prog','I–V–vi–IV'); st.set('pad.length',2);
   st.set('seq.pattern','0.7.4,8.9.2,g.b.4'); st.set('seq.steps','32');
-  st.set('perc.on',true);
+  st.set('perc.on',true); st.set('seq.on',true); st.set('bass.on',true); localStorage.removeItem('ambient.song.v1'); AMB.song.sections=[];
   const r=AMB.midiExport.build();
   const b=r.bytes, hdr=String.fromCharCode(...b.slice(0,4)), ntr=(b[10]<<8)|b[11], ppq=(b[12]<<8)|b[13];
   // count note-ons per track by walking chunks
   let p=14, counts=[];
   while(p<b.length){ const len=(b[p+4]<<24)|(b[p+5]<<16)|(b[p+6]<<8)|b[p+7]; const data=b.slice(p+8,p+8+len); let c=0; for(let i=0;i<data.length-2;i++) if((data[i]&0xf0)===0x90 && data[i+2]>0 && data[i+1]<128) c++; counts.push(c); p+=8+len; }
   log(`midi ${hdr} tracks=${ntr} ppq=${ppq} bars=${r.bars} bytes=${b.length} noteOns~=${counts.join('/')} endOk=${p===b.length}`);
+  // song export: two sections of 4 and 8 bars
+  AMB.song.sections=[{name:'Intro',bars:4,snap:{'perc.on':false}},{name:'A',bars:8,snap:{'perc.on':true}}];
+  const rs=AMB.midiExport.build(); log('song export bars='+rs.bars+' tracks='+rs.tracks+' song='+rs.song);
+  AMB.song.sections=[];
   // round-trip: import the file we just built into slot B
   st.set('seq.slot','B');
   const n=await AMB.midiExport.importMidi(new File([b],'x.mid'));
