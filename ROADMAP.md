@@ -145,7 +145,7 @@ Technique : `js/game.js` (état `localStorage` `ambient.game.v1`, clé surcharg�
 
 **G5 — Énigmes à cible**
 - [x] G5.1 (v0.81) Moteur : cible = sous-ensemble de clés, ressemblance par clé (knob : distance normalisée ; select : égalité), jauge 0–100 %, réussite à 90 %. Fait : `js/puzzles.js` — `{id, need, title, intro, target, reward, opens}`, knob : 1 à la cible → 0 à un quart de la plage, moyenne des clés, `score()` détaillé par clé, `start/stop/check`, jauge en direct (`game:puzzle`). Règle vérifiée par le test : une énigme n'utilise que des réglages débloqués par ses prérequis. 1re énigme « Premier reflet » (porte des Grands réglages)
-- [ ] G5.2 Écouter la cible ↔ mon son (bascule A/B sans perdre son état)
+- [x] G5.2 (v0.82) Écouter la cible ↔ mon son (bascule A/B sans perdre son état). Fait : `puzzles.listen('target'|'mine')` garde mes valeurs des clés cibles, applique la cible en source 'game' (hors annulation, découvertes, contrats). Anti-triche : la jauge et la validation portent toujours sur MON son ; toucher un réglage pendant l'écoute de la cible ramène mon son (+ le geste fait). Retour automatique à mon son au changement de mode et à la fermeture de la page
 - [ ] G5.3 Interface d'énigme : jauge, indices progressifs (la zone la plus éloignée) après quelques essais
 - [ ] G5.4 Énigmes-portes (une par branche + tronc)
 - [ ] G5.5 Énigmes bonus plus difficiles (retrouver la gamme, reproduire une progression, recréer un son de Pad…)

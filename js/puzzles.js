@@ -39,16 +39,37 @@
     // the puzzle guarding a node (tree gate)
     forNode(nodeId) { return DEFS.find((d) => d.opens === nodeId) || null; },
     current: null,
-    start(id) {
-      if (!byId[id]) return false;
-      this.current = id;
-      AMB.game.emit('puzzle', { id, ...this.score(id) });
+    // A/B listening (G5.2): `mine` holds the player's own values while the target is heard
+    ab: null,
+    side() { return this.ab ? 'target' : 'mine'; },
+    // the player's values (what the score is about), even while the target is playing
+    values() { return this.ab ? { ...store.snapshot(), ...this.ab.mine } : store.snapshot(); },
+    currentScore() { return this.current ? this.score(this.current, this.values()) : { total: 0, keys: [] }; },
+    listen(side) {
+      const d = byId[this.current]; if (!d) return false;
+      if (side === 'target' && !this.ab) {
+        const mine = {};
+        for (const k of Object.keys(d.target)) mine[k] = store.get(k);
+        this.ab = { mine };
+        this.applying = true; store.setMany(d.target, 'game'); this.applying = false;
+      } else if (side === 'mine' && this.ab) {
+        const mine = this.ab.mine; this.ab = null;
+        this.applying = true; store.setMany(mine, 'game'); this.applying = false;
+      }
+      AMB.game.emit('puzzle', { id: this.current, side: this.side(), ...this.currentScore() });
       return true;
     },
-    stop() { this.current = null; AMB.game.emit('puzzle', { id: null }); },
-    // validate: solved when the score reaches PASS
+    start(id) {
+      if (!byId[id]) return false;
+      if (this.current && this.current !== id) this.stop();
+      this.current = id;
+      AMB.game.emit('puzzle', { id, side: 'mine', ...this.currentScore() });
+      return true;
+    },
+    stop() { if (this.ab) this.listen('mine'); this.current = null; AMB.game.emit('puzzle', { id: null }); },
+    // validate: solved when the player's own sound reaches PASS (never while the target is playing)
     check(id = this.current) {
-      if (!id || !byId[id]) return false;
+      if (!id || !byId[id] || this.ab) return false;
       const { total } = this.score(id);
       if (total < PASS) return false;
       AMB.game.solve(id, byId[id].reward); // emits game:puzzles + game:earn
@@ -57,8 +78,20 @@
     },
   };
 
-  // live score while a puzzle is open
-  store.on(() => { if (puzzles.current) AMB.game.emit('puzzle', { id: puzzles.current, ...puzzles.score(puzzles.current) }); });
+  // live score while a puzzle is open; touching a control while hearing the target brings your
+  // own sound back first (your values, plus the change you just made) — no copying the target
+  store.on((k, v, src) => {
+    if (!puzzles.current) return;
+    if (puzzles.ab && src === 'user' && !puzzles.applying) {
+      const mine = { ...puzzles.ab.mine }; delete mine[k]; puzzles.ab = null;
+      puzzles.applying = true; store.setMany(mine, 'game'); puzzles.applying = false;
+    }
+    AMB.game.emit('puzzle', { id: puzzles.current, side: puzzles.side(), ...puzzles.currentScore() });
+  });
+
+  // never leave the target sound behind when the page goes away or the mode changes
+  if (AMB.bus) AMB.bus.on('game:mode', () => { if (puzzles.ab) puzzles.listen('mine'); });
+  window.addEventListener('pagehide', () => { if (puzzles.ab) puzzles.listen('mine'); });
 
   AMB.puzzles = puzzles;
 })();

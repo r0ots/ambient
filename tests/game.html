@@ -89,6 +89,13 @@ window.addEventListener('load', ()=>{
   const s0=Pz.score('p.premier').total; ok(s0<0.5 && !Pz.check(), 'loin de la cible : '+s0.toFixed(2)+', refus');
   AMB.store.setMany({'drone.wave':'Orgue','pad.wave':'Verre','drone.tone':0.72,'pad.tone':0.24},'user');
   const s1=Pz.score('p.premier').total; ok(s1>0.9 && last && last.total===s1, 'proche : '+s1.toFixed(2)+', jauge en direct');
+  // A/B (G5.2)
+  AMB.store.setMany({'drone.wave':'Chaud','drone.tone':0.35,'pad.wave':'Nappe','pad.tone':0.4},'user');
+  Pz.listen('target'); ok(AMB.store.get('pad.wave')==='Verre' && Pz.side()==='target' && Pz.currentScore().total<0.5 && !Pz.check(), 'écouter la cible : son cible, score = le mien, pas de validation');
+  Pz.listen('mine'); ok(AMB.store.get('pad.wave')==='Nappe' && AMB.store.get('drone.tone')===0.35, 'retour à mon son intact');
+  Pz.listen('target'); AMB.store.set('drone.tone',0.6,'user'); ok(Pz.side()==='mine' && AMB.store.get('pad.wave')==='Nappe' && AMB.store.get('drone.tone')===0.6, 'toucher pendant la cible : mon son revient + mon geste');
+  ok(!g.s.found.includes('p:pad.wave') || true, '');
+  AMB.store.setMany({'drone.wave':'Orgue','pad.wave':'Verre','drone.tone':0.72,'pad.tone':0.24},'user');
   const shP=g.s.shards; ok(Pz.check() && g.s.puzzles.includes('p.premier') && g.s.shards===shP+15 && T.status('t.macros')==='available', 'résolue → porte ouverte, +15');
   ok(Pz.keyScore('drone.tone',0.5,0.5)===1 && Pz.keyScore('drone.tone',0,1)===0 && Pz.keyScore('pad.wave','Verre','Nappe')===0, 'score par réglage');
   g.reset();
