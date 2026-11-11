@@ -82,6 +82,7 @@
                 <option value="120">2 h</option>
               </select>
             </label>
+            <button id="gameMode" class="btn" title="Parcours (débloquer l'outil pièce par pièce) ou mode libre (tout ouvert)">🌱 Parcours</button>
             <button id="help" class="btn" title="Aide et raccourcis (?)">? Aide &amp; raccourcis</button>
           </div>
         </details>
@@ -112,6 +113,17 @@
     <div id="globals" class="row globals"></div>
     <div id="layers" class="row layers"></div>
     <div id="seqrow" class="row seqrow"></div>
+
+    <div id="welcomeDlg" class="modal" hidden>
+      <div class="modal-card welcome-card" role="dialog" aria-label="Bienvenue">
+        <h3>Jardin sonore</h3>
+        <p>Une machine à paysages sonores qui joue toute seule. Comment veux-tu la découvrir ?</p>
+        <div class="welcome-choices">
+          <button class="welcome-choice" data-choose="path"><b>🌱 Parcours</b><span>Commence avec une seule note. Explore, relève des défis, résous des énigmes d'écoute, et débloque l'outil pièce par pièce.</span></button>
+          <button class="welcome-choice" data-choose="free"><b>◎ Mode libre</b><span>Tout est ouvert tout de suite : couches, effets, composition. Tu pourras commencer le parcours plus tard (menu ⋯).</span></button>
+        </div>
+      </div>
+    </div>
 
     <div id="helpDlg" class="modal" hidden>
       <div class="modal-card" role="dialog" aria-label="Aide">
@@ -174,5 +186,6 @@
   <script src="js/rec.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/play.js"></script>
+  <script src="js/garden.js"></script>
 </body>
 </html>

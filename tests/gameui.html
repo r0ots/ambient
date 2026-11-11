@@ -18,7 +18,10 @@ f.addEventListener('load', async ()=>{
   const shown=(sel)=>{ const e=d.querySelector(sel); return !!e && w.getComputedStyle(e).display!=='none' && !e.closest('.is-locked'); };
   const locked=(sel)=>{ const e=d.querySelector(sel); return !!e && !!e.closest('.is-locked'); };
   ok(!d.body.classList.contains('game') && !d.querySelector('.is-locked'), 'mode non choisi : rien de verrouillé');
-  A.game.setMode('path'); await wait(50);
+  ok(!d.getElementById('welcomeDlg').hidden, 'accueil affiché à la 1re visite');
+  d.querySelector('[data-choose=path]').click(); await wait(50);
+  ok(A.game.s.mode==='path' && d.getElementById('welcomeDlg').hidden && /libre/.test(d.getElementById('gameMode').textContent), 'choix Parcours → dialogue fermé, bascule « mode libre » dans ⋯');
+  d.getElementById('gameMode').click(); ok(A.game.s.mode==='free', 'bascule ⋯ → libre'); d.getElementById('gameMode').click();
   ok(d.body.classList.contains('game'), 'body.game');
   ok(!locked('#play') && !locked('[data-key="drone.vol"]') && !locked('[data-mode=sculpt]'), 'racine visible (lecture, drone, Sculpter)');
   ok(locked('#dice') && locked('[data-key="fx.echo"]') && locked('[data-mode=compose]') && locked('#scenes') && locked('.recgrp'), 'le reste caché');

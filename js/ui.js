@@ -376,7 +376,7 @@
     if (recOpts) document.addEventListener('click', (e) => { if (recOpts.open && !recOpts.contains(e.target)) recOpts.open = false; });
     bind('#helpDlg', 'click', (e) => { if (e.target.id === 'helpDlg' || e.target.hasAttribute('data-close')) showHelp(false); });
     try {
-      if (!localStorage.getItem('ambient.seenHelp')) { localStorage.setItem('ambient.seenHelp', '1'); setTimeout(() => toast('Première visite ? Appuie sur ? pour l\'aide'), 1200); }
+      if (!localStorage.getItem('ambient.seenHelp') && AMB.game && AMB.game.s.mode !== null) { localStorage.setItem('ambient.seenHelp', '1'); setTimeout(() => toast('Première visite ? Appuie sur ? pour l\'aide'), 1200); }
     } catch (e) {}
     document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) setListen(false); });
     loadFromHash();

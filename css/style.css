@@ -387,3 +387,10 @@ footer { color: #6e6757; font-family: var(--f-num); letter-spacing: .08em; text-
 
 /* ---------- Jardin sonore : parcours ---------- */
 body.game .is-locked { display: none !important; }
+.welcome-card { max-width: 640px; }
+.welcome-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+.welcome-choice { text-align: left; display: grid; gap: 6px; padding: 16px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel2); color: var(--fg, #e8e2d0); cursor: pointer; box-shadow: var(--bevel); font: inherit; }
+.welcome-choice b { font: 22px var(--f-lcd); color: var(--lcd-fg); letter-spacing: .04em; }
+.welcome-choice span { font-size: 13px; line-height: 1.45; color: #c4c9e0; }
+.welcome-choice:hover, .welcome-choice:focus-visible { border-color: var(--lcd-fg); }
+@media (max-width: 560px) { .welcome-choices { grid-template-columns: 1fr; } }
