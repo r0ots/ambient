@@ -2,7 +2,7 @@
 # Runs every headless test page, N in parallel (PAR, default 3); fails on any JS error / exception / missing DONE.
 cd "$(dirname "$0")"
 # longest pages first so batches finish together
-PAGES="engines smoke spectrum generator phrase lfo prog freeze play share wav reverb grains journal macros history app patches pianoroll pulses chords midi automation song bass"
+PAGES="engines smoke spectrum generator phrase lfo prog freeze play share wav reverb grains journal macros history app patches pianoroll pulses chords midi automation song bass game"
 TMP=$(mktemp -d); FAIL=0
 run() { ./run.sh $1.html "${SCALE:-0.4}" > "$TMP/$1.out"; }
 set -- $PAGES

@@ -1,0 +1,35 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body>
+<script>
+const TAG=location.pathname.split('/').pop().replace('.html','');
+const log=(m)=>fetch('/__log?'+encodeURIComponent(TAG+'|'+m)).catch(()=>{});
+window.onerror=(m,s,l,c,e)=>log('ERROR '+m+' @'+s+':'+l);
+window.addEventListener('unhandledrejection',e=>log('REJECT '+(e.reason&&e.reason.stack||e.reason)));
+const oe=console.error;console.error=(...a)=>{log('CONSOLE.ERROR '+a.join(' '));oe(...a)};
+window.AMB_GAME_KEY='ambient.game.test';
+localStorage.removeItem('ambient.game.test');
+</script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/game.js"></script>
+<script>
+const ok=(c,m)=>log((c?'ok ':'ERROR fail ')+m);
+window.addEventListener('load', ()=>{
+  try{
+  const g=AMB.game, ev=[];
+  ['earn','spend','unlock','found','mode'].forEach(e=>AMB.bus.on('game:'+e,d=>ev.push(e)));
+  ok(g.s.mode===null && g.isUnlocked('x'), 'mode non choisi = tout ouvert');
+  g.setMode('path');
+  ok(!g.isUnlocked('x'), 'parcours : nœud fermé');
+  ok(g.discover('k1',10) && !g.discover('k1',10) && g.s.shards===10, 'découverte comptée une fois');
+  ok(!g.unlock('x',25) && !g.has('x'), 'achat refusé sans éclats');
+  g.earn(20,'test'); ok(g.unlock('x',25) && g.s.shards===5 && g.isUnlocked('x'), 'achat');
+  ok(!g.unlock('x',1), 'pas de double achat');
+  ok(g.complete('c1',3) && g.solve('p1',4) && g.s.shards===12 && g.s.earned===37, 'contrats + énigmes, total cumulé');
+  const saved=JSON.parse(localStorage.getItem('ambient.game.test'));
+  ok(saved.nodes.includes('x') && saved.shards===12, 'persistant');
+  g.setMode('free'); ok(g.isUnlocked('y'), 'mode libre = tout ouvert');
+  log('events='+ev.join(','));
+  g.reset(); ok(g.s.shards===0 && !g.s.nodes.length, 'reset');
+  localStorage.removeItem('ambient.game.test');
+  log('DONE');
+  }catch(e){log('EXC '+e.stack)}
+});
+</script></body></html>

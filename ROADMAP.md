@@ -116,10 +116,10 @@ Décisions :
 - Arbre permanent : tronc (Drone + 1 réglage) puis 4 branches Harmonie / Espace / Mouvement / Composer, ~30 nœuds = fonctions existantes ; coûts croissants ; certains nœuds sont des **portes** qui demandent une énigme.
 - Incrémental : chaque déblocage ouvre de nouvelles découvertes et contrats (plus de façons de gagner) pendant que les coûts montent.
 - « Mode libre » (tout débloqué) toujours accessible : l'appli actuelle reste intacte derrière.
-Technique : `js/game.js` (état `localStorage` `ambient.game.v1`), arbre en données, `data-node` sur l'UI + table param→nœud ; test `tests/game.html` dans run-all.
+Technique : `js/game.js` (état `localStorage` `ambient.game.v1`, clé surchargée par `window.AMB_GAME_KEY` dans les tests ; `mode` null = pas encore choisi, se comporte comme libre ; événements `game:earn|spend|unlock|found|contracts|puzzles|mode|reset` sur AMB.bus), arbre en données, `data-node` sur l'UI + table param→nœud ; test `tests/game.html` dans run-all.
 
 **G1 — Fondations**
-- [ ] G1.1 `game.js` : état persistant (éclats, nœuds achetés, découvertes, contrats, énigmes, mode libre), API earn/spend/unlock/isUnlocked, événements bus ; `tests/game.html`
+- [x] G1.1 (v0.64) `game.js` : état persistant (éclats, nœuds achetés, découvertes, contrats, énigmes, mode libre), API earn/spend/unlock/isUnlocked, événements bus ; `tests/game.html`
 - [ ] G1.2 Arbre en données (~30 nœuds, tronc + 4 branches, coûts, prérequis, portes) ; le test vérifie : pas de cycle, tout nœud atteignable
 - [ ] G1.3 Rattacher chaque réglage (param → nœud) et chaque élément d'UI (`data-node`) à un nœud ; le test vérifie que tout réglage visible appartient à un nœud
 - [ ] G1.4 Masquage visuel : `body.game`, éléments verrouillés cachés, modes Sculpter/Composer verrouillés au départ
