@@ -13,7 +13,10 @@
     panel.dataset.sec = secKey;
     if (sec.color) panel.style.setProperty('--c', sec.color);
     const head = h('header');
-    head.append(h('h2', null, sec.label));
+    const NUM = { global: '01', fx: '02', mod: '03', drone: '04', pad: '05', bells: '06', grains: '07', texture: '08', seq: '10', bass: '11', perc: '12', auto: '13', macro: '00' };
+    const h2 = h('h2', null, sec.label);
+    if (NUM[secKey]) h2.dataset.n = NUM[secKey];
+    head.append(h2);
     const ctls = h('div', 'ctls');
     for (const [k, sp] of Object.entries(sec.params)) {
       const key = `${secKey}.${k}`;

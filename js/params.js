@@ -36,7 +36,7 @@
     },
     drone: {
       label: 'Drone',
-      color: '#7fb8ff',
+      color: '#6f9fd8',
       params: {
         on: { label: 'On', type: 'toggle', def: true },
         wave: { label: 'Son', hint: 'Timbre de la note tenue de fond.', type: 'select', options: ['Chaud', 'Creux', 'Orgue', 'Sub'], def: 'Chaud' },
@@ -49,7 +49,7 @@
     },
     pad: {
       label: 'Pad',
-      color: '#b58cff',
+      color: '#b48ad6',
       params: {
         on: { label: 'On', type: 'toggle', def: true },
         wave: { label: 'Son', hint: 'Timbre des accords tenus.', type: 'select', options: ['Nappe', 'Verre', 'Chœur', 'Cordes', 'Onde', 'FM'], def: 'Nappe' },
@@ -66,7 +66,7 @@
     },
     bells: {
       label: 'Mélodie auto',
-      color: '#ffd27f',
+      color: '#f2c14e',
       params: {
         on: { label: 'On', type: 'toggle', def: true },
         wave: { label: 'Son', hint: 'Timbre des notes de mélodie.', type: 'select', options: ['Cloche', 'Kalimba', 'Verre', 'Pluck', 'Doux'], def: 'Kalimba' },
@@ -83,7 +83,7 @@
     },
     seq: {
       label: 'Mélodie écrite',
-      color: '#ff9fd6',
+      color: '#e89ab8',
       params: {
         on: { label: 'On', type: 'toggle', def: false },
         wave: { label: 'Son', hint: 'Timbre de la mélodie écrite. « Doux » tient la longueur des notes.', type: 'select', options: ['Cloche', 'Kalimba', 'Verre', 'Pluck', 'Doux'], def: 'Doux' },
@@ -112,7 +112,7 @@
     },
     bass: {
       label: 'Basse',
-      color: '#6fa8ff',
+      color: '#7f9fe0',
       params: {
         on: { label: 'On', type: 'toggle', def: false },
         wave: { label: 'Son', type: 'select', options: ['Sub', 'Ronde', 'Pluck'], def: 'Ronde' },
@@ -127,7 +127,7 @@
     },
     perc: {
       label: 'Pulsations',
-      color: '#ffb36b',
+      color: '#e8955d',
       params: {
         on: { label: 'On', type: 'toggle', def: false },
         vol: { label: 'Niveau', min: 0, max: 1, def: 0.45 },
@@ -143,7 +143,7 @@
     },
     grains: {
       label: 'Grains',
-      color: '#7fffd4',
+      color: '#6fcf9f',
       params: {
         on: { label: 'On', type: 'toggle', def: true },
         source: { label: 'Source', hint: 'Matière découpée en grains : synthèse, ton fichier, ou « Figé » (capture du son).', type: 'select', options: ['Synthèse', 'Échantillon', 'Gel'], def: 'Synthèse' },
@@ -160,7 +160,7 @@
     },
     texture: {
       label: 'Texture',
-      color: '#ff9f9f',
+      color: '#e87a5d',
       params: {
         on: { label: 'On', type: 'toggle', def: true },
         type: { label: 'Type', hint: 'Ambiance sonore de fond.', type: 'select', options: ['Pluie', 'Vent', 'Océan', 'Vinyle', 'Ruisseau', 'Feu', 'Oiseaux', 'Ville'], def: 'Pluie' },
@@ -233,7 +233,7 @@
     [`l${n}depth`]: { label: 'Ampleur', hint: 'De combien le réglage bouge autour de ta valeur.', min: 0, max: 1, def: depth },
   });
   // Macro knobs for the "Simple" view: each drives several parameters at once (see ui.js MACROS)
-  SCHEMA.macro = { label: 'Macros', color: '#c9b6ff', params: {
+  SCHEMA.macro = { label: 'Macros', color: '#f2a23a', params: {
     light: { label: 'Lumière', hint: 'Son sombre et feutré ↔ clair et brillant.', min: 0, max: 1, def: 0.45 },
     density: { label: 'Densité', min: 0, max: 1, def: 0.35, hint: 'Peu de notes et accords longs ↔ beaucoup de notes et de grains.' },
     space: { label: 'Espace', min: 0, max: 1, def: 0.55, hint: 'Petite pièce sèche ↔ immense espace avec halo.' },
@@ -241,13 +241,13 @@
     nature: { label: 'Nature', hint: 'Volume de la texture (pluie, océan…). Tout à gauche : coupée.', min: 0, max: 1, def: 0.4 },
   } };
   // Drawn automation lane: an absolute curve (32 points, base36 0..z) over N bars for one parameter
-  SCHEMA.auto = { label: 'Automation', color: '#8fe3a8', params: {
+  SCHEMA.auto = { label: 'Automation', color: '#9fd36f', params: {
     on: { label: 'On', type: 'toggle', def: false },
     target: { label: 'Paramètre', type: 'select', options: targets, labels, def: 'fx.space' },
     bars: { label: 'Durée', type: 'select', options: ['4', '8', '16', '32'], labels: { 4: '4 mesures', 8: '8 mesures', 16: '16 mesures', 32: '32 mesures' }, def: '8' },
     curve: { label: 'Courbe', type: 'text', def: 'i'.repeat(32), maxLen: 32, hidden: true },
   } };
-  SCHEMA.mod = { label: 'Mouvements lents', color: '#9fd0ff', params: { ...lfo(1, 'pad.tone', 0.45, 0.4), ...lfo(2, '—', 0.25, 0.3) } };
+  SCHEMA.mod = { label: 'Mouvements lents', color: '#8fb8d8', params: { ...lfo(1, 'pad.tone', 0.45, 0.4), ...lfo(2, '—', 0.25, 0.3) } };
 
   // rate knob 0..1 -> period 4 s .. 10 min (log)
   function periodSecs(v) { return 4 * Math.pow(150, 1 - v); }

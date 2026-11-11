@@ -24,7 +24,7 @@
     const arc = document.createElementNS(svgNS, 'path');
     const dot = document.createElementNS(svgNS, 'circle');
     track.setAttribute('class', 'k-track'); arc.setAttribute('class', 'k-arc'); dot.setAttribute('class', 'k-dot');
-    dot.setAttribute('r', '3');
+    dot.setAttribute('r', '2.4');
     if (color) arc.style.stroke = color;
     const body = document.createElementNS(svgNS, 'circle');
     body.setAttribute('cx', 30); body.setAttribute('cy', 30); body.setAttribute('r', 17); body.setAttribute('class', 'k-body');
@@ -49,7 +49,7 @@
     function render() {
       const n = norm(), a = A0 + (A1 - A0) * n;
       arc.setAttribute('d', n > 0.001 ? arcPath(A0, a) : '');
-      const [x, y] = polar(a, 13);
+      const [x, y] = polar(a, 12);
       dot.setAttribute('cx', x); dot.setAttribute('cy', y);
       val.textContent = fmt(store.get(key));
       wrap.setAttribute('aria-valuenow', +store.get(key).toFixed(3));
