@@ -104,6 +104,84 @@
     C('e.vieux', ['e.tape', 'e.lofi'], 'Pousse Cassette et Usure au-dessus de la moitié en même temps', 10, 1, {
       param(st, k) { if ((k === 'fx.tape' || k === 'fx.lofi') && store.get('fx.tape') > 0.5 && store.get('fx.lofi') > 0.5) st.n = 1; },
     }),
+
+    // Mouvement
+    C('m.notes', ['m.bells'], 'Joue 8 notes au clavier (A à L) pendant la lecture', 6, 8, {
+      note(st) { if (playing()) st.n = (st.n || 0) + 1; },
+    }),
+    C('m.densite', ['m.bells'], 'Rends la mélodie très clairsemée, puis très dense', 6, 2, {
+      param(st, k, v, src) { if (k !== 'bells.density' || src !== 'user') return; if (v < 0.1) st.n = Math.max(st.n || 0, 1); else if (v > 0.8 && st.n === 1) st.n = 2; },
+    }),
+    C('m.libre', ['m.tempo'], 'Passe en rythme Libre, puis reviens en Régulier', 6, 2, {
+      param(st, k, v, src) { if (k !== 'global.time' || src !== 'user') return; if (v === 'Flottant') st.n = Math.max(st.n || 0, 1); else if (st.n === 1) st.n = 2; },
+    }),
+    C('m.phrase', ['m.phrase'], 'Mets la mélodie en mode Phrase et écoute-la tourner 2 fois', 8, 3, {
+      param(st, k, v, src) { if (k === 'bells.mode' && src === 'user' && v === 'Phrase') st.n = Math.max(st.n || 0, 1); },
+      phrase(st) { if (st.n >= 1 && store.get('bells.mode') === 'Phrase') st.n += 1; },
+    }),
+    C('m.derive', ['m.evolve'], 'Monte la Dérive au-delà de la moitié et laisse-la travailler 4 mesures', 8, 4, {
+      bar(st) { if (store.get('global.evolve') > 0.5) st.n = (st.n || 0) + 1; else st.n = 0; },
+    }),
+    C('m.grains', ['m.grains'], 'Essaie les 3 réglages de Hauteurs des grains', 8, 3, {
+      param(st, k, v, src) { if (k === 'grains.pitch' && src === 'user') distinct(st, v); },
+    }),
+    C('m.figer', ['m.grains2'], 'Fige le son 2 fois (❄ ou touche Entrée)', 10, 2, {
+      act(st, id) { if (id === 'freeze') st.n = (st.n || 0) + 1; },
+    }),
+    C('m.lfo', ['m.lfo'], 'Fais bouger deux réglages différents avec les 2 mouvements lents', 10, 1, {
+      param(st, k) {
+        if (!k.startsWith('mod.')) return;
+        const a = store.get('mod.l1target'), b = store.get('mod.l2target');
+        if (a !== '—' && b !== '—' && a !== b && store.get('mod.l1depth') > 0.1 && store.get('mod.l2depth') > 0.1) st.n = 1;
+      },
+    }),
+    C('m.scenes', ['m.scenes'], 'Mémorise deux scènes, puis rappelle-les l\'une après l\'autre', 12, 4, {
+      act(st, id) {
+        if (id === 'sceneStore' && (st.n || 0) < 2 && gesture(st, 'store', 300)) st.n = (st.n || 0) + 1;
+        else if (id === 'sceneRecall' && st.n >= 2 && gesture(st, 'recall', 300)) st.n += 1;
+      },
+    }, 'Maj+clic sur A ou B pour mémoriser'),
+
+    // Composer
+    C('c.dessin', ['c.seq'], 'Dessine 8 notes dans le piano roll', 8, 8, {
+      param(st, k, v, src) { if (/^seq\.pat/.test(k) && src === 'user' && gesture(st, 'pat', 120)) st.n = (st.n || 0) + 1; },
+    }),
+    C('c.arp', ['c.arp'], 'Passe la mélodie écrite en Arpège et essaie 3 sens', 8, 4, {
+      param(st, k, v, src) {
+        if (src !== 'user') return;
+        if (k === 'seq.mode' && v === 'Arpège') st.on = 1;
+        if (k === 'seq.arpDir' && st.on) { st.seen = st.seen || []; if (!st.seen.includes(v)) st.seen.push(v); }
+        st.n = (st.on || 0) + (st.seen ? st.seen.length : 0);
+      },
+    }),
+    C('c.chaine', ['c.motifs'], 'Écris une chaîne qui enchaîne au moins deux motifs (ex. « A A B »)', 10, 1, {
+      param(st, k, v, src) { if (k === 'seq.chain' && src === 'user' && new Set(String(v).toUpperCase().match(/[ABCD]/g) || []).size >= 2) st.n = 1; },
+    }),
+    C('c.reclive', ['c.motifs'], 'Enregistre 4 notes en Rec live', 10, 4, {
+      note(st) { const r = AMB.pianoRoll && AMB.pianoRoll.roll; if (r && r.recording) st.n = (st.n || 0) + 1; },
+    }),
+    C('c.basse', ['c.bass'], 'Modifie 6 fois la grille de basse', 8, 6, {
+      param(st, k, v, src) { if (k === 'bass.pattern' && src === 'user' && gesture(st, k, 150)) st.n = (st.n || 0) + 1; },
+    }),
+    C('c.pulses', ['c.perc'], 'Modifie 6 fois la grille des pulsations', 8, 6, {
+      param(st, k, v, src) { if (k === 'perc.pattern' && src === 'user' && gesture(st, k, 150)) st.n = (st.n || 0) + 1; },
+    }),
+    C('c.swing', ['c.groove'], 'Garde un swing au-dessus de 0,4 pendant 2 mesures', 8, 2, {
+      bar(st) { if (store.get('global.swing') > 0.4) st.n = (st.n || 0) + 1; else st.n = 0; },
+    }),
+    C('c.export', ['c.midi'], 'Exporte ton morceau en fichier MIDI', 8, 1, {
+      act(st, id) { if (id === 'midiExport') st.n = 1; },
+    }),
+    C('c.courbe', ['c.auto'], 'Dessine une courbe d\'automation et laisse-la jouer 4 mesures', 10, 4, {
+      param(st, k, v, src) { if (k === 'auto.curve' && src === 'user') st.drawn = 1; },
+      bar(st) { if (st.drawn && store.get('auto.on')) st.n = (st.n || 0) + 1; },
+    }),
+    C('c.morceau', ['c.song'], 'Crée 3 sections, puis joue le morceau', 15, 4, {
+      act(st, id) {
+        if (id === 'section' && (st.n || 0) < 3) st.n = (st.n || 0) + 1;
+        else if (id === 'song' && st.n >= 3) st.n = 4;
+      },
+    }),
   ];
   const byId = Object.fromEntries(DEFS.map((d) => [d.id, d]));
 
@@ -164,6 +242,8 @@
     AMB.bus.on('chord', (c) => contracts.dispatch('chord', c));
     AMB.bus.on('act', (id) => contracts.dispatch('act', id));
     AMB.bus.on('live', (n) => contracts.dispatch('note', n));
+    AMB.bus.on('phrase', (p) => contracts.dispatch('phrase', p));
+    AMB.bus.on('section', (x) => contracts.dispatch('section', x));
     ['unlock', 'mode', 'reset'].forEach((e) => AMB.bus.on('game:' + e, () => contracts.refill()));
   }
   // bar lines while playing (the sequencer counts 16th steps)

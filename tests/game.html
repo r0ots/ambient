@@ -67,6 +67,10 @@ window.addEventListener('load', ()=>{
   force('e.extremes'); AMB.store.set('fx.space',0.95,'user'); AMB.store.set('fx.space',0.05,'user'); AMB.store.set('fx.space',0.95,'user'); ok(g.s.contracts.includes('e.extremes'), 'min puis max');
   force('e.salles'); ['Plate','Cloud','Hall'].forEach(v=>AMB.store.set('fx.revType',v,'user')); ok(g.s.contracts.includes('e.salles'), '3 salles');
   force('h.riches'); AMB.store.set('pad.voicing',1,'user'); AMB.bus.emit('chord',{time:0,deg:0,midis:[60]}); AMB.bus.emit('chord',{time:0,deg:1,midis:[62]}); ok(g.s.contracts.includes('h.riches'), 'accords riches sur 2 changements');
+  ['m.bells','m.tempo','c.seq','c.motifs'].forEach(i=>{ g.solve('p.composer'); T.buy(i); });
+  force('m.libre'); AMB.store.set('global.time','Flottant','user'); AMB.store.set('global.time','Pulsé','user'); ok(g.s.contracts.includes('m.libre'), 'libre puis régulier');
+  force('c.chaine'); AMB.store.set('seq.chain','A A B','user'); ok(g.s.contracts.includes('c.chaine'), 'chaîne de 2 motifs');
+  force('m.notes'); for(let i=0;i<8;i++) AMB.bus.emit('live',{midi:60,time:0,vel:1}); ok(g.s.contracts.includes('m.notes'), '8 notes jouées');
   AMB.seq.playing=false; g.setMode('free'); AMB.store.set('drone.tone',0.1,'user'); ok(true,'libre : pas de suivi');
   g.reset();
   g.setMode('free'); ok(T.paramUnlocked('fx.echo') && T.uiUnlocked('song'), 'mode libre : tout ouvert');
