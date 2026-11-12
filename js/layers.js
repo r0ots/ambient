@@ -214,6 +214,9 @@
         oscs.push(car, car2, mod);
         filt.frequency.cancelScheduledValues(time); filt.frequency.setValueAtTime(12000, time);
         level = 0.26;
+      } else if (type === 'Aube') { // secret timbre (G10.1): two sines and a fifth, slow swell
+        add('sine', 1, 0.6, -det * 0.5); add('sine', 2, 0.28, det * 0.5); add('triangle', 1.5, 0.12, 0);
+        filt.Q.value = 1.4; level = 0.3;
       } else { // Cordes
         add('sawtooth', 1, 0.4, -det); add('sawtooth', 1, 0.4, 0); add('sawtooth', 1, 0.4, det);
         const vib = ctx.createOscillator(); vib.frequency.value = rand(4.8, 5.8);
@@ -280,6 +283,13 @@
           const og = ctx.createGain(); og.gain.setValueAtTime(gn, time); og.gain.setTargetAtTime(0, time, decay / (r * 1.5));
           o.connect(og); og.connect(env); nodes.push(o);
         });
+      } else if (type === 'Givre') { // secret timbre (G10.1): frosty inharmonic partials, short and high
+        [[1, 0.8], [3.01, 0.4], [4.17, 0.22 * (0.4 + tone)], [7.2, 0.12 * tone]].forEach(([r, gn]) => {
+          const o = ctx.createOscillator(); o.frequency.value = f * r * (r === 1 ? 1 : 1 + (r % 1) * 0.004);
+          const og = ctx.createGain(); og.gain.setValueAtTime(gn, time); og.gain.setTargetAtTime(0, time, decay / (r * 2.2));
+          o.connect(og); og.connect(env); nodes.push(o);
+        });
+        dur = decay * 0.8;
       } else if (type === 'Doux') {
         // soft sustained voice: sine + octave triangle, held for `len` then released
         const o = ctx.createOscillator(); o.frequency.value = f;

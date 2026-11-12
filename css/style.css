@@ -527,3 +527,18 @@ body.pz-veil .pz-veiled { filter: blur(4px) grayscale(.6); opacity: .55; }
 .pz-peg.far { color: #e08a7a; }
 .pz-help { display: flex; gap: 6px; align-items: center; font-size: 11.5px; color: var(--muted); cursor: pointer; }
 .pz-help input { margin: 0; accent-color: var(--lcd-fg); }
+
+/* G10.1 secrets: panel + alternative LCD themes (gifts) */
+.secrets { position: fixed; right: 16px; bottom: 64px; z-index: 30; width: 300px; max-width: calc(100vw - 32px); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius, 10px); box-shadow: var(--bevel, none), 0 12px 30px #000a; }
+.secrets[hidden], body.listen .secrets { display: none; }
+.sc-head { width: 100%; text-align: left; background: none; border: 0; color: var(--lcd-fg); font: 20px var(--f-lcd); padding: 6px 12px; cursor: pointer; letter-spacing: .05em; }
+.sc-body { display: grid; gap: 8px; padding: 0 12px 12px; max-height: 50vh; overflow-y: auto; }
+.secrets.min .sc-body { display: none; }
+.sc-item { margin: 0; display: grid; gap: 2px; font-size: 12px; line-height: 1.35; color: var(--muted); }
+.sc-item b { font: 15px var(--f-lcd); color: var(--lcd-dim); letter-spacing: .05em; }
+.sc-item.found b { color: var(--lcd-fg); }
+.sc-btn { background: var(--lcd-bg); color: var(--lcd-dim); border: 1px solid #000; border-radius: var(--radius-btn); box-shadow: var(--bevel-in, none); font: 16px var(--f-lcd); padding: 3px 8px; cursor: pointer; text-align: left; }
+.sc-btn.on { color: var(--lcd-fg); text-shadow: 0 0 6px var(--lcd-glow); }
+@media (max-width: 560px) { .secrets { right: 8px; bottom: 56px; } }
+html[data-lcd="aurore"] { --lcd-bg: #07161a; --lcd-fg: #6ff0d0; --lcd-dim: #1f5a55; --lcd-glow: #6ff0d055; }
+html[data-lcd="neon"] { --lcd-bg: #150a1c; --lcd-fg: #ff6fd8; --lcd-dim: #5a2160; --lcd-glow: #ff6fd855; }
