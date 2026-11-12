@@ -177,6 +177,7 @@
     constructor() {
       this.values = {};
       this.listeners = new Set();
+      this.loans = {}; // borrow(): owner -> the player's own values of the keys it lent (see borrow)
       this.reset();
     }
     reset() {
@@ -218,9 +219,34 @@
       // motifs mutated by the piano roll's « Variation » are saved as the user drew them
       const orig = AMB.pianoRoll && AMB.pianoRoll.originals ? AMB.pianoRoll.originals() : {};
       for (const [k, v] of Object.entries(orig)) if (v != null && k in snap) snap[k] = v;
-      // while a puzzle's target is being heard, the player's own values are what counts
-      if (AMB.puzzles && AMB.puzzles.ab) Object.assign(snap, AMB.puzzles.ab.mine);
+      // while the game borrows the sound (a puzzle's target, a duel's Mastermind), the player's own values are what counts
+      Object.assign(snap, this.borrowed());
       return snap;
+    }
+    // « Borrowing the sound » (source 'game'): a game mode plays other values on the real ambience for a while
+    // (puzzles' « ▶ cible », the duel's Mastermind). borrow(owner, vals) remembers the player's own value of each key
+    // the first time this owner takes it, then sets vals; giveBack(owner, skip?) puts them back (except `skip`, a key
+    // the player has just changed). While anything is borrowed: stableSnapshot() (journal, patches, mode snapshots)
+    // sees the player's values, AMB.game.freePlay() is false, and a mode change gives everything back (js/tree.js).
+    borrow(owner, vals) {
+      const L = (this.loans[owner] = this.loans[owner] || {});
+      for (const k of Object.keys(vals || {})) if (this.spec(k) && !(k in L)) L[k] = this.values[k];
+      this.setMany(vals || {}, 'game');
+    }
+    giveBack(owner, skip) {
+      const L = this.loans[owner]; if (!L) return false;
+      delete this.loans[owner];
+      const back = { ...L }; if (skip) delete back[skip];
+      this.setMany(back, 'game');
+      return true;
+    }
+    giveBackAll() { Object.keys(this.loans).forEach((o) => this.giveBack(o)); }
+    lending() { return Object.keys(this.loans).length > 0; }
+    // the player's own values of every borrowed key (the first lender's, when two owners took the same key)
+    borrowed() {
+      const out = {};
+      for (const L of Object.values(this.loans)) for (const [k, v] of Object.entries(L)) if (!(k in out)) out[k] = v;
+      return out;
     }
     on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   }

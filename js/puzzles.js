@@ -120,15 +120,14 @@
     listen(side) {
       const d = byId[this.current]; if (!d) return false;
       if (side === 'target' && !this.ab) {
-        const mine = {};
-        for (const k of Object.keys(d.target)) mine[k] = store.get(k);
-        this.ab = { mine };
         const r = this.run(); if (r) { r.listens++; AMB.game.save(); }
-        this.applying = true; store.setMany(d.target, 'game'); this.applying = false;
+        // the target borrows the sound (store.borrow, js/params.js): ab.mine = the player's own values
+        this.applying = true; store.borrow('puzzle', d.target); this.applying = false;
+        this.ab = { mine: store.loans.puzzle || {} };
         this.veil(true);
       } else if (side === 'mine' && this.ab) {
-        const mine = this.ab.mine; this.ab = null;
-        this.applying = true; store.setMany(mine, 'game'); this.applying = false;
+        this.ab = null;
+        this.applying = true; store.giveBack('puzzle'); this.applying = false;
         this.veil(false);
       }
       AMB.game.emit('puzzle', { id: this.current, side: this.side(), ...this.currentScore() });
@@ -188,8 +187,8 @@
   store.on((k, v, src) => {
     if (!puzzles.current || src === 'lfo' || src === 'evolve') return;
     if (puzzles.ab && src === 'user' && !puzzles.applying) {
-      const mine = { ...puzzles.ab.mine }; delete mine[k]; puzzles.ab = null;
-      puzzles.applying = true; store.setMany(mine, 'game'); puzzles.applying = false;
+      puzzles.ab = null;
+      puzzles.applying = true; store.giveBack('puzzle', k); puzzles.applying = false;
       puzzles.veil(false);
     }
     AMB.game.emit('puzzle', { id: puzzles.current, side: puzzles.side(), ...puzzles.currentScore() });

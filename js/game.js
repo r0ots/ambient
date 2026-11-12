@@ -39,8 +39,8 @@
     // mode
     get path() { return this.s.mode === 'path'; },
     // the path's effects and gains may apply now: path on, no arcade round running, no puzzle target being heard
-    // (contracts, secrets; free mode, the arcade and a puzzle's « ▶ cible » never count as playing the path)
-    freePlay() { return this.path && !(AMB.arcade && AMB.arcade.active) && !(AMB.puzzles && AMB.puzzles.ab); },
+    // (contracts, secrets; free mode, the arcade, a puzzle's « ▶ cible » or any borrowed sound never count as playing the path)
+    freePlay() { return this.path && !(AMB.arcade && AMB.arcade.active) && !(AMB.puzzles && AMB.puzzles.ab) && !(AMB.store && AMB.store.lending && AMB.store.lending()); },
     setMode(m) {
       if (m !== 'path' && m !== 'free') return;
       this.s.mode = m; this.save(); this.emit('mode', m);
