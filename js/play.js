@@ -51,6 +51,7 @@
   }
   // stop, MIDI unplugged, focus lost: every note ends, the pedal is considered up, a held chord is let go
   function panic() {
+    padsUp();
     held.forEach((h) => AMB.seq.endLive(h));
     held.clear();
     setPedal(false);
@@ -121,6 +122,53 @@
     return true;
   }
 
+  // ---------- touch pads: the 9 notes of A–L under the screen (a phone has no keys) ----------
+  // Same path as the keys (playDegree, held until the finger lifts: notes, Rec live, contracts); a long press forces the chord of that degree.
+  // Path only, once the Melody is owned (free mode is unchanged). The first touch starts the audio (a user gesture) and the note sounds.
+  const PADS = ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'], PAD_LONG_MS = 450;
+  const padPtr = new Map(); // pointerId → { b: pad button, t: long-press timer }
+  function padsWanted() {
+    const g = AMB.game;
+    return !!(g && g.path && g.isUnlocked('m.bells'));
+  }
+  function padsRefresh() {
+    const bar = document.getElementById('pads'); if (!bar) return;
+    bar.hidden = !padsWanted();
+    if (bar.hidden) padsUp();
+  }
+  function padsUp() { [...padPtr.keys()].forEach(padUp); }
+  function padDown(e) {
+    const b = e.target.closest && e.target.closest('.pad'); if (!b || !AMB.seq || padPtr.has(e.pointerId)) return;
+    const g = AMB.game, can = (id) => !g || g.isUnlocked(id);
+    e.preventDefault();
+    if (!can('m.bells') || !wakeAudio(true)) return;
+    const deg = +b.dataset.deg, key = 'p' + e.pointerId;
+    try { b.setPointerCapture(e.pointerId); } catch (err) {}
+    b.classList.add('on');
+    press(key, AMB.seq.playDegree(deg, 0.85, true, e.timeStamp));
+    const t = setTimeout(() => { // long press: the chord of this degree (needs the Pad; the note keeps sounding)
+      if (!padPtr.has(e.pointerId) || !can('h.pad')) return;
+      AMB.seq.forceChord(deg % (AMB.seq.scale.length || 7));
+      b.classList.add('chord');
+      if (navigator.vibrate) try { navigator.vibrate(15); } catch (err) {}
+    }, PAD_LONG_MS);
+    padPtr.set(e.pointerId, { b, t });
+  }
+  function padUp(id) {
+    const p = padPtr.get(id); if (!p) return;
+    padPtr.delete(id); clearTimeout(p.t); lift('p' + id);
+    if (![...padPtr.values()].some((q) => q.b === p.b)) p.b.classList.remove('on', 'chord');
+  }
+  function padsInit() {
+    const bar = document.getElementById('pads'); if (!bar) return;
+    bar.innerHTML = PADS.map((k, i) => `<button type="button" class="pad" data-deg="${i}" style="--i:${i}" title="Touche ${k} · appui long : accord" aria-label="Note ${i + 1}"><span>${k}</span></button>`).join('');
+    bar.addEventListener('pointerdown', padDown);
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((n) => bar.addEventListener(n, (e) => padUp(e.pointerId)));
+    bar.addEventListener('contextmenu', (e) => e.preventDefault());
+    ['game:mode', 'game:unlock', 'game:reset'].forEach((n) => AMB.bus.on(n, padsRefresh));
+    padsRefresh();
+  }
+
   let midiAccess = null;
   function onMidi(msg) {
     const [st, d1, d2] = msg.data;
@@ -172,6 +220,7 @@
     window.addEventListener('blur', panic);
     document.addEventListener('visibilitychange', () => { if (document.hidden) panic(); });
     AMB.bus.on('panic', panic);
+    padsInit();
     const btn = document.getElementById('midi');
     if (btn && navigator.requestMIDIAccess) {
       btn.hidden = false; // in the bar as soon as Web MIDI exists (in the path, the tree opens it with the Melody)
@@ -181,5 +230,5 @@
     }
   });
 
-  AMB.play = { degreeForPitch, chordForNotes, onMidi, panic, get held() { return held.size + sustained.size; } };
+  AMB.play = { PADS, padsRefresh, degreeForPitch, chordForNotes, onMidi, panic, get held() { return held.size + sustained.size; } };
 })();

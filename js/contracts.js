@@ -40,9 +40,9 @@
     }, '✦ Nouveau paysage trois fois, puis ♥ dans le Journal (ou 💾 Sauver le patch) sur celui que tu préfères.'),
 
     // Harmonie
-    C('h.forcer', ['h.pad'], 'Force 3 accords au clavier (Z à M)', 7, 3, {
+    C('h.forcer', ['h.pad'], 'Force 3 accords (Z à M, ou appui long sur une pastille)', 7, 3, {
       act(st, id) { if (id === 'chord' && gesture(st, 'chord', 600)) st.n = (st.n || 0) + 1; },
-    }, 'Pendant la lecture, les touches Z, X, C, V, B, N, M jouent les accords I à VII (au clavier MIDI : les notes graves).'),
+    }, 'Pendant la lecture, les touches Z, X, C, V, B, N, M jouent les accords I à VII ; au doigt, un appui long sur une pastille force l\'accord de son degré (au clavier MIDI : les notes graves).'),
     C('h.suivre', ['h.drone'], 'Fais suivre les accords au drone, puis force un accord', 7, 2, {
       param(st, k, v, src) { if (k === 'drone.follow' && src === 'user' && v) st.n = Math.max(st.n || 0, 1); },
       act(st, id) { if (id === 'chord' && st.n === 1 && store.get('drone.follow')) st.n = 2; },
@@ -60,12 +60,12 @@
     // Espace
     C('e.echo', ['e.echo', 'm.bells'], 'Joue 6 notes dans l\'écho', 10, 6, {
       note(st) { if (playing() && store.get('fx.echo') >= 0.4) st.n = (st.n || 0) + 1; },
-    }, 'Monte l\'Écho au-dessus de 40 (Sculpter > Espace), puis joue des notes (A à L) et écoute-les se répéter.'),
+    }, 'Monte l\'Écho au-dessus de 40 (Sculpter > Espace), puis joue des notes (pastilles ou A à L) et écoute-les se répéter.'),
 
     // Mouvement
-    C('m.notes', ['m.bells'], 'Joue 8 notes au clavier (A à L)', 7, 8, {
+    C('m.notes', ['m.bells'], 'Joue 8 notes (pastilles ou clavier A à L)', 7, 8, {
       note(st) { if (playing()) st.n = (st.n || 0) + 1; },
-    }, 'Pendant la lecture, les touches A à L jouent la gamme (Q à P une octave au-dessus), ou ton clavier MIDI.'),
+    }, 'Pendant la lecture, les pastilles sous l\'écran ou les touches A à L jouent la gamme (Q à P une octave au-dessus), ou ton clavier MIDI.'),
     C('m.phrase', ['m.phrase'], 'Mets la mélodie en Phrase et écoute-la tourner 2 fois', 14, 2, {
       param(st, k, v, src) { if (k === 'bells.mode' && src === 'user' && v === 'Phrase') st.on = 1; else if (k === 'bells.mode' && v !== 'Phrase') st.on = 0; },
       phrase(st) { if (st.on && store.get('bells.mode') === 'Phrase') st.n = (st.n || 0) + 1; },
@@ -83,7 +83,7 @@
     // Composer (S3.5: played, not drawn — the notes, the groove and the song come from playing them)
     C('c.reclive', ['c.seq'], 'Enregistre 8 notes en Rec live', 23, 8, {
       note(st) { const r = AMB.pianoRoll && AMB.pianoRoll.roll; if (r && r.recording) st.n = (st.n || 0) + 1; },
-    }, 'Composer > Mélodie écrite > ● Rec live, puis joue au clavier (A à L) ou au clavier MIDI : tes notes s\'écrivent dans le piano roll.'),
+    }, 'Composer > Mélodie écrite > ● Rec live, puis joue sur les pastilles, au clavier (A à L) ou au clavier MIDI : tes notes s\'écrivent dans le piano roll.'),
     C('c.groove', ['c.rythme'], 'Change ta ligne de basse, puis fais tourner le groove 4 mesures', 23, 4, {
       param(st, k, v, src) { if (k === 'bass.pattern' && src === 'user') st.on = 1; },
       bass(st) { // one count per bar where the bass plays, once the player has made the line his own
