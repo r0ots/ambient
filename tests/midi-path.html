@@ -16,11 +16,12 @@ f.addEventListener('load', async () => {
     ok(await kb.connect() && kb.asked === 1 && /MIDI · 1/.test(d.getElementById('midi').textContent), 'faux clavier branché par le bouton MIDI (onmidimessage = ' + (kb.input.onmidimessage === A.play.onMidi ? 'AMB.play.onMidi' : '?') + ')');
     // spies on the app side (they call through)
     const app = { notes: [], chords: [], live: [], macros: [] };
+    const handles = [], offs = [];
     const pm = A.seq.playMidi, fc = A.seq.forceChord, sm = A.perform.setMacro;
-    A.seq.playMidi = function (...a) { app.notes.push(a); return pm.apply(this, a); };
+    A.seq.playMidi = function (...a) { app.notes.push(a); const h = pm.apply(this, a); handles.push(h); return h; };
     A.seq.forceChord = function (...a) { app.chords.push(a); return fc.apply(this, a); };
     A.perform.setMacro = function (...a) { app.macros.push(a); return sm.apply(this, a); };
-    A.bus.on('live', (x) => app.live.push(x));
+    A.bus.on('live', (x) => app.live.push(x)); A.bus.on('liveOff', (x) => offs.push(x));
     const reset = () => { app.notes = []; app.chords = []; app.live = []; app.macros = []; };
 
     // --- free mode, playing: the app plays the note (velocity remapped, raw velocity on 'live')
@@ -29,6 +30,55 @@ f.addEventListener('load', async () => {
     const n = app.notes[0], raw = 100 / 127;
     ok(A.seq.playing && app.notes.length === 1 && n[0] === 72 && Math.abs(n[1] - (0.25 + 0.75 * raw)) < 1e-9 && Math.abs(n[2] - raw) < 1e-9, 'mode libre : note 72 jouée par l\'appli (vélocité entendue ' + n[1].toFixed(2) + ', brute ' + n[2].toFixed(2) + ')');
     ok(app.live.length === 1 && app.live[0].midi === 72 && Math.abs(app.live[0].raw - raw) < 1e-9 && app.chords.length === 1 && app.macros.length === 1 && app.macros[0][0] === 'macro.light', 'mode libre : événement live (vélocité brute), note grave → accord, CC74 → Lumière');
+
+    // --- S3.3 a musician's MIDI: held notes, sustain pedal, velocity-0 note-off, Rec live lengths, panic
+    const ctx = A.engine.ctx, st = A.store, PR = A.pianoRoll;
+    st.set('global.tempo', 120); st.set('seq.steps', '64'); st.set('seq.slot', 'A');
+    const sd = A.seq.stepDur(), beat = 60 / st.get('global.tempo');
+    ok(Math.abs(sd * 4 - beat) < 1e-9, 'grille réelle : 1 pas = 1/4 de temps (' + sd + ' s à 120 BPM)');
+    const audio = async (s) => { const t = ctx.currentTime + s; for (let i = 0; i < 2000 && ctx.currentTime < t; i++) await wait(4); };
+    // start a held note early in the 64-step motif, so that its length is never cut by the end of the motif
+    const early = async () => { for (let i = 0; i < 2000; i++) { const p = ((Math.round((ctx.currentTime + 0.01 - A.seq.nextTime) / sd) + A.seq.step) % 64 + 64) % 64; if (p <= 40) return; await wait(4); } };
+    const rec1 = () => PR.parse(st.get('seq.pattern'));
+    const rb = d.querySelector('[data-act=liverec]'); rb.click();
+    ok(PR.roll.recording, 'Rec live armé');
+    reset(); offs.length = 0; st.set('seq.pattern', ''); await early();
+    kb.on(72, 100); const h72 = handles[handles.length - 1];
+    ok(A.play.held === 1 && h72 && typeof h72.release === 'function', 'note tenue : la voix « Doux » de la Mélodie écrite tient (poignée de relâchement)');
+    await audio(beat); kb.off(72);
+    ok(A.play.held === 0 && offs.length === 1 && offs[0].id === h72.id && rec1().length === 1 && rec1()[0].l === 4, 'note tenue 1 temps → note de ' + (rec1()[0] || {}).l + ' pas dans le piano roll (attendu 4)');
+    // sustain: released key keeps sounding until the pedal is up; the length includes the pedal
+    reset(); offs.length = 0; st.set('seq.pattern', ''); await early();
+    kb.cc(64, 127); kb.on(74, 90); await audio(beat / 2); kb.off(74);
+    const stillOn = A.play.held === 1 && offs.length === 0;
+    await audio(beat / 2); kb.cc(64, 0);
+    ok(stillOn && A.play.held === 0 && offs.length === 1 && rec1().length === 1 && rec1()[0].l === 4, 'sustain (CC64) : touche lâchée après 2 pas, pédale levée après 4 → note de ' + (rec1()[0] || {}).l + ' pas, la note continue tant que la pédale est enfoncée');
+    ok(!app.macros.length, 'CC64 ne pilote aucune macro');
+    // note-on at velocity 0 = note-off
+    reset(); offs.length = 0; st.set('seq.pattern', ''); await early();
+    kb.on(76, 80); await audio(3 * sd); kb.off(76, undefined, { zero: true });
+    ok(app.notes.length === 1 && A.play.held === 0 && offs.length === 1 && rec1()[0].l === 3, 'note-on vélocité 0 = note-off (une seule note jouée, longueur ' + (rec1()[0] || {}).l + ' pas, attendu 3)');
+    rb.click(); ok(!PR.roll.recording, 'Rec live arrêté');
+    // panic: stop the playback with keys held and the pedal down
+    offs.length = 0; kb.on(77, 90); kb.on(79, 90); kb.cc(64, 127); kb.off(79);
+    const before = A.play.held;
+    A.ui.stop(); await wait(20);
+    ok(before === 2 && A.play.held === 0 && offs.length === 2, 'arrêt de la lecture : aucune note coincée (2 tenues → 0, 2 relâchements)');
+    kb.off(77); kb.cc(64, 0); ok(offs.length === 2, 'les note-off tardifs ne rejouent rien');
+    // panic: the keyboard is unplugged while a note is held
+    await A.ui.play(); await until(() => A.seq.playing);
+    offs.length = 0; kb.on(72, 100);
+    kb.access.inputs.delete(kb.input.id); kb.input.state = 'disconnected';
+    kb.access.onstatechange({ port: kb.input });
+    ok(A.play.held === 0 && offs.length === 1 && d.getElementById('midi').textContent === 'MIDI', 'clavier débranché : la note tenue s\'arrête');
+    kb.input.state = 'connected'; kb.access.inputs.set(kb.input.id, kb.input); kb.access.onstatechange({ port: kb.input });
+    // panic: the window loses the focus
+    offs.length = 0; kb.on(72, 100); w.dispatchEvent(new w.Event('blur'));
+    ok(A.play.held === 0 && offs.length === 1, 'perte de focus : la note tenue s\'arrête');
+    // computer keyboard: keydown / keyup, same handles
+    offs.length = 0; d.dispatchEvent(new w.KeyboardEvent('keydown', { code: 'KeyA', bubbles: true }));
+    const kh = A.play.held; d.dispatchEvent(new w.KeyboardEvent('keyup', { code: 'KeyA', bubbles: true }));
+    ok(kh === 1 && A.play.held === 0 && offs.length === 1, 'clavier d\'ordinateur : touche enfoncée = note tenue, relâchée = fin');
 
     // --- the path: like the computer keyboard, MIDI notes open with the Melody (v1.06: no « MIDI » node any more)
     reset(); A.game.setMode('path'); A.game.reset(); await wait(20);

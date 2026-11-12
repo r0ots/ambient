@@ -84,6 +84,21 @@ window.addEventListener('load', async ()=>{
   for(const code of ['KeyA','KeyD','KeyG']){ document.dispatchEvent(new KeyboardEvent('keydown',{code})); await new Promise(r=>setTimeout(r,250)); }
   rb.click();
   log('live rec notes='+PR.parse(st.get('seq.pattern')).length+' rows='+PR.parse(st.get('seq.pattern')).map(n=>n.r).join(','));
+  // S3.3 recorded length = time held, quantised to the step, 1 step min, bounded by the motif (events at chosen times)
+  { const sd=AMB.seq.stepDur(), len=parseInt(st.get('seq.steps'),10);
+    ok(Math.abs(sd*4-60/st.get('global.tempo'))<1e-9, 'pas = 1/4 de temps ('+st.get('global.tempo')+' BPM)');
+    st.set('seq.pattern',''); rb.click();
+    const at=(k)=>AMB.seq.nextTime+(k-AMB.seq.step)*sd; // audio time that lands on step k
+    const hold=(id,midi,k,secs)=>{ AMB.bus.emit('live',{midi,time:at(k),vel:0.8,id}); AMB.bus.emit('liveOff',{id,midi,time:at(k)+secs}); return PR.parse(st.get('seq.pattern')).find(n=>n.s===k); };
+    ok((hold(9001,60,0,4*sd+0.3*sd)||{}).l===4, 'tenue 1 temps (+ un peu) → 4 pas');
+    ok((hold(9002,64,4,0.2*sd)||{}).l===1, 'tenue très courte → 1 pas minimum');
+    ok((hold(9003,67,len-2,40*sd)||{}).l===2, 'tenue au-delà de la fin du motif → bornée ('+len+' pas)');
+    // computer keyboard: keyup ends the note (no stuck key)
+    let offs=0; AMB.bus.on('liveOff',()=>offs++);
+    const h0=AMB.play.held; document.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyS'})); const h1=AMB.play.held; document.dispatchEvent(new KeyboardEvent('keyup',{code:'KeyS'}));
+    ok(offs===1 && h1===h0+1 && AMB.play.held===h0, 'clavier : keydown = note tenue, keyup = fin de note');
+    ['KeyA','KeyD','KeyG'].forEach(code=>document.dispatchEvent(new KeyboardEvent('keyup',{code}))); ok(AMB.play.held===0, 'clavier : plus aucune note tenue');
+    rb.click(); }
   // capture the generative melody into the roll
   st.set('bells.on',true); st.set('bells.density',0.9);
   const btn=document.querySelector('[data-act=capture]'); PR.roll.act('capture',btn);

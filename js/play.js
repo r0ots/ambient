@@ -18,11 +18,41 @@
     const g = AMB.game, can = (id) => !g || g.isUnlocked(id);
     if ((MELODY_LOW.includes(e.code) || MELODY_HIGH.includes(e.code)) && !can('m.bells')) return;
     if (CHORDS.includes(e.code) && !can('h.pad')) return;
-    if ((i = MELODY_LOW.indexOf(e.code)) >= 0) AMB.seq.playDegree(i, e.shiftKey ? 0.5 : 0.85);
-    else if ((i = MELODY_HIGH.indexOf(e.code)) >= 0) AMB.seq.playDegree(i + 7, e.shiftKey ? 0.5 : 0.85);
+    if ((i = MELODY_LOW.indexOf(e.code)) >= 0) press('k' + e.code, AMB.seq.playDegree(i, e.shiftKey ? 0.5 : 0.85, true));
+    else if ((i = MELODY_HIGH.indexOf(e.code)) >= 0) press('k' + e.code, AMB.seq.playDegree(i + 7, e.shiftKey ? 0.5 : 0.85, true));
     else if ((i = CHORDS.indexOf(e.code)) >= 0) AMB.seq.forceChord(i);
     else return;
     e.preventDefault();
+  }
+
+  function onKeyUp(e) { lift('k' + e.code); }
+
+  // ---------- held notes: key → live handle; the sustain pedal (CC64) delays the releases ----------
+  const held = new Map(); // key ('k' + e.code or 'm' + midi note) → handle from AMB.seq.playMidi
+  const sustained = new Set(); // handles released while the pedal is down
+  let pedal = false;
+  function press(key, h) {
+    lift(key, true); // same key struck again: the previous note ends
+    if (h && typeof h === 'object') held.set(key, h); // (a stub or a silent engine returns no handle)
+  }
+  function lift(key, now = false) {
+    const h = held.get(key);
+    if (!h) return;
+    held.delete(key);
+    if (pedal && !now) sustained.add(h);
+    else AMB.seq.endLive(h);
+  }
+  function setPedal(down) {
+    pedal = down;
+    if (down) return;
+    sustained.forEach((h) => AMB.seq.endLive(h));
+    sustained.clear();
+  }
+  // stop, MIDI unplugged, focus lost: every note ends, the pedal is considered up
+  function panic() {
+    held.forEach((h) => AMB.seq.endLive(h));
+    held.clear();
+    setPedal(false);
   }
 
   // nearest scale degree (0..n-1) for a pitch class
@@ -38,15 +68,18 @@
   function onMidi(msg) {
     const [st, d1, d2] = msg.data;
     const type = st & 0xf0;
-    if (type === 0x90 && d2 > 0) {
+    if (type === 0x80 || (type === 0x90 && d2 === 0)) lift('m' + d1); // note-off (or note-on at velocity 0)
+    else if (type === 0x90) {
       if (!AMB.seq.playing) return;
       // in the path, like the computer keyboard: notes need the Melody, low notes (chords) the Pad
       const g = AMB.game, can = (id) => !g || g.isUnlocked(id);
       // the heard velocity is remapped to 0.25–1 (soft notes stay audible); the raw one (0..1) rides along on 'live'
       if (d1 < 48) { if (can('h.pad')) AMB.seq.forceChord(degreeForPitch(d1)); }
-      else if (can('m.bells')) AMB.seq.playMidi(d1, 0.25 + (d2 / 127) * 0.75, d2 / 127);
+      else if (can('m.bells')) press('m' + d1, AMB.seq.playMidi(d1, 0.25 + (d2 / 127) * 0.75, d2 / 127, true));
     } else if (type === 0xb0) {
       const v = d2 / 127;
+      if (d1 === 64) return setPedal(d2 >= 64); // sustain pedal
+      if (d1 === 123 || d1 === 120) return panic(); // All Notes Off / All Sound Off
       // CCs drive the same macros as the XY pad: mod wheel = Densité, CC74 = Lumière, CC91 = Espace, CC93 = Nostalgie
       const cc = { 1: 'macro.density', 74: 'macro.light', 91: 'macro.space', 93: 'macro.nostalgia' }[d1];
       if (cc) AMB.perform.setMacro(cc, v);
@@ -65,7 +98,7 @@
         if (n && AMB.bus) AMB.bus.emit('act', 'midiConnect'); // a keyboard is there (the MIDI secrets show their hints)
         return n;
       };
-      midiAccess.onstatechange = bind;
+      midiAccess.onstatechange = (e) => { if (e && e.port && e.port.state === 'disconnected') panic(); bind(); };
       const n = bind();
       AMB.ui.toast(n ? `${n} entrée(s) MIDI connectée(s)` : 'Aucun appareil MIDI détecté');
     } catch (e) {
@@ -75,9 +108,13 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('keydown', onKey);
+    document.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', panic);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) panic(); });
+    AMB.bus.on('panic', panic);
     const btn = document.getElementById('midi');
     if (btn) btn.addEventListener('click', () => connectMidi(btn));
   });
 
-  AMB.play = { degreeForPitch, onMidi };
+  AMB.play = { degreeForPitch, onMidi, panic, get held() { return held.size + sustained.size; } };
 })();

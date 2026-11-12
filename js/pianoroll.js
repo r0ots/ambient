@@ -146,9 +146,23 @@
     const s = ((Math.round((ev.time - seq.nextTime) / sd) + seq.step) % len + len) % len;
     const r = rowForMidi(ev.midi);
     const notes = roll.notes().filter((n) => !(n.s === s && n.r === r));
-    notes.push({ s, r, l: 2, v: Math.max(1, Math.min(9, Math.round(ev.vel * 9))), p: 10 });
+    notes.push({ s, r, l: 1, v: Math.max(1, Math.min(9, Math.round(ev.vel * 9))), p: 10 });
     roll.save(notes);
     roll.recCount = (roll.recCount || 0) + 1;
+    if (ev.id) recHeld.set(ev.id, { s, r, time: ev.time, key: editKey() });
+  });
+  // the release gives the real length: time held (sustain pedal included), quantised to the step, 1 step at least,
+  // never past the end of the motif
+  const recHeld = new Map(); // live note id → where it was written
+  AMB.bus.on('liveOff', (ev) => {
+    const h = recHeld.get(ev.id);
+    if (!h) return;
+    recHeld.delete(ev.id);
+    if (h.key !== editKey()) return;
+    const notes = roll.notes(), n = notes.find((x) => x.s === h.s && x.r === h.r);
+    if (!n) return;
+    const l = Math.max(1, Math.min(steps() - h.s, Math.round((ev.time - h.time) / AMB.seq.stepDur())));
+    if (l !== n.l) { n.l = l; roll.save(notes); }
   });
 
   // ---------- editor ----------
