@@ -160,6 +160,8 @@ window.addEventListener('load', ()=>{
     const miss=scripts.filter(s=>!assets.includes(s)), js=assets.filter(a=>a.startsWith('js/'));
     ok(scripts.length>20 && !miss.length, 'sw.js précache tous les scripts de index.html ('+scripts.length+') '+miss.join(','));
     ok(js.join()===scripts.join(), 'sw.js ASSETS dans le même ordre que index.html');
+    const css=[...html.matchAll(/<link rel="stylesheet" href="(css\/[^"]+)"/g)].map(m=>m[1]);
+    ok(css.length>=7 && css.join()===assets.filter(a=>a.startsWith('css/')).join(), 'sw.js précache les feuilles de style de index.html, dans l\'ordre ('+css.length+')');
   }).catch(e=>log('EXC '+e.stack)).finally(()=>log('DONE'));
   }catch(e){log('EXC '+e.stack)}
 });

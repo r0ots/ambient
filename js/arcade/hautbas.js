@@ -1,4 +1,4 @@
-// Arcade demo mini-game (G9.1): « Plus haut ou plus bas ? » — two notes, is the second one higher?
+// Arcade mini-game (G9.1 demo): « Plus haut ou plus bas ? » — two notes, is the second one higher?
 // The gap shrinks with the difficulty d: a fifth (700 cents) at d = 0, 15 cents at d = 1.
 (function () {
   const AMB = (window.AMB = window.AMB || {});

@@ -10,7 +10,7 @@ localStorage.removeItem('ambient.arcade.test');
 // pure engine: no audio engine, no DOM app — only a tiny bus to watch the events
 window.AMB={ bus:{ fns:{}, on(e,f){(this.fns[e]=this.fns[e]||[]).push(f)}, emit(e,d){(this.fns[e]||[]).forEach(f=>f(d))} } };
 </script>
-<script src="../js/audition.js"></script><script src="../js/arcade.js"></script><script src="../js/arcade-demo.js"></script>
+<script src="../js/audition.js"></script><script src="../js/arcade.js"></script><script src="../js/arcade/hautbas.js"></script>
 <script>
 const ok=(c,m)=>log((c?'ok ':'ERROR fail ')+m);
 window.addEventListener('load', ()=>{
@@ -20,7 +20,7 @@ window.addEventListener('load', ()=>{
   ['start','answer','end'].forEach(e=>AMB.bus.on('arcade:'+e,d=>ev.push(e)));
   const sessions=[]; const s0=AMB.audition.session; AMB.audition.session=function(on){ sessions.push(!!on); return s0.call(this,on); };
   // --- registry
-  ok(A.byId.hautbas && A.byId.hautbas.kid===true && A.games.length===1, 'mini-jeu de démo enregistré');
+  ok(A.byId.hautbas && A.byId.hautbas.kid===true && A.games.filter(g=>g.id==='hautbas').length===1, 'mini-jeu de démo enregistré');
   let threw=false; try{ A.register({id:'x'}); }catch(e){ threw=true; } ok(threw, 'register refuse un plugin incomplet');
   // --- determinism: same seed + same answers -> same challenges
   const play=(seed,n,answerFn)=>{ A.stats('hautbas').d=0.3; A.stats('hautbas').step=0.12; const out=[]; A.start('hautbas',{seed}); for(let i=0;i<n;i++){ const ch=A.round.ch; out.push(ch.base+':'+ch.cents); A.answer(answerFn(ch,i)); } A.end({abort:true}); return out.join(','); };
