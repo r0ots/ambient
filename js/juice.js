@@ -52,4 +52,160 @@
       return `+${d.n} ✧ ${d.reason || ''}`;
     },
   });
+
+  // ======== G7.4 : AMB.juice — canvas particles, floating text, flash, shake, hitstop, combo ========
+  const MAXP = 300;
+  const mq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  const J = (AMB.juice = {
+    reduced: !!(mq && mq.matches),
+    cv: null, cx: null, raf: 0, last: 0, hold: 0, alive: 0, next: 0, wired: false,
+    pool: Array.from({ length: MAXP }, () => ({ on: false, x: 0, y: 0, vx: 0, vy: 0, g: 0, life: 0, max: 1, size: 3, rot: 0, vr: 0, color: '#fff', kind: 'spark', still: false })),
+    active() { return !!AMB.game && AMB.game.path === true; }, // free mode: never any effect
+    canvas() {
+      if (this.cv) return this.cv;
+      const c = document.createElement('canvas'); c.id = 'fx'; c.setAttribute('aria-hidden', 'true');
+      document.body.append(c); this.cv = c; this.cx = c.getContext('2d'); this.fit();
+      window.addEventListener('resize', () => this.fit());
+      return c;
+    },
+    fit() {
+      const c = this.cv; if (!c) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      c.width = Math.round(window.innerWidth * dpr); c.height = Math.round(window.innerHeight * dpr);
+      if (this.cx) this.cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    },
+    center(el) { const r = el && el.getBoundingClientRect(); return r && (r.width || r.height) ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null; },
+    // ---- particles (fixed pool, ring buffer: the oldest is recycled, nothing is spliced) ----
+    burst(x, y, o = {}) {
+      if (!this.active()) return 0;
+      const red = this.reduced, n = red ? 4 : Math.min(o.n == null ? 16 : o.n, MAXP);
+      const kind = o.kind || 'spark', color = this.resolve(o.color || 'var(--fx-good)'), speed = o.speed == null ? 180 : o.speed;
+      const grav = o.gravity == null ? (kind === 'petal' ? 40 : 260) : o.gravity;
+      this.canvas();
+      for (let i = 0; i < n; i++) {
+        const p = this.pool[this.next]; this.next = (this.next + 1) % MAXP;
+        if (!p.on) this.alive++;
+        const a = Math.random() * Math.PI * 2, v = speed * (0.35 + Math.random() * 0.65);
+        p.on = true; p.x = x; p.y = y; p.still = red;
+        p.vx = red ? 0 : Math.cos(a) * v; p.vy = red ? 0 : Math.sin(a) * v - (kind === 'petal' ? 0 : speed * 0.3);
+        p.g = red ? 0 : grav; p.max = p.life = red ? 0.6 : 0.5 + Math.random() * 0.6;
+        p.size = kind === 'shard' ? 3 + Math.random() * 4 : 2 + Math.random() * 3;
+        p.rot = Math.random() * 6.28; p.vr = red ? 0 : (Math.random() - 0.5) * 10;
+        p.color = color; p.kind = kind;
+      }
+      this.kick();
+      return n;
+    },
+    burstAt(el, o) { const c = this.center(el); return c ? this.burst(c.x, c.y, o) : 0; },
+    resolve(c) { // canvas can't read var(--x)
+      const m = /^var\((--[\w-]+)\)$/.exec(c || '');
+      return m ? (getComputedStyle(document.documentElement).getPropertyValue(m[1]).trim() || '#ffb347') : c;
+    },
+    holdLeft() { return this.hold > performance.now(); },
+    kick() { // the loop only runs while something is alive
+      if (this.raf || (!this.alive && !this.holdLeft())) return;
+      this.last = performance.now(); this.raf = requestAnimationFrame((t) => this.tick(t));
+    },
+    tick(t) {
+      this.raf = 0;
+      const dt = Math.min((t - this.last) / 1000, 0.1); this.last = t;
+      if (!this.holdLeft()) this.step(dt);
+      if (this.alive > 0 || this.holdLeft()) this.raf = requestAnimationFrame((u) => this.tick(u));
+      else if (this.cx) this.cx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    },
+    step(dt) {
+      const cx = this.cx; if (!cx) return;
+      cx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      for (const p of this.pool) {
+        if (!p.on) continue;
+        p.life -= dt;
+        if (p.life <= 0) { p.on = false; this.alive--; continue; }
+        if (!p.still) { p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt; if (p.kind === 'petal') p.x += Math.sin(p.life * 6 + p.rot) * 20 * dt; }
+        cx.globalAlpha = Math.max(0, Math.min(1, p.life / p.max));
+        cx.fillStyle = p.color;
+        if (p.kind === 'spark') { cx.beginPath(); cx.arc(p.x, p.y, p.size * 0.6, 0, 6.283); cx.fill(); }
+        else { cx.save(); cx.translate(p.x, p.y); cx.rotate(p.rot); if (p.kind === 'petal') cx.scale(1, 0.5); cx.fillRect(-p.size, -p.size / 2, p.size * 2, p.size); cx.restore(); }
+      }
+      cx.globalAlpha = 1;
+    },
+    hitstop(ms = 60) { if (this.reduced || !this.active()) return; this.hold = Math.max(this.hold, performance.now() + ms); this.kick(); },
+    // ---- DOM effects ----
+    floatText(at, text, o = {}) {
+      if (!this.active()) return null;
+      const c = at && at.nodeType ? this.center(at) : at;
+      if (!c) return null;
+      const e = document.createElement('div');
+      e.className = 'fx-float' + (o.big ? ' big' : '') + (this.reduced ? ' still' : '');
+      e.textContent = text; e.style.left = `${Math.round(c.x)}px`; e.style.top = `${Math.round(c.y)}px`;
+      if (o.color) e.style.color = o.color;
+      document.body.append(e);
+      setTimeout(() => e.remove(), this.reduced ? 900 : 1300);
+      return e;
+    },
+    flash(color = 'var(--fx-good)', ms = 160) {
+      if (!this.active()) return null;
+      const e = document.createElement('div'); e.className = 'fx-flash';
+      e.style.background = color; e.style.setProperty('--fx-peak', this.reduced ? 0.1 : 0.28);
+      e.style.animationDuration = `${ms}ms`;
+      document.body.append(e); setTimeout(() => e.remove(), ms + 60);
+      return e;
+    },
+    shake(el, amp = 6, ms = 320) { // damped translate
+      if (!el || this.reduced || !this.active() || !el.animate) return;
+      el.animate(Array.from({ length: 9 }, (_, i) => ({ transform: `translateX(${i === 8 ? 0 : (1 - i / 8) * amp * (i % 2 ? -1 : 1)}px)` })), { duration: ms, easing: 'linear' });
+    },
+    // ---- combo: x1 -> x4, +1 tier every 3 hits ----
+    combo: {
+      n: 0, mult: 1, best: 0,
+      emit() { if (AMB.bus) AMB.bus.emit('juice:combo', { n: this.n, mult: this.mult, best: this.best }); J.renderCombo(); },
+      hit() { this.n++; if (this.n > this.best) this.best = this.n; const m = Math.min(4, 1 + Math.floor(this.n / 3)), up = m > this.mult; this.mult = m; this.emit(); if (up) J.pulseCombo(); return this.mult; },
+      miss() { const had = this.n > 0; this.n = 0; this.mult = 1; if (had) this.emit(); return this.mult; },
+      reset() { this.n = 0; this.mult = 1; this.best = 0; this.emit(); },
+    },
+    hit() { return this.combo.hit(); },
+    miss() { return this.combo.miss(); },
+    reset() { this.combo.reset(); },
+    get mult() { return this.combo.mult; },
+    // small reusable counter, visible only after showCombo(true) (a round is running)
+    comboEl() {
+      let e = document.getElementById('fxCombo');
+      if (!e) { e = document.createElement('div'); e.id = 'fxCombo'; e.className = 'fx-combo'; e.hidden = true; e.innerHTML = '<b>×1</b><span></span>'; document.body.append(e); }
+      return e;
+    },
+    showCombo(on = true) { const e = this.comboEl(); e.hidden = !(on && this.active()); this.renderCombo(); },
+    renderCombo() {
+      const e = document.getElementById('fxCombo'); if (!e) return;
+      e.querySelector('b').textContent = `×${this.combo.mult}`; e.querySelector('span').textContent = this.combo.n ? `${this.combo.n}` : '';
+      e.dataset.mult = this.combo.mult;
+    },
+    pulseCombo() { const e = document.getElementById('fxCombo'); if (e && !this.reduced) { e.classList.remove('up'); void e.offsetWidth; e.classList.add('up'); } },
+    // ---- wiring (path only: every method above is already a no-op in free mode) ----
+    wire() {
+      const B = AMB.bus; if (!B || this.wired) return; this.wired = true;
+      B.on('game:earn', (d) => {
+        if (!this.active() || d.reason === 'test' || !(d.n > 0)) return;
+        const el = $('#lcdShards'); if (el) this.floatText(el, `+${d.n} ✧`);
+      });
+      B.on('game:unlock', (d) => {
+        const n = AMB.tree && AMB.tree.byId[d.id]; if (!this.active() || !n || !n.cost) return;
+        const col = AMB.tree.BRANCHES[n.branch].color;
+        const c = this.center(document.querySelector(`.tree-node[data-id="${d.id}"]`)) || this.center($('#lcdShards'));
+        if (c) this.burst(c.x, c.y, { n: 24, color: col });
+        this.flash(col, 140);
+      });
+      B.on('game:contracts', (d) => {
+        if (!this.active()) return;
+        this.burstAt(document.querySelector(`.ct-item[data-id="${d.id}"]`) || $('#contracts'), { n: 18, kind: 'petal' });
+      });
+      B.on('game:puzzles', () => {
+        if (!this.active()) return;
+        const c = this.center($('#puzzle')) || { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+        this.burst(c.x, c.y, { n: 70, color: 'var(--fx-combo)', speed: 320, kind: 'shard' });
+        this.burst(c.x, c.y, { n: 40, speed: 220, kind: 'petal' });
+        this.flash('var(--fx-combo)', 260);
+      });
+    },
+  });
+  if (mq && mq.addEventListener) mq.addEventListener('change', (e) => { J.reduced = e.matches; });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => J.wire()); else J.wire();
 })();
