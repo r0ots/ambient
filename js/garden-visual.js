@@ -21,8 +21,8 @@
     { id: 'texture', node: 'e.texture', label: 'Texture', short: 'Text.', col: [120, 210, 200], kind: 'fern' },
     { id: 'grains', node: 'm.grains', label: 'Grains', short: 'Grain', col: [111, 207, 159], kind: 'puff' },
     { id: 'seq', node: 'c.seq', label: 'Séquence', short: 'Séq.', col: [255, 150, 71], kind: 'vine' },
-    { id: 'bass', node: 'c.bass', label: 'Basse', short: 'Basse', col: [127, 159, 224], kind: 'cactus' },
-    { id: 'perc', node: 'c.perc', label: 'Pulsations', short: 'Puls.', col: [255, 90, 60], kind: 'shroom' },
+    { id: 'bass', node: 'c.rythme', label: 'Basse', short: 'Basse', col: [127, 159, 224], kind: 'cactus' },
+    { id: 'perc', node: 'c.rythme', label: 'Pulsations', short: 'Puls.', col: [255, 90, 60], kind: 'shroom' },
   ];
   const byLayer = Object.fromEntries(LAYERS.map((l) => [l.id, l]));
 

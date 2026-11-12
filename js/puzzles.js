@@ -53,7 +53,7 @@
       { 'texture.type': null, 'texture.vol': [0.2, 0.9], 'fx.lofi': [0, 0.9], 'fx.tape': [0, 0.9] }, 25),
     P('b.grains', ['m.grains2'], 'Nuage de grains', 'Les grains : à l\'envers ou non, combien, quelle taille, quelles hauteurs.',
       { 'grains.reverse': [0, 1], 'grains.density': [0.1, 0.9], 'grains.size': [0.1, 0.9], 'grains.pitch': null }, 25),
-    P('b.groove', ['c.groove', 'm.tempo'], 'Chaloupé', 'Le rythme : le kit des pulsations, le tempo, le swing et l\'imprécision.',
+    P('b.groove', ['c.rythme', 'm.tempo'], 'Chaloupé', 'Le rythme : le kit des pulsations, le tempo, le swing et l\'imprécision.',
       { 'perc.kit': null, 'global.tempo': [50, 120], 'global.swing': [0, 0.8], 'global.humanize': [0, 0.8] }, 25),
   ];
   const ECHO_DEGS = 9, ECHO_GAP = 0.55; // A–L = degrees 0..8 of octave 4; seconds between the phrase's notes
@@ -183,7 +183,9 @@
     // ---- Écho (S3.1) ----
     isEcho(id = this.current) { const d = byId[id]; return !!d && d.kind === 'echo'; },
     echoRow: [], // pegs of the phrase being played back (the attempt in progress)
-    echoUntil: 0, // audio time until which the phrase is heard: notes played meanwhile are not judged
+    echoFrom: 0, echoUntil: 0, // audio times of the phrase: notes played meanwhile are not judged, the Melody auto is silent
+    // the Melody's own generative notes keep quiet while the instrument plays the phrase (they resume right after)
+    hush(time) { return time >= this.echoFrom && time <= this.echoUntil; },
     // the phrase's notes, in the current key and scale, where the A–L keys play them
     echoMidis(id = this.current) {
       const t = this.target(id), S = AMB.seq; if (!t || !t.degs || !S) return [];
@@ -197,7 +199,7 @@
       if (!store.get('bells.on')) L.bells.ch.setLevel(Math.pow(store.get('bells.vol'), 1.6)); // as seq.playMidi does
       const ms = this.echoMidis(id), t0 = ctx.currentTime + 0.12;
       ms.forEach((m, i) => L.bells.note(m, t0 + i * ECHO_GAP, 0.8, true));
-      this.echoUntil = t0 + (ms.length - 1) * ECHO_GAP + 0.1;
+      this.echoFrom = t0 - 0.05; this.echoUntil = t0 + (ms.length - 1) * ECHO_GAP + 0.1;
       return ms.length;
     },
     // a note played by the player (path only): one peg; the last note of the phrase makes the attempt.

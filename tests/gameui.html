@@ -7,6 +7,7 @@
 const ok=(c,m)=>log((c?'ok ':'ERROR fail ')+m);
 const f=document.getElementById('f');
 f.addEventListener('load', async ()=>{
+  if (f.dataset.ran) return; f.dataset.ran=1; // the S3.7 reload test reloads the iframe
   try{
   const w=f.contentWindow, d=f.contentDocument, A=w.AMB;
   w.addEventListener('error',e=>log('ERROR '+e.message+' @'+e.filename+':'+e.lineno));
@@ -76,7 +77,7 @@ f.addEventListener('load', async ()=>{
   A.game.earn(100,'test'); ok(A.game.has('h.pad') && A.tree.buy('t.son'), 'achats'); await wait(50);
   ok(shown('.panel[data-sec=pad]') && shown('[data-key="drone.wave"]') && !shown('[data-key="pad.attack"]'), 'achat → réglages révélés');
   A.game.earn(100,'test'); A.game.solve('p.composer'); A.tree.buy('m.bells'); ok(A.tree.buy('c.seq'), 'Mélodie écrite achetée'); await wait(50);
-  ok(!locked('[data-mode=compose]') && !locked('.roll-wrap') && locked('.slot-tabs') && locked('.song-panel'), 'Composer ouvert, motifs/morceau encore fermés');
+  ok(!locked('[data-mode=compose]') && !locked('.roll-wrap') && !locked('.slot-tabs') && !locked('.roll-wrap [data-act=liverec]') && !locked('[data-key="seq.arpDir"]') && locked('[data-key="bass.wave"]') && locked('.song-panel'), 'S3.5 : Mélodie écrite = piano roll, motifs, arpège et Rec live ; Rythme et Morceau encore fermés');
   A.game.setMode('free'); await wait(50);
   ok(!d.body.classList.contains('game') && d.querySelectorAll('.is-locked').length===0, 'mode libre : appli intacte');
   A.game.setMode('path'); A.game.reset(); A.perform.setMode('compose'); A.tree.applyLocks(); await wait(50);
@@ -108,15 +109,26 @@ f.addEventListener('load', async ()=>{
     const over=[...d.querySelectorAll('body *')].filter(e=>{ const cs=w.getComputedStyle(e); return (cs.position==='fixed') && e.getClientRects().length && !e.hidden && cs.display!=='none' && cs.visibility!=='hidden' && e.id!=='toast'; }).filter(e=>{ const a=R(e), m=R(mac); return a.width && a.height && a.left<m.right && a.right>m.left && a.top<m.bottom && a.bottom>m.top; });
     ok(shown('#macros') && lr.right<=de.clientWidth+1 && task.getBoundingClientRect().bottom<=lr.bottom+1 && !over.length, '390 px : contrat dans le LCD, rien ne recouvre les macros '+over.map(e=>e.id||e.className).join());
     f.style.width='1300px'; f.style.height='900px'; await wait(200); }
-  // --- end of the path (G6.3, v1.05: on the instrument, no dialog)
-  { A.game.reset(); A.game.earn(5000,'test'); A.puzzles.DEFS.filter(x=>x.opens).forEach(x=>A.game.solve(x.id));
-    const order=[]; let guard=0; while (A.tree.NODES.some(n=>!A.game.has(n.id)) && guard++<200) A.tree.NODES.forEach(n=>{ if(A.tree.status(n.id)==='available') A.tree.buy(n.id); });
-    ok(A.garden.complete() && A.game.s.ended, 'arbre complet : fin annoncée');
-    await wait(1100);
-    ok(d.getElementById('treeDlg').hidden && /complet/.test(d.getElementById('toast').textContent) && !d.querySelector('.modal:not([hidden])'), 'fin : carillon, LCD et message sur l\'instrument, aucune boîte');
-    A.garden.showTree(true); ok(/Jardin complet/.test(d.querySelector('#treeDlg .tree-shards').textContent), 'l\'arbre dit « Jardin complet »');
-    A.garden.showTree(false); ok(!A.garden.checkEnd(), 'fin annoncée une seule fois');
-    A.game.reset(); A.garden.renderTree && A.garden.renderTree(); }
+  // --- the instrument handed over (G6.3, S3.7): on the instrument, no dialog; the sound stays, the game interface goes
+  const buyAll=()=>{ A.game.reset(); A.game.earn(5000,'test'); A.puzzles.DEFS.filter(x=>x.opens).forEach(x=>A.game.solve(x.id));
+    let guard=0; while (A.tree.NODES.some(n=>!A.game.has(n.id)) && guard++<200) A.tree.NODES.forEach(n=>{ if(A.tree.status(n.id)==='available') A.tree.buy(n.id); }); };
+  const sdiff=(was,now)=>Object.keys(now).filter(k=>JSON.stringify(now[k])!==JSON.stringify(was[k])).map(k=>k+':'+JSON.stringify(was[k])+'→'+JSON.stringify(now[k])).join(' ');
+  { buyAll(); await wait(200); // macro positions settle (perform.js syncs them 60 ms after a change)
+    ok(A.garden.complete() && !A.game.s.ended && task.dataset.id==='c.morceau' && shown('#lcdTask'), 'arbre complet : le dernier contrat d\'abord, « '+task.querySelector('.lcd-task-txt').textContent+' »');
+    const snap=JSON.stringify(A.store.stableSnapshot());
+    A.bus.emit('act','songRec'); await wait(20);
+    ok(A.game.s.ended && A.game.s.contracts.includes('c.morceau') && JSON.parse(localStorage.getItem('ambient.game.uitest')).ended, 'morceau enregistré → remise, état sauvegardé');
+    for(let i=0;i<40 && !/INSTRUMENT/.test(d.getElementById('lcdTop').textContent);i++) await wait(50);
+    ok(d.getElementById('treeDlg').hidden && /INSTRUMENT EST À TOI/.test(d.getElementById('lcdTop').textContent) && !d.querySelector('.modal:not([hidden])'), 'remise : carillon et message sur le LCD (« '+d.getElementById('lcdTop').textContent+' »), aucune boîte');
+    await wait(2200);
+    ok(!shown('#lcdTask') && !lline.hidden && !d.getElementById('lcdShards').textContent && badge.hidden, 'arbre complet → ligne de contrat et ✧ masqués, la 2e ligne redevient l\'état du son');
+    { const df=sdiff(JSON.parse(snap),A.store.stableSnapshot()); ok(!df, 'remise : son inchangé (snapshot du store) '+df); }
+    const sh=A.game.s.shards; A.seq.playing=true; A.store.set('drone.tone',0.31,'user'); A.store.set('drone.tone',0.62,'user'); for(let i=0;i<8;i++) A.bus.emit('live',{midi:60,time:0,vel:1}); A.seq.playing=false; await wait(20);
+    ok(!A.game.counts() && A.game.s.shards===sh && !shown('#lcdTask'), 'après la remise : plus rien ne compte ni ne s\'affiche');
+    A.garden.showTree(true); await wait(30);
+    ok(!d.getElementById('treeDlg').hidden && /instrument est à toi/.test(d.querySelector('#treeDlg .tree-shards').textContent) && !/✧/.test(d.querySelector('#treeDlg .tree-shards').textContent) && d.querySelector('#treeDlg .tree-puzzles').hidden && A.tree.NODES.every(n=>tn(n.id).classList.contains('st-owned')), 'l\'arbre reste consultable : tout acquis, ni ✧ ni énigmes');
+    A.garden.showTree(false); ok(!A.garden.checkEnd(), 'remise une seule fois');
+    A.game.reset(); }
   // --- review fixes (G6.5): mode switch while hearing a target, sends, neutral effects
   { A.game.reset(); A.game.earn(300,'test'); ['t.son','h.pad'].forEach(i=>A.tree.buy(i));
     A.store.set('pad.wave','Nappe','user'); A.garden.openPuzzle('p.gamme'); A.puzzles.listen('target');
@@ -243,6 +255,14 @@ f.addEventListener('load', async ()=>{
   ok(!d.getElementById('fx') && !A.juice && /\+4 ✧/.test(d.getElementById('gainFeed').textContent), 'gain d\'éclats → note « +4 ✧ » sous le LCD, pas de canvas #fx');
   A.garden.showTree(true); A.game.s.shards=0; tn('t.rec').click(); ok(true, 'refus sans erreur'); A.garden.showTree(false);
   g.setMode('free'); ok(!shown('#treeBtn') && !shown('#lcdShards') && !shown('#contracts'), 'pas d\'arbre, d\'éclats ni de contrats en libre');
+  // --- S3.7: the handover is saved: ↷ on the last contract hands over too; a reload keeps the instrument handed over
+  { g.setMode('path'); buyAll(); await wait(200); task.querySelector('.lcd-skip').click(); await wait(3300);
+    ok(A.game.s.ended && !shown('#lcdTask') && !d.getElementById('lcdShards').textContent, '↷ sur le dernier contrat : remise aussi');
+    await new Promise(r=>{ f.addEventListener('load',r,{once:true}); w.location.reload(); }); await wait(300);
+    const w2=f.contentWindow, d2=f.contentDocument, A2=w2.AMB, vis=(sel)=>{ const e=d2.querySelector(sel); return !!e && e.getClientRects().length>0; };
+    ok(A2.game.path && A2.game.s.ended && !vis('#lcdTask') && !d2.getElementById('lcdShards').textContent && d2.querySelector('#treeBtn .tree-badge').hidden && vis('#treeBtn'), 'sauvegarde rechargée : toujours remis (ni contrat ni ✧, arbre là)');
+    ok(!d2.querySelector('.is-locked') && !A2.game.counts(), 'rechargé : tout l\'instrument ouvert, plus rien ne compte'); // the sound itself is never kept across a reload (both modes)
+    A2.game.reset(); }
   localStorage.removeItem('ambient.game.uitest');
   for (const k of Object.keys(localStorage)) if (k.startsWith('ambient.game.uitest')) localStorage.removeItem(k);
   log('DONE');

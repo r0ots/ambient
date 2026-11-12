@@ -242,6 +242,7 @@
       const body = box.querySelector('.sc-body'); body.innerHTML = '';
       const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; body.append(e); return e; };
       for (const it of this.list()) {
+        if (g.s.ended && !it.found) continue; // the instrument handed over (S3.7): only the secrets found stay
         const p = el('p', 'sc-item' + (it.found ? ' found' : '')); p.dataset.id = it.id;
         const b = document.createElement('b'), s = document.createElement('span');
         b.textContent = it.found ? `✦ ${it.title}` : '???';

@@ -8,7 +8,7 @@ window.AMB_GAME_KEY = 'ambient.game.test-gv';
 testBus(); AMB.engine = {}; // no audio: the visual's classic modes draw without an analyser
 // a slice of the real tree (js/tree.js): a node belongs to a layer through its settings
 AMB.tree = { NODES: [['racine', 'drone.on'], ['t.son', 'drone.wave'], ['h.drone', 'drone.follow'], ['h.pad', 'pad.on'], ['h.pad2', 'pad.attack'], ['h.prog', 'pad.prog'],
-  ['m.bells', 'bells.on'], ['m.phrase', 'bells.mode'], ['m.grains', 'grains.on'], ['c.seq', 'seq.on'], ['c.bass', 'bass.*'], ['c.perc', 'perc.*'], ['e.texture', 'texture.*'], ['e.reverb', '*.send']].map(([id, p]) => ({ id, params: [p] })) };
+  ['m.bells', 'bells.on'], ['m.phrase', 'bells.mode'], ['m.grains', 'grains.on'], ['c.seq', 'seq.on'], ['c.rythme', 'bass.*'], ['c.rythme', 'perc.*'], ['e.texture', 'texture.*'], ['e.reverb', '*.send']].map(([id, p]) => ({ id, params: [p] })) };
 </script>
 <script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script>
 <canvas id="c" width="1280" height="800" style="width:640px;height:400px;display:block"></canvas>
@@ -44,7 +44,7 @@ window.addEventListener('load', async () => {
     ok(JSON.stringify(l1) === JSON.stringify(l2) && JSON.stringify(l1) === JSON.stringify(GV.layout(GV.readState(), 1280, 800)), 'positions déterministes (même état → mêmes positions, ordre des données indifférent)');
     ok(l1.plants.every((p) => p.x > 0 && p.x < 1280) && l1.plants[0].x < l1.plants[1].x && l1.plants[1].x < l1.plants[2].x, 'plantes réparties dans l\'écran, ordre fixe des couches : ' + l1.plants.map((p) => p.x).join(' / '));
     // advanced: more layers and nodes, secrets
-    G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.phrase', 'm.grains', 'c.seq', 'c.bass', 'c.perc', 'e.texture'];
+    G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.phrase', 'm.grains', 'c.seq', 'c.rythme', 'e.texture'];
     G.s.secrets = { found: { jazz: 1, tons: 2 } };
     st = GV.readState();
     ok(st.layers.length === 8 && st.levels.bells === 1 && Math.abs(st.levels.drone - 1 / 3) < 1e-9 && Math.abs(st.levels.pad - 1 / 3) < 1e-9 && st.levels.bass === 1, 'taille = part des nœuds de la couche débloqués (Mélodie 2/2, Drone 1/3, Pad 1/3)');
@@ -81,7 +81,7 @@ window.addEventListener('load', async () => {
     G.s.nodes = ['racine']; GV.sig = null; frame();
     const pp = GV.parts.length; AMB.bus.emit('note', { layer: 'seq', midi: 60, time: 0, vel: 1 }); frame();
     ok(!GV.energy.seq && GV.parts.length <= pp, 'couche non débloquée : aucune réaction');
-    G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.bass', 'c.perc', 'e.texture']; GV.sig = null;
+    G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.rythme', 'e.texture']; GV.sig = null;
     // reduced motion: pulse, but no particles
     GV.reduced = true; GV.parts.length = 0; AMB.bus.emit('note', { layer: 'bells', time: 0, vel: 1 }); frame();
     ok(GV.parts.length === 0 && GV.energy.bells > 0, 'mouvement réduit : lumière seulement, pas de particules ni de balancement');
@@ -108,7 +108,7 @@ window.addEventListener('load', async () => {
     ok(localStorage.getItem(G.key) === before.lg, 'aucune sauvegarde du jeu écrite par le jardin');
 
     // --- cost per frame at 1280×800 (advanced garden, notes every frame), real rAF
-    G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.bass', 'c.perc', 'e.texture'];
+    G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.rythme', 'e.texture'];
     G.s.secrets = { found: { jazz: 1, tons: 1, dim: 1, lent: 1 } };
     GV.sig = null; GV.times.length = 0;
     const layers = ['pad', 'bells', 'seq', 'bass'];

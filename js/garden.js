@@ -22,7 +22,7 @@
     // ---- the contract on the 2nd line of the LCD (v1.06): one at a time, ↷ = the next one, a tap = how to do it ----
     renderContracts(flashId) {
       const box = $('#lcdTask'), line = $('#lcdLine'); if (!box || !AMB.contracts) return;
-      const K = AMB.contracts, g = AMB.game, id = g.path ? K.state().active[0] : null, d = id && K.byId[id];
+      const K = AMB.contracts, g = AMB.game, id = g.path && !this.handedOver() ? K.state().active[0] : null, d = id && K.byId[id];
       box.hidden = !d; if (line) line.hidden = !!d;
       if (!d) return;
       if (box.dataset.id !== id) box.classList.remove('help');
@@ -41,7 +41,7 @@
     },
     // clicks that always succeed go on the bus as actions (contracts count them); actions that can fail or be
     // cancelled (save, journal, chords, freeze) are emitted by their own code once they really happened
-    CLICKS: [['#dice', 'dice'], ['.sc-store', 'sceneStore'], ['[data-s=add]', 'section'], ['[data-s=play]', 'song'], ['[data-s=rec]', 'song']],
+    CLICKS: [['#dice', 'dice'], ['.sc-store', 'sceneStore']],
     hookActions() {
       const emit = (id) => AMB.bus.emit('act', id);
       document.addEventListener('click', (e) => {
@@ -95,14 +95,28 @@
       return degs.length;
     },
     lcd(text, ms = 3500) { AMB.lcdMsg = { text, until: Date.now() + ms }; },
-    // ---- end of the path (G6.3) ----
+    // ---- the instrument handed over (G6.3, S3.7) ----
     complete() { const T = AMB.tree; return T.NODES.every((n) => AMB.game.has(n.id)); },
+    // whole tree owned: no game interface any more (contract line, ✧), the tree stays to look at; saved (game.s.ended)
+    handing: false, // the moment itself (chime, LCD message) before the game interface goes
+    handedOver() { return !!AMB.game.s.ended && !this.handing; },
+    // the path's last contract (« Enregistre ton morceau ») closes it: with the whole tree owned, it comes first, and
+    // the instrument is handed over once it is done or passed (↷)
+    FINALE: 'c.morceau',
     checkEnd() {
-      const g = AMB.game;
+      const g = AMB.game, K = AMB.contracts, F = this.FINALE;
       if (!g.path || g.s.ended || !this.complete()) return false;
-      g.s.ended = true; g.save();
-      // no end screen: the instrument itself says it (chime, LCD, a toast), the player keeps playing
-      setTimeout(() => { this.showTree(false); this.chime('solve'); this.lcd('✦ jardin complet', 6000); AMB.ui.toast('✦ Ton jardin est complet : tout l\'outil est à toi.'); }, 900);
+      if (K && K.byId[F] && !g.s.contracts.includes(F) && !(g.s.skipped || []).includes(F)) {
+        if (K.state(g).active[0] !== F) { g.s.active = [F]; g.s.prog[F] = g.s.prog[F] || { n: 0 }; g.save(); g.emit('contract', { active: [F] }); }
+        return false;
+      }
+      g.s.ended = true; g.save(); // nothing counts from now on (game.counts)
+      // no end screen: the instrument itself says it (chime, LCD), then the contract line and the ✧ go; the sound is untouched
+      this.handing = true;
+      setTimeout(() => {
+        this.showTree(false); this.chime('solve'); this.lcd('✦ L\'instrument est à toi', 6000);
+        setTimeout(() => { this.handing = false; this.closePuzzle(); this.renderContracts(); this.renderCounter(); }, 2000);
+      }, 900);
       return true;
     },
 
@@ -289,7 +303,8 @@
         });
       }
       if (AMB.bus) {
-        AMB.bus.on('game:contract', (d) => this.renderContracts(d && d.id));
+        AMB.bus.on('game:contract', (d) => { this.renderContracts(d && d.id); if (!d || !d.id) this.checkEnd(); }); // ↷ on the last one
+        AMB.bus.on('game:contracts', () => this.checkEnd());
         ['contracts', 'mode', 'reset', 'unlock'].forEach((ev) => AMB.bus.on('game:' + ev, () => this.renderContracts()));
       }
       if (AMB.contracts) AMB.contracts.refill();

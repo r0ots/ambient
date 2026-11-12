@@ -53,15 +53,12 @@
     N('m.lfo', 'mouvement', 'Mouvements lents', 18, ['m.evolve'], ['mod.*'], [], 'Faire bouger n\'importe quel réglage sur plusieurs minutes.', 'p.mouvement'),
     N('m.scenes', 'mouvement', 'Scènes', 18, ['m.lfo'], [], ['scenes'], 'Deux états A/B et un fondu automatique entre eux.'),
 
-    // Composer — written melody, bass, pulses, automation, song
-    N('c.seq', 'composer', 'Mélodie écrite', 18, ['h.pad', 'm.bells'], ['seq.on', 'seq.wave', 'seq.vol', 'seq.steps', 'seq.octave', 'seq.tone', 'seq.decay', 'seq.send', 'seq.pattern'], ['pianoroll', 'mode-compose', 'midiFile'], 'Dessiner ses notes dans le piano roll ; importer et exporter des .mid.', 'p.composer'),
-    N('c.arp', 'composer', 'Arpège', 14, ['c.seq'], ['seq.mode', 'seq.arpDir', 'seq.arpRate', 'seq.arpOct'], [], 'Égrener l\'accord en cours.'),
-    N('c.motifs', 'composer', 'Motifs A–D', 18, ['c.seq'], ['seq.patB', 'seq.patC', 'seq.patD', 'seq.slot', 'seq.chain', 'seq.mutate', 'seq.follow'], ['motifs', 'reclive'], '4 motifs, une chaîne, la variation, l\'enregistrement live.'),
-    N('c.bass', 'composer', 'Basse', 18, ['c.seq'], ['bass.*'], [], 'Une ligne de basse qui suit les accords.'),
-    N('c.perc', 'composer', 'Pulsations', 18, ['c.seq'], ['perc.*'], [], '4 pistes rythmiques douces.'),
-    N('c.groove', 'composer', 'Groove', 10, ['c.perc'], ['global.swing', 'global.humanize', 'seq.swing'], [], 'Swing et imprécision humaine.'),
-    N('c.auto', 'composer', 'Automation', 21, ['c.motifs'], ['auto.*'], ['automation'], 'Dessiner l\'évolution d\'un réglage sur plusieurs mesures.'),
-    N('c.song', 'composer', 'Morceau', 21, ['c.auto', 'h.prog'], [], ['song'], 'Enchaîner des sections pour faire un morceau entier.'),
+    // Composer (S3.5: 3 nodes, was 8) — written melody (piano roll, arpeggio, motifs, Rec live), rhythm, the song
+    N('c.seq', 'composer', 'Mélodie écrite', 26, ['h.pad', 'm.bells'], ['seq.on', 'seq.wave', 'seq.vol', 'seq.steps', 'seq.octave', 'seq.tone', 'seq.decay', 'seq.send', 'seq.pattern',
+      'seq.mode', 'seq.arpDir', 'seq.arpRate', 'seq.arpOct', 'seq.patB', 'seq.patC', 'seq.patD', 'seq.slot', 'seq.chain', 'seq.mutate', 'seq.follow'],
+      ['pianoroll', 'mode-compose', 'midiFile', 'motifs', 'reclive'], 'Le piano roll, l\'arpège, 4 motifs et leur chaîne, le Rec live ; importer et exporter des .mid.', 'p.composer'),
+    N('c.rythme', 'composer', 'Rythme', 26, ['c.seq'], ['bass.*', 'perc.*', 'global.swing', 'global.humanize', 'seq.swing'], [], 'Une basse qui suit les accords, 4 pistes de pulsations, le swing et l\'imprécision humaine.'),
+    N('c.song', 'composer', 'Morceau', 26, ['c.rythme', 'h.prog'], ['auto.*'], ['automation', 'song'], 'Enchaîner des sections, faire évoluer un réglage sur plusieurs mesures, enregistrer le morceau entier.'),
   ];
 
   const byId = Object.fromEntries(NODES.map((n) => [n.id, n]));

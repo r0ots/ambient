@@ -72,10 +72,11 @@
     renderTree() {
       const map = $('#treeDlg .tree-map'); if (!map) return;
       const T = AMB.tree, g = AMB.game;
-      $('#treeDlg .tree-shards').textContent = `${this.complete() ? '✦ Jardin complet · ' : ''}✧ ${g.s.shards}`;
+      $('#treeDlg .tree-shards').textContent = g.s.ended ? '✦ L\'instrument est à toi' : `✧ ${g.s.shards}`;
       // puzzles within reach: each one replayable with a new target; ✧ until solved once
       const pzEl = $('#treeDlg .tree-puzzles');
-      if (pzEl && AMB.puzzles) {
+      if (pzEl) pzEl.hidden = !!g.s.ended; // handed over: no more puzzles to play
+      if (pzEl && AMB.puzzles && !g.s.ended) {
         const P = AMB.puzzles, open = P.available();
         pzEl.innerHTML = `<span>Énigmes ${P.DEFS.filter((x) => g.s.puzzles.includes(x.id)).length}/${P.DEFS.length}</span>`;
         for (const x of open) {
@@ -411,7 +412,7 @@
     },
     renderCounter(gain) {
       const el = $('#lcdShards'), badge = $('#treeBtn .tree-badge');
-      if (!AMB.game.path) { if (el) el.textContent = ''; if (badge) badge.hidden = true; return; }
+      if (!AMB.game.path || this.handedOver()) { if (el) el.textContent = ''; if (badge) badge.hidden = true; return; }
       if (el) {
         el.textContent = `✧ ${AMB.game.s.shards}`;
         if (gain) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }

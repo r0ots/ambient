@@ -6,6 +6,9 @@
   // tests use their own key (window.AMB_GAME_KEY, or ?gamekey= for the real page in an iframe)
   const KEY = window.AMB_GAME_KEY || new URLSearchParams(location.search).get('gamekey') || 'ambient.game.v1';
 
+  // v1.08 (S3.5): the 8 Composer nodes became 3; an owned old node gives the new node that holds it (no ✧ moved)
+  const MERGED = { 'c.arp': 'c.seq', 'c.motifs': 'c.seq', 'c.bass': 'c.rythme', 'c.perc': 'c.rythme', 'c.groove': 'c.rythme', 'c.auto': 'c.song' };
+
   const fresh = () => ({
     v: 1,
     mode: null, // null = not chosen yet (behaves as free until asked), 'path' or 'free'
@@ -18,11 +21,11 @@
     skipped: [], // contracts passed (back of the queue)
     rng: null, // contract draw seed (contracts.js)
     secrets: null, // secrets state (secrets.js)
-    ended: false, // the end of the path was announced (whole tree owned)
+    ended: false, // whole tree owned: the instrument was handed over (S3.7), no game interface any more
   });
 
   const game = {
-    key: KEY,
+    key: KEY, MERGED,
     s: fresh(),
     load() {
       try {
@@ -30,6 +33,7 @@
         if (o && o.v === 1) { // only the known fields: those of removed features are dropped
           const f = fresh();
           for (const k of Object.keys(f)) if (k in o) f[k] = o[k];
+          f.nodes = [...new Set((f.nodes || []).map((id) => MERGED[id] || id))];
           this.s = f;
         }
       } catch (e) {}
@@ -44,7 +48,8 @@
     get path() { return this.s.mode === 'path'; },
     // the path's effects and gains may apply now: path on, no puzzle target being heard
     // (contracts, secrets; free mode or a puzzle's « ▶ cible » never count as playing the path)
-    counts() { return this.path && !(AMB.puzzles && AMB.puzzles.ab); },
+    // (once the instrument is handed over, S3.7, nothing counts any more)
+    counts() { return this.path && !this.s.ended && !(AMB.puzzles && AMB.puzzles.ab); },
     setMode(m) {
       if (m !== 'path' && m !== 'free') return;
       this.s.mode = m; this.save(); this.emit('mode', m);

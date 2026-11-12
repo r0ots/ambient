@@ -103,7 +103,7 @@
     r.btn.classList.remove('rec'); r.btn.textContent = '● Rec';
     AMB.song.render();
     if (!complete) { AMB.ui.toast('Enregistrement du morceau annulé'); return; }
-    if (AMB.bus) AMB.bus.emit('rec:done', AMB.engine.capturedFrames / AMB.engine.ctx.sampleRate);
+    if (AMB.bus) { AMB.bus.emit('act', 'songRec'); AMB.bus.emit('rec:done', AMB.engine.capturedFrames / AMB.engine.ctx.sampleRate); }
     api.download(blob, 'wav');
     AMB.ui.toast('Morceau enregistré et téléchargé');
   }

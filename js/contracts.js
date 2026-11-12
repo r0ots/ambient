@@ -80,37 +80,25 @@
       },
     }, 'Maj+clic sur A puis sur B pour mémoriser deux sons, puis un clic sur A et sur B pour passer de l\'un à l\'autre.'),
 
-    // Composer
-    C('c.dessin', ['c.seq'], 'Dessine 8 notes dans le piano roll', 21, 8, {
-      param(st, k, v, src) { if (/^seq\.pat/.test(k) && src === 'user' && gesture(st, 'pat', 120)) st.n = (st.n || 0) + 1; },
-    }, 'Composer > Mélodie écrite : un clic pose une note, glisser l\'allonge.'),
-    C('c.chaine', ['c.motifs'], 'Enchaîne au moins deux motifs (ex. « A A B »)', 23, 1, {
-      param(st, k, v, src) { if (k === 'seq.chain' && src === 'user' && new Set(String(v).toUpperCase().match(/[ABCD]/g) || []).size >= 2) st.n = 1; },
-    }, 'Composer > Mélodie écrite : écris dans « Chaîne » l\'ordre des motifs, par exemple A A B.'),
-    C('c.reclive', ['c.motifs'], 'Enregistre 4 notes en Rec live', 23, 4, {
+    // Composer (S3.5: played, not drawn — the notes, the groove and the song come from playing them)
+    C('c.reclive', ['c.seq'], 'Enregistre 8 notes en Rec live', 23, 8, {
       note(st) { const r = AMB.pianoRoll && AMB.pianoRoll.roll; if (r && r.recording) st.n = (st.n || 0) + 1; },
-    }, 'Composer > Mélodie écrite > ● Rec live, puis joue au clavier (A à L) ou au clavier MIDI.'),
-    C('c.basse', ['c.bass'], 'Écris ta ligne de basse : 6 pas', 21, 6, {
-      param(st, k, v, src) { if (k === 'bass.pattern' && src === 'user' && gesture(st, k, 150)) st.n = (st.n || 0) + 1; },
-    }, 'Composer > Basse : allume ou éteins des pas de la grille et écoute la ligne changer.'),
-    C('c.pulses', ['c.perc'], 'Écris ton rythme : 6 pas', 21, 6, {
-      param(st, k, v, src) { if (k === 'perc.pattern' && src === 'user' && gesture(st, k, 150)) st.n = (st.n || 0) + 1; },
-    }, 'Composer > Pulsations : allume ou éteins des pas de la grille et écoute le rythme changer.'),
-    C('c.courbe', ['c.auto'], 'Dessine une courbe avec un vrai creux et un vrai sommet', 23, 1, {
-      param(st, k, v, src) {
-        if (k !== 'auto.curve' || src !== 'user') return;
-        const pts = String(v).split('').map((c) => parseInt(c, 36)).filter((x) => x >= 0);
-        if (pts.length && Math.max(...pts) - Math.min(...pts) >= 18) st.n = 1; // spread of at least ~50 out of 100
+    }, 'Composer > Mélodie écrite > ● Rec live, puis joue au clavier (A à L) ou au clavier MIDI : tes notes s\'écrivent dans le piano roll.'),
+    C('c.groove', ['c.rythme'], 'Change ta ligne de basse, puis fais tourner le groove 4 mesures', 23, 4, {
+      param(st, k, v, src) { if (k === 'bass.pattern' && src === 'user') st.on = 1; },
+      bass(st) { // one count per bar where the bass plays, once the player has made the line his own
+        const S = AMB.seq; if (!st.on || !playing() || !S) return;
+        const bar = Math.floor((S.step - (S.origin || 0)) / 16);
+        if (bar !== st.bar) { st.bar = bar; st.n = (st.n || 0) + 1; }
       },
-    }, 'Composer > Automation : dessine avec le doigt, bien en bas puis bien en haut, et écoute le réglage bouger.'),
-    C('c.morceau', ['c.song'], 'Crée 3 sections, puis joue le morceau', 29, 4, {
-      act(st, id) {
-        if (id === 'section' && (st.n || 0) < 3) st.n = (st.n || 0) + 1;
-        else if (id === 'song' && st.n >= 3) st.n = 4;
-      },
-    }, 'Composer > Morceau : + Section trois fois (change le son entre chaque), puis ▶ Jouer le morceau.'),
+    }, 'Composer > Rythme : allume ou éteins des pas de la grille de basse, puis laisse jouer 4 mesures avec les pulsations.'),
+    // the path's last contract: drawn first as soon as Morceau is owned (`first`)
+    C('c.morceau', ['c.song'], 'Enregistre ton morceau', 29, 1, {
+      act(st, id) { if (id === 'songRec') st.n = 1; },
+    }, 'Composer > Morceau : + Section pour garder un son (fais-en au moins deux), puis ● Rec : le morceau joue du début à la fin et s\'enregistre.'),
   ];
   const byId = Object.fromEntries(DEFS.map((d) => [d.id, d]));
+  byId['c.morceau'].first = true;
 
   const contracts = {
     DEFS, byId,
@@ -127,7 +115,8 @@
       for (const [pool, drawn] of [[DEFS.filter((d) => !skipped.includes(d.id)), true], [skipped.map((id) => byId[id]).filter(Boolean), false]]) {
         const cand = pool.filter((d) => !s.active.includes(d.id) && this.eligible(d, g));
         while (s.active.length < ACTIVE && cand.length) {
-          const d = cand.splice(drawn ? Math.floor(rnd() * cand.length) : 0, 1)[0];
+          const f = cand.findIndex((d) => d.first); // the path's last contract comes before the others
+          const d = cand.splice(f >= 0 ? f : drawn ? Math.floor(rnd() * cand.length) : 0, 1)[0];
           s.active.push(d.id); s.prog[d.id] = s.prog[d.id] || { n: 0 };
         }
       }
@@ -148,6 +137,7 @@
     dispatch(ev, ...args) {
       const g = AMB.game; if (!g.counts()) return; // free mode or a puzzle's target: nothing counts
       if (ev === 'param' && args[2] === 'game') return;
+      if (ev === 'note' && AMB.puzzles && AMB.puzzles.isEcho()) return; // an Écho's notes are the puzzle's, not a contract's
       const s = this.state(g); let changed = false;
       for (const id of s.active.slice()) {
         const d = byId[id]; const fn = d && d.on[ev]; if (!fn) continue;
@@ -185,6 +175,7 @@
     AMB.bus.on('act', (id) => contracts.dispatch('act', id));
     AMB.bus.on('rec:done', (secs) => contracts.dispatch('rec', secs));
     AMB.bus.on('live', (n) => contracts.dispatch('note', n));
+    AMB.bus.on('note', (n) => { if (n && n.layer === 'bass') contracts.dispatch('bass', n); });
     AMB.bus.on('phrase', (p) => contracts.dispatch('phrase', p));
     ['unlock', 'mode', 'reset'].forEach((e) => AMB.bus.on('game:' + e, () => contracts.refill()));
   }

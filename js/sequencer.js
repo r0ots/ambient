@@ -296,8 +296,14 @@
       return best;
     }
 
+    // the Melody's own notes; silent while an Écho's phrase is played on the same voice (v1.08), back right after
+    melodyNote(midi, time, vel) {
+      const P = AMB.puzzles;
+      if (P && P.hush(time)) return;
+      AMB.layers.bells.note(midi, time, vel);
+    }
+
     randomMelodyStep(step, time, sd) {
-      const L = AMB.layers;
       const dens = store.get('bells.density');
       const strong = this.floating ? 0.85 : step % 4 === 0 ? 1.6 : step % 2 === 0 ? 0.9 : 0.45;
       const p = Math.pow(dens, 1.6) * 0.6 * strong;
@@ -310,11 +316,11 @@
       const midi = T.degreeToMidi(deg, this.root, this.scale, 3);
       const vel = rand(0.45, 1) * (step % 4 === 0 ? 1 : 0.8);
       const swing = this.offset(step, sd);
-      L.bells.note(midi, time + swing, vel);
+      this.melodyNote(midi, time + swing, vel);
       // occasional answering note
       if (Math.random() < 0.15 * dens) {
         const m2 = T.degreeToMidi(deg + pick([2, 4, -3, 7]), this.root, this.scale, 3);
-        L.bells.note(m2, time + sd * pick([2, 3, 6]), vel * 0.6);
+        this.melodyNote(m2, time + sd * pick([2, 3, 6]), vel * 0.6);
       }
     }
 
@@ -364,7 +370,7 @@
       while (deg < lo - 2) deg += n;
       const midi = T.degreeToMidi(deg, this.root, this.scale, 3);
       const swing = this.offset(i, sd);
-      AMB.layers.bells.note(midi, time + swing, ev.vel);
+      this.melodyNote(midi, time + swing, ev.vel);
       AMB.bus.emit('phrase', { i, len, time });
     }
 

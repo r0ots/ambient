@@ -6,7 +6,7 @@ localStorage.removeItem('ambient.game.test');
 <script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/game.js"></script><script src="../js/tree.js"></script><script src="../js/contracts.js"></script><script src="../js/puzzles.js"></script>
 <script>
 const ok=(c,m)=>log((c?'ok ':'ERROR fail ')+m);
-window.addEventListener('load', ()=>{
+window.addEventListener('load', async ()=>{
   try{
   const g=AMB.game, ev=[];
   ['earn','spend','unlock','mode'].forEach(e=>AMB.bus.on('game:'+e,d=>ev.push(e)));
@@ -45,7 +45,7 @@ window.addEventListener('load', ()=>{
   // --- contracts engine (G4.1; v1.06: one at a time, only musical ones)
   { const K0=AMB.contracts, ids=K0.DEFS.map(d=>d.id);
     ok(new Set(ids).size===ids.length && K0.DEFS.every(d=>d.title && d.hint && d.goal>0 && d.reward>0 && d.need.every(n=>T.byId[n])), 'contrats valides, chacun avec son aide ('+ids.length+')');
-    const gone=['k.souffle','k.timbres','k.ecran','h.ombre','h.riches','h.gammes','e.extremes','e.envois','e.textures','e.salles','e.halo','e.vieux','m.densite','m.libre','m.derive','m.grains','m.lfo','c.arp','c.swing','c.export'];
+    const gone=['c.dessin','c.chaine','c.courbe','c.basse','c.pulses','k.souffle','k.timbres','k.ecran','h.ombre','h.riches','h.gammes','e.extremes','e.envois','e.textures','e.salles','e.halo','e.vieux','m.densite','m.libre','m.derive','m.grains','m.lfo','c.arp','c.swing','c.export'];
     ok(gone.every(id=>!K0.byId[id]), 'contrats-corvées retirés ('+gone.length+')');
     const br={}; K0.DEFS.forEach(d=>{const b=T.byId[d.need[0]].branch; br[b]=(br[b]||0)+1}); log('contrats par branche '+JSON.stringify(br)); }
   const K=AMB.contracts; g.reset(); g.setMode('path'); K.refill();
@@ -71,11 +71,22 @@ window.addEventListener('load', ()=>{
       for(const f of steps) f(); ok(sh(), id+' : rempli par son geste'); };
     const S=(k,v,src)=>()=>AMB.store.set(k,v,src||'user'), tick=(n)=>()=>{ for(let i=0;i<n;i++) K.dispatch('bar',i); };
     run('k.xy',[1,2,3,4].map(i=>()=>{ K.state().prog['k.xy']['t_xy']=0; AMB.bus.emit('act','xy'); }),[tick(8),()=>AMB.bus.emit('act','dice')]);
-    run('c.courbe',[S('auto.curve','i'.repeat(32)),S('auto.curve','0'.repeat(16)+'z'.repeat(16))],[S('auto.curve','i'.repeat(32)),S('auto.curve','0'.repeat(16)+'z'.repeat(16),'preset'),S('auto.on',true)]);
-    run('c.chaine',[S('seq.chain','A A B')],[S('seq.chain','A A A'),S('seq.chain','A B','preset')]);
+    // S3.5: the Composer contracts are played (Rec live, a groove that turns, the song recorded), never drawn
+    AMB.pianoRoll=AMB.pianoRoll||{roll:{recording:false}}; // this page has no piano roll: its Rec live state is enough
+    const R=AMB.pianoRoll.roll, rec0=R.recording, live=(n)=>()=>{ for(let i=0;i<n;i++) AMB.bus.emit('live',{midi:60,time:0,vel:1}); };
+    run('c.reclive',[()=>{ R.recording=true; }, live(8), ()=>{ R.recording=rec0; }],[live(8), S('seq.pattern','0.0.1','user')]);
+    const S0=AMB.seq, step0=S0.step, bassNote=(bar)=>()=>{ S0.step=(S0.origin||0)+bar*16+3; AMB.bus.emit('note',{layer:'bass',midi:36,time:0,vel:0.8,dur:0.2}); };
+    run('c.groove',[S('bass.pattern','groove-test','user'),bassNote(0),bassNote(1),bassNote(1),bassNote(2),bassNote(3)],[bassNote(0),bassNote(1),bassNote(2),bassNote(3),bassNote(4),S('bass.pattern','preset-test','preset')]);
+    S0.step=step0;
+    run('c.morceau',[()=>AMB.bus.emit('act','songRec')],[()=>AMB.bus.emit('act','song'),()=>AMB.bus.emit('rec:done',40),()=>AMB.bus.emit('act','section')]);
+    ok(K.byId['c.morceau'].first && K.DEFS.filter(d=>d.first).length===1, 'le dernier contrat du Parcours : « '+K.byId['c.morceau'].title+' »');
+    // an Écho's notes are the puzzle's: they never count for a contract
+    force('m.notes'); AMB.puzzles.current='p.premier'; live(8)(); ok(!K.progress('m.notes'), 'pendant un Écho : les notes jouées ne comptent pas pour les contrats');
+    AMB.puzzles.current=null; delete g.s.runs['p.premier']; AMB.puzzles.echoRow=[]; live(8)(); ok(g.s.contracts.includes('m.notes'), 'hors Écho : elles comptent');
     force('m.phrase'); ok(K.byId['m.phrase'].goal===2,'m.phrase objectif 2'); AMB.store.set('bells.mode','Aléatoire','user'); AMB.bus.emit('phrase',{}); ok(K.progress('m.phrase')===0,'phrase : tours non comptés hors mode Phrase'); AMB.store.set('bells.mode','Phrase','user'); AMB.bus.emit('phrase',{}); ok(K.progress('m.phrase')===1,'1 tour'); AMB.bus.emit('phrase',{}); ok(g.s.contracts.includes('m.phrase'),'2 tours → rempli');
     // seeded draw, deterministic; older saves (3 active, removed ids, no seed) load
-    const draw=(seed)=>{ g.s.active=[]; g.s.skipped=[]; g.s.prog={}; g.s.contracts=[]; K.seed(seed); K.refill(); return g.s.active.join(','); };
+    ok((()=>{ g.s.active=[]; g.s.skipped=[]; g.s.contracts=[]; K.refill(); return g.s.active.join(); })()==='c.morceau', 'Morceau acquis : « Enregistre ton morceau » passe avant les autres');
+    const draw=(seed)=>{ g.s.active=[]; g.s.skipped=[]; g.s.prog={}; g.s.contracts=['c.morceau']; K.seed(seed); K.refill(); return g.s.active.join(','); };
     const a=draw(42), b=draw(42), c=draw(7), d=draw(99), e=draw(12345), f2=draw(3);
     ok(a===b && g.s.active.length===1, 'tirage déterministe avec une graine : '+a);
     ok(new Set([a,c,d,e,f2]).size>1, 'la graine change le tirage : '+[a,c,d,e,f2].join(' | '));
@@ -144,6 +155,17 @@ window.addEventListener('load', ()=>{
     Pz.setHelp(false);
     localStorage.setItem('ambient.game.test', JSON.stringify({v:1,mode:'path',shards:3,earned:3,nodes:['racine'],found:['p:drone.tone','a:play'],stars:{'p.premier':2},contracts:[],puzzles:['p.premier'],runs:{'p.gamme':{tries:[{total:0.2,pegs:[]}],listens:2,help:false}},active:['k.souffle','k.couleur','e.extremes'],prog:{},ended:false}));
     g.load(); ok(g.s.puzzles.includes('p.premier') && !('found' in g.s) && !('stars' in g.s) && Array.isArray(g.s.opened) && g.s.shards===3, 'ancienne sauvegarde (découvertes, étoiles) : chargée, champs retirés ignorés');
+    // S3.5: a v1.07 save with the 8 old Composer nodes loads; each owned old node gives the new node holding it, no ✧ moved
+    { const old=['racine','h.pad','m.bells','c.seq','c.arp','c.motifs','c.bass','c.perc','c.auto'];
+      localStorage.setItem('ambient.game.test', JSON.stringify({v:1,mode:'path',shards:41,earned:400,nodes:old,contracts:['c.dessin','c.chaine'],puzzles:['p.composer'],active:['c.courbe'],prog:{'c.courbe':{n:0}},skipped:['c.basse'],ended:false}));
+      g.load(); const sh=g.s.shards, ev2=[]; ['earn','spend'].forEach(e=>AMB.bus.on('game:'+e,()=>ev2.push(e)));
+      ok(g.s.nodes.join()==='racine,h.pad,m.bells,c.seq,c.rythme,c.song' && sh===41 && g.s.earned===400, 'migration S3.5 : '+old.length+' anciens nœuds → '+g.s.nodes.join(',')+', ✧ '+sh+' (inchangé)');
+      ok(['c.seq','c.rythme','c.song'].every(id=>T.status(id)==='owned') && T.paramUnlocked('perc.vol') && T.paramUnlocked('seq.arpDir') && T.paramUnlocked('auto.curve') && T.uiUnlocked('reclive'), 'migration : réglages et panneaux des anciens nœuds ouverts');
+      K.refill(); ok(g.s.active.length===1 && K.byId[g.s.active[0]] && !g.s.active.includes('c.courbe') && g.s.shards===41 && !ev2.length, 'migration : contrats retirés écartés, aucun ✧ gagné ni perdu ('+g.s.active.join()+')');
+      localStorage.setItem('ambient.game.test', JSON.stringify({v:1,mode:'path',shards:5,earned:50,nodes:['racine','c.seq','c.groove']})); g.load();
+      ok(g.s.nodes.join()==='racine,c.seq,c.rythme' && g.s.shards===5, 'migration : Groove seul → Rythme');
+      localStorage.setItem('ambient.game.test', JSON.stringify({v:1,mode:'path',shards:3,earned:3,nodes:['racine'],found:['p:drone.tone','a:play'],stars:{'p.premier':2},contracts:[],puzzles:['p.premier'],runs:{'p.gamme':{tries:[{total:0.2,pegs:[]}],listens:2,help:false}},active:['k.souffle','k.couleur','e.extremes'],prog:{},ended:false}));
+      g.load(); }
     ok(Pz.run('p.gamme').tries.length===1 && Pz.target('p.gamme') && Object.keys(Pz.target('p.gamme')).length===4, 'ancienne énigme en cours sans cible : une cible est tirée, l\'essai fait est gardé');
     K.refill(); ok(g.s.active.join()==='k.couleur', 'ancienne sauvegarde : un seul contrat actif valide');
     g.s.runs['p.premier']={tries:[],target:{'drone.wave':'Orgue','drone.tone':0.5,'pad.wave':'Verre','pad.tone':0.2}};
@@ -179,6 +201,12 @@ window.addEventListener('load', ()=>{
     g.setMode('free'); Pz.start(Ec); res=null; evs.length=0; const tf=Pz.target().degs; tf.forEach(dg=>live(mid(dg)));
     ok(!Pz.echoRow.length && !Pz.run(Ec).tries.length && res===null && !evs.length && Pz.echoPlay()===0, 'mode libre : rien de détecté ni joué');
     Pz.stop(); delete g.s.runs[Ec]; g.setMode('path'); }
+  // while the instrument plays an Écho's phrase, the Melody's own notes keep quiet; they resume right after
+  { const L0=AMB.layers, got=[]; AMB.layers={bells:{note:(m,t)=>got.push(t)}}; const f0=Pz.echoFrom, u0=Pz.echoUntil;
+    Pz.echoFrom=10; Pz.echoUntil=12; [9.5,10.5,11.9,12.2].forEach(t=>AMB.seq.melodyNote(60,t,0.8));
+    const srcOk=await fetch('../js/sequencer.js').then(r=>r.text()).then(t=>!/bells\.note\(/.test(t.replace(/melodyNote\(midi, time, vel\) \{[\s\S]*?\n    \}/,'')) );
+    AMB.layers=L0; Pz.echoFrom=f0; Pz.echoUntil=u0;
+    ok(got.join()==='9.5,12.2' && srcOk, 'Écho : la Mélodie auto se tait pendant la phrase (notes '+got.join(' ')+'), toutes ses notes passent par melodyNote'); }
   ok(Pz.keyScore('drone.tone',0.5,0.5)===1 && Pz.keyScore('drone.tone',0,1)===0 && Pz.keyScore('pad.wave','Verre','Nappe')===0, 'score par réglage');
   g.reset();
   g.setMode('free'); ok(T.paramUnlocked('fx.echo') && T.uiUnlocked('song'), 'mode libre : tout ouvert');

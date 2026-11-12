@@ -43,6 +43,11 @@ f.addEventListener('load', async ()=>{
   const labels=T.grantGroups(multi.id).map(g=>g.label), dupes=labels.filter(l=>txt.split(l).length-1>1);
   ok(!dupes.length && txt.includes(' : '), 'fiche « '+multi.name+' » : '+txt);
   ok(T.NODES.every(n=>{ const g=T.grantGroups(n.id); return new Set(g.map(x=>x.label)).size===g.length && g.every(x=>new Set(x.items).size===x.items.length); }), 'Débloque : un groupe par couche, sans doublon, pour les '+T.NODES.length+' nœuds');
+  // S3.5: the Composer branch in 3 nodes (Mélodie écrite → Rythme → Morceau), on the map with their links
+  const comp=T.NODES.filter(n=>n.branch==='composer').map(n=>n.id), cn=comp.map(id=>map.querySelector('.tree-node[data-id="'+id+'"]'));
+  ok(comp.join()==='c.seq,c.rythme,c.song' && cn.every(Boolean) && map.querySelector('.tree-link[data-from="c.seq"][data-to="c.rythme"]') && map.querySelector('.tree-link[data-from="c.rythme"][data-to="c.song"]') && map.querySelector('.tree-link[data-from="h.prog"][data-to="c.song"]'), 'Composer : 3 nœuds sur la carte ('+cn.map(e=>e&&e.textContent.trim()).join(' · ')+'), '+T.NODES.length+' nœuds en tout');
+  Gd.select('c.rythme'); const ti=d.querySelector('.tree-info .ti-g').textContent;
+  ok(/Basse/.test(ti) && /Pulsations/.test(ti) && /Swing/.test(ti), 'fiche Rythme : '+ti);
   Gd.select(null); Gd.showTree(false);
   localStorage.removeItem('ambient.game.treemap');
   done();
