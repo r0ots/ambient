@@ -1,7 +1,7 @@
 <!doctype html><html><head><!-- Dev captures (not in the suite): ?w=390&h=780 for phone width.
-  Modes: #free, #pz, #bar, #sel=<node>, #buy=<node>;
+  Modes: #free, #pz, #bar, #sel=<node>;
   #save-open / #save-confirm (sauvegarde);
-  #help-path / #help-basics / #help-free (aide du Parcours : onglets ; libre),
+  #help-path / #help-free (aide du Parcours ; libre),
   #more (menu ⋯ en Parcours, panneau Contrats dessous),
   #garden (Jardin visuel débutant : 3 couches), #garden-adv (tout l'arbre, secrets) — notes simulées sur le bus.
   #save-*, #more, #garden* and #help-* cut particles and juice for clean captures --><meta charset="utf-8"><style>body{margin:0}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body>
@@ -13,7 +13,7 @@ document.getElementById('f').addEventListener('load', () => {
   const A = document.getElementById('f').contentWindow.AMB, doc = document.getElementById('f').contentDocument, h = location.hash;
   if (/save-|more|garden|help-/.test(h) && A.juice) {
     const J = A.juice; J.reduced = true;
-    ['burst', 'floatText', 'flash', 'shake', 'hitstop', 'chime'].forEach(k => { J[k] = () => 0; });
+    ['burst', 'floatText', 'flash', 'shake', 'hitstop'].forEach(k => { J[k] = () => 0; });
     const fx = doc.getElementById('fx'); if (fx) fx.style.display = 'none';
   }
   if (h.includes('help-free')) { A.game.setMode('free'); A.garden.welcome(false); doc.getElementById('help').click(); return; }
@@ -21,7 +21,7 @@ document.getElementById('f').addEventListener('load', () => {
   A.game.setMode('path'); A.game.earn(200, 'x');
   ['t.son', 'h.pad', 'e.reverb', 'm.bells', 't.viz'].forEach(i => A.tree.buy(i));
   A.game.solve('p.gamme'); A.garden.welcome(false);
-  if (h.includes('help-')) { doc.getElementById('help').click(); const t = h.slice(6); const b = doc.querySelector('[data-help-tab=' + t + ']'); if (b) b.click(); return; }
+  if (h.includes('help-path')) { doc.getElementById('help').click(); return; }
   if (h.includes('#more')) {
     A.garden.showTree(false); A.garden.renderSwitch();
     doc.querySelector('.more').open = true;
@@ -45,7 +45,6 @@ document.getElementById('f').addEventListener('load', () => {
   } else if (!h.includes('bar')) {
     A.garden.showTree(true);
     const m = /sel=([\w.]+)/.exec(h); if (m) A.garden.select(m[1]);
-    const b = /buy=([\w.]+)/.exec(h); if (b) setTimeout(() => A.garden.tryBuy(b[1]), 1500);
   }
 });
 </script></body></html>

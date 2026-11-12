@@ -129,14 +129,13 @@
     },
     hitstop(ms = 60) { if (this.reduced || !this.active()) return; this.hold = Math.max(this.hold, performance.now() + ms); this.kick(); },
     // ---- DOM effects ----
-    floatText(at, text, o = {}) {
+    floatText(at, text) {
       if (!this.active()) return null;
       const c = at && at.nodeType ? this.center(at) : at;
       if (!c) return null;
       const e = document.createElement('div');
-      e.className = 'fx-float' + (o.big ? ' big' : '') + (this.reduced ? ' still' : '');
+      e.className = 'fx-float' + (this.reduced ? ' still' : '');
       e.textContent = text; e.style.left = `${Math.round(c.x)}px`; e.style.top = `${Math.round(c.y)}px`;
-      if (o.color) e.style.color = o.color;
       document.body.append(e);
       setTimeout(() => e.remove(), this.reduced ? 900 : 1300);
       return e;
@@ -157,7 +156,7 @@
     wire() {
       const B = AMB.bus; if (!B || this.wired) return; this.wired = true;
       B.on('game:earn', (d) => {
-        if (!this.active() || d.reason === 'test' || !(d.n > 0)) return;
+        if (!this.active() || !(d.n > 0)) return;
         const el = $('#lcdShards'); if (el) this.floatText(el, `+${d.n} ✧`);
       });
       B.on('game:unlock', (d) => {

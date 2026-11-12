@@ -178,8 +178,6 @@
       } else g.save();
       return res;
     },
-    // true when solved (kept for older callers)
-    check(id = this.current) { const r = this.attempt(id); return !!(r && r.ok); },
   };
 
   // live score while a puzzle is open; touching a control while hearing the target brings your

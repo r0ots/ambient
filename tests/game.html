@@ -45,8 +45,8 @@ window.addEventListener('load', ()=>{
   const orphan=keys.filter(k=>!T.nodeFor(k)); ok(!orphan.length, 'tout réglage a un nœud '+orphan.join(','));
   ok(T.nodeFor('pad.send')==='e.reverb' && T.nodeFor('seq.send')==='c.seq' && T.nodeFor('macro.light')==='t.macros', 'résolution exact > suffixe > section');
   g.reset(); ok(g.has('racine'), 'reset en parcours rend la racine'); ok(!T.paramUnlocked('fx.echo') && T.paramUnlocked('drone.vol') && T.status('h.pad')==='available' && T.status('h.scale')==='locked', 'statuts au départ');
-  const gr=T.grants('c.seq'); ok(gr.includes('Mélodie écrite') && gr.includes('Piano roll') && !gr.some(x=>/Motif$/.test(x)), 'ce que débloque un nœud : '+gr.join(' / '));
-  ok(T.grants('e.reverb').some(x=>/chaque couche/.test(x)) && T.dependents('h.pad').includes('c.seq'), 'grants *.send, dépendants');
+  const gr=T.grantsText('c.seq'); ok(/Mélodie écrite/.test(gr) && /Piano roll/.test(gr) && !/Motif( ·|$)/.test(gr), 'ce que débloque un nœud : '+gr);
+  ok(/chaque couche/.test(T.grantsText('e.reverb')) && T.dependents('h.pad').includes('c.seq'), 'grantsText *.send, dépendants');
   // --- contracts engine (G4.1)
   { const K0=AMB.contracts, ids=K0.DEFS.map(d=>d.id);
     ok(new Set(ids).size===ids.length && K0.DEFS.every(d=>d.title && d.goal>0 && d.reward>0 && d.need.every(n=>T.byId[n])), 'contrats valides ('+ids.length+')');
@@ -121,7 +121,7 @@ window.addEventListener('load', ()=>{
   const s1=Pz.score('p.premier').total; ok(s1>0.9 && last && last.total===s1, 'proche : '+s1.toFixed(2)+', jauge en direct');
   // A/B (G5.2)
   AMB.store.setMany({'drone.wave':'Chaud','drone.tone':0.35,'pad.wave':'Nappe','pad.tone':0.4},'user');
-  Pz.listen('target'); ok(AMB.store.get('pad.wave')==='Verre' && Pz.side()==='target' && Pz.currentScore().total<0.5 && !Pz.check(), 'écouter la cible : son cible, score = le mien, pas de validation');
+  Pz.listen('target'); ok(AMB.store.get('pad.wave')==='Verre' && Pz.side()==='target' && Pz.currentScore().total<0.5 && !Pz.attempt(), 'écouter la cible : son cible, score = le mien, pas de validation');
   Pz.listen('mine'); ok(AMB.store.get('pad.wave')==='Nappe' && AMB.store.get('drone.tone')===0.35, 'retour à mon son intact');
   Pz.listen('target'); AMB.store.set('drone.tone',0.6,'user'); ok(Pz.side()==='mine' && AMB.store.get('pad.wave')==='Nappe' && AMB.store.get('drone.tone')===0.6, 'toucher pendant la cible : mon son revient + mon geste');
   ok(!g.s.found.includes('p:pad.wave') || true, '');

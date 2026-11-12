@@ -44,7 +44,6 @@ h1 { margin: 0; font-size: 18px; letter-spacing: 0.5em; font-weight: 600; }
 .rec-opts .menu { left: 0; right: auto; min-width: 260px; }
 .menu-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; color: var(--text); }
 .menu-note { font-size: 11px; color: var(--muted); margin: 2px 0 0; }
-.gengrp { display: flex; gap: 4px; }
 .recgrp { display: flex; gap: 4px; }
 .recgrp select { padding: 8px 6px; }
 .more { position: relative; }
@@ -470,10 +469,9 @@ body.listen .puzzle-card { display: none; }
 body.pz-veil .pz-veiled { filter: blur(4px) grayscale(.6); opacity: .55; }
 
 /* G7.4 juice : canvas #fx, floating numbers, flash (path only, created on demand) */
-:root { --fx-good: #ffc15a; --fx-bad: #ff5a3c; --fx-combo: #ffe9a8; }
+:root { --fx-good: #ffc15a; --fx-combo: #ffe9a8; }
 #fx { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 1000; }
 .fx-float { position: fixed; z-index: 1001; pointer-events: none; transform: translate(-50%, -50%); font: 22px var(--f-lcd); color: var(--fx-good); text-shadow: 0 0 8px var(--lcd-glow, #ffb34755), 0 1px 0 #000; animation: fx-rise 1.3s ease-out forwards; white-space: nowrap; }
-.fx-float.big { font-size: 38px; }
 .fx-float.still { animation: fx-fade .9s ease-out forwards; }
 @keyframes fx-rise { 0% { opacity: 0; transform: translate(-50%, -30%); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -190%); } }
 @keyframes fx-fade { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }

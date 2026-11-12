@@ -1,7 +1,7 @@
 // « Jardin sonore » G10.4 : exportable save of the path (file + link, import with strict validation).
 // A save = the path's state (AMB.game.s, secrets included: game.s.secrets). Not saved: settings, patches, free mode.
 // Older saves may carry fields of removed features (top-level or inside the game state): they are ignored.
-// Import never throws: validate() returns {ok, error, data}; unknown ids are refused, numbers are bounded,
+// Import never throws: check() returns {ok, error, data}; unknown ids are refused, numbers are bounded,
 // unknown fields are dropped: only the known keys of the state survive.
 (function () {
   const AMB = (window.AMB = window.AMB || {});
@@ -108,7 +108,7 @@
   };
 
   const save = {
-    VERSION, validate: null,
+    VERSION,
     now: () => Date.now(), // overridable by tests
     reload: () => { try { location.reload(); } catch (e) {} },
 
@@ -189,7 +189,6 @@
     },
 
   };
-  save.validate = save.check;
   AMB.save = save;
 
   // ---- interface (index.html : #saveBtn in the ⋯ menu, path only; the dialog is built here) ----

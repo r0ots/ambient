@@ -250,14 +250,12 @@
       head.setAttribute('aria-expanded', String(!box.classList.contains('min')));
       const body = box.querySelector('.sc-body'); body.innerHTML = '';
       const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; body.append(e); return e; };
-      if (g.path) {
-        for (const it of this.list()) {
-          const p = el('p', 'sc-item' + (it.found ? ' found' : '')); p.dataset.id = it.id;
-          const b = document.createElement('b'), s = document.createElement('span');
-          b.textContent = it.found ? `✦ ${it.title}` : '???';
-          s.textContent = it.found ? `${it.hint} → ${it.reward}` : it.hint || 'Débloque d\'abord le nœud lié.';
-          p.append(b, s);
-        }
+      for (const it of this.list()) {
+        const p = el('p', 'sc-item' + (it.found ? ' found' : '')); p.dataset.id = it.id;
+        const b = document.createElement('b'), s = document.createElement('span');
+        b.textContent = it.found ? `✦ ${it.title}` : '???';
+        s.textContent = it.found ? `${it.hint} → ${it.reward}` : it.hint || 'Débloque d\'abord le nœud lié.';
+        p.append(b, s);
       }
       if (gf.mirror) {
         const b = el('button', 'sc-btn' + (q.mirrorOn ? ' on' : ''), `Clavier miroir : ${q.mirrorOn ? 'oui' : 'non'}`);

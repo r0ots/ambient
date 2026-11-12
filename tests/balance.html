@@ -25,7 +25,7 @@ document.getElementById('f').addEventListener('load', async () => {
     const inc = [];
     for (const x of G.discoverables()) {
       const isP = x.id.startsWith('p:');
-      inc.push({ id: x.id, need: [x.node], n: isP ? G.paramReward(x.id.slice(2)) : G.ACTS[x.id.slice(2)][1], t: isP ? TIME.param : TIME.act, kind: 'découverte' });
+      inc.push({ id: x.id, need: [x.node], n: isP ? 1 : G.ACTS[x.id.slice(2)][1], t: isP ? TIME.param : TIME.act, kind: 'découverte' });
     }
     for (const d of A.contracts.DEFS) inc.push({ id: d.id, need: d.need, n: d.reward, t: TIME.contract(d), kind: 'contrat' });
     for (const d of A.puzzles.DEFS) inc.push({ id: d.id, need: d.need, n: d.reward, t: d.bonus ? TIME.bonus : TIME.puzzle, kind: d.bonus ? 'bonus' : 'porte', solves: d.id });

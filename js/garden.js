@@ -159,7 +159,7 @@
     build() {
       AMB.store.on((k, v, src) => this.onParam(k, v, src));
       this.hookActions();
-      if (AMB.bus) AMB.bus.on('game:earn', (d) => { if (AMB.game.path && d.reason !== 'test') this.pop(this.gainText(d)); });
+      if (AMB.bus) AMB.bus.on('game:earn', (d) => { if (AMB.game.path) this.pop(this.gainText(d)); });
       if (AMB.bus) {
         AMB.bus.on('game:earn', () => this.renderCounter(true));
         ['spend', 'unlock', 'reset', 'mode', 'puzzles', 'opened'].forEach((ev) => AMB.bus.on('game:' + ev, () => this.renderCounter()));

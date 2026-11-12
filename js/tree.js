@@ -100,23 +100,7 @@
 
   const tree = {
     BRANCHES, NODES, byId, UI_SEL, UI_LABEL,
-    // human-readable list of what a node opens
-    grants(id) {
-      const n = byId[id]; if (!n) return [];
-      const S = AMB.SCHEMA, out = [];
-      for (const p of n.params) {
-        if (p.startsWith('*.')) { out.push('Envoi vers l\'espace de chaque couche'); continue; }
-        const [sec, k] = p.split('.');
-        if (!S[sec]) continue;
-        if (k === '*') { out.push(`${S[sec].label} (tout)`); continue; }
-        const sp = S[sec].params[k];
-        if (!sp || sp.hidden) continue;
-        out.push(k === 'on' ? `${S[sec].label}` : `${S[sec].label} · ${sp.label}`);
-      }
-      for (const u of n.ui) out.push(UI_LABEL[u] || u);
-      return out;
-    },
-    // the same, grouped by layer and deduplicated (node card): « Mélodie : Son, Volume · Pad · Piano roll »
+    // what a node opens, grouped by layer and deduplicated (node card): « Mélodie : Son, Volume · Pad · Piano roll »
     grantGroups(id) {
       const n = byId[id]; if (!n) return [];
       const S = AMB.SCHEMA, groups = [], by = {};
