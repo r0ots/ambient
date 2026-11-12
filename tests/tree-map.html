@@ -59,7 +59,7 @@ f.addEventListener('load', async ()=>{
   ok(/Écho « Suite connue »/.test(op()) && /ou ✦ Secret : \?\?\?/.test(op()), 'Phrases : un Écho ou un secret caché (« '+op()+' »)');
   const spans=[...map.querySelectorAll('.tree-node')].map(b=>b.querySelector('span').textContent);
   ok(!spans.some(t=>/✧|\d/.test(t)) && spans.includes('◈ Écho') && spans.includes('◇ défi') && spans.includes('✓'), 'nœuds : ✓, ◇ défi ou ◈ Écho, aucun coût');
-  ok(/^\d+\/32$/.test(d.querySelector('.tree-shards').textContent), 'en-tête : nœuds ouverts '+d.querySelector('.tree-shards').textContent);
+  ok(/^\d+\/32$/.test(d.querySelector('.tree-count').textContent), 'en-tête : nœuds ouverts '+d.querySelector('.tree-count').textContent);
   Gd.select(null); Gd.showTree(false);
   localStorage.removeItem('ambient.game.treemap');
   done();

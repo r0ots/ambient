@@ -476,7 +476,7 @@ body.listen .puzzle-card { display: none; }
 /* G8.5–G11.1 — tree as a talent map (LED nodes, SVG links, pan/zoom) + unlock sequence */
 .tree-card { max-width: 1180px; height: calc(100vh - 32px); max-height: 960px; display: flex; flex-direction: column; padding: 18px 22px 16px; }
 .tree-card > * { flex: none; }
-.tree-shards { float: right; font: 26px var(--f-lcd); color: var(--lcd-fg); margin-right: 32px; }
+.tree-count { float: right; font: 26px var(--f-lcd); color: var(--lcd-fg); margin-right: 32px; }
 .tree-legend { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 2px 14px; align-items: center; margin: 0; }
 .modal-card .tree-legend { font-size: 12px; }
 .tree-legend > span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
@@ -554,7 +554,7 @@ body.listen .puzzle-card { display: none; }
   #treeDlg { padding: 6px; }
   .tree-card { padding: 12px 10px 10px; height: calc(100vh - 12px); max-height: none; border-radius: 6px; }
   .tree-card h3 { font-size: 24px; }
-  .tree-shards { margin-right: 26px; font-size: 22px; }
+  .tree-count { margin-right: 26px; font-size: 22px; }
   .tree-legend::after { content: 'Touche un nœud pour sa fiche · glisse, pince pour zoomer'; }
   .tree-view { min-height: 300px; }
   .tree-info, .tree-info.right { left: 6px; right: 6px; bottom: 6px; width: auto; }
