@@ -33,9 +33,9 @@ window.addEventListener('load', async () => { try {
   const want = Object.assign({}, clone(g.s), { runs: {} }), diff = Object.keys(want).concat(Object.keys(r.data.game)).filter((k, i, ar) => ar.indexOf(k) === i && canon(want[k]) !== canon(r.data.game[k]));
   ok(!diff.length, 'aller-retour identique (hors tentatives en cours) ' + diff.join(','));
 
-  // ---- unknown extras kept, bad ones refused, never an exception
+  // ---- unknown fields dropped, bad ones refused, never an exception
   const ex = clone(sv); ex.game.newThing = { a: 1 }; ex.game.__proto__x = 1;
-  const rex = S.check(ex); ok(rex.ok && rex.data.game.newThing.a === 1, 'champs inconnus simples conservés');
+  const rex = S.check(ex); ok(rex.ok && !('newThing' in rex.data.game) && !('__proto__x' in rex.data.game), 'champs inconnus ignorés');
   const mut = (f) => { const c = clone(sv); f(c); return c; };
   const bads = {
     null: null, nombre: 42, tableau: [], 'autre appli': mut((c) => { c.app = 'x'; }), 'version 2': mut((c) => { c.v = 2; }), 'jeu v2': mut((c) => { c.game.v = 2; }),
@@ -53,9 +53,10 @@ window.addEventListener('load', async () => { try {
 
   // ---- v1.05: a save link of v1.04 (fields of removed features) still imports, those fields unused
   { const ro = await S.decode(OLD_SAVE);
-    ok(ro.ok && ro.data.game.shards === 321 && Object.keys(ro.data).sort().join() === 'at,game' && Object.keys(ro.data.game.secrets.gifts).sort().join() === 'mirror,themes,timbres', 'ancienne sauvegarde v1.04 : acceptée, champs retirés ignorés ' + (ro.error || ''));
+    ok(ro.ok && ro.data.game.shards === 321 && Object.keys(ro.data).sort().join() === 'at,game' && Object.keys(ro.data.game.secrets.gifts).sort().join() === 'mirror,themes,timbres' && !('profile' in ro.data.game) && !('placed' in ro.data.game) && !('placement' in ro.data.game), 'ancienne sauvegarde v1.04 : acceptée, champs retirés ignorés ' + (ro.error || ''));
     const keys0 = Object.keys(localStorage).sort().join();
-    S.apply(ro, false); ok(g.s.shards === 321 && Object.keys(localStorage).sort().join() === keys0, 'import : seule la progression du Parcours est écrite');
+    S.apply(ro, false); ok(!('profile' in g.s) && !('placed' in g.s) && !('placement' in g.s), 'import : profile, placed, placement absents de l\'état');
+    ok(g.s.shards === 321 && Object.keys(localStorage).sort().join() === keys0, 'import : seule la progression du Parcours est écrite');
     S.apply(S.check(clone(sv)), false); }
 
   // ---- link

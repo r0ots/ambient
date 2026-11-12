@@ -16,6 +16,9 @@
     puzzles: [], // solved puzzle ids
     stars: {}, opened: [], runs: {}, pzHelp: false, // puzzles (G8.1): best stars per puzzle, gates opened after 6 failures, attempts in progress, live gauge
     active: [], prog: {}, // active contracts and their progress (contracts.js)
+    skipped: [], // contracts passed (back of the queue)
+    rng: null, // contract draw seed (contracts.js)
+    secrets: null, // secrets state (secrets.js)
     ended: false, // the end of the path was announced (whole tree owned)
   });
 
@@ -25,7 +28,11 @@
     load() {
       try {
         const o = JSON.parse(localStorage.getItem(KEY));
-        if (o && o.v === 1) this.s = { ...fresh(), ...o }; // fields of older versions ride along, unused
+        if (o && o.v === 1) { // only the known fields: those of removed features are dropped
+          const f = fresh();
+          for (const k of Object.keys(f)) if (k in o) f[k] = o[k];
+          this.s = f;
+        }
       } catch (e) {}
       return this;
     },

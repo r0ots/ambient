@@ -2,7 +2,7 @@
 // A save = the path's state (AMB.game.s, secrets included: game.s.secrets). Not saved: settings, patches, free mode.
 // Older saves may carry fields of removed features (top-level or inside the game state): they are ignored.
 // Import never throws: validate() returns {ok, error, data}; unknown ids are refused, numbers are bounded,
-// unknown extra fields (added by later versions) are kept only if small and plain.
+// unknown fields are dropped: only the known keys of the state survive.
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const VERSION = 1, APP = 'jardin-sonore';
@@ -25,17 +25,7 @@
     }
     return out;
   };
-  // fields we do not know about (a newer build) are kept when plain and small
-  const extras = (src, dst, known) => {
-    for (const k of Object.keys(src)) {
-      if (known.includes(k) || !/^[a-z][A-Za-z0-9_]{0,23}$/.test(k)) continue;
-      let j; try { j = JSON.stringify(src[k]); } catch (e) { continue; }
-      if (j && j.length <= 20000) dst[k] = JSON.parse(j);
-    }
-  };
-
   // ---- validation ----
-  const GAME_KEYS = ['v', 'mode', 'shards', 'earned', 'nodes', 'found', 'contracts', 'puzzles', 'stars', 'opened', 'runs', 'pzHelp', 'active', 'prog', 'skipped', 'ended', 'secrets'];
   const gameState = (s) => {
     if (!isObj(s)) bad('progression absente');
     if (s.v !== 1) bad('version de progression inconnue');
@@ -65,8 +55,8 @@
     }
     o.skipped = ids(s.skipped || [], 'contrats passés', C && ((x) => !!C.byId[x]));
     o.ended = s.ended == null ? false : bool(s.ended, 'fin');
-    if (s.secrets != null) o.secrets = secretsState(s.secrets, X);
-    extras(s, o, GAME_KEYS);
+    o.secrets = s.secrets == null ? null : secretsState(s.secrets, X);
+    o.rng = s.rng == null ? null : int(s.rng, 0, 4294967295, 'tirage');
     return o;
   };
   const secretsState = (q, X) => {
