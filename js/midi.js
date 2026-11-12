@@ -63,7 +63,7 @@
         for (const n of PR.parse(store.get(PR.SLOTKEY[chain[k % chain.length]]))) {
           if (n.s >= steps) continue;
           const rel = r0 + n.s; if (rel >= span) continue;
-          note(out.pr, 1, (s0 + rel) * STEP, Math.min(n.l, span - rel) * STEP - 2, dm(n.r + (follow ? chordAt(rel) : 0), 3 + oct), 40 + n.v * 9);
+          note(out.pr, 1, (s0 + rel) * STEP, Math.min(n.l, span - rel) * STEP - 2, dm(n.r + (follow ? chordAt(rel) : 0), 3 + oct) + (n.a || 0), 40 + n.v * 9);
         }
       }
     }
@@ -133,7 +133,7 @@
     return { bytes: new Uint8Array([...header, ...tracks.flat()]), bars, tracks: tracks.length, song: !!useSong };
   }
 
-  // ---------- import: Standard MIDI File -> piano-roll notes (quantised to 16ths and to the scale) ----------
+  // ---------- import: Standard MIDI File -> piano-roll notes (quantised to 16ths; notes off the scale keep their ♯) ----------
   function parseSmf(buf) {
     const d = new DataView(buf); let p = 0;
     const rd = (n) => { let v = 0; for (let i = 0; i < n; i++) v = (v << 8) | d.getUint8(p++); return v >>> 0; };
@@ -165,7 +165,7 @@
   }
 
   async function importMidi(file) {
-    const PR = AMB.pianoRoll, seq = AMB.seq;
+    const PR = AMB.pianoRoll;
     const { ppq, tracks } = parseSmf(await file.arrayBuffer());
     const notes = tracks.sort((a, b) => b.length - a.length)[0] || [];
     if (!notes.length) { AMB.ui.toast('Aucune note trouvée dans ce fichier'); return 0; }
@@ -177,21 +177,13 @@
     // map pitches to scale degrees; pick the octave so the lowest note lands on the bottom rows
     const minMidi = Math.min(...notes.map((n) => n.midi));
     const oct = Math.max(1, Math.min(6, Math.floor(minMidi / 12) - 1));
-    const rowOf = (m) => {
-      let best = 0, bd = 99;
-      for (let r = 0; r < PR.ROWS; r++) {
-        const dm = Math.abs(T.degreeToMidi(r, seq.root, seq.scale, oct) - m);
-        if (dm < bd) { bd = dm; best = r; }
-      }
-      return best;
-    };
     const out = []; let cut = 0;
     for (const n of notes) {
       const s = Math.round((n.tick - t0) / q);
       if (s < 0 || s >= len) { cut++; continue; }
-      const r = rowOf(n.midi);
-      if (out.some((x) => x.s === s && x.r === r)) continue;
-      out.push({ s, r, l: Math.max(1, Math.min(len - s, Math.round(n.dur / q))), v: Math.max(1, Math.min(9, Math.round(n.vel / 14))), p: 10 });
+      const c = PR.cellFor(n.midi, 0, oct);
+      if (out.some((x) => x.s === s && x.r === c.r)) continue;
+      out.push({ s, r: c.r, l: Math.max(1, Math.min(len - s, Math.round(n.dur / q))), v: Math.max(1, Math.min(9, Math.round(n.vel / 14))), p: 10, ...(c.a ? { a: c.a } : {}) });
     }
     store.set('seq.steps', String(len), 'user');
     store.set('seq.octave', String(Math.max(-1, Math.min(1, oct - 3))), 'user');
@@ -199,7 +191,7 @@
     store.set('seq.mode', 'Piano roll', 'user');
     PR.roll.save(out);
     store.set('seq.on', true, 'user');
-    AMB.ui.toast(`${out.length} notes importées (quantifiées sur la gamme)` + (cut ? ` · seules les 4 premières mesures sont gardées` : ''));
+    AMB.ui.toast(`${out.length} notes importées` + (cut ? ` · seules les 4 premières mesures sont gardées` : ''));
     return out.length;
   }
 

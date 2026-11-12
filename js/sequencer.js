@@ -160,14 +160,21 @@
       this.lockUntil = this.nextChordAt;
     }
     // Player note: scale degree (quantized) or raw midi
-    playDegree(deg, vel = 0.85, held = false) {
+    playDegree(deg, vel = 0.85, held = false, stamp = null) {
       const midi = T.degreeToMidi(deg, this.root, this.scale, 4);
-      return this.playMidi(midi, vel, null, held);
+      return this.playMidi(midi, vel, null, held, stamp);
+    }
+    // audio time at which the player played: the event's own timestamp (keyboard / MIDI, performance clock)
+    // instead of the moment it is handled, minus the output latency (what they heard then); ≤ 250 ms back
+    playedAt(stamp) {
+      const ctx = AMB.engine.ctx, out = ctx.outputLatency || ctx.baseLatency || 0;
+      const lag = stamp == null ? 0 : (performance.now() - stamp) / 1000;
+      return ctx.currentTime - Math.max(0, Math.min(0.25, out + Math.max(0, lag)));
     }
     // raw = MIDI velocity 0..1 as played (null from the computer keyboard), carried by the 'live' event.
     // held: the note lasts until endLive(handle) (key/pedal released); a voice that can hold (« Doux ») sustains,
-    // struck voices keep their own ring-out. Returns the handle {id, midi, release}.
-    playMidi(midi, vel = 0.85, raw = null, held = false) {
+    // struck voices keep their own ring-out. stamp = the input event's timeStamp ('live'.played). Returns the handle {id, midi, release}.
+    playMidi(midi, vel = 0.85, raw = null, held = false, stamp = null) {
       if (!AMB.engine.ctx) return null;
       const L = AMB.layers;
       const wasOn = store.get('bells.on');
@@ -182,7 +189,7 @@
       const live = { bright: raw, dest: this.playing ? null : this.liveDest(voice) };
       const v = voice.note(midi, t, vel, true, len, live);
       const id = (this.liveId = (this.liveId || 0) + 1);
-      AMB.bus.emit('live', { midi, time: t, vel, raw, id });
+      AMB.bus.emit('live', { midi, time: t, vel, raw, id, played: this.playedAt(stamp) });
       return { id, midi, release: v && v.release, cutoff: v ? v.cutoff : 0 };
     }
     // where a player's note goes while stopped: the engine's live path, at the voice's level and reverb send
@@ -191,12 +198,12 @@
       return E.liveInput ? E.liveInput(0.6 * Math.pow(store.get(n + '.vol'), 1.6), store.get(n + '.send')) : null;
     }
     // end of a held live note: the voice releases, the piano roll gets the real length ('liveOff')
-    endLive(h) {
+    endLive(h, stamp = null) {
       if (!h || h.ended || !AMB.engine.ctx) return;
       h.ended = true;
       const t = AMB.engine.ctx.currentTime + 0.01;
       if (h.release) h.release(t);
-      AMB.bus.emit('liveOff', { id: h.id, midi: h.midi, time: t });
+      AMB.bus.emit('liveOff', { id: h.id, midi: h.midi, time: t, played: this.playedAt(stamp) });
     }
 
     applyHarmony(time) {

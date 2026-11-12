@@ -18,14 +18,14 @@
     const g = AMB.game, can = (id) => !g || g.isUnlocked(id);
     if ((MELODY_LOW.includes(e.code) || MELODY_HIGH.includes(e.code)) && !can('m.bells')) return;
     if (CHORDS.includes(e.code) && !can('h.pad')) return;
-    if ((i = MELODY_LOW.indexOf(e.code)) >= 0) press('k' + e.code, AMB.seq.playDegree(i, e.shiftKey ? 0.5 : 0.85, true));
-    else if ((i = MELODY_HIGH.indexOf(e.code)) >= 0) press('k' + e.code, AMB.seq.playDegree(i + 7, e.shiftKey ? 0.5 : 0.85, true));
+    if ((i = MELODY_LOW.indexOf(e.code)) >= 0) press('k' + e.code, AMB.seq.playDegree(i, e.shiftKey ? 0.5 : 0.85, true, e.timeStamp));
+    else if ((i = MELODY_HIGH.indexOf(e.code)) >= 0) press('k' + e.code, AMB.seq.playDegree(i + 7, e.shiftKey ? 0.5 : 0.85, true, e.timeStamp));
     else if ((i = CHORDS.indexOf(e.code)) >= 0) AMB.seq.forceChord(i);
     else return;
     e.preventDefault();
   }
 
-  function onKeyUp(e) { lift('k' + e.code); }
+  function onKeyUp(e) { lift('k' + e.code, false, e.timeStamp); }
 
   // ---------- held notes: key → live handle; the sustain pedal (CC64) delays the releases ----------
   const held = new Map(); // key ('k' + e.code or 'm' + midi note) → handle from AMB.seq.playMidi
@@ -35,17 +35,18 @@
     lift(key, true); // same key struck again: the previous note ends
     if (h && typeof h === 'object') held.set(key, h); // (a stub or a silent engine returns no handle)
   }
-  function lift(key, now = false) {
+  // stamp: the input event's timeStamp, so a recorded length is the one played (not the handling delay)
+  function lift(key, now = false, stamp = null) {
     const h = held.get(key);
     if (!h) return;
     held.delete(key);
     if (pedal && !now) sustained.add(h);
-    else AMB.seq.endLive(h);
+    else AMB.seq.endLive(h, stamp);
   }
-  function setPedal(down) {
+  function setPedal(down, stamp = null) {
     pedal = down;
     if (down) return;
-    sustained.forEach((h) => AMB.seq.endLive(h));
+    sustained.forEach((h) => AMB.seq.endLive(h, stamp));
     sustained.clear();
   }
   // stop, MIDI unplugged, focus lost: every note ends, the pedal is considered up, a held chord is let go
@@ -126,17 +127,17 @@
     const type = st & 0xf0;
     if (type === 0x80 || (type === 0x90 && d2 === 0)) { // note-off (or note-on at velocity 0)
       if (lowDown.delete(d1)) letChordGo();
-      lift('m' + d1);
+      lift('m' + d1, false, msg.timeStamp);
     } else if (type === 0x90) {
       // in the path, like the computer keyboard: notes need the Melody, low notes (chords) the Pad.
       // Notes sound while stopped too (like A–L), chords need the playback.
       const g = AMB.game, can = (id) => !g || g.isUnlocked(id);
       // the heard velocity is remapped to 0.25–1 (soft notes stay audible); the raw one (0..1) rides along on 'live'
       if (d1 < LOW) { if (can('h.pad') && AMB.seq.playing) lowOn(d1); }
-      else if (can('m.bells') && wakeAudio()) press('m' + d1, AMB.seq.playMidi(d1, 0.25 + (d2 / 127) * 0.75, d2 / 127, true));
+      else if (can('m.bells') && wakeAudio()) press('m' + d1, AMB.seq.playMidi(d1, 0.25 + (d2 / 127) * 0.75, d2 / 127, true, msg.timeStamp));
     } else if (type === 0xb0) {
       const v = d2 / 127;
-      if (d1 === 64) { setPedal(d2 >= 64); return letChordGo(); } // sustain pedal (holds notes and the forced chord)
+      if (d1 === 64) { setPedal(d2 >= 64, msg.timeStamp); return letChordGo(); } // sustain pedal (holds notes and the forced chord)
       if (d1 === 123 || d1 === 120) return panic(); // All Notes Off / All Sound Off
       // CCs drive the same macros as the XY pad: CC1 (mod wheel) = Densité, CC74 = Lumière, CC91 = Espace, CC93 = Nostalgie
       const cc = { 1: 'macro.density', 74: 'macro.light', 91: 'macro.space', 93: 'macro.nostalgia' }[d1];

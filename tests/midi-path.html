@@ -71,7 +71,8 @@ f.addEventListener('load', async () => {
     ok(Math.abs(sd * 4 - beat) < 1e-9, 'grille réelle : 1 pas = 1/4 de temps (' + sd + ' s à 120 BPM)');
     const audio = async (s) => { const t = ctx.currentTime + s; for (let i = 0; i < 2000 && ctx.currentTime < t; i++) await wait(4); };
     // start a held note early in the 64-step motif, so that its length is never cut by the end of the motif
-    const early = async () => { for (let i = 0; i < 2000; i++) { const p = ((Math.round((ctx.currentTime + 0.01 - A.seq.nextTime) / sd) + A.seq.step) % 64 + 64) % 64; if (p <= 40) return; await wait(4); } };
+    // (the step is taken when the note is played, output latency compensated: A.seq.playedAt)
+    const early = async () => { for (let i = 0; i < 2000; i++) { const p = ((Math.round((A.seq.playedAt() - A.seq.nextTime) / sd) + A.seq.step) % 64 + 64) % 64; if (p >= 2 && p <= 40) return; await wait(4); } };
     const rec1 = () => PR.parse(st.get('seq.pattern'));
     const rb = d.querySelector('[data-act=liverec]'); rb.click();
     ok(PR.roll.recording, 'Rec live armé');

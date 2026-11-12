@@ -81,7 +81,7 @@
     freeze: '.sample-row', scenes: '#scenes', automation: '[data-sec=auto]',
     chords: '.chords-panel', song: '.song-panel', pianoroll: '.roll-wrap',
     motifs: '.slot-tabs, .roll-wrap [data-act=dup]',
-    reclive: '.roll-wrap [data-act=liverec], .roll-wrap label:has([data-metro])',
+    reclive: '.roll-wrap [data-act=liverec], .roll-wrap [data-act=keep], .roll-wrap label:has([data-metro])',
     keys: '.stage .hint', midi: '#midi', midiFile: '#exportMidi, .roll-wrap label:has([data-midi-in]), .roll-wrap [data-act=midi]',
     'mode-sculpt': '[data-mode=sculpt]', 'mode-compose': '[data-mode=compose]',
   };
