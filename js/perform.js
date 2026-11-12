@@ -55,8 +55,12 @@
   // ---------- XY performance pad on the visualizer ----------
   // the XY pad and MIDI CCs drive the macros themselves (one mapping, knobs stay in sync)
   function setMacro(key, v) {
-    store.set(key, Math.max(0, Math.min(1, v)), 'sync'); // move the macro knob without re-triggering
-    applyMacro(key, store.get(key), 'xy'); // performance gestures: not recorded in undo history
+    v = Math.max(0, Math.min(1, v));
+    store.set(key, v, 'sync'); // move the macro knob without re-triggering
+    // performance gestures: not recorded in undo history. In the path the knob may still be locked (S4.3: gliding on the
+    // screen works from the Graine): the gesture then drives the open settings it reaches (the drone's colour) directly.
+    const T = AMB.tree;
+    applyMacro(key, T && !T.paramUnlocked(key) ? v : store.get(key), 'xy');
   }
   function setupXY(canvas) {
     let down = false;

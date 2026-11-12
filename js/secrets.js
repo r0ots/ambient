@@ -2,16 +2,15 @@
 // Detection runs on bus events (live notes, forced chords) and user changes of the store; only in the
 // path (free mode: nothing is detected nor shown). Rewards persist in game.s.secrets:
 //   found {id: time}, midi (a MIDI keyboard was connected), gifts {timbres [{sec,opt}]}.
-// S3.2 « secrets-clés »: a secret found OPENS A NODE of the tree, for 0 ✧ (game.unlock(id, 0): the normal unlock
-// path, so its sound, chime and LCD apply; here the LCD ends on « ✦ <Nœud> ouvert »). The secret -> node table is
-// OPENS below (the only place; musical sense in parentheses):
+// S3.2 « secrets-clés »: a secret found OPENS A NODE of the tree (game.unlock: the normal unlock path, so its sound,
+// chime and LCD apply; here the LCD ends on « ✦ <Nœud> ouvert »). The secret -> node table is OPENS below (the only
+// place; musical sense in parentheses):
 //   tons -> Phrases (m.phrase)         dim -> Accords riches (h.pad2)    jazz -> Progression (h.prog, II-V-I)
 //   lent -> Dérive (m.evolve)          pulse -> Tempo (m.tempo)          silence -> Salles (e.salle)
 //   velo -> Mélodie écrite (c.seq)     chroma -> Gammes (h.scale)        cinq -> Enregistreur (t.rec)
-// Rules: (1) missing prerequisites of the node are opened too (the musician's fast ramp; the node's puzzle gate is
-// skipped: the secret is the key); (2) if the node is already owned, its ✧ cost is refunded instead (never a dead
-// reward); (3) a secret no longer pays ✧ otherwise, so the economy (tests/balance.html) is sized for a player who
-// finds none; (4) hint 2 opens after HINT2.found secrets found, never with time (no timer left).
+// Rules: (1) missing prerequisites of the node are opened too (the musician's fast ramp); (2) S4.3: if the node is
+// already owned, the secret opens the next node of the path instead (contracts.nextNode: the current challenge's),
+// never a dead reward; (3) hint 2 opens after HINT2.found secrets found, never with time (no timer left).
 // Two secrets also give a timbre (Givre, Aube); found timbres stay in the Melody / Pad « Son » list whatever the
 // mode; until one is found the classic app is untouched, and free mode never detects nor shows anything.
 // The MIDI-only secrets (Funambule, Entre les touches) show their hints once a MIDI keyboard has been connected.
@@ -75,9 +74,9 @@
       q.gifts = q.gifts || {}; q.gifts.timbres = q.gifts.timbres || []; // older saves: themes / mirror ignored
       return q;
     },
-    // detection runs only in the path (also once the instrument is handed over: a musician's pleasure), never while a
-    // puzzle's target is heard nor during an Écho (its phrase and the notes played back are the puzzle's)
-    active() { const g = AMB.game, P = AMB.puzzles; return !!g && g.path && !(P && (P.ab || P.isEcho())); },
+    // detection runs only in the path (also once the instrument is handed over: a musician's pleasure), never during
+    // an Écho (its phrase and the notes played back are the Écho's)
+    active() { const g = AMB.game, P = AMB.puzzles; return !!g && g.path && !(P && P.isEcho()); },
     foundCount() { return Object.keys(this.state().found).length; },
     has(id) { return !!this.state().found[id]; },
 
@@ -98,14 +97,14 @@
     },
 
     rewardText(d) {
-      const n = AMB.tree.byId[OPENS[d.id]];
+      const q = this.state().opened || {}, n = AMB.tree.byId[q[d.id] || OPENS[d.id]];
       return `${n.name} ouvert${d.reward.gift ? ' · ' + d.reward.gift.label : ''}`;
     },
-    // open a node and its missing prerequisites for 0 ✧ (prerequisites first, so each unlock follows the normal path)
+    // open a node and its missing prerequisites (prerequisites first, so each unlock follows the normal path)
     openChain(id, out) {
       const n = AMB.tree.byId[id], g = AMB.game; if (!n || g.has(id)) return out;
       for (const r of n.req) this.openChain(r, out);
-      if (g.unlock(id, 0)) out.push(id);
+      if (g.unlock(id)) out.push(id);
       return out;
     },
 
@@ -189,19 +188,21 @@
       this.state().found[id] = this.now();
       this.giveGift(d.reward.gift);
       g.save();
-      if (g.s.ended) { g.emit('secret', { id }); this.celebrate(d, null, false); return true; } // handed over: no node, no ✧
-      const node = AMB.tree.byId[OPENS[id]], opened = this.openChain(node.id, []);
-      if (!opened.length) g.earn(node.cost, 'secret', id); // already owned: its ✧ come back
+      if (g.s.ended) { g.emit('secret', { id }); this.celebrate(d, null); return true; } // handed over: no node
+      // its node, or (already owned) the next node of the path
+      const own = OPENS[id], nid = g.has(own) ? AMB.contracts && AMB.contracts.nextNode(g) : own;
+      const node = nid && AMB.tree.byId[nid];
+      if (node) { this.openChain(node.id, []); this.state().opened = { ...this.state().opened, [id]: node.id }; g.save(); }
       g.emit('secret', { id });
-      this.celebrate(d, node, opened.length > 0);
+      this.celebrate(d, node);
       return true;
     },
-    // node null = the instrument was handed over: the LCD names the secret, the toast its gift
-    celebrate(d, node, opened) {
+    // node null = the instrument was handed over (or the whole tree owned): the LCD names the secret, the toast its gift
+    celebrate(d, node) {
       const G = AMB.garden;
-      if (G) { if (!opened && G.chime) G.chime('solve'); if (G.lcd) G.lcd(`✦ ${node ? node.name + ' ouvert' : d.title}`, 6000); } // opened: the unlock chime already played
-      const gift = d.reward.gift, what = node ? ` · ${node.name} ouvert${opened ? '' : ' · +' + node.cost + ' ✧'}` : '';
-      if (AMB.ui && AMB.ui.toast) AMB.ui.toast(`✦ Secret trouvé : ${d.title}${what}${gift ? ' · ' + gift.label : ''}`);
+      if (G) { if (!node && G.chime) G.chime('solve'); if (G.lcd) G.lcd(`✦ ${node ? node.name + ' ouvert' : d.title}`, 6000); } // a node: the unlock chime already played
+      const gift = d.reward.gift;
+      if (AMB.ui && AMB.ui.toast) AMB.ui.toast(`✦ Secret trouvé : ${d.title}${node ? ` · ${node.name} ouvert` : ''}${gift ? ' · ' + gift.label : ''}`);
       this.render();
     },
     giveGift(gift) {
@@ -258,9 +259,9 @@
       box.id = 'secrets'; box.className = 'secrets min'; box.hidden = true; box.setAttribute('aria-label', 'Secrets');
       box.innerHTML = '<button type="button" class="sc-head" aria-controls="secretsBody"></button><div class="sc-body" id="secretsBody"></div>';
       box.querySelector('.sc-head').addEventListener('click', () => { box.classList.toggle('min'); this.render(); });
-      // inside the tree screen, under the puzzles line (never floating over the app on mobile)
-      const at = document.querySelector('#treeDlg .tree-puzzles');
-      if (at) at.after(box); else document.body.append(box);
+      // inside the tree screen, above the legend (never floating over the app on mobile)
+      const at = document.querySelector('#treeDlg .tree-legend');
+      if (at) at.before(box); else document.body.append(box);
       this.render();
     },
   };
@@ -272,7 +273,7 @@
     AMB.bus.on('act', (id) => { if (id === 'midiConnect' && AMB.game.path && !secrets.state().midi) { secrets.state().midi = true; AMB.game.save(); secrets.render(); } });
     AMB.bus.on('chord', (c) => secrets.onChord(c));
     ['reset', 'mode'].forEach((e) => AMB.bus.on('game:' + e, () => { secrets.reset(); secrets.applyGifts(); secrets.render(); }));
-    ['unlock', 'earn'].forEach((e) => AMB.bus.on('game:' + e, () => secrets.render()));
+    AMB.bus.on('game:unlock', () => secrets.render());
   }
   store.on((k, v, src) => { if (src === 'user') secrets.run('param', k, v); });
   AMB.secrets = secrets;

@@ -218,8 +218,6 @@
       // motifs mutated by the piano roll's « Variation » are saved as the user drew them
       const orig = AMB.pianoRoll && AMB.pianoRoll.originals ? AMB.pianoRoll.originals() : {};
       for (const [k, v] of Object.entries(orig)) if (v != null && k in snap) snap[k] = v;
-      // while a puzzle's target is heard, the player's own values are what counts
-      if (AMB.puzzles && AMB.puzzles.ab) Object.assign(snap, AMB.puzzles.ab.mine);
       return snap;
     }
     on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }

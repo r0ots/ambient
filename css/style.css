@@ -414,21 +414,10 @@ body.game .tree-grp { display: flex !important; }
 .is-new::after { content: 'NOUVEAU'; position: absolute; top: -9px; right: -6px; font: 11px var(--f-lcd); letter-spacing: .08em; padding: 0 4px; border-radius: 3px; background: var(--lcd-fg); color: #1a1408; pointer-events: none; z-index: 2; }
 @keyframes is-new-glow { 50% { box-shadow: 0 0 18px color-mix(in srgb, var(--lcd-fg) 60%, transparent); } }
 @media (prefers-reduced-motion: reduce) { .is-new { animation: none; } }
-.lcd-shards { display: none; position: absolute; right: 10px; top: 4px; font-size: 21px; }
-body.game .lcd-shards { display: block; }
 .lcd { position: relative; }
-.lcd-shards.bump { animation: lcd-bump .6s; }
+body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* S4.3: no key / chord names before Tonalité */
 @keyframes lcd-bump { 30% { transform: scale(1.35); color: #fff3c4; } }
 .tree-btn { position: relative; }
-.tree-badge { position: absolute; top: -7px; right: -7px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: var(--lcd-fg); color: #1a1408; font: 600 11px/18px var(--f-mono, monospace); font-style: normal; text-align: center; box-shadow: 0 0 10px var(--lcd-glow, #f2a23a88); animation: badge-pulse 2s ease-in-out infinite; }
-.tree-badge[hidden] { display: none; }
-@keyframes badge-pulse { 50% { transform: scale(1.15); } }
-@media (prefers-reduced-motion: reduce) { .tree-badge, .lcd-shards.bump { animation: none; } }
-body:not(.game) #lcdShards { display: none !important; }
-.gain-feed { position: fixed; top: 92px; right: 20px; z-index: 40; display: grid; gap: 4px; justify-items: start; pointer-events: none; }
-.gain { font: 18px var(--f-lcd); color: var(--lcd-fg); background: var(--lcd-bg, #120d05); border: 1px solid #000; box-shadow: var(--bevel-in, none); padding: 2px 10px; border-radius: 4px; text-shadow: 0 0 6px var(--lcd-glow, transparent); animation: gain-in 3.2s ease forwards; }
-@keyframes gain-in { 0% { opacity: 0; transform: translateY(-6px); } 10%, 75% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(4px); } }
-@media (prefers-reduced-motion: reduce) { .gain { animation: none; } }
 .puzzle-card { position: fixed; right: 16px; bottom: 16px; z-index: 31; width: 320px; max-width: calc(100vw - 32px); background: var(--panel); border: 1px solid var(--lcd-fg); border-radius: var(--radius, 10px); box-shadow: var(--bevel, none), 0 12px 30px #000a, 0 0 18px color-mix(in srgb, var(--lcd-fg) 25%, transparent); padding: 10px 12px 12px; display: grid; gap: 8px; }
 .puzzle-card[hidden] { display: none; }
 body.listen .puzzle-card { display: none; }
@@ -437,18 +426,10 @@ body.listen .puzzle-card { display: none; }
 .pz-x { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 15px; }
 .puzzle-card p { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--text); }
 .pz-keys { color: var(--muted) !important; font-size: 11.5px !important; }
-.pz-gauge { position: relative; height: 22px; border-radius: 4px; background: var(--lcd-bg, #120d05); box-shadow: var(--bevel-in, none); overflow: hidden; }
-.pz-gauge i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #7a5a1e, var(--lcd-fg)); transition: width .3s; }
-.pz-gauge::after { content: ''; position: absolute; top: 0; bottom: 0; left: 90%; width: 2px; background: #fff8; }
-.pz-gauge.ready i { background: linear-gradient(90deg, #3d7a4a, #8fe3a0); }
-.pz-pct { position: absolute; inset: 0; display: grid; place-items: center; font: 17px var(--f-lcd); color: #fff3d6; text-shadow: 0 1px 2px #000; }
 .pz-btns { display: flex; gap: 6px; }
 .pz-btns .btn { flex: 1; }
-.pz-ok.ready { border-color: #8fe3a0; color: #8fe3a0; box-shadow: 0 0 10px #8fe3a066; }
 .pz-hint { font: 12px var(--f-mono, monospace) !important; color: var(--lcd-fg) !important; }
 @media (max-width: 560px) { .puzzle-card { left: 8px; right: 8px; width: auto; bottom: 8px; max-height: 46vh; overflow-y: auto; } body.pz-open { padding-bottom: 48vh; } }
-.tree-puzzles { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 6px; font: 12px var(--f-mono, monospace); color: var(--muted); }
-.tree-puzzles .btn { color: var(--lcd-fg); }
 /* v1.06: the contract on the LCD's 2nd line (path only): tap = how to do it, ↷ = the next one */
 .lcd-task { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 6px; font-size: 18px; color: #d9953a; white-space: normal; }
 .lcd-task[hidden], body:not(.game) .lcd-task, #lcdLine[hidden] { display: none; }
@@ -463,11 +444,8 @@ body.listen .puzzle-card { display: none; }
 #lcdTop.lcd-flash { animation: lcd-flash 1.2s ease-out; text-shadow: 0 0 10px var(--lcd-fg); }
 @keyframes lcd-flash { 0%, 30% { opacity: 1; } 10%, 20% { opacity: .35; } 100% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { #lcdTop.lcd-flash { animation: none; } }
-/* puzzle A/B: the target's values are heard, not shown */
-body.pz-veil .pz-veiled { filter: blur(4px) grayscale(.6); opacity: .55; }
 
-/* G8.1 « Mastermind » puzzles: one row of pegs per validation, live gauge only with help */
-.pz-gauge[hidden] { display: none; }
+/* Écho card: one row of pegs per phrase played back */
 .pz-board { display: grid; gap: 3px; max-height: 190px; overflow-y: auto; }
 .pz-board:empty { display: none; }
 .pz-pads { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; margin-top: 6px; }
@@ -479,12 +457,8 @@ body.pz-veil .pz-veiled { filter: blur(4px) grayscale(.6); opacity: .55; }
 .pz-n { font: 13px var(--f-lcd); color: var(--lcd-dim, #6b4a1a); text-align: right; }
 .pz-peg { height: 20px; display: grid; place-items: center; border-radius: 4px; background: var(--lcd-bg, #120d05); box-shadow: var(--bevel-in, none); font: 11.5px var(--f-mono, monospace); white-space: nowrap; overflow: hidden; }
 .pz-peg.ok { color: #8fe3a0; box-shadow: inset 0 0 0 1px #8fe3a088; }
-.pz-peg.near { color: var(--lcd-fg); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lcd-fg) 55%, transparent); }
 .pz-peg.far { color: #e08a7a; }
-.pz-help { display: flex; gap: 6px; align-items: center; font-size: 11.5px; color: var(--muted); cursor: pointer; }
-.pz-help input { margin: 0; accent-color: var(--lcd-fg); }
-/* S3.1 « Écho » : no Valider nor gauge, pegs ✓ ⬆ ⬇ per note, the notes to come as « · » */
-.pz-ok[hidden], .pz-help[hidden] { display: none; }
+/* S3.1 « Écho » : pegs ✓ ⬆ ⬇ per note, the notes to come as « · » */
 .pz-peg.wait { color: var(--muted); }
 
 /* G10.1 secrets: folded panel inside the tree screen (path only) */
@@ -511,7 +485,6 @@ body.pz-veil .pz-veiled { filter: blur(4px) grayscale(.6); opacity: .55; }
 .tree-legend i { display: inline-block; flex: none; width: 11px; height: 11px; border-radius: 50%; background: #121110; box-shadow: 0 0 0 1px #4a4844; }
 .tree-legend i.st-owned { background: #8fe3a0; box-shadow: 0 0 6px #8fe3a0; }
 .tree-legend i.st-available { background: var(--lcd-fg); box-shadow: 0 0 6px var(--lcd-fg); }
-.tree-legend i.st-gated { box-shadow: 0 0 0 1px #c4c9e0; outline: 1px dashed #c4c9e0; outline-offset: 1px; }
 .tree-legend::after { content: 'Survole ou touche un nœud : vert = ce qu\'il demande, pointillés = ce qu\'il ouvre · glisse pour te déplacer, pince ou molette pour zoomer'; flex-basis: 100%; font-size: 11px; }
 .tree-view { position: relative; flex: 1 1 auto; min-height: 340px; margin-top: 8px; border-radius: var(--radius, 4px); background: radial-gradient(ellipse 70% 60% at 50% 100%, #2b2414 0, #151412 75%); box-shadow: var(--bevel-in, inset 0 2px 3px #000a); overflow: hidden; }
 .tree-map { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
@@ -546,13 +519,9 @@ body.pz-veil .pz-veiled { filter: blur(4px) grayscale(.6); opacity: .55; }
 .tree-node.st-locked b, .tree-node.st-locked span { opacity: .6; }
 .tree-node.st-available { color: var(--lcd-fg); }
 .tree-node.st-available .led { background: radial-gradient(circle at 35% 30%, #fff0c8, var(--lcd-fg) 45%, #8a4d10); animation: led-breathe 2.6s ease-in-out infinite; }
-.tree-node.st-available.cant .led { filter: saturate(.6) brightness(.75); }
-.tree-node.st-available.cant span { color: var(--muted); }
 .tree-node.st-owned { color: var(--text); }
 .tree-node.st-owned .led { background: radial-gradient(circle at 35% 30%, #fff, var(--c) 42%, color-mix(in srgb, var(--c) 55%, #000)); box-shadow: inset 0 -2px 3px #0006, 0 0 0 2px #0b0a09, 0 0 14px color-mix(in srgb, var(--c) 70%, transparent); }
 .tree-node.st-owned span { color: var(--c); }
-.tree-node.st-gated { color: #c4c9e0; }
-.tree-node.st-gated .led { outline: 2px dashed #c4c9e0aa; outline-offset: 3px; }
 @keyframes led-breathe { 0%, 100% { box-shadow: inset 0 -2px 3px #0006, 0 0 0 2px #0b0a09, 0 0 4px color-mix(in srgb, var(--lcd-fg) 30%, transparent); }
   50% { box-shadow: inset 0 -2px 3px #0006, 0 0 0 2px #0b0a09, 0 0 16px color-mix(in srgb, var(--lcd-fg) 75%, transparent); } }
 .tree-node:hover .led { transform: scale(1.1); }
@@ -579,13 +548,13 @@ body.pz-veil .pz-veiled { filter: blur(4px) grayscale(.6); opacity: .55; }
 .modal-card .tree-info .ti-h small, .modal-card .tree-info .ti-g, .modal-card .tree-info .ti-r { color: var(--muted); font-size: 12px; }
 .tree-info .ti-r .ok { color: #8fe3a0; }
 .tree-info .tree-buy { margin-top: 4px; color: var(--lcd-fg); }
+.tree-info .ti-o span { color: var(--lcd-fg); }
 .tree-info.st-locked .tree-buy { color: var(--muted); }
 @media (max-width: 760px) {
   #treeDlg { padding: 6px; }
   .tree-card { padding: 12px 10px 10px; height: calc(100vh - 12px); max-height: none; border-radius: 6px; }
   .tree-card h3 { font-size: 24px; }
   .tree-shards { margin-right: 26px; font-size: 22px; }
-  .modal-card .tree-puzzles { font-size: 11.5px; }
   .tree-legend::after { content: 'Touche un nœud pour sa fiche · glisse, pince pour zoomer'; }
   .tree-view { min-height: 300px; }
   .tree-info, .tree-info.right { left: 6px; right: 6px; bottom: 6px; width: auto; }

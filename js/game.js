@@ -1,25 +1,23 @@
 // « Jardin sonore » : progression state for the gamified path.
-// Shards (✧) are earned by contracts and puzzles (a secret opens its node instead) — never by waiting —
-// and spent to unlock nodes of the tree. "Free mode" unlocks everything (the classic app).
+// S4.3: no currency. Each challenge (contract or Écho, js/contracts.js) or secret (js/secrets.js) opens a node of the
+// tree directly. "Free mode" unlocks everything (the classic app).
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   // tests use their own key (window.AMB_GAME_KEY, or ?gamekey= for the real page in an iframe)
   const KEY = window.AMB_GAME_KEY || new URLSearchParams(location.search).get('gamekey') || 'ambient.game.v1';
 
-  // v1.08 (S3.5): the 8 Composer nodes became 3; an owned old node gives the new node that holds it (no ✧ moved)
+  // v1.08 (S3.5): the 8 Composer nodes became 3; an owned old node gives the new node that holds it
   const MERGED = { 'c.arp': 'c.seq', 'c.motifs': 'c.seq', 'c.bass': 'c.rythme', 'c.perc': 'c.rythme', 'c.groove': 'c.rythme', 'c.auto': 'c.song' };
 
   const fresh = () => ({
     v: 1,
     mode: null, // null = not chosen yet (behaves as free until asked), 'path' or 'free'
-    shards: 0, earned: 0, // current balance, lifetime total
     nodes: [], // unlocked node ids
-    contracts: [], // completed contract ids
-    puzzles: [], // solved puzzle ids
-    opened: [], runs: {}, pzHelp: false, // puzzles: gates opened after 6 failures, attempts in progress (target + tries), live gauge
-    active: [], prog: {}, // the active contract (one at a time) and its progress (contracts.js)
-    skipped: [], // contracts passed (back of the queue)
-    rng: null, // contract draw seed (contracts.js)
+    contracts: [], // challenges done (contracts and Échos)
+    runs: {}, // Écho attempts in progress (phrase + tries)
+    active: [], prog: {}, // the active challenge (one at a time) and its progress (contracts.js)
+    skipped: [], // challenges passed (back of the queue)
+    rng: null, // seed of the Écho phrases (contracts.js)
     secrets: null, // secrets state (secrets.js)
     ended: false, // whole tree owned: the instrument was handed over (S3.7), no game interface any more
   });
@@ -27,10 +25,12 @@
   const game = {
     key: KEY, MERGED,
     s: fresh(),
+    // only the known fields are kept: older saves lose their ✧ (shards, earned), solved puzzles and opened gates,
+    // and keep their nodes (S4.3)
     load() {
       try {
         const o = JSON.parse(localStorage.getItem(KEY));
-        if (o && o.v === 1) { // only the known fields: those of removed features are dropped
+        if (o && o.v === 1) {
           const f = fresh();
           for (const k of Object.keys(f)) if (k in o) f[k] = o[k];
           f.nodes = [...new Set((f.nodes || []).map((id) => MERGED[id] || id))];
@@ -46,53 +46,29 @@
 
     // mode
     get path() { return this.s.mode === 'path'; },
-    // the path's effects and gains may apply now: path on, no puzzle target being heard
-    // (contracts, secrets; free mode or a puzzle's « ▶ cible » never count as playing the path)
-    // (once the instrument is handed over, S3.7, nothing counts any more)
-    counts() { return this.path && !this.s.ended && !(AMB.puzzles && AMB.puzzles.ab); },
+    // the path's effects may apply now (challenges, secrets): never in free mode nor once the instrument is handed over
+    counts() { return this.path && !this.s.ended; },
     setMode(m) {
       if (m !== 'path' && m !== 'free') return;
       this.s.mode = m; this.save(); this.emit('mode', m);
     },
 
-    // shards
-    earn(n, reason, id) {
-      n = Math.max(0, Math.round(n));
-      if (!n) return 0;
-      this.s.shards += n; this.s.earned += n; this.save();
-      this.emit('earn', { n, reason, id, total: this.s.shards });
-      return n;
-    },
-    canAfford(n) { return this.s.shards >= n; },
-    spend(n) {
-      if (!this.canAfford(n)) return false;
-      this.s.shards -= n; this.save();
-      this.emit('spend', { n, total: this.s.shards });
-      return true;
-    },
-
-    // nodes (the tree and the costs: tree.js)
+    // nodes (the tree: tree.js). by = the challenge that opened it (garden plays the unlock sequence), or null
     has(id) { return this.s.nodes.includes(id); },
     isUnlocked(id) { return !this.path || !id || this.has(id); },
-    unlock(id, cost = 0) {
+    unlock(id, by = null) {
       if (this.has(id)) return false;
-      if (cost && !this.spend(cost)) return false;
       this.s.nodes.push(id); this.save();
-      this.emit('unlock', { id });
+      this.emit('unlock', { id, by });
       return true;
     },
-
-    // one-shot records: contracts, puzzles — each only ever pays once
-    mark(list, id, reward, reason) {
-      const arr = this.s[list];
-      if (!arr || arr.includes(id)) return false;
-      arr.push(id); this.save();
-      this.emit(list, { id });
-      if (reward) this.earn(reward, reason || list, id);
+    // a challenge done (once)
+    complete(id) {
+      if (this.s.contracts.includes(id)) return false;
+      this.s.contracts.push(id); this.save();
+      this.emit('contracts', { id });
       return true;
     },
-    complete(id, reward) { return this.mark('contracts', id, reward, 'contrat'); },
-    solve(id, reward) { return this.mark('puzzles', id, reward, 'énigme'); },
   };
 
   AMB.game = game.load();

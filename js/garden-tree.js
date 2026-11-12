@@ -1,12 +1,12 @@
-// « Jardin sonore » : the tree screen — talent map (G11.1), buying + unlock sequence (G8.5),
-// reveal, shard counter and badge.
+// « Jardin sonore » : the tree screen — a map to look at (G11.1, S4.3: touching a node shows what opens it), the unlock
+// sequence (G8.5) when a challenge opens a node, and the reveal of what it opened.
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const $ = (s) => document.querySelector(s);
   const SVGNS = 'http://www.w3.org/2000/svg';
   // fan order, left to right: the trunk in the middle, Composer between its two parents
   const FAN = ['espace', 'harmonie', 'tronc', 'composer', 'mouvement'];
-  const STATE_TXT = { owned: 'acquis', available: 'disponible', gated: 'porte d\'énigme', locked: 'verrouillé' };
+  const STATE_TXT = { owned: 'ouvert', available: 'peut s\'ouvrir', locked: 'fermé' };
   const L = { W: 1220, ROW: 98, TOP: 60, BOT: 66, MIN: 94, GAP: 94, A: 46, B: 50, M: 50 };
   const SEQ = { link: 380, end: 1200, reduced: 650 }; // unlock sequence timing (ms)
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -68,28 +68,20 @@
       if (this.resetPointers) this.resetPointers(); // no finger left over from the last visit
       if (on) { this.select(null); this.renderTree(); this.fitTree(); if (AMB.secrets) AMB.secrets.render(); }
     },
-    // ---- the screen: header (shards, puzzles, secrets) + the map, built once and repainted ----
+    // ---- the screen: header (nodes open, secrets) + the map, built once and repainted ----
     renderTree() {
       const map = $('#treeDlg .tree-map'); if (!map) return;
       const T = AMB.tree, g = AMB.game;
-      $('#treeDlg .tree-shards').textContent = g.s.ended ? '✦ L\'instrument est à toi' : `✧ ${g.s.shards}`;
-      // puzzles within reach: each one replayable with a new target; ✧ until solved once
-      const pzEl = $('#treeDlg .tree-puzzles');
-      if (pzEl) pzEl.hidden = !!g.s.ended; // handed over: no more puzzles to play
-      if (pzEl && AMB.puzzles && !g.s.ended) {
-        const P = AMB.puzzles, open = P.available();
-        pzEl.innerHTML = `<span>Énigmes ${P.DEFS.filter((x) => g.s.puzzles.includes(x.id)).length}/${P.DEFS.length}</span>`;
-        for (const x of open) {
-          const done = g.s.puzzles.includes(x.id), b = document.createElement('button');
-          b.className = 'btn small' + (done ? ' done' : ''); b.dataset.pz = x.id;
-          b.textContent = `◈ ${x.title}${done ? ' ✓' : ` · ✧ ${x.reward}`}`;
-          b.title = `${x.intro}${x.opens && !done ? `\nOuvre « ${T.byId[x.opens].name} »` : ''}\nChaque essai tire une nouvelle cible.`;
-          b.addEventListener('click', () => this.openPuzzle(x.id));
-          pzEl.append(b);
-        }
-      }
+      $('#treeDlg .tree-shards').textContent = g.s.ended ? '✦ L\'instrument est à toi' : `${T.NODES.filter((n) => g.has(n.id)).length}/${T.NODES.length}`;
       if (!map.querySelector('.tree-stage') || map.dataset.n !== String(T.NODES.length)) this.buildMap(map);
       this.paintTree();
+    },
+    // what opens a node: its challenge, or a secret (S4.3) — « ◇ Joue 8 notes », « ◈ Écho : Premier reflet », « ✦ Secret : ??? »
+    openers(id) {
+      const K = AMB.contracts, S = AMB.secrets, d = K && K.forNode(id), out = [];
+      if (d) out.push({ kind: d.kind === 'echo' ? 'echo' : 'défi', d, text: d.kind === 'echo' ? `◈ Réussis l'Écho « ${d.title} »` : `◇ ${d.title}` });
+      if (S) for (const [sid, nid] of Object.entries(S.OPENS)) if (nid === id) out.push({ kind: 'secret', text: `✦ Secret : ${S.has(sid) ? S.byId[sid].title : '???'}` });
+      return out;
     },
     // the stage: SVG links under absolutely placed LED buttons, in layout units (pan/zoom = one transform)
     buildMap(map) {
@@ -134,27 +126,25 @@
         if (!n.req.length) b.classList.add('root');
         b.style.left = p.x + 'px'; b.style.top = p.y + 'px'; b.style.setProperty('--c', T.BRANCHES[n.branch].color);
         b.innerHTML = `<i class="led" aria-hidden="true"></i><b>${n.name}</b><span></span>`;
-        b.title = `${n.desc}\n\nDébloque : ${T.grantsText(n.id) || '—'}`
+        b.title = `${n.desc}\n\nOuvre : ${T.grantsText(n.id) || '—'}`
           + (n.req.length ? `\nDemande : ${n.req.map((r) => T.byId[r].name).join(', ')}` : '')
-          + (n.gate ? `\nPorte : une énigme d'écoute à résoudre` : '');
+          + this.openers(n.id).map((o) => `\n${o.text}`).join('');
         stage.append(b);
       }
       map.append(stage);
     },
-    // states only (classes, cost line, aria-label): never rebuilds, so the unlock animation survives
+    // states only (classes, opener line, aria-label): never rebuilds, so the unlock animation survives
     paintTree() {
       const map = $('#treeDlg .tree-map'); if (!map) return;
       const T = AMB.tree, g = AMB.game;
       map.querySelectorAll('.tree-node').forEach((b) => {
         const n = T.byId[b.dataset.id]; if (!n) return;
-        const st = T.status(n.id);
+        const st = T.status(n.id), op = this.openers(n.id)[0];
         for (const s of Object.keys(STATE_TXT)) b.classList.toggle('st-' + s, s === st);
-        b.querySelector('.led').textContent = st === 'gated' ? '🔒' : '';
-        b.querySelector('span').textContent = st === 'owned' ? '✓' : (n.cost ? `✧ ${n.cost}` : 'offert') + (st === 'gated' ? ' · énigme' : '');
-        b.classList.toggle('cant', st === 'available' && !g.canAfford(n.cost));
+        b.querySelector('span').textContent = st === 'owned' ? '✓' : !op ? '' : op.kind === 'echo' ? '◈ Écho' : '◇ défi';
         const ext = n.req.filter((r) => T.byId[r].branch !== n.branch);
         b.setAttribute('aria-label', `${n.name}, ${T.BRANCHES[n.branch].name}, ${STATE_TXT[st]}`
-          + (st === 'owned' ? '' : n.cost ? `, coûte ${n.cost} éclats` : ', offert')
+          + (st !== 'owned' && op ? `, s'ouvre par : ${op.text.slice(2)}` : '')
           + (n.req.length && st !== 'owned' ? `, demande ${n.req.map((r) => T.byId[r].name).join(', ')}` : '')
           + (ext.length && st === 'owned' ? `, relié à ${ext.map((r) => T.byId[r].name).join(', ')}` : ''));
       });
@@ -227,21 +217,24 @@
       if (id && map) { const b = map.querySelector(`.tree-node[data-id="${id}"]`); if (b) b.classList.add('is-sel'); }
       this.mark(id); this.showInfo(id);
     },
+    // the node card: what it opens, what it needs, and what opens it (S4.3: no button to buy; an Écho that can be
+    // played now has its ▶)
     showInfo(id) {
       const box = $('#treeDlg .tree-info'); if (!box) return;
-      const T = AMB.tree, g = AMB.game, n = id && T.byId[id];
+      const T = AMB.tree, g = AMB.game, K = AMB.contracts, n = id && T.byId[id];
       if (!n) { box.hidden = true; box.dataset.id = ''; return; }
-      const st = T.status(id), br = T.BRANCHES[n.branch];
+      const st = T.status(id), br = T.BRANCHES[n.branch], ops = st === 'owned' ? [] : this.openers(id);
       const req = n.req.map((r) => `<span class="${g.has(r) ? 'ok' : ''}">${g.has(r) ? '✓' : '·'} ${T.byId[r].name}</span>`).join(' ');
-      const act = st === 'owned' ? '' : st === 'gated' ? '◈ Résoudre l\'énigme' : `Débloquer · ${n.cost ? '✧ ' + n.cost : 'offert'}`;
+      const echo = ops.find((o) => o.kind === 'echo' && K.eligible(o.d) && !g.s.ended);
+      const now = ops.find((o) => o.d && K.state().active[0] === o.d.id);
       box.style.setProperty('--c', br.color);
       box.dataset.id = id; box.className = `tree-info st-${st}`;
-      box.innerHTML = `<p class="ti-h"><b>${n.name}</b> <small>${br.name} · ${STATE_TXT[st]}${st !== 'owned' && n.cost ? ` · ✧ ${n.cost}` : ''}</small></p>`
+      box.innerHTML = `<p class="ti-h"><b>${n.name}</b> <small>${br.name} · ${STATE_TXT[st]}</small></p>`
         + `<p class="ti-d">${n.desc}</p>`
-        + `<p class="ti-g">Débloque : ${T.grantsText(id) || '—'}</p>`
+        + `<p class="ti-g">Ouvre : ${T.grantsText(id) || '—'}</p>`
         + (n.req.length ? `<p class="ti-r">Demande : ${req}</p>` : '')
-        + (n.gate && st !== 'owned' ? '<p class="ti-r">Porte : une énigme d\'écoute à résoudre</p>' : '')
-        + (act ? `<button type="button" class="btn small tree-buy">${act}</button>` : '');
+        + (ops.length ? `<p class="ti-o">Pour l'ouvrir : ${ops.map((o) => `<span>${o.text}</span>`).join(' · ou ')}${now ? ' <em>(le défi en cours)</em>' : ''}</p>` : '')
+        + (echo ? '<button type="button" class="btn small tree-buy">▶ Jouer l\'Écho</button>' : '');
       // the card sits in the empty corner opposite to the node (the fan leaves both bottom corners free)
       const map = $('#treeDlg .tree-map'), el = map && map.querySelector(`.tree-node[data-id="${id}"]`);
       if (el && map) { const r = map.getBoundingClientRect(), e = el.getBoundingClientRect(); box.classList.toggle('right', e.left + e.width / 2 < r.left + r.width / 2); }
@@ -296,20 +289,19 @@
       map.addEventListener('mouseover', (e) => { if (touchy()) return; const b = e.target.closest('.tree-node'); if (b) { this.mark(b.dataset.id); this.showInfo(b.dataset.id); } });
       map.addEventListener('mouseleave', () => { this.mark(this.sel); this.showInfo(this.sel); });
       map.addEventListener('focusin', (e) => { const b = e.target.closest('.tree-node'); if (!b) return; this.mark(b.dataset.id); this.showInfo(b.dataset.id); this.panToNode(b.dataset.id); });
-      // click: mouse / keyboard buy at once; a finger selects (card with a « Débloquer » button)
+      // click (mouse, finger or keyboard): select the node, its card says what opens it
       map.addEventListener('click', (e) => {
         const b = e.target.closest('.tree-node');
-        if (!b) { if (touchy()) this.select(null); return; }
-        if (touchy() && e.detail !== 0) {
-          this.select(b.dataset.id);
-          const box = $('#treeDlg .tree-info'), view = $('#treeDlg .tree-view');
-          if (box && view && getComputedStyle(box).position === 'absolute') this.panToNode(b.dataset.id, box.offsetHeight + 8);
-          return;
-        }
-        this.tryBuy(b.dataset.id);
+        if (!b) { this.select(null); return; }
+        this.select(b.dataset.id);
+        const box = $('#treeDlg .tree-info');
+        if (box && getComputedStyle(box).position === 'absolute') this.panToNode(b.dataset.id, touchy() ? box.offsetHeight + 8 : 0);
       });
       const info = $('#treeDlg .tree-info');
-      if (info) info.addEventListener('click', (e) => { if (e.target.closest('.tree-buy') && info.dataset.id) this.tryBuy(info.dataset.id); });
+      if (info) info.addEventListener('click', (e) => {
+        const d = info.dataset.id && AMB.contracts.forNode(info.dataset.id);
+        if (e.target.closest('.tree-buy') && d && d.kind === 'echo') this.openPuzzle(d.id);
+      });
       const zm = $('#treeDlg .tree-zoom');
       if (zm) zm.addEventListener('click', (e) => {
         const b = e.target.closest('[data-zoom]'); if (!b) return;
@@ -322,57 +314,38 @@
       window.addEventListener('resize', () => { if (!dlg || dlg.hidden) return; if (map.clientWidth !== this.fitW) this.fitTree(); else this.applyView(); });
     },
 
-    // ---- buying (G2.2) + unlock sequence (G8.5) ----
-    tryBuy(id) {
-      const T = AMB.tree, g = AMB.game, n = T.byId[id], st = T.status(id);
-      if (this.seq) { this.seqFinish(); return false; }
-      if (st === 'owned') return false;
-      if (st === 'locked') { AMB.ui.toast(`D'abord : ${n.req.filter((r) => !g.has(r)).map((r) => T.byId[r].name).join(', ')}`); return false; }
-      if (st === 'gated') {
-        const pz = AMB.puzzles && AMB.puzzles.forNode(id);
-        if (pz && pz.need.every((r) => g.has(r))) { this.openPuzzle(pz.id); return false; }
-        AMB.ui.toast(pz ? `🔒 Énigme : débloque d'abord ${pz.need.filter((r) => !g.has(r)).map((r) => T.byId[r].name).join(', ')}` : '🔒 Énigme bientôt disponible');
-        return false;
-      }
-      if (!g.canAfford(n.cost)) { AMB.ui.toast(`Il te manque ✧ ${n.cost - g.s.shards}`); return false; }
-      this.unlockSeq(id);
-      return true;
-    },
-    // ~1.2 s: the parent→node links light up, the node is bought (chime), newly available children blink, then the tree closes and reveal() shows what opened.
-    // Reduced motion: final state + chime at once, short pause, close.
+    // ---- unlock sequence (G8.5): a challenge just opened a node ----
+    // ~1.2 s on the map: the parent→node links light up, the node is born (chime), newly reachable children blink, then the
+    // tree closes and reveal() shows what opened. Reduced motion: final state + chime at once, short pause, close.
     seq: null,
     unlockSeq(id) {
+      if (this.seq) this.seqFinish();
       const dlg = $('#treeDlg');
+      if (dlg && dlg.hidden && !this.reduced) this.showTree(true);
       const el = document.querySelector(`#treeDlg .tree-node[data-id="${id}"]`);
       const still = this.reduced || !el || !dlg || dlg.hidden;
-      const s = (this.seq = { id, t: [], hit: false, failed: false });
+      const s = (this.seq = { id, t: [], hit: false });
       if (still) {
         this.seqImpact();
         s.t.push(setTimeout(() => this.seqFinish(), el && dlg && !dlg.hidden ? SEQ.reduced : 0));
         return;
       }
       this.select(null);
-      el.classList.add('is-buying');
+      el.classList.remove('st-owned'); el.classList.add('is-buying'); // (painted as it was, until the impact)
       document.querySelectorAll(`#treeDlg .tree-glow[data-to="${id}"]`).forEach((p) => { p.classList.remove('lit'); void p.getBoundingClientRect(); p.classList.add('lit'); });
       s.t.push(setTimeout(() => this.seqImpact(), SEQ.link));
       s.t.push(setTimeout(() => this.seqFinish(), SEQ.end));
     },
     seqImpact() {
       const s = this.seq; if (!s || s.hit) return; s.hit = true;
-      const T = AMB.tree, n = T.byId[s.id];
-      const kids = T.dependents(s.id), before = Object.fromEntries(kids.map((k) => [k, T.status(k)]));
-      if (!T.buy(s.id)) { // shards spent meanwhile: explain, nothing else
-        s.failed = true;
-        AMB.ui.toast(AMB.game.has(s.id) ? `${n.name} est déjà là` : `Il te manque ✧ ${n.cost - AMB.game.s.shards}`);
-        return;
-      }
-      AMB.ui.toast(`🌱 ${n.name} débloqué`);
+      const T = AMB.tree;
+      this.chime('unlock');
       this.paintTree();
       const el = document.querySelector(`#treeDlg .tree-node[data-id="${s.id}"]`);
       if (!el || this.reduced) return;
       el.classList.remove('is-buying'); el.classList.add('is-born');
-      for (const k of kids) {
-        const st = T.status(k); if (st === before[k] || (st !== 'available' && st !== 'gated')) continue;
+      for (const k of T.dependents(s.id)) {
+        if (T.status(k) !== 'available') continue;
         const c = document.querySelector(`#treeDlg .tree-node[data-id="${k}"]`); if (c) c.classList.add('is-blink');
         document.querySelectorAll(`#treeDlg .tree-glow[data-from="${s.id}"][data-to="${k}"]`).forEach((p) => p.classList.add('hint'));
       }
@@ -383,7 +356,6 @@
       s.t.forEach(clearTimeout); this.seq = null;
       document.querySelectorAll('#treeDlg .is-buying, #treeDlg .is-born, #treeDlg .is-blink, #treeDlg .tree-glow.lit, #treeDlg .tree-glow.hint')
         .forEach((e) => e.classList.remove('is-buying', 'is-born', 'is-blink', 'lit', 'hint'));
-      if (s.failed) { this.renderTree(); return; }
       this.showTree(false);
       this.reveal(s.id);
     },
@@ -403,23 +375,6 @@
       els.forEach((e) => { e.classList.remove('is-new'); void e.offsetWidth; e.classList.add('is-new'); });
       setTimeout(() => els.forEach((e) => e.classList.remove('is-new')), 6000);
       try { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { first.scrollIntoView(); }
-    },
-
-    // ---- shard counter + "something to buy" badge (G2.3) ----
-    affordable() {
-      const T = AMB.tree, g = AMB.game;
-      return T.NODES.filter((n) => T.status(n.id) === 'available' && g.canAfford(n.cost));
-    },
-    renderCounter(gain) {
-      const el = $('#lcdShards'), badge = $('#treeBtn .tree-badge');
-      if (!AMB.game.path || this.handedOver()) { if (el) el.textContent = ''; if (badge) badge.hidden = true; return; }
-      if (el) {
-        el.textContent = `✧ ${AMB.game.s.shards}`;
-        if (gain) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
-      }
-      const n = this.affordable().length;
-      if (badge) { badge.hidden = !n; badge.textContent = n; }
-      const tb = $('#treeBtn'); if (tb) tb.title = n ? `${n} nœud${n > 1 ? 's' : ''} à débloquer dans l'arbre` : 'L\'arbre du jardin : ce que tu as débloqué et ce qui t\'attend';
     },
 
   });
