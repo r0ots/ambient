@@ -75,13 +75,13 @@
       q.gifts = q.gifts || {}; q.gifts.timbres = q.gifts.timbres || []; // older saves: themes / mirror ignored
       return q;
     },
-    // detection runs only in the path, never while a puzzle's target is heard nor during an Écho (its phrase and the
-    // notes played back are the puzzle's, not a gesture of the player's own)
-    active() { return !!AMB.game && AMB.game.counts() && !(AMB.puzzles && AMB.puzzles.isEcho()); },
+    // detection runs only in the path (also once the instrument is handed over: a musician's pleasure), never while a
+    // puzzle's target is heard nor during an Écho (its phrase and the notes played back are the puzzle's)
+    active() { const g = AMB.game, P = AMB.puzzles; return !!g && g.path && !(P && (P.ab || P.isEcho())); },
     foundCount() { return Object.keys(this.state().found).length; },
     has(id) { return !!this.state().found[id]; },
 
-    // ---- list for the (future) tree: [{id, found, title|'???', hint, level, node, reward}] ----
+    // ---- list for the tree's panel: [{id, found, title|'???', hint, level, node, reward}] ----
     // level 0 = hidden (node not owned, or a MIDI secret before any MIDI keyboard), 1 = cryptic hint, 2 = clear hint, 3 = found
     hint2Open() { return this.foundCount() >= HINT2.found; },
     list() {
@@ -189,17 +189,19 @@
       this.state().found[id] = this.now();
       this.giveGift(d.reward.gift);
       g.save();
+      if (g.s.ended) { g.emit('secret', { id }); this.celebrate(d, null, false); return true; } // handed over: no node, no ✧
       const node = AMB.tree.byId[OPENS[id]], opened = this.openChain(node.id, []);
       if (!opened.length) g.earn(node.cost, 'secret', id); // already owned: its ✧ come back
       g.emit('secret', { id });
       this.celebrate(d, node, opened.length > 0);
       return true;
     },
+    // node null = the instrument was handed over: the LCD names the secret, the toast its gift
     celebrate(d, node, opened) {
       const G = AMB.garden;
-      if (G) { if (!opened && G.chime) G.chime('solve'); if (G.lcd) G.lcd(`✦ ${node.name} ouvert`, 6000); } // opened: the unlock chime already played
-      const gift = d.reward.gift;
-      if (AMB.ui && AMB.ui.toast) AMB.ui.toast(`✦ Secret trouvé : ${d.title} · ${node.name} ouvert${opened ? '' : ' · +' + node.cost + ' ✧'}${gift ? ' · ' + gift.label : ''}`);
+      if (G) { if (!opened && G.chime) G.chime('solve'); if (G.lcd) G.lcd(`✦ ${node ? node.name + ' ouvert' : d.title}`, 6000); } // opened: the unlock chime already played
+      const gift = d.reward.gift, what = node ? ` · ${node.name} ouvert${opened ? '' : ' · +' + node.cost + ' ✧'}` : '';
+      if (AMB.ui && AMB.ui.toast) AMB.ui.toast(`✦ Secret trouvé : ${d.title}${what}${gift ? ' · ' + gift.label : ''}`);
       this.render();
     },
     giveGift(gift) {
