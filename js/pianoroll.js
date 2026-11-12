@@ -458,12 +458,12 @@
       this.canvas.addEventListener('pointerup', end);
       this.canvas.addEventListener('pointercancel', end);
     },
-    // audition the note being placed
+    // audition the note being placed; stopped, through the same live path as A–L (engine.liveInput, past the stop fade)
     preview(row, s) {
       if (!AMB.engine.ctx || !AMB.layers.seq) return;
-      const seq = AMB.seq, oct = parseInt(store.get('seq.octave'), 10) || 0;
+      const seq = AMB.seq, oct = parseInt(store.get('seq.octave'), 10) || 0, L = AMB.layers;
       const deg = row + (store.get('seq.follow') && seq.playing ? seq.chordDeg : 0);
-      AMB.layers.seq.note(T.degreeToMidi(deg, seq.root, seq.scale, 3 + oct), AMB.engine.ctx.currentTime + 0.01, 0.6, true, 0.25);
+      L.seq.note(T.degreeToMidi(deg, seq.root, seq.scale, 3 + oct), AMB.engine.ctx.currentTime + 0.01, 0.6, true, 0.25, { bright: null, dest: seq.playing ? null : seq.liveDest(L.seq) });
     },
     act(a, btn) {
       const n = steps();
@@ -562,9 +562,10 @@
         g.globalAlpha = (store.get('seq.on') && store.get('seq.mode') !== 'Arpège' ? 1 : 0.35) * (0.35 + 0.65 * (nt.v / 9));
         roundRect(g, x, y, w, G.rowH - 4, 3); g.fill();
         g.globalAlpha = 1;
-        if (nt.a) { // off the scale: ♯ (1 semitone above the row) or +2 / +3
+        if (nt.a === 1) drawSharp(g, x + Math.max(5, w / 2), y + (G.rowH - 4) / 2, Math.min(G.rowH - 8, 9) / 2); // 1 semitone above the row
+        else if (nt.a) { // off the scale by 2 / 3 semitones
           g.fillStyle = '#1d1407'; g.font = 'bold 10px system-ui, sans-serif'; g.textBaseline = 'middle';
-          g.fillText(nt.a === 1 ? '♯' : '+' + nt.a, x + Math.max(2, w / 2 - 4), y + (G.rowH - 4) / 2 + 0.5);
+          g.fillText('+' + nt.a, x + Math.max(2, w / 2 - 4), y + (G.rowH - 4) / 2 + 0.5);
         }
         if (this.sel.has(this.keyOf(nt))) { g.strokeStyle = '#fff3dc'; g.lineWidth = 1.5; roundRect(g, x, y, w, G.rowH - 4, 3); g.stroke(); }
         if (nt.p < 10) { // dashed outline + percentage for probabilistic notes
@@ -610,6 +611,16 @@
       } else s++;
     }
     return notes;
+  }
+
+  // a sharp drawn as lines (the ♯ character falls back to a « # » look in small canvas text): 2 uprights, 2 slanted bars
+  function drawSharp(g, cx, cy, r) {
+    g.save(); g.strokeStyle = '#1d1407'; g.lineCap = 'butt';
+    g.lineWidth = 1.1; g.beginPath();
+    [-0.4, 0.4].forEach((k) => { g.moveTo(cx + k * r, cy - r + (k > 0 ? -0.3 : 0.3) * r); g.lineTo(cx + k * r, cy + r + (k > 0 ? -0.3 : 0.3) * r); });
+    g.stroke(); g.lineWidth = Math.max(1.6, r * 0.45); g.beginPath();
+    [-0.35, 0.35].forEach((k) => { g.moveTo(cx - 0.85 * r, cy + k * r + 0.2 * r); g.lineTo(cx + 0.85 * r, cy + k * r - 0.2 * r); });
+    g.stroke(); g.restore();
   }
 
   AMB.pianoRoll = { originals: () => ({ ...original }), roll, resetLatch, cellFor, canKeep, keep, parse, encode, onStep, arpStep, randomPattern, mutate, slotAt, chainList, SLOTKEY, ROWS };

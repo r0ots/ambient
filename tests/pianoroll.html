@@ -150,6 +150,10 @@ window.addEventListener('load', async ()=>{
     st.set('seq.slot','C');
     const n=await AMB.midiExport.importMidi(new File([new Uint8Array([...hdr,...trk,...ev])],'c.mid'));
     ok(n===3 && st.get('seq.patC')==='0.0.1,1.0.1.7.a.1,2.3.2.7.a.1', 'import .mid : C, C#, F# gardés ('+st.get('seq.patC')+')'); }
+  // stopped, the note previewed while drawing goes through the live path (engine.liveInput), like A–L
+  { const E=AMB.engine, li=E.liveInput, was=AMB.seq.playing; let used=0; E.liveInput=function(){ used++; return li.apply(this,arguments); };
+    AMB.seq.playing=false; PR.roll.preview(7,0); AMB.seq.playing=was; E.liveInput=li;
+    ok(used===1, 'aperçu du piano roll lecture arrêtée : par engine.liveInput'); }
   log('DONE');
   }catch(e){log('EXC '+e.stack)}
 });
