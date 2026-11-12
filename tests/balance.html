@@ -10,6 +10,8 @@ localStorage.removeItem('ambient.game.balance');
 <iframe id="f" src="../index.html?gamekey=ambient.game.balance&listen" style="width:800px;height:600px"></iframe>
 <script>
 const ok=(c,m)=>log((c?'ok ':'ERROR fail ')+m);
+// G8.2: discoveries now pay 1 ✧ each and only while the music plays (time per discovery unchanged:
+// the player explores while listening). Costs and contract rewards were retuned to keep ~80 min.
 // seconds per activity (a non-musician exploring at a calm pace)
 const TIME={ param:15, act:20, buy:20, contract:(d)=>40+12*Math.min(d.goal,8), puzzle:180, bonus:300 };
 document.getElementById('f').addEventListener('load', ()=>{

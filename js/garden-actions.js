@@ -4,10 +4,11 @@
   const $ = (s) => document.querySelector(s);
   Object.assign(AMB.garden, {
     // ---- discoveries (G3.1): the first time you touch a control, it pays ----
-    REWARD: { toggle: 3, select: 3, text: 3, knob: 2 },
+    // G8.2: light rewards (sweeping controls must not pay), only while the music plays
+    REWARD: { toggle: 1, select: 1, text: 1, knob: 1 },
     paramReward(key) {
       const sp = AMB.store.spec(key); if (!sp) return 0;
-      return this.REWARD[sp.type || 'knob'] || 2;
+      return this.REWARD[sp.type || 'knob'] || 1;
     },
     paramLabel(key) {
       const [sec, k] = key.split('.'); const S = AMB.SCHEMA[sec]; if (!S) return key;
@@ -17,6 +18,7 @@
     onParam(key, v, source) {
       const g = AMB.game;
       if (source !== 'user' || !g.path || !AMB.tree.paramUnlocked(key)) return;
+      if (!(AMB.seq && AMB.seq.playing)) return; // listening is the point: no pay while stopped
       g.discover('p:' + key, this.paramReward(key));
     },
     // ---- action discoveries (G3.2): doing something for the first time pays too ----
