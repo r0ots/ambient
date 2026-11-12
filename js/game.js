@@ -1,5 +1,5 @@
 // « Jardin sonore » : progression state for the gamified path.
-// Shards (✧) are earned by contracts, target puzzles and secrets — never by waiting —
+// Shards (✧) are earned by contracts and puzzles (a secret opens its node instead) — never by waiting —
 // and spent to unlock nodes of the tree. "Free mode" unlocks everything (the classic app).
 (function () {
   const AMB = (window.AMB = window.AMB || {});
@@ -71,7 +71,7 @@
       return true;
     },
 
-    // nodes (the tree itself is defined in G1.2; `cost` comes from it)
+    // nodes (the tree and the costs: tree.js)
     has(id) { return this.s.nodes.includes(id); },
     isUnlocked(id) { return !this.path || !id || this.has(id); },
     unlock(id, cost = 0) {
