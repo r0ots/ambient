@@ -5,21 +5,26 @@
 // While a round runs, `arcade.active` is true and AMB.audition.session(true) ducks the ambience
 // and freezes the Dérive; nothing is ever written to AMB.store, so free mode keeps no trace.
 //
-// Plugin API — arcade.register({
+// Plugin API (the contract the mini-games of js/arcade/<id>.js rely on) — arcade.register({
 //   id, title, skill, blurb, kid: true|false,
-//   make(rng, d) -> challenge          d in 0..1 (0 = easiest); rng = seeded mulberry32 (rng(), rng.int(n), rng.pick(a))
-//   stimulus(ch) -> [{t, midi|hz, dur, vel, cents?, voice}]   events for AMB.audition.play
-//     or play(ch, api) -> Promise      custom playback (api.play(events) plays events)
-//   choices(ch) -> [{value, label}] | null    null = the answer is played (keyboard / MIDI)
+//   make(rng, d) -> challenge          d in 0..1 (0 = easiest); rng = seeded mulberry32 (rng(), rng.int(n), rng.pick(a));
+//                                      never Math.random: same seed + same answers = same round
+//   stimulus(ch) -> [{t, midi|hz, dur, vel, cents?, voice}]   events for AMB.audition.play (voice: sine|triangle|pluck|bell)
+//     or play(ch, api) -> Promise      custom playback (api.play(events) plays events and sets api.t0)
+//   choices(ch) -> [{value, label}] | null    null = the answer is played (keyboard / MIDI) or given by render()
 //   check(ch, answer) -> {ok, partial?}       partial in 0..1 = share of the points (ok must be false)
-//   render?(ch, el, api)               optional custom UI inside the round's stage element
+//   render?(ch, el, api)               optional custom UI inside the round's stage element (.arc-<id>-* classes)
 //   onKey?(ch, e, api) -> true if handled     keys reach the plugin during a round (the app's are muted)
 //   passKeys?: ['KeyA', …]             e.code values let through to the app's own shortcuts
-//   onMidi?(ch, {midi, vel, time}, api) MIDI note-on during a round (vel 0..1, time = performance.now ms);
-//                                      the app never plays MIDI notes while a round runs (js/play.js):
-//                                      without this hook they are simply ignored
+//   onMidi?(ch, {midi, vel, time}, api)    MIDI note-on during a round (vel 0..1 raw, time = performance.now ms)
+//   onMidiOff?(ch, {midi, time}, api)      MIDI note-off during a round (note-on with velocity 0 included)
+//                                      while the cabinet is open the app never plays MIDI (js/play.js): without
+//                                      these hooks the notes are simply ignored
 // })
-// api = {answer(x), replay(), play(events), stop(), ch, d, rng}
+// api = {answer(x), replay(), play(events) -> {dur, at, t0}, stop(), note(ev), t0, ch, d, rng}
+//   t0 = performance.now() ms at which the last stimulus really starts sounding (compare with MIDI / key times)
+//   note(ev) = immediate feedback sound on the audition bus ({midi|hz, dur?, vel?, cents?, voice?}), does not move t0
+// arcade.open = the cabinet is on screen (set by js/arcade-ui.js); arcade.active = a round is running.
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const q = new URLSearchParams(location.search);
@@ -51,7 +56,8 @@
     clock: { now: () => (window.performance ? performance.now() : Date.now()) },
     s: fresh(),
     round: null,
-    active: false,
+    active: false, // a round is running
+    open: false, // the cabinet (js/arcade-ui.js) is on screen: the app plays no MIDI, juice effects allowed in free mode
 
     // ---- registry ----
     register(g) {
@@ -104,7 +110,7 @@
       this.round = {
         game: g, seed, rng, pacts: (opts.pacts || []).slice(), t0: now, dur: opts.duration || this.DURATION,
         d0: st.d, stair: { d: st.d, step: Math.max(st.step, STAIR.restart), run: 0, dir: 0 }, peak: st.d,
-        score: 0, n: 0, good: 0, clean: 0, replays: 0, chReplays: 0, ch: null, history: [], over: false,
+        score: 0, n: 0, good: 0, clean: 0, replays: 0, chReplays: 0, ch: null, history: [], over: false, t0Stim: 0,
       };
       this.active = true;
       this.combo().reset();
@@ -127,26 +133,44 @@
       const r = this.round;
       return {
         answer: (x) => this.answer(x), replay: () => this.replay(), stop: () => AMB.audition && AMB.audition.stop(),
-        play: (ev) => (AMB.audition ? AMB.audition.play(ev) : 0), ch: r && r.ch, d: r && r.stair.d, rng: r && r.rng,
+        play: (ev) => this.playEvents(ev), note: (ev) => this.note(ev),
+        get t0() { return r ? r.t0Stim : 0; }, ch: r && r.ch, d: r && r.stair.d, rng: r && r.rng,
       };
     },
-    // play the current challenge's stimulus (no count); returns its duration (s) or a Promise
+    // a stimulus: remembers when it really starts (api.t0)
+    playEvents(ev) {
+      const res = AMB.audition ? AMB.audition.play(ev || []) : { dur: 0, at: 0, t0: 0 };
+      if (this.round) this.round.t0Stim = res.t0 || 0;
+      return res;
+    },
+    // immediate feedback when the player answers (same bus, starts now, stimulus timing untouched)
+    note(ev) {
+      const Au = AMB.audition, ctx = AMB.engine && AMB.engine.ctx;
+      if (!Au || !ev) return null;
+      return Au.play([{ dur: 0.35, vel: 0.7, voice: 'triangle', ...ev, t: 0 }], ctx ? { when: ctx.currentTime + 0.005 } : {});
+    },
+    // play the current challenge's stimulus (no count); returns {dur, at, t0} or the plugin's Promise
     listen() {
-      const r = this.round; if (!r || !r.ch) return 0;
+      const r = this.round; if (!r || !r.ch) return null;
       if (AMB.audition) AMB.audition.stop();
       if (typeof r.game.play === 'function') return r.game.play(r.ch, this.api());
-      if (typeof r.game.stimulus === 'function' && AMB.audition) return AMB.audition.play(r.game.stimulus(r.ch) || []);
-      return 0;
+      if (typeof r.game.stimulus === 'function') return this.playEvents(r.game.stimulus(r.ch) || []);
+      return null;
     },
     replay() {
-      const r = this.round; if (!r || r.over) return 0;
+      const r = this.round; if (!r || r.over) return null;
       r.replays++; r.chReplays++;
       return this.listen();
     },
-    // incoming MIDI note-on while a round runs (called by js/play.js): routed to the plugin, if it listens
+    // incoming MIDI while a round runs (called by js/play.js): routed to the plugin, if it listens
     midi(note) {
       const r = this.round; if (!r || r.over || !r.ch || typeof r.game.onMidi !== 'function') return false;
       r.game.onMidi(r.ch, { midi: note.midi, vel: note.vel, time: note.time != null ? note.time : this.clock.now() }, this.api());
+      return true;
+    },
+    midiOff(note) {
+      const r = this.round; if (!r || r.over || !r.ch || typeof r.game.onMidiOff !== 'function') return false;
+      r.game.onMidiOff(r.ch, { midi: note.midi, time: note.time != null ? note.time : this.clock.now() }, this.api());
       return true;
     },
     choices() { const r = this.round; return r && r.ch && typeof r.game.choices === 'function' ? r.game.choices(r.ch) : null; },

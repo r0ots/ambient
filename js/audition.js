@@ -82,12 +82,13 @@
     lastCount: 0,
     active: false,
 
-    // events: [{t, midi | hz, dur, vel, cents?, voice}] -> total duration in seconds.
-    // opts.ctx / opts.dest let tests render into an OfflineAudioContext.
+    // events: [{t, midi | hz, dur, vel, cents?, voice}] -> {dur, at, t0}: total duration (s), start time on the
+    // audio clock (ctx s) and the same instant in performance.now() ms (what MIDI / key timestamps are compared to).
+    // opts.ctx / opts.dest let tests render into an OfflineAudioContext; opts.when = start (ctx s).
     play(events, opts = {}) {
       const eng = AMB.engine;
       const ctx = opts.ctx || (eng && eng.ctx);
-      if (!ctx) return 0;
+      if (!ctx) return { dur: 0, at: 0, t0: 0 };
       const dest = opts.dest || (opts.ctx ? ctx.destination : eng.audIn);
       const when = opts.when != null ? opts.when : ctx.currentTime + 0.1;
       let total = 0, n = 0;
@@ -102,7 +103,16 @@
         v.srcs[v.srcs.length - 1].onended = () => { const i = this.voices.indexOf(v); if (i >= 0) this.voices.splice(i, 1); };
       }
       this.lastCount = n;
-      return total;
+      return { dur: total, at: when, t0: this.perfAt(ctx, when) };
+    },
+    // performance.now() ms of an audio-clock time (output timestamp when the browser gives one)
+    perfAt(ctx, when) {
+      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      try {
+        const ts = ctx.getOutputTimestamp && ctx.getOutputTimestamp();
+        if (ts && ts.performanceTime > 0 && ts.contextTime > 0) return ts.performanceTime + (when - ts.contextTime) * 1000;
+      } catch (e) { /* offline context */ }
+      return now + (when - (ctx.currentTime || 0)) * 1000;
     },
 
     // Cut every scheduled / sounding voice with a 30 ms ramp

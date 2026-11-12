@@ -59,7 +59,7 @@ window.addEventListener('load', ()=>{
   T+=46000; const e1=A.tick();
   ok(e1 && !A.active && !A.round && ev[ev.length-1]==='end' && sessions[sessions.length-1]===false, 'temps écoulé → fin, session(false), arcade:end');
   ok(e1.record && e1.score===before && e1.stars===A.starsFor(before, 0) && e1.total===8 && e1.good===7, 'fin : score '+e1.score+', '+e1.stars+'★, record');
-  ok(A.answer('up')===null && A.replay()===0, 'plus de réponse après la fin');
+  ok(A.answer('up')===null && A.replay()===null, 'plus de réponse après la fin');
   ok(A.starsFor(0,0)===0 && A.starsFor(A.par(0),0)===2 && A.starsFor(A.par(0)*2,0)===3 && A.starsFor(A.par(0),1)<A.starsFor(A.par(0),0), 'étoiles relatives au niveau (par '+A.par(0)+' à d=0, '+A.par(1)+' à d=1)');
   // --- records (per mini-game, per pacts combination), persisted
   { const rec=A.record('hautbas'); ok(rec && rec.score===before && rec.stars===e1.stars, 'record mémorisé');
@@ -84,6 +84,17 @@ window.addEventListener('load', ()=>{
     T=0; A.start('t.partial',{seed:4, duration:10000}); A.replay(); ok(played===1 && A.choices()===null, 'plugin play(ch, api) appelé par replay, choices null');
     const xp=A.answer(-1); ok(!xp.ok && xp.pts===50, 'réponse partielle : '+xp.pts+' pts');
     T=10001; ok(A.answer(1)===null && !A.active, 'durée paramétrable : 10 s'); }
+  // --- API v3: api.t0 (real start of the stimulus), api.note (feedback), onMidiOff
+  { const oc=new OfflineAudioContext(1,44100,44100); AMB.engine={ctx:oc, audIn:oc.destination};
+    const got=[]; let api=null;
+    A.register({id:'t.api', make:(rng)=>({v:rng.int(5)}), stimulus:()=>[{t:0,midi:60,dur:0.2,voice:'sine'}], choices:()=>null, check:(ch,a)=>({ok:a===ch.v}),
+      onMidi:(ch,n,a)=>{ api=a; got.push('on'+n.midi+'@'+n.time); }, onMidiOff:(ch,n,a)=>got.push('off'+n.midi+'@'+n.time) });
+    T=0; A.start('t.api',{seed:7}); const tp=performance.now(), res=A.listen(); api=A.api();
+    ok(res && Math.abs(res.dur-0.2)<1e-9 && Math.abs(api.t0-(tp+100))<30, 'api.t0 = départ réel du stimulus (maintenant + avance 100 ms : '+(api.t0-tp).toFixed(0)+' ms)');
+    const t0=api.t0, nv=AMB.audition.lastCount, fb=api.note({midi:67}); ok(fb && fb.dur>0 && AMB.audition.lastCount===1 && api.t0===t0, 'api.note : retour sonore immédiat, t0 inchangé');
+    ok(A.midi({midi:64,vel:0.5,time:1234}) && A.midiOff({midi:64,time:1300}) && got.join()==='on64@1234,off64@1300' && typeof api.answer==='function', 'onMidi / onMidiOff routés au plugin : '+got.join());
+    A.register({id:'t.nooff', make:()=>({}), choices:()=>null, check:()=>({ok:false})}); A.start('t.nooff',{seed:1}); ok(A.midiOff({midi:60})===false, 'sans onMidiOff : ignoré');
+    A.end({abort:true}); ok(A.midiOff({midi:60})===false && A.open===false, 'hors manche : rien ; arcade.open déclaré (false)'); delete AMB.engine; }
   localStorage.removeItem('ambient.arcade.test');
   log('DONE');
   }catch(e){log('EXC '+e.stack)}

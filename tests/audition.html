@@ -42,7 +42,8 @@ window.addEventListener('load', async ()=>{
   const an=E.analyser, buf=new Float32Array(an.fftSize);
   const peakFor=async(ms)=>{ let pk=0; const t0=performance.now(); while(performance.now()-t0<ms){ an.getFloatTimeDomainData(buf); for(const v of buf) pk=Math.max(pk,Math.abs(v)); await wait(30); } return pk; };
   const base=await peakFor(200); // the user's chain alone (tape hiss etc.)
-  const dur=A.play(evs);
+  const tp=performance.now(), pr=A.play(evs), dur=pr.dur;
+  ok(Math.abs(pr.at-E.ctx.currentTime-0.1)<0.05 && pr.t0>tp+40 && pr.t0<tp+250, 'play renvoie son départ : at='+pr.at.toFixed(3)+' s, t0 = maintenant + '+(pr.t0-tp).toFixed(0)+' ms');
   ok(Math.abs(dur-0.35)<1e-9 && A.lastCount===3 && A.voices.length===3, 'play : '+A.voices.length+' voix, durée='+dur.toFixed(2));
   const pk=await peakFor(450);
   ok(pk<base*2+1e-4, 'rien sur la sortie de l\'utilisateur (analyseur/rec/Figer) peak='+pk.toExponential(1)+' base='+base.toExponential(1));
