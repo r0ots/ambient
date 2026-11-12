@@ -236,8 +236,10 @@
       this.audLim.attack.value = 0.003; this.audLim.release.value = 0.2;
       this.audIn.connect(dry); dry.connect(this.audOut);
       this.audIn.connect(this.audConv); this.audConv.connect(wet); wet.connect(this.audOut);
+      // follows global.volume (unity at the default 0.8), after the limiter so its ceiling stays fixed
+      this.audVol = g(1);
       this.audOut.connect(this.audLim);
-      this.audLim.connect(ctx.destination);
+      this.audLim.connect(this.audVol); this.audVol.connect(ctx.destination);
     }
 
     // Duck the ambience (-21 dB) while a round is playing; smooth ramps both ways.
@@ -368,7 +370,10 @@
       const t = this.ctx.currentTime;
       const ramp = (param, val, tc = 0.08) => param.setTargetAtTime(val, t, tc);
       switch (key) {
-        case 'global.volume': ramp(this.master.gain, v * v * 1.8); break;
+        case 'global.volume':
+          ramp(this.master.gain, v * v * 1.8);
+          if (this.audVol) ramp(this.audVol.gain, (v / 0.8) * (v / 0.8));
+          break;
         case 'fx.space': ramp(this.revIn.gain, v * 1.1); break;
         case 'fx.revType': this._revSize = -1; // force a rebuild, then fall through
         // eslint-disable-next-line no-fallthrough

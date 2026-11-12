@@ -153,7 +153,14 @@ window.addEventListener('load', ()=>{
   g.setMode('free'); ok(T.paramUnlocked('fx.echo') && T.uiUnlocked('song'), 'mode libre : tout ouvert');
   g.reset();
   localStorage.removeItem('ambient.game.test');
-  log('DONE');
+  // offline cache: every <script src="js/..."> of index.html is precached by sw.js, in the same order
+  Promise.all(['../index.html','../sw.js'].map(u=>fetch(u,{cache:'no-store'}).then(r=>r.text()))).then(([html,sw])=>{
+    const scripts=[...html.matchAll(/<script[^>]*\ssrc="(js\/[^"]+)"/g)].map(m=>m[1]);
+    const am=sw.match(/const ASSETS\s*=\s*\[([\s\S]*?)\];/), assets=am?[...am[1].matchAll(/'([^']+)'/g)].map(m=>m[1]):[];
+    const miss=scripts.filter(s=>!assets.includes(s)), js=assets.filter(a=>a.startsWith('js/'));
+    ok(scripts.length>20 && !miss.length, 'sw.js précache tous les scripts de index.html ('+scripts.length+') '+miss.join(','));
+    ok(js.join()===scripts.join(), 'sw.js ASSETS dans le même ordre que index.html');
+  }).catch(e=>log('EXC '+e.stack)).finally(()=>log('DONE'));
   }catch(e){log('EXC '+e.stack)}
 });
 </script></body></html>

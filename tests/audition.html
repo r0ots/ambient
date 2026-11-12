@@ -59,6 +59,10 @@ window.addEventListener('load', async ()=>{
   A.session(false);
   for(let i=0;i<30;i++){ AMB.seq.evolve(); AMB.seq.runLfos(); }
   ok(!AMB.seq.frozen && !E.ducked && moved.length>0, 'session(off) : dérive/LFO reprennent ('+moved.length+')');
+  st.set('global.volume',0.4); await wait(600);
+  const av=E.audVol.gain.value; ok(Math.abs(av-0.25)<0.03, 'bus audition suit le volume global gain='+av.toFixed(3));
+  st.set('global.volume',0.8); await wait(600);
+  ok(Math.abs(E.audVol.gain.value-1)<0.03, 'volume par défaut : gain audition = 1');
   ok(bus.length===0, 'aucun événement bus émis '+bus.join(','));
   log('DONE');
   }catch(e){log('EXC '+e.stack)}
