@@ -1,1 +1,15 @@
-/* Arcade mini-game « L'intrus » (G9.3) — à coder. Classes prefixed .arc-intrus- only. */
+/* Arcade mini-game « L'intrus » (G9.3). Classes prefixed .arc-intrus- (+ the two answer buttons of this game, by value). */
+.arc-intrus-lamps { display: flex; gap: clamp(14px, 4vw, 34px); justify-content: center; }
+.arc-intrus-lamp { display: grid; place-items: center; width: clamp(56px, 16vw, 84px); aspect-ratio: 1; border-radius: 50%; border: 3px solid var(--lcd-dim); color: var(--lcd-dim); font: clamp(30px, 8vw, 44px) var(--f-lcd); transition: all .08s; }
+.arc-intrus-lamp[data-k="A"].on { background: #ff6b4a; border-color: #ff6b4a; color: #1a0a04; box-shadow: 0 0 26px #ff6b4a; }
+.arc-intrus-lamp[data-k="B"].on { background: #3ec8f5; border-color: #3ec8f5; color: #04161c; box-shadow: 0 0 26px #3ec8f5; }
+.arc-intrus-lamp[data-k="X"].on { background: var(--fx-combo, #ffd34a); border-color: var(--fx-combo, #ffd34a); color: #1a1408; box-shadow: 0 0 26px var(--fx-combo, #ffd34a); transform: scale(1.12); }
+.arc-intrus-ask { margin-top: 8px; text-align: center; color: var(--lcd-dim); font-size: 22px; }
+.arc-choice[data-value="A"] { border-color: #ff6b4a; color: #ff6b4a; min-height: 130px; font-size: 72px; }
+.arc-choice[data-value="B"] { border-color: #3ec8f5; color: #3ec8f5; min-height: 130px; font-size: 72px; }
+.arc-choice[data-value="A"]:hover, .arc-choice[data-value="A"]:focus-visible { background: #2a120c; box-shadow: 0 0 18px #ff6b4a88; }
+.arc-choice[data-value="B"]:hover, .arc-choice[data-value="B"]:focus-visible { background: #0a1e26; box-shadow: 0 0 18px #3ec8f588; }
+.arc-choice[data-value="A"].good, .arc-choice[data-value="B"].good { border-color: var(--fx-good); color: var(--fx-good); }
+.arc-choice[data-value="A"].bad, .arc-choice[data-value="B"].bad { border-color: var(--fx-bad); color: var(--fx-bad); }
+@media (max-width: 560px) { .arc-choice[data-value="A"], .arc-choice[data-value="B"] { min-height: 110px; font-size: 60px; } }
+@media (prefers-reduced-motion: reduce) { .arc-intrus-lamp { transition: none; } .arc-intrus-lamp[data-k="X"].on { transform: none; } }

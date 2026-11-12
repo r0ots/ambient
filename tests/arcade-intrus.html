@@ -1,14 +1,98 @@
 <!doctype html><html><head><meta charset="utf-8"></head><body>
-<!-- Mini-game « L'intrus » (G9.3): pure engine, injected clock, no real audio (≤ 10 s). -->
+<!-- Mini-game « L'intrus » (G9.3): pure engine, injected clock, no real audio (≤ 10 s); loudness checked on an OfflineAudioContext. -->
 <script src="lib.js"></script>
 <script>window.AMB_ARCADE_KEY='ambient.arcade.test-intrus'; localStorage.removeItem(window.AMB_ARCADE_KEY); testBus();</script>
 <script src="../js/audition.js"></script><script src="../js/arcade.js"></script><script src="../js/arcade/intrus.js"></script>
 <script>
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
   try {
     const A = AMB.arcade; let T = 0; A.clock = { now: () => T };
-    ok(!!A, 'moteur d\'arcade chargé');
-    // à coder : G9.3 — ok(A.byId['intrus'], 'plugin enregistré'), make/check déterministes, escalier…
+    const G = A.byId['intrus'];
+    ok(!!G && G.kid === true && A.games.filter((g) => g.id === 'intrus').length === 1, 'plugin enregistré, kid');
+    const mr = Math.random; let calls = 0; Math.random = () => { calls++; return mr(); };
+    const storeW = []; if (AMB.store) { const s0 = AMB.store.set; AMB.store.set = function () { storeW.push(1); return s0.apply(this, arguments); }; }
+    const mk = (seed, d) => G.make(AMB.audition.rng(seed), d);
+    const DIMS = ['timbre', 'pitch', 'duree'];
+    // number of dimensions on which A and B differ (voice, pitch, duration, velocity-from-voice)
+    const diffs = (ch) => { const a = ch.A, b = ch.B, o = [];
+      if (a.voice !== b.voice) o.push('timbre');
+      if (Math.abs((a.midi * 100 + a.cents) - (b.midi * 100 + b.cents)) > 1e-9) o.push('pitch');
+      if (Math.abs(a.dur - b.dur) > 1e-9) o.push('duree');
+      return o; };
+    // --- determinism
+    const sig = (seed, d) => JSON.stringify(mk(seed, d));
+    ok(sig(42, 0.5) === sig(42, 0.5) && sig(42, 0.5) !== sig(43, 0.5), 'make déterministe pour une graine');
+    // --- exactly one dimension differs, on the 3 levels, 200 seeds each
+    let one = true, seen = {}, within = true;
+    for (const d of [0, 0.15, 0.5, 0.85, 1]) for (let s = 1; s <= 200; s++) {
+      const ch = mk(s, d), df = diffs(ch);
+      if (df.length !== 1 || df[0] !== ch.dim) one = false;
+      seen[ch.dim] = 1;
+      if (ch.x !== 'A' && ch.x !== 'B') within = false;
+    }
+    ok(one, 'A≠B sur exactement UNE dimension (= ch.dim) : 5 niveaux × 200 graines');
+    ok(DIMS.every((k) => seen[k]), 'les 3 dimensions sont tirées (' + Object.keys(seen).join(',') + ')');
+    ok(within, 'X ∈ {A, B}');
+    // --- easy levels only use timbre / pitch (kid), duration appears from d >= .3
+    { const e = new Set(); for (let s = 1; s <= 200; s++) e.add(mk(s, 0.1).dim); ok(!e.has('duree') && e.has('timbre') && e.has('pitch'), 'niveau facile : timbre + hauteur seulement'); }
+    // --- X equidistributed over 200 seeds
+    for (const d of [0, 1]) { let a = 0; for (let s = 1; s <= 200; s++) if (mk(s, d).x === 'A') a++; ok(a >= 75 && a <= 125, 'X = A sur ' + a + '/200 graines (d=' + d + ')'); }
+    { let a = 0, sw = 0; for (let s = 1; s <= 200; s++) { const ch = mk(s, 1); if (ch.x === 'A') a++; if (ch.dim === 'pitch' && ch.A.cents > ch.B.cents) sw++; }
+      const np = Array.from({ length: 200 }, (_, i) => mk(i + 1, 1)).filter((c) => c.dim === 'pitch').length;
+      ok(np > 20 && sw > np * 0.3 && sw < np * 0.7, 'la cible « la plus aiguë » est tantôt A, tantôt B (' + sw + '/' + np + ')'); }
+    // --- gap decreases with d but stays above the audible threshold
+    for (const dim of DIMS) {
+      const gs = []; for (let i = 0; i <= 20; i++) gs.push(G.gap(dim, i / 20));
+      const mono = gs.every((g, i) => i === 0 || g <= gs[i - 1] + 1e-9);
+      ok(mono && gs[0] > gs[20] && gs.every((g) => g >= G.MIN[dim] - 1e-9) && gs[20] <= G.MIN[dim] * 1.0001 + (dim === 'timbre' ? 0 : 0.0001), dim + ' : écart ' + gs[0] + ' → ' + gs[20] + ' (seuil ' + G.MIN[dim] + '), décroissant, jamais sous le seuil');
+    }
+    ok(G.gap('pitch', 0) === 700 && G.gap('pitch', 1) === 10 && G.gap('duree', 1) === 1.15, 'bornes : 700 → 10 cents, durée ×3 → ×1,15');
+    { const meas = (ch) => ch.dim === 'pitch' ? Math.abs(ch.A.cents - ch.B.cents) : ch.dim === 'duree' ? Math.max(ch.A.dur, ch.B.dur) / Math.min(ch.A.dur, ch.B.dur) : Math.abs(G.BRIGHT[ch.A.voice] - G.BRIGHT[ch.B.voice]);
+      let good = true, mean = {};
+      for (const d of [0, 0.25, 0.5, 0.75, 1]) for (let s = 1; s <= 60; s++) { const ch = mk(s, d); if (Math.abs(meas(ch) - ch.gap) > 1e-6 || ch.gap < G.MIN[ch.dim] - 1e-9) good = false; (mean[ch.dim] = mean[ch.dim] || {})[d] = ch.gap; }
+      ok(good, 'l\'écart réel des sons = ch.gap, toujours ≥ seuil');
+      const dp = [0, 0.25, 0.5, 0.75, 1].map((d) => mean.pitch[d]);
+      ok(dp.every((g, i) => i === 0 || g < dp[i - 1]), 'hauteur : écart mesuré strictement décroissant (' + dp.join(' > ') + ' cents)'); }
+    // --- timbre pairs: d=0 far (sine/pluck…), d=1 neighbours
+    { const gt0 = G.gap('timbre', 0), gt1 = G.gap('timbre', 1); ok(gt0 >= 3 && gt1 <= 1 + 1e-9, 'timbre : très différent à d=0 (' + gt0 + '), voisins à d=1 (' + gt1 + ')'); }
+    // --- choices / check
+    { const ch = mk(7, 0.4), c = G.choices(ch);
+      ok(c.length === 2 && c[0].value === 'A' && c[1].value === 'B', 'choices : A / B');
+      ok(G.check(ch, ch.x).ok === true && G.check(ch, ch.x === 'A' ? 'B' : 'A').ok === false && G.check(ch, 'nope').ok === false, 'check : bonne réponse = X, sinon faux');
+      const st = G.stimulus(ch); ok(st.length === 3 && st[0].t === 0 && st[1].t > st[0].t + st[0].dur && st[2].t > st[1].t + st[1].dur, 'stimulus : 3 sons A, B, X séparés');
+      const xs = st[2], src = ch[ch.x]; ok(xs.voice === src.voice && xs.midi === src.midi && xs.cents === src.cents && xs.dur === src.dur, 'X rejoue exactement le son ' + ch.x); }
+    // --- volume: same RMS for every voice (offline render), and the stimulus never differs by vel within a voice
+    { const rms = async (voice, midi) => { const ctx = new OfflineAudioContext(1, 44100, 44100);
+        AMB.audition.play([{ t: 0, midi, dur: 0.6, vel: G.velOf(voice), voice }], { ctx, dest: ctx.destination, when: 0 });
+        const d = (await ctx.startRendering()).getChannelData(0), n = Math.floor(0.6 * 44100); let s = 0; for (let i = 0; i < n; i++) s += d[i] * d[i]; return Math.sqrt(s / n); };
+      const V = ['sine', 'triangle', 'pluck', 'bell'], r = []; for (const v of V) r.push(await rms(v, 60));
+      const db = Math.max(...r.map((x) => 20 * Math.log10(x / r[0]))) - Math.min(...r.map((x) => 20 * Math.log10(x / r[0])));
+      ok(db < 0.6, 'volume égalisé entre les 4 voix : écart ' + db.toFixed(2) + ' dB (RMS ' + r.map((x) => x.toFixed(3)).join(' / ') + ')');
+      const r2 = await rms('bell', 48); ok(Math.abs(20 * Math.log10(r2 / r[3])) < 0.3, 'égalisation indépendante de la hauteur');
+      let eq = true; for (let s = 1; s <= 100; s++) { const ch = mk(s, (s % 11) / 10), st = G.stimulus(ch); const a = st[0], b = st[1];
+        if (Math.abs(G.velOf(a.voice) - a.vel) > 1e-9 || Math.abs(G.velOf(b.voice) - b.vel) > 1e-9) eq = false;
+        if (ch.dim !== 'timbre' && Math.abs(a.vel - b.vel) > 1e-9) eq = false;
+        }
+      ok(eq, 'volume : jamais la dimension qui diffère (vel A = vel B hors timbre, compensée par voix)');
+      // loudness of A and B in the actual stimulus (timbre pairs), rendered
+      let worst = 0; for (let s = 1; s <= 12; s++) { const ch = mk(s, 0); if (ch.dim !== 'timbre') continue; worst = Math.max(worst, Math.abs(20 * Math.log10((await rms(ch.A.voice, ch.A.midi)) / (await rms(ch.B.voice, ch.B.midi))))); }
+      ok(worst < 0.6, 'A et B (timbres différents, rendu réel) à ' + worst.toFixed(2) + ' dB près'); }
+    // --- full round through the engine: score / staircase
+    { A.stats('intrus').d = 0.2; A.stats('intrus').step = 0.12; T = 1000;
+      const r = A.start('intrus', { seed: 11 }); ok(!!r && A.active, 'manche démarrée');
+      A.answer(r.ch.answer); A.answer(A.round.ch.answer); ok(A.round.stair.d > 0.2, '2 réussites → d monte (' + A.round.stair.d.toFixed(2) + ')');
+      const dh = A.round.stair.d; A.answer(A.round.ch.x === 'A' ? 'B' : 'A'); ok(A.round.stair.d < dh, '1 erreur → d baisse');
+      { let n = 0; const p0 = AMB.audition.play; AMB.audition.play = (ev) => { n = ev.length; return { dur: 0, at: 0, t0: 0 }; }; A.listen(); AMB.audition.play = p0; ok(n === 3, 'listen joue 3 sons (A, B, X)'); }
+      A.end({ abort: true }); }
+    // --- keys: A/B and arrows answer through the plugin
+    { A.stats('intrus').d = 0.2; const r = A.start('intrus', { seed: 3 }), want = r.ch.x, n0 = r.n;
+      G.onKey(r.ch, { code: want === 'A' ? 'ArrowLeft' : 'ArrowRight' }, A.api());
+      ok(A.round.n === n0 + 1 && A.round.good === 1, 'touches ←/→ répondent (bonne réponse comptée)');
+      ok(G.onKey(r.ch, { code: 'KeyB' }, A.api()) === true && G.onKey(r.ch, { code: 'KeyQ' }, A.api()) === false, 'touche B gérée, autre touche ignorée');
+      A.end({ abort: true }); }
+    ok(calls === 0, 'Math.random non appelé (' + calls + ')');
+    ok(storeW.length === 0, 'aucune écriture dans AMB.store');
+    Math.random = mr;
     localStorage.removeItem(window.AMB_ARCADE_KEY);
     done();
   } catch (e) { fail(e); }
