@@ -6,9 +6,11 @@
 // (bonus = share of « parfait » notes: the engine's precision bonus). reveal = 1200 ms to read the verdict.
 // Curve: d = 0 (kid) 2–3 pentatonic notes on the beats, 84 BPM, tonic Do, notes shown on the grid;
 //        d = 1 6–8 notes of the full major scale, eighth-note syncopations, 128 BPM, any tonic, notes hidden.
-// Latency: a first-launch calibration (taps on 8 clicks -> median offset, per input: key / midi / touch) kept in
-// localStorage (own key, never AMB.store). It runs in prepare(api), before the round starts (off the clock);
-// the ⟲ button asks for a new one at the next round.
+// Mutators (G9.9, from d = 0.5, drawn more and more often, consigne shown above the grid): TRANSPOSÉ (answer k scale
+// steps up / down, announced), À REBOURS (same rhythm, pitches last to first), MIROIR (diatonic inversion around the
+// first note); a mutated bar has 3–5 notes and is 12 BPM slower. ch.call = what is heard, ch.notes = what to play.
+// Latency: the global calibration of js/latency.js (G9b.2: per device and per input key / touch / midi / MIDI
+// keyboard), run by prepare(api) before the round (off the clock) on the first launch; ⟲ asks for a new one.
 // The game keys go to onKey (not passKeys: a passed key would reach the app's own keyboard, not the plugin).
 // Everything is driven by AMB.arcade.clock.now() through tick(): the test page runs it with an injected clock.
 (function () {
@@ -23,9 +25,13 @@
   const FLATS = ['Do', 'Ré♭', 'Ré', 'Mi♭', 'Mi', 'Fa', 'Sol♭', 'Sol', 'La♭', 'La', 'Si♭', 'Si'];
   const ROOTS = [55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65]; // Sol..Fa: at most 5 accidentals, spelled right
   const pcName = (root, pc) => ([1, 3, 5, 8, 10].includes(root % 12) ? FLATS : SHARPS)[((pc % 12) + 12) % 12];
-  const CAL = { n: 8, ms: 600, skip: 2, win: 250, min: 3 }; // calibration: 8 clicks at 100 BPM, the first 2 taps are warm-up
+  const MUT = { // G9.9 mutators, unlocked by the level
+    transpose: { from: 0.5, name: 'TRANSPOSÉ', short: 'transposée' },
+    retro: { from: 0.65, name: 'À REBOURS', short: 'à rebours' },
+    miroir: { from: 0.8, name: 'MIROIR', short: 'en miroir' },
+  };
+  const STEPS = { 1: 'seconde', 2: 'tierce', 3: 'quarte', 4: 'quinte' }; // diatonic steps -> interval name
   const PTS = { perfect: 1, good: 0.75, off: 0.35, wrong: 0.15, miss: 0 };
-  const LKEY = () => window.AMB_REPONDS_KEY || 'ambient.reponds.lat.v1';
   const now = () => A.clock.now();
   const state = new WeakMap(); // challenge -> live state (hits, phase, view)
 
@@ -36,16 +42,33 @@
     blurb: 'La machine joue une mesure, tu la rejoues juste et en place (A–L, MIDI ou pads).',
     kid: true,
     reveal: 1200,
-    KEYS, SEMI, CAL, PTS,
+    KEYS, SEMI, PTS, MUT,
+    forceMut: null,
 
     // ---- the challenge ----
+    // mutators (G9.9) come with the level, from d = 0.5 (never for the kid): which one is drawn among the unlocked,
+    // more and more often (25 % -> 60 %); forceMut (tests, captures) imposes one
+    mutChance(d) { return d < MUT.transpose.from ? 0 : 0.25 + 0.35 * clamp((d - 0.5) / 0.5, 0, 1); },
+    unlocked(d) { return Object.keys(MUT).filter((k) => d >= MUT[k].from); },
     make(rng, d) {
       d = clamp(+d || 0, 0, 1);
-      const bpm = Math.round(84 + 44 * d), beat = 60000 / bpm, eighth = beat / 2;
+      let mut = null;
+      if (this.forceMut && MUT[this.forceMut]) mut = this.forceMut;
+      else if (d >= MUT.transpose.from && rng() < this.mutChance(d)) mut = rng.pick(this.unlocked(d));
+      for (let k = 0; ; k++) { // a motif the mutator can transform (in range, not a palindrome…); else plain
+        const ch = this.motif(rng, d, mut);
+        if (!mut) return ch;
+        const m = this.mutate(ch, mut, rng);
+        if (m) return m;
+        if (k >= 20) { const plain = this.motif(rng, d, null); return plain; }
+      }
+    },
+    motif(rng, d, mut) {
+      const bpm = Math.round(84 + 44 * d) - (mut ? 12 : 0), beat = 60000 / bpm, eighth = beat / 2; // a mutated answer gets a slower bar
       // pitch pool: pentatonic (do ré mi sol la) for the kid, + high do, then the full scale
       const pool = d < 0.25 ? [0, 1, 2, 4, 5] : d < 0.5 ? [0, 1, 2, 4, 5, 7] : [0, 1, 2, 3, 4, 5, 6, 7, 8];
       const onBeats = d < 0.3;
-      const nMax = Math.round(3 + 5 * d), nMin = Math.max(2, nMax - 2);
+      const nMax = mut ? 5 : Math.round(3 + 5 * d), nMin = mut ? 3 : Math.max(2, nMax - 2); // mutated: 3–5 notes to transform
       const n = Math.min(onBeats ? 4 : 8, nMin + rng.int(nMax - nMin + 1));
       // positions (eighths 0..7): on the beats only at first, off-beats more and more likely
       const wOff = onBeats ? 0 : 0.3 + 0.9 * (d - 0.3) / 0.7;
@@ -78,10 +101,34 @@
       });
       const root = d < 0.5 ? 60 : ROOTS[rng.int(ROOTS.length)];
       return {
-        d, bpm, beat, eighth, bar: beat * 4, countIn: d < 0.5 ? 4 : 2, root, pool, notes,
+        d, bpm, beat, eighth, bar: beat * 4, countIn: d < 0.5 ? 4 : 2, root, pool, notes, call: notes, mut: null,
         reveal: d < 0.4, // the kid sees which keys; the musician plays by ear
         win: { perfect: Math.round(45 - 15 * d), good: Math.round(100 - 30 * d), match: Math.min(eighth / 2, 180) },
       };
+    },
+    // the answer to play: transposed (k scale steps, announced), backwards (same rhythm, pitches last to first),
+    // mirror (diatonic inversion around the first note). Scale degrees 0..8 = the keys A–L, so the keyboard can play it.
+    mutate(ch, id, rng) {
+      const call = ch.notes, degs = call.map((n) => n.deg);
+      let to, k = 0;
+      if (id === 'transpose') {
+        const ks = [2, -2, 3, -3, 4, -4].filter((x) => degs.every((g) => g + x >= 0 && g + x <= 8));
+        if (!ks.length) return null;
+        k = ks[rng.int(ks.length)];
+        to = degs.map((g) => g + k);
+      } else if (id === 'retro') {
+        to = degs.slice().reverse();
+        if (to.every((g, i) => g === degs[i])) return null; // a palindrome sounds the same backwards
+      } else if (id === 'miroir') {
+        to = degs.map((g) => 2 * degs[0] - g);
+        if (to.some((g) => g < 0 || g > 8) || to.every((g, i) => g === degs[i])) return null;
+      } else return null;
+      const notes = call.map((n, i) => ({ pos: n.pos, deg: to[i], semi: SEMI[to[i]], pc: SEMI[to[i]] % 12, t: n.t }));
+      const m = MUT[id];
+      const text = id === 'transpose' ? `rejoue-la une ${STEPS[Math.abs(k)]} plus ${k > 0 ? 'haut' : 'bas'} (${k > 0 ? '+' : '−'}${Math.abs(k)} touches)`
+        : id === 'retro' ? 'mêmes notes, de la dernière à la première, même rythme'
+        : `autour de la 1re note (${pcName(ch.root, ch.root + SEMI[degs[0]])}) : ce qui montait descend`;
+      return { ...ch, call, notes, mut: { id, k, name: m.name, text, short: m.short } };
     },
     // count-in, call bar (click + motif), response bar (click only); t in seconds
     stimulus(ch) {
@@ -89,8 +136,8 @@
       const click = (t, acc) => ev.push({ t, hz: acc ? 1760 : 1320, dur: 0.04, vel: acc ? 0.5 : 0.3, voice: 'sine' });
       for (let k = 0; k < ch.countIn; k++) click(k * b, k === 0);
       for (let bar = 0; bar < 2; bar++) for (let k = 0; k < 4; k++) click(C + bar * 4 * b + k * b, k === 0);
-      ch.notes.forEach((nt, i) => {
-        const next = ch.notes[i + 1], gap = (next ? next.t : ch.bar) - nt.t;
+      ch.call.forEach((nt, i) => {
+        const next = ch.call[i + 1], gap = (next ? next.t : ch.bar) - nt.t;
         ev.push({ t: C + nt.t / 1000, midi: ch.root + nt.semi, dur: Math.max(0.12, (Math.min(gap, ch.eighth * 2) / 1000) * 0.9), vel: 0.85, voice: 'pluck' });
       });
       return ev.sort((x, y) => x.t - y.t);
@@ -124,89 +171,11 @@
       };
     },
 
-    // ---- latency calibration (localStorage, per input) ----
-    lat: null,
-    loadLat() {
-      if (this.lat) return this.lat;
-      let o = null;
-      try { o = JSON.parse(localStorage.getItem(LKEY())); } catch (e) { o = null; }
-      this.lat = o && o.v === 1 ? o : { v: 1 };
-      return this.lat;
-    },
-    saveLat() { try { localStorage.setItem(LKEY(), JSON.stringify(this.lat)); } catch (e) { /* private mode: kept for the session */ } },
-    calibrated() { return this.loadLat().any != null; },
-    latFor(src) { const L = this.loadLat(); return L[src] != null ? L[src] : L.any != null ? L.any : 0; },
-    // taps [{time, src}] against clicks at t0 + k * CAL.ms -> {ms, src, n} (median offset) or null
-    calibrate(taps, t0) {
-      const offs = {};
-      for (const tp of taps) {
-        const k = Math.round((tp.time - t0) / CAL.ms), off = tp.time - (t0 + k * CAL.ms);
-        if (k < CAL.skip || k >= CAL.n || Math.abs(off) > CAL.win) continue;
-        (offs[tp.src] = offs[tp.src] || []).push(off);
-      }
-      const src = Object.keys(offs).sort((x, y) => offs[y].length - offs[x].length)[0];
-      if (!src || offs[src].length < CAL.min) return null;
-      const v = offs[src].slice().sort((x, y) => x - y), m = v.length >> 1;
-      const ms = Math.round(v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2);
-      return { ms: clamp(ms, -150, 300), src, n: v.length };
-    },
-    setLat(src, ms) { const L = this.loadLat(); L[src] = ms; L.any = ms; this.saveLat(); },
-
-    // ---- calibration, before the round (js/arcade-ui.js calls prepare(api) off the clock) ----
-    // pending: {t0, taps, api, resolve, view}; forceCal: the ⟲ button asked for a new one; calMsg: shown once
-    cal: null, forceCal: false, calMsg: '',
-    prepare(api) {
-      if (this.calibrated() && !this.forceCal) return Promise.resolve(null);
-      this.forceCal = false;
-      return new Promise((resolve) => {
-        const C = (this.cal = { taps: [], api, resolve, view: null, t0: 0 });
-        const tap = (time, src, deg) => { C.taps.push({ time, src }); this.calFlash(deg); return true; };
-        api.onKey((e) => { const deg = KEYS.indexOf(e.code); return deg >= 0 || e.code === 'Space' ? tap(this.evTime(e), 'key', deg) : false; });
-        api.onMidi((m) => { tap(m.time != null ? m.time : api.now(), 'midi', -1); if (api.note) api.note({ midi: m.midi, voice: 'pluck', dur: 0.2, vel: 0.5 }); });
-        if (api.stage) this.calView(api.stage, (deg, e) => tap(this.evTime(e), 'touch', deg));
-        const ev = [];
-        for (let k = 0; k < CAL.n; k++) ev.push({ t: (k * CAL.ms) / 1000, hz: k % 4 ? 1320 : 1760, dur: 0.04, vel: 0.5, voice: 'sine' });
-        const res = api.play(ev);
-        C.t0 = (res && res.t0) || api.now() + 100;
-        if (!this.manual && typeof setInterval === 'function') C.timer = setInterval(() => this.calTick(), 30);
-        this.calTick();
-      });
-    },
-    // advances the calibration from the clock (the tests call it with an injected clock); resolves the promise at the end
-    calTick() {
-      const C = this.cal; if (!C) return null;
-      const t = C.api.now(), cancelled = C.api.cancelled && C.api.cancelled();
-      if (!cancelled && t <= C.t0 + CAL.n * CAL.ms + 350) {
-        if (C.view) C.view.status.textContent = `CALIBRAGE ${clamp(Math.floor((t - C.t0) / CAL.ms) + 1, 0, CAL.n)}/${CAL.n}`;
-        return null;
-      }
-      if (C.timer) clearInterval(C.timer);
-      this.cal = null;
-      let out = null;
-      if (!cancelled) {
-        out = this.calibrate(C.taps, C.t0);
-        if (out) { this.setLat(out.src, out.ms); this.calMsg = `Latence ${out.src === 'midi' ? 'MIDI' : out.src === 'touch' ? 'tactile' : 'clavier'} : ${out.ms > 0 ? '+' : ''}${out.ms} ms`; }
-        else { if (!this.calibrated()) this.setLat('any', 0); this.calMsg = 'Pas assez de tapes : latence 0 ms (⟲ pour refaire)'; }
-      }
-      C.resolve(out);
-      return out;
-    },
-    calView(el, onPad) {
-      el.innerHTML = `<div class="arc-reponds" data-mode="calib">
-        <div class="arc-reponds-top"><span class="arc-reponds-key">Calibrage de la latence (hors chrono)</span><b class="arc-reponds-status" aria-live="polite">CALIBRAGE</b></div>
-        <div class="arc-reponds-verdict">Tape une touche (A–L, Espace, MIDI ou un pad) pile sur chaque clic</div>
-        <div class="arc-reponds-pads" style="--n:5">${[0, 1, 2, 4, 5].map((g) => `<button class="arc-reponds-pad" data-deg="${g}"><kbd>${LETTERS[g]}</kbd>${SHARPS[SEMI[g] % 12]}</button>`).join('')}</div>
-      </div>`;
-      this.cal.view = { status: el.querySelector('.arc-reponds-status'), pads: [...el.querySelectorAll('.arc-reponds-pad')] };
-      el.querySelector('.arc-reponds-pads').addEventListener('pointerdown', (e) => {
-        const b = e.target.closest('[data-deg]'); if (!b) return;
-        e.preventDefault(); onPad(+b.dataset.deg, e);
-      });
-    },
-    calFlash(deg) {
-      const v = this.cal && this.cal.view, p = v && v.pads.find((b) => +b.dataset.deg === deg); if (!p) return;
-      p.classList.remove('on'); void p.offsetWidth; p.classList.add('on');
-    },
+    // ---- latency: the global calibration (js/latency.js, per device and per input) ----
+    latFor(src, input) { return AMB.latency ? AMB.latency.get(src, input) : 0; },
+    calibrated() { return !!(AMB.latency && AMB.latency.calibrated()); },
+    // first launch (or ⟲): the calibration runs in prepare(api), before the round starts (off the clock)
+    prepare(api) { return AMB.latency ? AMB.latency.ensure(api) : Promise.resolve(null); },
 
     // ---- the round's live part ----
     st(ch) { let s = state.get(ch); if (!s) { s = { mode: 'idle', hits: [], res: null, view: null }; state.set(ch, s); } return s; },
@@ -220,7 +189,7 @@
     startCall(ch, api) {
       const s = this.st(ch), res = api.play(this.stimulus(ch));
       s.mode = 'count'; s.hits = []; s.res = null; s.live = null;
-      if (this.calMsg) { s.calMsg = this.calMsg; this.calMsg = ''; }
+      const L = AMB.latency; if (L && L.msg) { s.calMsg = L.msg; L.msg = ''; }
       s.t0 = (res && res.t0) || now() + 100;
       this.draw(ch);
     },
@@ -250,7 +219,7 @@
       const s = this.st(ch);
       if (h.midi != null && api && api.note) api.note({ midi: h.midi, voice: 'pluck', dur: 0.3, vel: h.vel != null ? 0.4 + 0.5 * h.vel : 0.8 });
       if (s.mode === 'answer' || s.mode === 'listen') {
-        const rel = h.time - this.latFor(h.src) - (s.t0 + this.respStart(ch));
+        const rel = h.time - this.latFor(h.src, h.input) - (s.t0 + this.respStart(ch));
         if (rel >= -ch.win.match && rel <= ch.bar + ch.win.match) {
           s.hits.push({ pc: h.pc, t: Math.round(rel * 10) / 10, src: h.src, midi: h.midi });
           s.live = this.check(ch, { hits: s.hits });
@@ -269,7 +238,7 @@
     },
     onMidi(ch, m, api) {
       const pc = (((m.midi - ch.root) % 12) + 12) % 12;
-      return this.input(ch, { pc, midi: m.midi, vel: m.vel, time: m.time != null ? m.time : now(), src: 'midi' }, api);
+      return this.input(ch, { pc, midi: m.midi, vel: m.vel, time: m.time != null ? m.time : now(), src: 'midi', input: m.input || null }, api);
     },
 
     // ---- view ----
@@ -290,6 +259,7 @@
       const exp = ch.notes.map((nt, j) => `<b class="arc-reponds-exp" data-j="${j}" style="left:${(nt.pos / 8) * 100}%;bottom:${ch.reveal ? 8 + (nt.deg / Math.max(1, top)) * 52 : 30}%">${ch.reveal ? this.label(ch, nt.pc) : "?"}</b>`).join('');
       el.innerHTML = `<div class="arc-reponds">
         <div class="arc-reponds-top"><span class="arc-reponds-key">${tonic} majeur · ${ch.bpm} BPM</span><b class="arc-reponds-status" aria-live="polite"></b><button class="arc-reponds-cal" title="Recalibrer la latence (8 clics) au lancement de la prochaine manche">⟲ <span></span></button></div>
+        ${ch.mut ? `<div class="arc-reponds-mut" data-mut="${ch.mut.id}"><b>${ch.mut.name}</b><span>${ch.mut.text}</span></div>` : ''}
         <div class="arc-reponds-grid"><div class="arc-reponds-in"><div class="arc-reponds-cells">${cells}</div><div class="arc-reponds-lane">${exp}</div><div class="arc-reponds-hits"></div><i class="arc-reponds-head"></i></div></div>
         <div class="arc-reponds-verdict"></div>
         <div class="arc-reponds-pads" style="--n:${Math.min(5, pads.length)}">${pads.map((g) => `<button class="arc-reponds-pad" data-deg="${g}"><kbd>${LETTERS[g]}</kbd>${this.name(ch, g)}</button>`).join('')}</div>
@@ -303,7 +273,7 @@
         e.preventDefault();
         this.input(ch, this.fromDeg(ch, +b.dataset.deg, this.evTime(e), 'touch'), s.api || api);
       });
-      s.view.cal.addEventListener('click', () => { this.forceCal = true; this.draw(ch); });
+      s.view.cal.addEventListener('click', () => { if (AMB.latency) AMB.latency.request(); this.draw(ch); });
       this.draw(ch);
     },
     flash(ch, h) {
@@ -315,12 +285,12 @@
       const s = this.st(ch), v = s.view;
       if (!v || !v.el.isConnected) return;
       const t = now(), lat = this.latFor('key');
-      v.cal.lastElementChild.textContent = this.forceCal ? 'à la prochaine manche' : this.calibrated() ? `${lat > 0 ? '+' : ''}${lat} ms` : 'latence';
+      v.cal.lastElementChild.textContent = AMB.latency && AMB.latency.force ? 'à la prochaine manche' : this.calibrated() ? `${lat > 0 ? '+' : ''}${lat} ms` : 'latence';
       let head = -1, status = '', cls = '';
       if (s.mode === 'count') {
         const k = Math.floor((t - s.t0) / ch.beat);
         status = k < 0 ? 'PRÊT ?' : `${'·'.repeat(clamp(k + 1, 1, ch.countIn))} ${clamp(k + 1, 1, ch.countIn)}`;
-        v.verdict.textContent = s.calMsg || (ch.reveal ? 'Écoute, puis rejoue les mêmes touches' : 'Écoute la mesure, puis rejoue-la en rythme');
+        v.verdict.textContent = s.calMsg || (ch.mut ? `Écoute, puis rejoue-la ${ch.mut.short}` : ch.reveal ? 'Écoute, puis rejoue les mêmes touches' : 'Écoute la mesure, puis rejoue-la en rythme');
       } else if (s.mode === 'listen') {
         head = (t - s.t0 - this.callStart(ch)) / ch.bar; status = 'ÉCOUTE'; cls = 'listen';
       } else if (s.mode === 'answer') {

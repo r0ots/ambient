@@ -1,8 +1,8 @@
 <!doctype html><html><head><meta charset="utf-8"></head><body>
-<!-- Mini-game « Réponds en jouant » (G9.5): pure engine, injected clock, no real audio (≤ 10 s). -->
+<!-- Mini-game « Réponds en jouant » (G9.5 + G9.9 mutators, latency of js/latency.js): pure engine, injected clock, no real audio (≤ 10 s). -->
 <script src="lib.js"></script>
-<script>window.AMB_ARCADE_KEY='ambient.arcade.test-reponds'; window.AMB_REPONDS_KEY='ambient.reponds.test'; localStorage.removeItem(window.AMB_ARCADE_KEY); localStorage.removeItem(window.AMB_REPONDS_KEY); testBus();</script>
-<script src="../js/audition.js"></script><script src="../js/arcade.js"></script><script src="../js/arcade/reponds.js"></script>
+<script>window.AMB_ARCADE_KEY='ambient.arcade.test-reponds'; window.AMB_LATENCY_KEY='ambient.reponds.test'; localStorage.removeItem(window.AMB_ARCADE_KEY); localStorage.removeItem(window.AMB_LATENCY_KEY); testBus();</script>
+<script src="../js/audition.js"></script><script src="../js/arcade.js"></script><script src="../js/latency.js"></script><script src="../js/arcade/reponds.js"></script>
 <script>
 window.addEventListener('load', async () => {
   try {
@@ -10,7 +10,7 @@ window.addEventListener('load', async () => {
     ok(!!A, 'moteur d\'arcade chargé');
     const g = A.byId.reponds;
     ok(g && g.kid === true && g.choices() === null && typeof g.onMidi === 'function' && typeof g.onKey === 'function', 'plugin enregistré (kid, réponse jouée : choices null, onKey + onMidi)');
-    g.manual = true; // no interval: the test drives tick() with the injected clock
+    const L = AMB.latency; g.manual = true; L.manual = true; // no interval: the test drives tick() with the injected clock
     const mr = Math.random; let rCalls = 0; Math.random = function () { rCalls++; return mr(); };
     const storeW = []; AMB.store = { set: (...a) => storeW.push(a), setMany: (...a) => storeW.push(a), get: () => null };
     const R = (seed) => AMB.audition.rng(seed);
@@ -21,7 +21,7 @@ window.addEventListener('load', async () => {
 
     // --- difficulty range and musical invariants (200 seeds per level)
     const stats = (d) => {
-      let nMin = 99, nMax = 0, off = 0, offAny = 0, valid = true, degs = new Set(), sync = 0;
+      let pnMin = 99, pnMax = 0, muts = 0, nMin = 99, nMax = 0, off = 0, offAny = 0, valid = true, degs = new Set(), sync = 0;
       for (let s = 1; s <= 200; s++) {
         const ch = g.make(R(s * 7919), d), N = ch.notes;
         nMin = Math.min(nMin, N.length); nMax = Math.max(nMax, N.length);
@@ -34,11 +34,14 @@ window.addEventListener('load', async () => {
           if (Math.abs(n.t - n.pos * ch.eighth) > 1e-6 || n.t >= ch.bar) valid = false;
         });
         const ev = g.stimulus(ch), notes = ev.filter((e) => e.midi != null), C = ch.countIn * ch.beat / 1000;
-        if (notes.length !== N.length || notes.some((e) => e.t < C - 1e-9 || e.t >= C + ch.bar / 1000)) valid = false; // motif inside the call bar
+        const K = ch.call; // what is heard (= ch.notes unless a mutator transforms the answer)
+        if (notes.length !== N.length || K.length !== N.length || notes.some((e) => e.t < C - 1e-9 || e.t >= C + ch.bar / 1000)) valid = false; // motif inside the call bar
         if (ev.filter((e) => e.hz).length !== ch.countIn + 8) valid = false;                     // clicks: count-in + 2 bars
-        if (notes.some((e) => e.voice !== 'pluck' || e.midi - ch.root !== g.SEMI[N.find((n) => Math.abs(C + n.t / 1000 - e.t) < 1e-9).deg])) valid = false;
+        if (notes.some((e) => e.voice !== 'pluck' || e.midi - ch.root !== g.SEMI[K.find((n) => Math.abs(C + n.t / 1000 - e.t) < 1e-9).deg])) valid = false;
+        if (!ch.mut) { pnMin = Math.min(pnMin, N.length); pnMax = Math.max(pnMax, N.length); } else muts++;
       }
-      return { nMin, nMax, offRate: off, offAny, valid, degs, bpm: g.make(R(1), d).bpm, ch: g.make(R(1), d) };
+      const c1 = g.make(R(1), d);
+      return { nMin: pnMin, nMax: pnMax, nAll: [nMin, nMax], muts, offRate: off, offAny, valid, degs, bpm: c1.bpm + (c1.mut ? 12 : 0), ch: c1 };
     };
     const s0 = stats(0), s5 = stats(0.5), s1 = stats(1);
     ok(s0.valid && s5.valid && s1.valid, 'motifs valides : dans la gamme, dans la mesure (grille de croches), stimulus = clics + motif dans la mesure d\'appel');
@@ -80,10 +83,10 @@ window.addEventListener('load', async () => {
         T = 500; const P = {}; let resolved = null;
         const papi = { stage: null, play: (ev) => A.playEvents(ev), note: (ev) => A.note(ev), stop() {}, now: () => A.clock.now(), onKey: (fn) => { P.key = fn; }, onMidi: (fn) => { P.midi = fn; }, cancelled: () => false };
         const pr = g.prepare(papi); pr.then((v) => { resolved = v; });
-        ok(!A.round && g.cal && typeof P.key === 'function', 'premier lancement : prepare() lance la calibration, aucune manche (chrono) en cours');
-        for (let k = 0; k < g.CAL.n; k++) { T = g.cal.t0 + k * g.CAL.ms + opts.calib; P.key({ code: 'KeyA', timeStamp: T }); }
-        T = g.cal.t0 + g.CAL.n * g.CAL.ms + 400; g.calTick();
-        ok(g.calibrated() && g.latFor('key') === opts.calib && !g.cal, 'calibration : latence clavier mémorisée = ' + g.latFor('key') + ' ms');
+        ok(!A.round && L.cur && typeof P.key === 'function', 'premier lancement : prepare() lance la calibration, aucune manche (chrono) en cours');
+        for (let k = 0; k < L.CAL.n; k++) { T = L.cur.t0 + k * L.CAL.ms + opts.calib; P.key({ code: 'KeyA', timeStamp: T }); }
+        T = L.cur.t0 + L.CAL.n * L.CAL.ms + 400; L.tick();
+        ok(g.calibrated() && g.latFor('key') === opts.calib && !L.cur, 'calibration : latence clavier mémorisée = ' + g.latFor('key') + ' ms');
         let again = 'pending'; g.prepare(papi).then((v) => { again = v; });
         afterCal = () => ok(resolved && resolved.ms === opts.calib && again === null, 'prepare() résolu ; déjà calibré → aucune calibration au lancement suivant');
       }
@@ -123,18 +126,49 @@ window.addEventListener('load', async () => {
     ok(rk.bonus === 0 && rk.ok, 'tout « bien », aucun parfait → bonus 0');
     ok(rk.good === n && rm.good === n && rk.score === rm.score, 'clavier et MIDI décalés de 60 ms : même note (bien) ' + rk.score + ' = ' + rm.score);
     // separate MIDI latency
-    g.setLat('midi', 40);
+    L.set('midi', 40);
     const m40 = runRound((rc, x, t) => A.midi({ midi: midiOf(x), vel: 0.5, time: t }), 40);
     ok(g.check(ch, { hits: m40.s.hits }).perfect === n && g.latFor('key') === 25, 'latence MIDI distincte (40 ms) compensée, clavier gardé (25 ms) — latence ' + g.latFor('midi'));
     const raw = JSON.parse(localStorage.getItem('ambient.reponds.test'));
     ok(raw && raw.key === 25 && raw.midi === 40, 'latences en localStorage (clé propre) ' + JSON.stringify(raw));
     // calibration needs enough taps; robust to an outlier
-    ok(g.calibrate([{ time: 1300, src: 'key' }], 0) === null, 'calibration : trop peu de tapes → refusée');
+    ok(L.measure([{ time: 1300, src: 'key' }], 0) === null, 'calibration : trop peu de tapes → refusée');
     const taps = [2, 3, 4, 5, 6, 7].map((k) => ({ time: k * 600 + (k === 4 ? 200 : 30), src: 'touch' }));
-    ok(g.calibrate(taps, 0).ms === 30 && g.calibrate(taps, 0).src === 'touch', 'calibration : médiane (une tape aberrante ignorée)');
+    ok(L.measure(taps, 0).ms === 30 && L.measure(taps, 0).src === 'touch', 'calibration : médiane (une tape aberrante ignorée)');
     // a wrong key in the live path
     const wRun = runRound((rc, x, t) => g.onKey(rc, { code: g.KEYS[(x.deg + 1) % 9], timeStamp: t }, A.api()), 40);
     ok(wRun.a && !wRun.a.ok && wRun.a.partial < 0.3, 'mauvaises touches → manche ratée (partiel ' + wRun.a.partial + ')');
+
+    // latency per MIDI keyboard (several inputs): this one is late by 70 ms, another one falls back on the MIDI value
+    L.set('midi', 70, 'Arturia'); L.set('midi', 40);
+    const dev = runRound((rc, x, t) => A.midi({ midi: midiOf(x), vel: 0.5, time: t, input: 'Arturia' }), 70);
+    const oth = runRound((rc, x, t) => A.midi({ midi: midiOf(x), vel: 0.5, time: t, input: 'Autre' }), 40);
+    ok(g.check(ch, { hits: dev.s.hits }).perfect === n && g.check(ch, { hits: oth.s.hits }).perfect === n && L.get('midi', 'Arturia') === 70 && L.get('midi', 'Autre') === 40, 'deux claviers MIDI : latence propre à chacun (70 ms), sinon celle du MIDI (40 ms)');
+
+    // --- G9.9 mutators
+    const gen = (d, n = 300) => Array.from({ length: n }, (_, s) => g.make(R(s * 104729 + 3), d));
+    const low = [0, 0.2, 0.45].flatMap((d) => gen(d, 150));
+    ok(low.every((c) => !c.mut && c.call === c.notes), 'pas de mutateur sous d = 0,5 (le fils n\'en voit jamais)');
+    const kinds = (d) => { const o = {}; gen(d).forEach((c) => { const k = c.mut ? c.mut.id : 'aucun'; o[k] = (o[k] || 0) + 1; }); return o; };
+    const k55 = kinds(0.55), k7 = kinds(0.7), k95 = kinds(0.95);
+    ok(k55.transpose > 40 && !k55.retro && !k55.miroir && k7.retro > 20 && !k7.miroir && k95.miroir > 20 && k95.aucun < k55.aucun, 'déblocage par la difficulté : 0,55 ' + JSON.stringify(k55) + ' · 0,7 ' + JSON.stringify(k7) + ' · 0,95 ' + JSON.stringify(k95));
+    let mutOk = true, mutBad = '';
+    for (const c of gen(0.95, 400).filter((c) => c.mut)) {
+      const a = c.call.map((x) => x.deg), b = c.notes.map((x) => x.deg), id = c.mut.id;
+      const want = id === 'transpose' ? a.map((x) => x + c.mut.k) : id === 'retro' ? a.slice().reverse() : a.map((x) => 2 * a[0] - x);
+      const same = c.notes.every((x, i) => x.pos === c.call[i].pos && x.t === c.call[i].t && x.semi === g.SEMI[x.deg] && x.pc === x.semi % 12);
+      if (!same || b.join() !== want.join() || b.some((x) => x < 0 || x > 8) || a.join() === b.join() || c.notes.length > 5 || c.notes.length < 3) { mutOk = false; mutBad = id + ' ' + a + ' → ' + b; }
+      if (id === 'transpose' && !(Math.abs(c.mut.k) >= 2 && /tierce|quarte|quinte/.test(c.mut.text) && /touches/.test(c.mut.text))) { mutOk = false; mutBad = c.mut.text; }
+    }
+    ok(mutOk, 'transposé (+k degrés annoncés), à rebours (même rythme, hauteurs inversées), miroir (inversion diatonique autour de la 1re note) : réponses justes, dans les touches A–L, 3–5 notes ' + mutBad);
+    g.forceMut = 'miroir'; const cm = g.make(R(77), 0.9); g.forceMut = null;
+    const stimM = g.stimulus(cm).filter((e) => e.midi != null).map((e) => e.midi - cm.root);
+    ok(cm.mut && cm.mut.id === 'miroir' && stimM.join() === cm.call.map((x) => x.semi).join() && stimM.join() !== cm.notes.map((x) => x.semi).join(), 'on entend le motif (call), on joue sa transformation (notes)');
+    ok(cm.bpm === Math.round(84 + 44 * 0.9) - 12, 'mesure mutée plus lente (' + cm.bpm + ' BPM)');
+    const playCall = g.check(cm, { hits: cm.call.map((x) => ({ pc: x.pc, t: x.t })) }), playMut = g.check(cm, { hits: cm.notes.map((x) => ({ pc: x.pc, t: x.t })) });
+    ok(!playCall.ok && playMut.ok && playMut.perfect === cm.notes.length, 'rejouer le motif tel quel → raté ; sa version miroir → parfait');
+    { const el = document.createElement('div'); document.body.append(el); g.render(cm, el, null); const b = el.querySelector('.arc-reponds-mut');
+      ok(b && /MIROIR/.test(b.textContent) && /1re note/.test(b.textContent), 'consigne affichée au-dessus de la grille : « ' + (b && b.textContent) + ' »'); el.remove(); }
 
     // --- render (DOM, no app)
     const el = document.createElement('div'); document.body.append(el);
@@ -152,7 +186,7 @@ window.addEventListener('load', async () => {
     ok(rCalls === 0, 'Math.random jamais appelé');
     ok(storeW.length === 0, 'aucune écriture dans le store');
     await new Promise((r) => setTimeout(r, 0)); if (afterCal) afterCal(); else ok(false, 'calibration par prepare() non testée');
-    localStorage.removeItem(window.AMB_ARCADE_KEY); localStorage.removeItem(window.AMB_REPONDS_KEY);
+    localStorage.removeItem(window.AMB_ARCADE_KEY); localStorage.removeItem(window.AMB_LATENCY_KEY);
     done();
   } catch (e) { fail(e); }
 });

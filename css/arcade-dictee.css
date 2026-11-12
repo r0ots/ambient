@@ -1,0 +1,29 @@
+/* Arcade mini-game « Dictée d'accords » (G9.9 variant). Classes prefixed .arc-dictee- only. */
+.arc-dictee { width: min(100%, 720px); display: grid; gap: 10px; justify-items: center; text-align: center; }
+.arc-dictee-hint { margin: 0; font-size: 22px; color: var(--lcd-fg); }
+.arc-dictee-midi { margin: 0; font: 14px/1.35 var(--f-ui); color: var(--lcd-dim); text-shadow: none; }
+.arc-dictee-played { margin: 0; min-height: 24px; font-size: 22px; color: var(--fx-combo); }
+.arc-dictee-played:empty { min-height: 0; }
+/* a stylised stack of notes over a heavier bass bar: the bass is what to listen to first */
+.arc-dictee-chord { position: relative; display: grid; gap: 6px; width: 120px; padding-bottom: 4px; }
+.arc-dictee-chord i { display: block; height: 8px; border-radius: 4px; background: var(--lcd-dim); opacity: .7; animation: arc-dictee-ring 1.6s ease-out both; }
+.arc-dictee-chord i:nth-child(2) { margin: 0 12px; animation-delay: .1s; }
+.arc-dictee-chord i:nth-child(3) { margin: 0 24px; animation-delay: .2s; }
+.arc-dictee-chord i:nth-child(4) { margin: 0 36px; animation-delay: .3s; }
+.arc-dictee-chord b { display: block; height: 14px; border-radius: 4px; background: var(--lcd-fg); box-shadow: 0 0 12px var(--lcd-glow); }
+@keyframes arc-dictee-ring { 0% { opacity: 1; background: var(--lcd-fg); } 100% { opacity: .7; } }
+.arc-dictee-prog { display: flex; align-items: center; gap: 14px; font: 48px/1 var(--f-lcd); }
+.arc-dictee-prog b { min-width: 74px; padding: 6px 10px; border: 2px solid var(--lcd-dim); border-radius: 6px; background: #120c04; font-weight: normal; }
+.arc-dictee-prog b.q { border-color: var(--fx-combo); color: var(--fx-combo); box-shadow: 0 0 14px var(--lcd-glow); }
+.arc-dictee-prog i { font-style: normal; color: var(--lcd-dim); font-size: 32px; }
+/* up to 6 short labels: a 3-column grid keeps them big */
+.arc-play:has(.arc-dictee) .arc-choices { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+@media (max-width: 560px) {
+  .arc-dictee-hint { font-size: 18px; }
+  .arc-dictee-prog { font-size: 36px; gap: 8px; }
+  .arc-dictee-prog b { min-width: 56px; }
+  .arc-play:has(.arc-dictee) .arc-choices { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .arc-play:has(.arc-dictee) .arc-choice { min-height: 72px; font-size: 24px; padding: 18px 4px 8px; }
+  .arc-play:has(.arc-dictee-kid) .arc-choices { grid-template-columns: 1fr 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .arc-dictee-chord i { animation: none; } }

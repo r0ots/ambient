@@ -48,4 +48,10 @@
   .arc-reponds-verdict { font-size: 20px; }
 }
 @media (prefers-reduced-motion: reduce) { .arc-reponds-hit, .arc-reponds-pad.on { animation: none; } }
-.arc-reponds[data-mode="calib"] .arc-reponds-lane, .arc-reponds[data-mode="calib"] .arc-reponds-hits { visibility: hidden; }
+/* G9.9 mutators: the consigne, above the grid, as loud as the status */
+.arc-reponds-mut { display: flex; align-items: baseline; justify-content: center; flex-wrap: wrap; gap: 4px 12px; padding: 6px 12px; border: 2px solid var(--fx-combo); border-radius: 6px; background: #2a1d06; color: var(--lcd-fg); font-size: 22px; text-align: center; }
+.arc-reponds-mut b { font: 30px/1 var(--f-lcd); letter-spacing: .08em; color: var(--fx-combo); }
+.arc-reponds[data-mode="count"] .arc-reponds-mut { animation: arc-reponds-mut 1s steps(1) 2; }
+@keyframes arc-reponds-mut { 50% { border-color: var(--lcd-dim); } }
+@media (max-width: 560px) { .arc-reponds-mut { font-size: 17px; padding: 4px 8px; } .arc-reponds-mut b { font-size: 24px; } }
+@media (prefers-reduced-motion: reduce) { .arc-reponds-mut { animation: none !important; } }

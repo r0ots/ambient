@@ -31,6 +31,10 @@
       this.el('.arc-again').addEventListener('click', () => this.start(this.gameId));
       this.el('.arc-menu-btn').addEventListener('click', () => this.menu());
       this.el('.arc-carts').addEventListener('click', (e) => { const c = e.target.closest('[data-game]'); if (c) this.start(c.dataset.game); });
+      if (AMB.latency) { // G9b.2: recalibrate the latency from the cabinet (js/latency.js)
+        const b = document.createElement('button'); b.className = 'arc-lat'; b.title = 'Recalibrer la latence (8 clics, par entrée : clavier, tactile, MIDI)';
+        this.el('.arc-carts').after(b); b.addEventListener('click', () => this.calibrate());
+      }
       this.el('.arc-choices').addEventListener('click', (e) => { const b = e.target.closest('[data-i]'); if (b) this.pick(+b.dataset.i); });
       window.addEventListener('keydown', (e) => this.onKey(e), true); // capture: before every app shortcut
       const B = AMB.bus; if (!B) return;
@@ -96,6 +100,7 @@
           <span class="arc-cart-meta"><span title="Niveau atteint">NIV ${Math.round((st.peak || 0) * 100)}%</span><span title="Record">REC ${pad6(rec ? rec.score : 0)}</span><span class="arc-cart-stars" title="Étoiles">${starStr(rec ? rec.stars : 0)}</span></span>
         </button>`;
       }).join('') || '<p class="arc-empty">Aucune cartouche.</p>';
+      const lat = this.el('.arc-lat'); if (lat) lat.textContent = `⟲ Latence : ${AMB.latency.summary()}`;
     },
 
     // ---- round ----
@@ -108,14 +113,7 @@
         return;
       }
       const tok = ++this.startTok;
-      // the round must be heard: start / resume the audio first (a click on a cartridge is a user gesture)
-      // (bounded: a browser that never resumes without a gesture must not freeze the cabinet)
-      const audio = (async () => {
-        if (AMB.ui && AMB.ui.ensureStarted) await AMB.ui.ensureStarted();
-        const ctx = AMB.engine && AMB.engine.ctx;
-        if (ctx && ctx.state === 'suspended') await ctx.resume();
-      })().catch(() => {}); // no audio: the round still runs (silent)
-      await Promise.race([audio, new Promise((r) => setTimeout(r, 1500))]);
+      await this.audioReady();
       if (tok !== this.startTok || !this.dlg || this.dlg.hidden) return; // closed (or another start) meanwhile
       this.say('');
       this.gameId = id; this.lastPick = null; this.lockUntil = 0;
@@ -131,6 +129,30 @@
       this.renderHud();
       this.stopTimer();
       this.timer = setInterval(() => { if (!this.A.tick()) this.renderHud(); }, 100);
+    },
+    // the round must be heard: start / resume the audio first (a click on a cartridge is a user gesture)
+    // (bounded: a browser that never resumes without a gesture must not freeze the cabinet)
+    audioReady() {
+      const audio = (async () => {
+        if (AMB.ui && AMB.ui.ensureStarted) await AMB.ui.ensureStarted();
+        const ctx = AMB.engine && AMB.engine.ctx;
+        if (ctx && ctx.state === 'suspended') await ctx.resume();
+      })().catch(() => {}); // no audio: the round still runs (silent)
+      return Promise.race([audio, new Promise((r) => setTimeout(r, 1500))]);
+    },
+    // G9b.2: the latency calibration alone, from the menu's « ⟲ Latence » (same off-the-clock path as a prepare)
+    async calibrate() {
+      if (!AMB.latency || this.A.round) return;
+      const tok = ++this.startTok;
+      await this.audioReady();
+      if (tok !== this.startTok || !this.dlg || this.dlg.hidden) return;
+      this.say(''); this.show('play'); this.el('.arc-game').textContent = 'Latence';
+      await this.prepare({ prepare: (api) => AMB.latency.run(api, { force: true, title: 'Nouvelle calibration de la latence' }) }, tok);
+      if (tok !== this.startTok || !this.dlg || this.dlg.hidden) return;
+      AMB.latency.msg = ''; // the result is on the menu's button
+      if (AMB.audition) AMB.audition.session(false);
+      this.menu();
+      const b = this.el('.arc-lat'); if (b) b.focus();
     },
     // the plugin's prepare(api), off the clock: HUD frozen at the full time, keys / MIDI routed to it
     async prepare(g, tok) {

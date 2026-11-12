@@ -1,0 +1,115 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body>
+<!-- Mini-game « Dictée d'accords » (G9.9 variant): pure engine, injected clock, no real audio (≤ 10 s). -->
+<script src="lib.js"></script>
+<script>window.AMB_ARCADE_KEY='ambient.arcade.test-dictee'; localStorage.removeItem(window.AMB_ARCADE_KEY); testBus();</script>
+<script src="../js/audition.js"></script><script src="../js/arcade.js"></script><script src="../js/arcade/dictee.js"></script>
+<script>
+window.addEventListener('load', async () => {
+  try {
+    const A = AMB.arcade; let T = 0; A.clock = { now: () => T };
+    const g = A.byId.dictee, Q = g.Q;
+    ok(g && g.kid && typeof g.onMidi === 'function' && typeof g.onCC === 'function' && typeof g.onMidiOff === 'function', 'plugin enregistré (kid, choix + MIDI : onMidi, onMidiOff, onCC)');
+    const mr = Math.random; let rCalls = 0; Math.random = function () { rCalls++; return mr(); };
+    const storeW = []; AMB.store = { set: (...a) => storeW.push(a), setMany: (...a) => storeW.push(a), get: () => null };
+    const R = (s) => AMB.audition.rng(s);
+    const gen = (d, n = 300) => Array.from({ length: n }, (_, s) => g.make(R(s * 7919 + 1), d));
+    const sig = (c) => JSON.stringify(c);
+    ok(sig(g.make(R(5), 0.7)) === sig(g.make(R(5), 0.7)) && sig(g.make(R(5), 0.7)) !== sig(g.make(R(6), 0.7)), 'make déterministe pour une graine');
+
+    // --- curve
+    const qs = (d) => { const o = new Set(); gen(d).forEach((c) => c.kind === 'quality' && o.add(c.q)); return [...o].sort().join(','); };
+    const c0 = gen(0);
+    ok(qs(0) === 'maj,min' && c0.every((c) => c.opts.length === 2 && c.arp && c.voice === 'triangle' && g.choices(c)[0].label.includes('☀')), 'd=0 : majeur / mineur seulement, accord arpégé puis plaqué, boutons Majeur ☀ / Mineur ☾');
+    ok(qs(0.3) === 'dom7,maj,min,min7' && qs(0.5).includes('maj7') && qs(0.5).includes('sus4') && qs(0.7).includes('dim') && !qs(0.7).includes('aug') && qs(0.9).includes('aug'), 'paliers : + 7 / m7 → + 7M, Sus4 → + Sus2, Dim → + Aug (d ≥ 0,8)');
+    ok([0.3, 0.5, 0.7, 0.95].every((d) => gen(d).every((c) => c.opts.length <= 6 && c.opts.includes(c.kind === 'fn' ? c.ans : c.q))), 'au plus 6 choix, la réponse toujours dedans');
+    const fn7 = gen(0.75).filter((c) => c.kind === 'fn').length, fn9 = gen(0.9).filter((c) => c.kind === 'fn');
+    ok(fn7 === 0 && fn9.length > 100 && fn9.length < 200, 'fonction dans une progression seulement à d ≥ 0,8 (' + fn9.length + '/300 à 0,9)');
+
+    // --- sound rules (analysis notes)
+    const bellBefore = [0, 0.3, 0.5, 0.7, 0.79].some((d) => gen(d).some((c) => c.voice === 'bell'));
+    const bellAfter = gen(0.9).some((c) => c.voice === 'bell');
+    ok(!bellBefore && bellAfter, 'timbre Cloche jamais avant d = 0,8 (pas de voix Verre dans l\'audition)');
+    let bassOk = true, levels = [];
+    const rms = (evs) => Math.sqrt(evs.reduce((s, e) => s + Math.pow(e.vel * g.LOUD[e.voice], 2), 0));
+    for (const c of gen(0.9, 400).concat(gen(0.5, 200))) {
+      const ev = g.stimulus(c);
+      if (c.kind === 'quality') {
+        const bass = ev.filter((e) => e.bass), up = ev.filter((e) => !e.bass);
+        const lowest = Math.min(...ev.map((e) => e.midi));
+        if (bass.length !== 1 || bass[0].midi !== lowest || bass[0].midi !== c.root - 12 || up.some((e) => e.midi <= bass[0].midi)) bassOk = false;
+        if (bass[0].vel * g.LOUD[bass[0].voice] <= up[0].vel * g.LOUD[up[0].voice]) bassOk = false; // bass louder than one upper voice
+        if (pcs(up.map((e) => e.midi)) !== pcs(Q[c.q].iv.map((x) => c.root + x))) bassOk = false;
+        levels.push(rms(ev));
+      } else {
+        if (ev.length !== c.chords.reduce((s, x) => s + x.up.length + 1, 0)) bassOk = false;
+        c.chords.forEach((x, i) => { const at = ev.filter((e) => Math.abs(e.t - i * (c.dur + 0.15)) < 1e-6); levels.push(rms(at)); if (Math.min(...at.map((e) => e.midi)) !== x.bass) bassOk = false; });
+      }
+    }
+    function pcs(a) { return [...new Set(a.map((m) => ((m % 12) + 12) % 12))].sort((x, y) => x - y).join(); }
+    ok(bassOk, 'basse = fondamentale une octave sous l\'accord, la note la plus grave et la plus forte ; notes de l\'accord justes');
+    const lo = Math.min(...levels), hi = Math.max(...levels);
+    ok(hi / lo < 1.12, 'volume perçu cohérent (RMS pondéré par voix, triades et 7es, 4 timbres) : écart ' + Math.round((hi / lo - 1) * 100) + ' %');
+    const f = fn9[0];
+    ok(f.chords[0].g === 'I' && f.chords[1].g === f.mid && f.chords[2].g === f.ans && f.mid !== f.ans && g.choices(f).map((x) => x.value).join() === f.opts.join(), 'progression I → ' + f.mid + ' → ? (réponse ' + f.ans + ', choix ' + f.opts.join(' ') + ')');
+    ok(fn9.every((c) => c.chords.every((x) => Math.max(...x.up) - Math.min(...x.up) < 12)), 'accords de la progression en position serrée (enchaînement lisse)');
+
+    // --- grading by choice
+    const ch = g.make(R(11), 0.5);
+    ok(g.check(ch, ch.q).ok && !g.check(ch, ch.opts.find((x) => x !== ch.q)).ok, 'choix juste → ok, autre choix → raté');
+    ok(g.check(f, f.ans).ok && !g.check(f, 'I' === f.ans ? 'V' : 'I').ok, 'fonction juste → ok');
+
+    // --- played on MIDI (bonus)
+    const mk = (q, d, root = 55) => ({ kind: 'quality', d, q, root, bass: root - 12, up: Q[q].iv.map((x) => root + x) });
+    const lowC = mk('min7', 0.2), hiC = mk('min7', 0.6);
+    let r = g.check(hiC, { played: [43, 55, 58, 62, 65] });
+    ok(r.ok && r.bonus === 1 && r.exact, 'accord exact joué (basse comprise) → ok + bonus de précision');
+    r = g.check(hiC, { played: [60, 63, 67, 70] });
+    ok(r.ok && r.bonus === 0, 'bonne couleur sur une autre fondamentale → ok sans bonus (oreille relative)');
+    r = g.check(hiC, { played: [55, 58, 62, 65] });
+    ok(r.ok && r.bonus === 0, 'd = 0,6 : bonnes notes mais basse à la mauvaise octave → pas de bonus');
+    r = g.check(lowC, { played: [67, 70, 74, 77] });
+    ok(r.ok && r.bonus === 1, 'd ≤ 0,3 : octave tolérée → bonus');
+    r = g.check(lowC, { played: [58, 62, 65, 67] });
+    ok(r.ok && r.bonus === 1, 'd ≤ 0,3 : renversement toléré');
+    r = g.check(hiC, { played: [58, 62, 65, 67] });
+    ok(!r.ok, 'd = 0,6 : renversement → lu en position fondamentale (Si♭ 6 ≠ m7) → raté');
+    ok(!g.check(hiC, { played: [55, 59, 62] }).ok, 'autre couleur jouée (majeur) → raté');
+
+    // live MIDI path through the engine, sustain pedal (CC64)
+    const answers = []; AMB.bus.fns['arcade:answer'] = [(d) => answers.push(d)];
+    const notes = []; const ap = AMB.audition.play; AMB.audition.play = (ev, o) => { notes.push(ev); return ap.call(AMB.audition, ev, o); };
+    A.stats('dictee').d = 0.5;
+    let rc;
+    for (let s = 1; ; s++) { A.start('dictee', { seed: s }); rc = A.round.ch; if (rc.kind === 'quality') break; A.end({ abort: true }); }
+    const el = document.createElement('div'); document.body.append(el); g.render(rc, el, A.api());
+    const exact = [rc.bass, ...rc.up];
+    A.midi({ midi: exact[0], vel: 0.9 }); A.midi({ midi: exact[1], vel: 0.6 });
+    A.midiOff({ midi: exact[1] });
+    ok(answers.length === 0, 'moins de 3 notes : rien n\'est jugé (on peut chercher les notes)');
+    A.cc({ cc: 64, value: 1 });
+    exact.forEach((m) => A.midi({ midi: m, vel: 0.8 }));
+    ok(/Tu joues/.test(el.querySelector('.arc-dictee-played').textContent) && el.querySelector('.arc-dictee-played').textContent.includes(Q[rc.q].label), 'accord joué affiché : « ' + el.querySelector('.arc-dictee-played').textContent + ' »');
+    exact.forEach((m) => A.midiOff({ midi: m }));
+    ok(answers.length === 0, 'pédale enfoncée : relâcher les touches ne juge pas encore');
+    A.cc({ cc: 64, value: 0 });
+    ok(answers.length === 1 && answers[0].ok && answers[0].bonus === 1 && answers[0].pts > 0, 'pédale relâchée → accord jugé : ok + bonus (' + answers[0].pts + ' pts)');
+    ok(notes.some((e) => e.length === 1 && e[0].voice === 'triangle'), 'chaque note MIDI sonne tout de suite (api.note, vélocité brute)');
+    AMB.audition.play = ap;
+    A.end({ abort: true }); el.remove();
+
+    // render
+    const el2 = document.createElement('div'); document.body.append(el2);
+    g.render(f, el2, null);
+    ok(el2.querySelector('.arc-dictee-prog') && el2.querySelector('.arc-dictee-prog .q').textContent === '?', 'rendu fonction : bande I → ' + f.mid + ' → ?');
+    g.render(c0[0], el2, null);
+    ok(el2.querySelector('.arc-dictee-kid') && /joyeux/.test(el2.textContent), 'rendu d = 0 : consigne « joyeux / triste »');
+    el2.remove();
+
+    Math.random = mr;
+    ok(rCalls === 0, 'Math.random jamais appelé');
+    ok(storeW.length === 0, 'aucune écriture dans le store');
+    localStorage.removeItem(window.AMB_ARCADE_KEY);
+    done();
+  } catch (e) { fail(e); }
+});
+</script></body></html>

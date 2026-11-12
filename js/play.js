@@ -43,8 +43,11 @@
     // to the mini-game (if it listens), everything else (CCs, notes in the menu) is ignored
     const AR = AMB.arcade;
     if (AR && (AR.open || AR.active)) {
-      if (type === 0x90 && d2 > 0) AR.midi({ midi: d1, vel: d2 / 127, time: msg.timeStamp });
-      else if (type === 0x80 || type === 0x90) AR.midiOff({ midi: d1, time: msg.timeStamp });
+      // raw velocity, the input's name (several keyboards at once, each with its own latency) and the CCs (sustain)
+      const src = msg.currentTarget || msg.target, input = (src && (src.name || src.id)) || null;
+      if (type === 0x90 && d2 > 0) AR.midi({ midi: d1, vel: d2 / 127, time: msg.timeStamp, input });
+      else if (type === 0x80 || type === 0x90) AR.midiOff({ midi: d1, time: msg.timeStamp, input });
+      else if (type === 0xb0 && AR.cc) AR.cc({ cc: d1, value: d2 / 127, time: msg.timeStamp, input });
       return;
     }
     if (type === 0x90 && d2 > 0) {

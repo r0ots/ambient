@@ -1,0 +1,18 @@
+/* Global latency calibration (G9b.2, js/latency.js): shown in the cabinet's stage. Classes .lat-* only. */
+.lat { width: min(100%, 640px); display: grid; gap: 14px; justify-items: center; text-align: center; }
+.lat-title { margin: 0; font-size: 26px; color: var(--lcd-fg); }
+.lat-top { display: flex; align-items: center; gap: 16px; }
+.lat-dots { display: flex; gap: 10px; }
+.lat-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--lcd-dim); }
+.lat-dot.acc { width: 20px; height: 20px; }
+.lat-dot.on { background: var(--lcd-fg); border-color: var(--lcd-fg); box-shadow: 0 0 10px var(--lcd-glow); }
+.lat-status { font: 36px/1 var(--f-lcd); min-width: 3ch; }
+.lat-hint { margin: 0; font-size: 20px; color: var(--lcd-dim); }
+.lat-pad { width: 100%; min-height: 140px; background: #120c04; border: 2px solid var(--lcd-dim); border-radius: 10px; color: var(--lcd-fg); font: 40px var(--f-lcd); letter-spacing: .12em; text-shadow: inherit; box-shadow: var(--bevel-in); cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.lat-pad:hover, .lat-pad:focus-visible { border-color: var(--lcd-fg); outline: none; }
+.lat-pad.on { animation: lat-hit .2s ease-out; }
+@keyframes lat-hit { 0% { background: var(--lcd-fg); color: #1a1408; } 100% { background: #120c04; } }
+.arc-lat { justify-self: center; font: 20px var(--f-lcd); color: var(--lcd-dim); background: none; border: 1px solid var(--lcd-dim); border-radius: var(--radius-btn); padding: 4px 12px; cursor: pointer; }
+.arc-lat:hover, .arc-lat:focus-visible { color: var(--lcd-fg); border-color: var(--lcd-fg); outline: none; }
+@media (max-width: 560px) { .lat-title { font-size: 21px; } .lat-hint { font-size: 17px; } .lat-pad { min-height: 120px; } .lat-dots { gap: 6px; } }
+@media (prefers-reduced-motion: reduce) { .lat-pad.on { animation: none; } }
