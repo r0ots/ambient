@@ -54,11 +54,11 @@ f.addEventListener('load', async ()=>{
   map.querySelector('.tree-node[data-id="h.drone"]').click(); await wait(20);
   ok(!G.has('h.drone') && Gd.sel==='h.drone' && /Pour l'ouvrir : ◇ Force 3 accords/.test(op()) && !card().querySelector('.tree-buy'), 'clic sur Drone qui suit : sa fiche, « '+op()+' », rien d\'acheté');
   Gd.select('t.macros');
-  ok(/Écho « Premier reflet »/.test(op()) && card().querySelector('.tree-buy') && /Jouer l'Écho/.test(card().querySelector('.tree-buy').textContent), 'Grands réglages : « '+op()+' » et ▶ Jouer l\'Écho');
+  ok(/↺ Réponse « Premier reflet » \(3 notes\)/.test(op()) && !card().querySelector('.tree-buy, button'), 'Grands réglages : « '+op()+' », sans bouton (la Réponse se joue dans la musique)');
   Gd.select('m.phrase');
-  ok(/Écho « Suite connue »/.test(op()) && /ou ✦ Secret : \?\?\?/.test(op()), 'Phrases : un Écho ou un secret caché (« '+op()+' »)');
+  ok(/Réponse « Suite connue »/.test(op()) && /ou ✦ Secret : \?\?\?/.test(op()), 'Phrases : une Réponse ou un secret caché (« '+op()+' »)');
   const spans=[...map.querySelectorAll('.tree-node')].map(b=>b.querySelector('span').textContent);
-  ok(!spans.some(t=>/✧|\d/.test(t)) && spans.includes('◈ Écho') && spans.includes('◇ défi') && spans.includes('✓'), 'nœuds : ✓, ◇ défi ou ◈ Écho, aucun coût');
+  ok(!spans.some(t=>/✧|\d/.test(t)) && spans.includes('↺ Réponse') && spans.includes('◇ défi') && spans.includes('✓'), 'nœuds : ✓, ◇ défi ou ↺ Réponse, aucun coût');
   ok(/^\d+\/32$/.test(d.querySelector('.tree-count').textContent), 'en-tête : nœuds ouverts '+d.querySelector('.tree-count').textContent);
   Gd.select(null); Gd.showTree(false);
   localStorage.removeItem('ambient.game.treemap');

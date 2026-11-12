@@ -106,11 +106,12 @@ f.addEventListener('load', async ()=>{
   ok(task.dataset.id && task.dataset.id!==first && A.game.s.skipped.includes(first), '↷ : le défi suivant ('+first+' → '+task.dataset.id+')');
   A.game.unlock('h.pad'); A.game.unlock('h.key'); await wait(4000);
   ok(!d.body.classList.contains('jargon-off') && d.getElementById('lcdTop').textContent!=='AMBIENT' && w.getComputedStyle(d.getElementById('hudInfo')).visibility==='visible', 'nœud Tonalité : tonalité, gamme, tempo et nom du paysage reviennent (« '+d.getElementById('lcdTop').textContent+' »)');
-  // an Écho as the current challenge: a tap on the LCD opens its card
+  // S4.2: a gate opened by a Réponse on the LCD; a tap says how (no card any more)
   { const st=A.contracts.state(); A.game.unlock('t.son'); st.active=['p.premier']; A.garden.renderContracts(); await wait(20);
-    ok(/◈ Écho : Premier reflet/.test(task.textContent), 'un Écho sur le LCD : '+task.textContent);
+    ok(/↺ Réponse : Premier reflet/.test(task.textContent) && /3 ♪/.test(task.querySelector('.lcd-task-n').textContent), 'une porte à Réponse sur le LCD : '+task.textContent);
     task.querySelector('.lcd-task-txt').click(); await wait(30);
-    ok(!d.getElementById('puzzle').hidden && A.puzzles.current==='p.premier', 'toucher l\'Écho du LCD : sa carte s\'ouvre'); A.garden.closePuzzle(); }
+    ok(!d.getElementById('puzzle') && !d.querySelector('.pz-pads, .puzzle-card') && task.classList.contains('help') && /À toi/.test(task.textContent) && /3 notes justes/.test(task.textContent), 'toucher : l\'aide sur le LCD, aucune carte ('+task.querySelector('.lcd-task-txt').textContent.slice(0,60)+'…)');
+    task.querySelector('.lcd-task-txt').click(); }
   A.seq.playing=false;
   A.game.setMode('free'); await wait(20); ok(!shown('#lcdTask') && !lline.hidden, 'mode libre : la 2e ligne redevient l\'état du son'); A.game.setMode('path'); await wait(20);
   // 390 px: the contract stays in the LCD, nothing floats over the macros
@@ -144,31 +145,6 @@ f.addEventListener('load', async ()=>{
     A.game.unlock('e.reverb'); ok(A.tree.paramUnlocked('pad.send') && !A.tree.paramUnlocked('bells.send'), 'Espace d\'une couche seulement si la couche est là');
     A.game.unlock('e.echo'); ok(A.store.get('fx.echo')===A.store.spec('fx.echo').def, 'écho ouvert = on l\'entend (valeur par défaut)');
     A.game.reset(); }
-  // --- Écho card (S3.1): Réécouter, no Valider nor gauge, pegs ✓ ⬆ ⬇ after each note, the screen stays where it is
-  { A.game.reset(); ['h.pad','m.bells','t.son'].forEach(i=>A.game.unlock(i)); A.perform.setMode('listen');
-    const pzc=d.getElementById('puzzle'), P=A.puzzles, mid=(dg)=>A.theory.degreeToMidi(dg,A.seq.root,A.seq.scale,4), live=(m)=>{ P.echoUntil=0; A.bus.emit('live',{midi:m,time:0,vel:0.85,raw:null}); };
-    A.garden.openPuzzle('p.premier'); await wait(20); const t=P.target().degs;
-    ok(!pzc.hidden && /Premier reflet/.test(pzc.querySelector('.pz-title').textContent) && /Réécouter/.test(pzc.querySelector('.pz-ab').textContent) && !pzc.querySelector('.pz-ok, .pz-help, .pz-gauge') && A.mode==='listen' && /3 notes/.test(pzc.querySelector('.pz-hint').textContent), 'carte Écho : Réécouter, ni Valider ni jauge, écran inchangé');
-    live(mid(t[0])); live(mid(t[1])+1); await wait(20);
-    const pegs=[...pzc.querySelectorAll('.pz-row:not(.pz-head) .pz-peg')].map(e=>e.textContent).join(' ');
-    ok(pegs==='✓ ⬇ ·' && /Note 3 sur 3/.test(pzc.querySelector('.pz-hint').textContent), 'pions affichés après chaque note : '+pegs);
-    live(mid(t[2])-1); await wait(20);
-    ok(pzc.querySelectorAll('.pz-row:not(.pz-head)').length===2 && /1 note juste sur 3\. Nouvelle phrase\. 5 essais/.test(pzc.querySelector('.pz-hint').textContent), 'phrase finie : la ligne reste, nouvelle phrase ('+pzc.querySelector('.pz-hint').textContent+')');
-    P.target().degs.forEach(dg=>live(mid(dg))); await wait(20);
-    ok(pzc.hidden && A.game.s.contracts.includes('p.premier') && A.game.has('t.macros') && /Écho réussi en 2 essais : Grands réglages s'ouvre/.test(d.getElementById('toast').textContent), 'phrase juste : carte fermée, Grands réglages s\'ouvre ('+d.getElementById('toast').textContent+')');
-    await wait(1400); A.garden.showTree(false); A.perform.setMode('listen'); A.game.s.nodes=A.game.s.nodes.filter(x=>x!=='t.macros');
-    // S3.6: the card's 9 pads play A–L (a phone has no keys); at 390 px the pegs show note by note, nothing overflows
-    { f.style.width='390px'; f.style.height='780px'; await wait(250); A.garden.openPuzzle('p.premier'); await wait(20);
-      const pads=[...pzc.querySelectorAll('.pz-pads .pz-pad')], pd=A.seq.playDegree, got=[]; A.seq.playDegree=(dg)=>got.push(dg);
-      pads[4].dispatchEvent(new w.PointerEvent('pointerdown',{bubbles:true})); A.seq.playDegree=pd;
-      const de=d.documentElement, inside=(e)=>e.getBoundingClientRect().right<=de.clientWidth+1 && e.getBoundingClientRect().left>=-1;
-      ok(shown('#puzzle .pz-pads') && pads.length===9 && pads.map(b=>b.textContent).join('')==='ASDFGHJKL' && got.join()==='4' && pads.every(inside), 'carte Écho : 9 pastilles A–L, jouables au doigt, dans l\'écran à 390 px');
-      const u=P.target().degs; live(mid(u[0])); live(mid(u[1])+2); await wait(20);
-      const row=pzc.querySelector('.pz-row:not(.pz-head)'), pg=[...row.querySelectorAll('.pz-peg')];
-      ok(pg.map(e=>e.textContent).join(' ')==='✓ ⬇ ·' && pg.every(inside) && de.scrollWidth<=de.clientWidth+1, '390 px : pions note par note ('+pg.map(e=>e.textContent).join(' ')+'), pas de débordement');
-      A.garden.closePuzzle(); f.style.width='1300px'; f.style.height='900px'; await wait(200); }
-    A.garden.openPuzzle('p.premier'); A.game.setMode('free'); await wait(20); ok(pzc.hidden && !P.current, 'passage en libre : carte Écho fermée');
-    A.game.setMode('path'); A.game.reset(); }
   // --- S4.4 touch pads: under the screen once the Melody is owned, play like A–L (held, multitouch), long press = chord
   { A.game.reset(); A.perform.setMode('listen'); await wait(30);
     const bar=d.getElementById('pads'), pads=[...bar.querySelectorAll('.pad')], PE=(t,id)=>new w.PointerEvent(t,{bubbles:true,pointerId:id,pointerType:'touch'});
@@ -197,7 +173,6 @@ f.addEventListener('load', async ()=>{
     const de=d.documentElement, r2=pads.map(b=>b.getBoundingClientRect());
     ok(r2.every(r=>r.width>=44 && r.height>=44 && r.right<=de.clientWidth+1 && r.left>=-1) && de.scrollWidth<=de.clientWidth+1, '390 px : pastilles ≥ 44 px, dans l\'écran ('+Math.round(Math.min(...r2.map(r=>r.width)))+'×'+Math.round(Math.min(...r2.map(r=>r.height)))+')');
     f.style.width='1300px'; f.style.height='900px'; await wait(200);
-    A.garden.openPuzzle('p.premier'); await wait(20); ok(!shown('#pads'), 'carte Écho ouverte : la barre cède la place aux pastilles de la carte'); A.garden.closePuzzle();
     A.game.setMode('free'); await wait(30); ok(bar.hidden && !shown('#pads'), 'mode libre (tactile ou non) : aucune pastille');
     A.game.setMode('path'); A.game.reset(); }
   // --- actions on success (G7.2): a cancelled save emits nothing, a real one does (contracts count it)
@@ -217,6 +192,26 @@ f.addEventListener('load', async ()=>{
   await A.ui.ensureStarted(); const ctx=A.engine.ctx; if (ctx.state!=='running') await ctx.resume();
   ok(ctx.state!=='running' || A.garden.chime('unlock')===4 && A.garden.chime('solve')===6, 'carillon joué ('+ctx.state+')');
   A.game.setMode('free'); ok(A.garden.chime('unlock')===0, 'pas de carillon en mode libre'); A.game.setMode('path');
+  // --- S4.2 « Réponse » in the app: the phrase in the music, « ↺ À toi » on the LCD, leaves on the Melody plant, the pads stay
+  { const P=A.puzzles, gv=A.gardenVisual; A.game.reset(); ['m.bells','h.pad','t.son'].forEach(i=>A.game.unlock(i)); await wait(1500);
+    A.garden.showTree(false); A.perform.setMode('listen'); A.visual.gardenSync(); P.cancel(); P.wait=99;
+    const st=A.contracts.state(); st.active=['p.premier']; st.prog['p.premier']={n:0}; A.garden.renderContracts();
+    const sd=0.05, snap=JSON.stringify(A.store.stableSnapshot());
+    ok(P.launch(ctx.currentTime+0.05, sd) && P.cur.len===3 && P.view().phase==='call' && shown('#pads') && d.body.classList.contains('game'), 'une phrase marquée pendant le jeu : pas de carte, les pastilles restent');
+    const c=P.cur; for(let i=0;i<60 && !/À TOI/.test(d.getElementById('lcdTop').textContent);i++) await wait(25);
+    ok(/↺ À TOI/.test(d.getElementById('lcdTop').textContent) && P.view().phase==='answer', 'mesure suivante : « ↺ À toi » sur le LCD');
+    const cv=d.createElement('canvas'); cv.width=480; cv.height=320; const g2=cv.getContext('2d');
+    gv.refresh(480,320,true); A.bus.emit('live',{midi:c.midis[0],time:0,vel:0.85,raw:null,played:c.ans+0.1}); A.bus.emit('live',{midi:c.midis[1]+2,time:0,vel:0.85,raw:null,played:c.ans+0.6});
+    const leaves=gv.drawAnswer(g2, P.view()), px=g2.getImageData(0,0,480,320).data; let green=0, red=0;
+    for(let i=0;i<px.length;i+=4){ if(px[i]===143&&px[i+1]===227&&px[i+2]===160) green++; if(px[i]===235&&px[i+1]===84&&px[i+2]===64) red++; }
+    ok(leaves===3 && green>0 && red>0 && gv.answer(ctx.currentTime) && gv.answer(ctx.currentTime).row.length===2, 'plante Mélodie : une feuille verte (juste), une rouge (fausse), une à jouer ('+green+' / '+red+' px)');
+    A.bus.emit('live',{midi:c.midis[2],time:0,vel:0.85,raw:null,played:c.ans+1}); await wait(350);
+    ok(!P.cur && /PRESQUE/.test(d.getElementById('lcdTop').textContent) && !A.game.has('t.macros'), 'réponse fausse : « Presque » sur le LCD, porte fermée');
+    P.launch(ctx.currentTime+0.05, sd); const c2=P.cur; c2.midis.forEach((m,i)=>A.bus.emit('live',{midi:m+12,time:0,vel:0.85,raw:null,played:c2.ans+0.5+i})); await wait(30);
+    ok(A.game.has('t.macros') && A.game.s.contracts.includes('p.premier') && JSON.stringify(A.store.stableSnapshot())===snap, 'réponse juste : Grands réglages s\'ouvre, l\'ambiance est intacte');
+    await wait(1500); A.garden.showTree(false);
+    P.launch(ctx.currentTime+0.05, sd); A.game.setMode('free'); await wait(20);
+    ok(!P.cur && P.view()===null && !shown('#pads') && P.onStep(0, ctx.currentTime, sd)===false, 'mode libre : la phrase s\'en va, aucune autre'); A.game.setMode('path'); P.wait=0; A.game.reset(); }
   A.ui.stop && A.ui.stop();
   // --- sound locking (G1.5)
   const St=A.store, g=A.game;
@@ -235,7 +230,7 @@ f.addEventListener('load', async ()=>{
   A.garden.showTree(false);
   // S3.8: the path help is short and says how secrets work now (a node opened, hint 2 after 2 secrets, never with time)
   { d.getElementById('help').click(); const hp=d.querySelector('#helpDlg .help-path'), tx=hp.textContent;
-    ok(!hp.hidden && hp.querySelectorAll('.help-grid h4').length===4 && /ouvre un nœud/.test(tx) && /après 2 secrets/.test(tx) && /Écho/.test(tx) && !/avec le temps/.test(tx), 'aide du Parcours : 4 rubriques, secrets-clés, indice 2 après 2 secrets, Écho');
+    ok(!hp.hidden && hp.querySelectorAll('.help-grid h4').length===4 && /ouvre un nœud/.test(tx) && /après 2 secrets/.test(tx) && /Réponse/.test(tx) && /À toi/.test(tx) && !/Écho/.test(tx) && !/avec le temps/.test(tx), 'aide du Parcours : 4 rubriques, secrets-clés, indice 2 après 2 secrets, Réponse');
     d.querySelector('#helpDlg [data-close]').click(); }
   g.setMode('free'); await wait(400); ok(!shown('#treeBtn') && !shown('#lcdTask') && !d.body.classList.contains('jargon-off'), 'pas d\'arbre ni de défi en libre, l\'écran garde tonalité et tempo');
   // --- S3.7: the handover is saved: ↷ on the last contract hands over too; a reload keeps the instrument handed over

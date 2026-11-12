@@ -331,8 +331,8 @@
       for (let i = 0; i < v.len; i++) {
         const peg = v.row[i]; if (!peg && v.phase === 'call') continue;
         const y = -Math.round(hC * (0.2 + 0.68 * (v.len > 1 ? i / (v.len - 1) : 0.5))) * px, s = i % 2 ? 1 : -1;
-        g.fillStyle = !peg ? rgb(p.col, 0.7, 0.35) : rgb(peg.state === 'ok' ? this.LEAF_OK : this.LEAF_BAD);
-        for (const [dx, dy] of [[1, 0], [2, 0], [3, -1], [2, -1], [4, -1], [3, -2]]) g.fillRect(s * dx * px - (s < 0 ? px : 0), y + dy * px, px - gap, px - gap);
+        g.fillStyle = !peg ? rgb(p.col, 0.8, 0.5) : rgb(peg.state === 'ok' ? this.LEAF_OK : this.LEAF_BAD);
+        for (const [dx, dy] of [[1, 0], [2, 0], [3, 0], [2, -1], [3, -1], [4, -1], [5, -1], [4, -2], [5, -2]]) g.fillRect(s * dx * px - (s < 0 ? px : 0), y + dy * px, px - gap, px - gap);
         n++;
       }
       g.setTransform(1, 0, 0, 1, 0, 0);
