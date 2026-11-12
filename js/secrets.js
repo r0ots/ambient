@@ -74,9 +74,9 @@
       q.gifts = q.gifts || {}; q.gifts.timbres = q.gifts.timbres || []; // older saves: themes / mirror ignored
       return q;
     },
-    // detection runs only in the path (also once the instrument is handed over: a musician's pleasure), never during
-    // an Écho (its phrase and the notes played back are the Écho's)
-    active() { const g = AMB.game, P = AMB.puzzles; return !!g && g.path && !(P && P.isEcho()); },
+    // detection runs only in the path (also once the instrument is handed over: a musician's pleasure), never while a
+    // Réponse waits for its answer (S4.2: the phrase and the notes played back are the Réponse's)
+    active() { const g = AMB.game, P = AMB.puzzles; return !!g && g.path && !(P && P.busy()); },
     foundCount() { return Object.keys(this.state().found).length; },
     has(id) { return !!this.state().found[id]; },
 

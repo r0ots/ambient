@@ -51,8 +51,9 @@ window.addEventListener('load', async ()=>{
     ok(!ids.some(loop) && K.byId[K.OPENS['m.bells']].need.join()==='racine', 'nœuds + ce dont leur défi a besoin : sans cycle, aucun ordre ne bloque (le 1er défi ne demande que la Graine)');
     const gone=['k.paysages','h.ecrire','m.scenes','b.gamme','b.pad','b.salle','b.radio','b.grains','b.groove','c.dessin','k.souffle'];
     ok(gone.every(id=>!K.byId[id]) && !Pz.DEFS && !Pz.keyScore && !Pz.listen && !Pz.ab, 'énigmes « régler des boutons sur une cible » et défis sans nœud retirés');
-    const ech=K.DEFS.filter(d=>d.kind==='echo'); log('Échos : '+ech.map(d=>d.title+' → '+T.byId[d.node].name+' ('+Pz.echoLen(d.d)+' notes)').join(' · '));
-    ok(ech.length===6 && ech.every(d=>d.need.includes('m.bells')) && Pz.echoLen(K.byId['p.premier'].d)===3 && Pz.echoLen(K.byId['p.mouvement'].d)===4, 'Échos : 6 portes, longueur selon la profondeur (3 notes près de la racine, 4 plus haut)'); }
+    const ech=K.DEFS.filter(d=>d.kind==='echo'); log('Portes à Réponse : '+ech.map(d=>d.title+' → '+T.byId[d.node].name+' ('+Pz.echoLen(d.d)+' notes)').join(' · '));
+    ok(ech.length===6 && ech.every(d=>d.need.includes('m.bells') && new RegExp(Pz.need(d)+' notes justes').test(d.hint)) && Pz.echoLen(K.byId['p.premier'].d)===3 && Pz.echoLen(K.byId['p.mouvement'].d)===4 && Pz.need(K.byId['p.mouvement'])===4, 'portes à Réponse : 6, longueur selon la profondeur (3 notes près de la racine, 4 plus haut), dite par l\'aide');
+    ok(!Pz.openPuzzle && !Pz.echoPlay && !Pz.start && !Pz.attempt, 'S4.2 : plus de carte Écho (ni lancer, ni rejouer, ni essai sur carte)'); }
   // --- the queue (one at a time, in the order of the table)
   g.reset(); g.setMode('path'); K.refill(); ev.length=0;
   ok(g.s.active.join()==='k.xy', 'S4.3 : le premier défi = glisser sur l\'écran ('+g.s.active.join()+')');
@@ -92,9 +93,10 @@ window.addEventListener('load', async ()=>{
     S0.step=step0;
     run('c.morceau',[()=>AMB.bus.emit('act','songRec')],[()=>AMB.bus.emit('act','song'),()=>AMB.bus.emit('rec:done',40),()=>AMB.bus.emit('act','section')]);
     ok(K.byId['c.morceau'].first && K.DEFS.filter(d=>d.first).length===1, 'le dernier défi du Parcours : « '+K.byId['c.morceau'].title+' »');
-    // an Écho's notes are the Écho's: they never count for a contract
-    force('m.notes'); Pz.current='p.premier'; lives(8)(); ok(!K.progress('m.notes'), 'pendant un Écho : les notes jouées ne comptent pas pour les défis');
-    Pz.current=null; delete g.s.runs['p.premier']; Pz.echoRow=[];
+    // S4.2: a Réponse of the mastery loop never steals the notes of the challenge in progress (one challenge at a time)
+    force('m.notes'); Pz.cur={ midis:[60,62,64], steps:[0,4,8], len:3, row:[], from:-1, until:1e9, t0:0, sd:0.25 }; lives(3)();
+    ok(K.progress('m.notes')===3, 'Réponse en attente : les notes comptent encore pour « Joue 6 notes » ('+K.progress('m.notes')+')');
+    Pz.cancel();
     force('m.phrase'); AMB.store.set('bells.mode','Aléatoire','user'); AMB.bus.emit('phrase',{}); ok(K.progress('m.phrase')===0,'phrase : tours non comptés hors mode Phrase'); AMB.store.set('bells.mode','Phrase','user'); AMB.bus.emit('phrase',{}); AMB.bus.emit('phrase',{}); ok(g.s.contracts.includes('m.phrase'),'2 tours → réussi');
     ok((()=>{ g.s.active=[]; g.s.skipped=[]; g.s.contracts=[]; K.refill(); return g.s.active.join(); })()==='c.morceau', 'Morceau ouvert : « Enregistre ton morceau » passe avant les autres'); }
   AMB.seq.playing=false; g.setMode('free'); AMB.store.set('drone.tone',0.1,'user'); ok(true,'libre : pas de suivi');
@@ -108,46 +110,67 @@ window.addEventListener('load', async ()=>{
     ok(g.s.nodes.join()==='racine,m.bells,h.pad,t.son,h.key,c.seq,c.rythme' && !('shards' in g.s) && !('puzzles' in g.s) && !('opened' in g.s) && !('pzHelp' in g.s) && !('found' in g.s), 'ancienne sauvegarde (✧, énigmes, portes, étoiles) : nœuds gardés ('+g.s.nodes.length+', S3.5 compris), champs retirés ignorés');
     ok(g.s.active.length===1 && K.eligible(K.byId[g.s.active[0]]) && !g.has(K.byId[g.s.active[0]].node), 'ancienne sauvegarde : un seul défi actif, valide ('+g.s.active.join()+')');
     ok(T.status('h.scale')==='available' && T.status('t.macros')==='available' && K.eligible(K.byId['h.tonalite']) && K.eligible(K.byId['p.premier']), 'ancienne porte (Gammes, Grands réglages) : son défi est proposé');
-    g.s.runs['p.premier']={tries:[],target:{'drone.wave':'Orgue','drone.tone':0.5}};
-    ok(Array.isArray(Pz.target('p.premier').degs) && Pz.target('p.premier').degs.length===3, 'ancienne cible à réglages : une phrase est tirée'); delete g.s.runs['p.premier'];
+    ok(!('runs' in g.s) && Pz.st(g).len===3, 'ancien Écho sur carte (essais, cible à réglages) : oublié, la Réponse part de 3 notes');
     localStorage.setItem('ambient.game.test', JSON.stringify({v:1,mode:'path',shards:5,earned:50,nodes:['racine','c.seq','c.groove']})); g.load();
     ok(g.s.nodes.join()==='racine,c.seq,c.rythme', 'migration S3.5 : Groove seul → Rythme'); }
-  // --- Écho (S3.1): a phrase on the Melody voice, played back note by note through 'live'; seeded game rng; S4.3: opens its node
+  // --- S4.2 « Réponse »: a phrase marked in the music (the Melody voice, on the grid of a bar), answered in the next bar.
+  // Simulated audio clock (P.now) and steps (P.onStep, as the sequencer calls it), a stub Melody voice.
   g.reset(); g.setMode('path'); ['m.bells','h.pad','t.son'].forEach(i=>g.unlock(i));
-  { const Ec='p.premier', S=AMB.seq, mid=(dg)=>AMB.theory.degreeToMidi(dg,S.root,S.scale,4), lv=(m)=>AMB.bus.emit('live',{midi:m,time:0,vel:0.85,raw:null});
-    let res=null, n=0; ev.length=0; AMB.bus.on('game:puzzle',e=>{ if(e&&e.res) res=e.res; });
-    const mr=Math.random; Math.random=()=>{ n++; return 0.5; };
-    K.seed(1234); const a=Pz.draw(Ec).degs; K.seed(1234); const b=Pz.draw(Ec).degs; Math.random=mr;
-    ok(a.join()===b.join() && !n && a.length===3 && a.every(x=>x>=0&&x<9) && a.every((x,i)=>!i||x!==a[i-1]), 'tirage à graine (rng du jeu, jamais Math.random) : '+a.join(' '));
-    K.seed(42); Pz.start(Ec); const t1=Pz.target().degs.slice(), snap=JSON.stringify(AMB.store.stableSnapshot());
-    lv(mid(t1[0])); lv(mid(t1[1])-1);
-    ok(Pz.echoRow.length===2 && Pz.echoRow[0].state==='ok' && Pz.echoRow[1].dir==='up' && !Pz.run(Ec).tries.length && res===null, 'pions après chaque note : ✓ puis ⬆');
-    lv(mid(t1[2])+2); const t2=Pz.target().degs;
-    ok(res && !res.ok && res.row.pegs.map(p=>p.state+':'+p.dir).join()==='ok:null,far:up,far:down' && Pz.run(Ec).tries.length===1 && !Pz.echoRow.length && !g.has('t.macros'), 'phrase finie : ✓ ⬆ ⬇, 1 essai sur 6, nœud encore fermé');
-    ok(t2.length===3 && t2.join()!==t1.join(), 'nouvel essai : nouvelle phrase '+t1.join(' ')+' → '+t2.join(' '));
-    res=null; t2.forEach(dg=>lv(mid(dg)));
-    ok(res && res.ok && res.tries===2 && g.has('t.macros') && ev.includes('unlock:'+Ec) && g.s.contracts.includes(Ec) && Pz.current===null && !g.s.runs[Ec], 'phrase entièrement juste : réussie en 2 essais, Grands réglages s\'ouvre directement');
-    ok(JSON.stringify(AMB.store.stableSnapshot())===snap, 'pendant l\'Écho : l\'ambiance n\'est pas touchée');
-    // MIDI: any octave is fine (the pitch class is judged)
-    { g.s.nodes=g.s.nodes.filter(x=>x!=='t.macros'); Pz.start(Ec); const t=Pz.target().degs; res=null;
-      lv(mid(t[0])+12); lv(mid(t[1])-24); lv(mid(t[2])+12+1);
-      ok(res && res.row.pegs.map(p=>p.state+':'+p.dir).join()==='ok:null,ok:null,far:down', 'MIDI : octave tolérée (✓ ✓ à +12 / −24), la fausse note dit ⬇');
-      res=null; Pz.target().degs.forEach(dg=>lv(mid(dg)+12)); ok(res && res.ok && g.has('t.macros'), 'MIDI : phrase juste une octave plus haut → réussie'); }
-    // 6 failures → its node opens anyway; a new phrase at each attempt
-    g.s.nodes=g.s.nodes.filter(x=>x!=='t.macros'); Pz.start(Ec); const seen=[]; res=null;
-    for(let i=0;i<6;i++){ const t=Pz.target().degs; seen.push(t.join('')); t.forEach(dg=>lv(mid(dg)+1)); }
-    ok(res && res.out && !res.ok && res.left===0 && Pz.current===null && g.has('t.macros'), '6 échecs → Grands réglages s\'ouvre quand même');
-    ok(seen.every((x,i)=>!i||x!==seen[i-1]), '6 essais, 6 phrases tirées : '+seen.join(' '));
-    // free mode: nothing judged, nothing shown
-    g.setMode('free'); Pz.start(Ec); res=null; const tf=Pz.target().degs; tf.forEach(dg=>lv(mid(dg)));
-    ok(!Pz.echoRow.length && !Pz.run(Ec).tries.length && res===null && Pz.echoPlay()===0, 'mode libre : rien de détecté ni joué');
-    Pz.stop(); delete g.s.runs[Ec]; g.setMode('path'); }
-  // while the instrument plays an Écho's phrase, the Melody's own notes keep quiet; they resume right after
-  { const L0=AMB.layers, got=[]; AMB.layers={bells:{note:(m,t)=>got.push(t)}}; const f0=Pz.echoFrom, u0=Pz.echoUntil;
-    Pz.echoFrom=10; Pz.echoUntil=12; [9.5,10.5,11.9,12.2].forEach(t=>AMB.seq.melodyNote(60,t,0.8));
-    const srcOk=await fetch('../js/sequencer.js').then(r=>r.text()).then(t=>!/bells\.note\(/.test(t.replace(/melodyNote\(midi, time, vel\) \{[\s\S]*?\n    \}/,'')) );
-    AMB.layers=L0; Pz.echoFrom=f0; Pz.echoUntil=u0;
-    ok(got.join()==='9.5,12.2' && srcOk, 'Écho : la Mélodie auto se tait pendant la phrase (notes '+got.join(' ')+'), toutes ses notes passent par melodyNote'); }
+  { const P=Pz, S=AMB.seq, L0=AMB.layers, n0=P.now, notes=[], mel=[]; let now=0, step=0;
+    AMB.layers={bells:{note:(m,t,v,force)=>{ if(force) notes.push({m,t}); else mel.push(t); }, ch:{setLevel(){}}}};
+    P.now=()=>now; P.cancel();
+    const sd=0.25, bar=16*sd, snap=JSON.stringify(AMB.store.stableSnapshot());
+    // the sequencer's steps: onStep at each 16th, the clock follows (melodyNote = the Melody auto on every beat)
+    const run=(secs)=>{ const end=now+secs; while(now<end){ P.onStep(step, now, sd); if(step%4===2) S.melodyNote(70, now, 0.5); step++; now+=sd; } };
+    const until=(fn, secs=60)=>{ const end=now+secs; while(now<end && !fn()) run(sd); return fn(); };
+    const lv=(m,t)=>AMB.bus.emit('live',{midi:m,time:t+0.15,vel:0.85,raw:null,played:t}); // handled late, played at t
+    let res=null, phases=[]; AMB.bus.on('game:puzzle',e=>{ phases.push(e.phase); if(e.phase==='end') res=e.res; });
+    const st=P.st(g), gate=(id)=>{ g.s.active=[id]; g.s.prog[id]={n:0}; };
+    gate('p.premier'); K.seed(7);
+    // 1. a gate: its phrase comes at the next bar line, during playback, no card
+    ok(until(()=>P.cur) && P.cur.len===3 && !P.cur.timed && P.cur.gate==='p.premier' && phases[0]==='call' && notes.length===3 && P.cur.steps.join()==='0,4,8', 'pendant la lecture : une phrase marquée de 3 notes, sur les temps de la mesure ('+P.cur.degs.join(' ')+')');
+    const c1=P.cur, t0=c1.t0; ok(notes.map(n=>n.t-t0).join()==='0,1,2' && P.view(t0+0.5).phase==='call' && P.view(c1.from+0.1).phase==='answer', 'la phrase est jouée sur la grille (voix Mélodie) ; la plante : appel, puis attente de la réponse');
+    run(bar-sd); const mBefore=mel.length; ok(!mel.some(t=>t>=t0-0.05 && t<=now) , 'la Mélodie auto se tait pendant la phrase et l\'attente');
+    // 2. a wrong answer: notes played along with the phrase are ignored; ✓ then a wrong note (red), then the 3rd
+    lv(c1.midis[0], t0+0.5); ok(!c1.row.length, 'une note jouée pendant la phrase n\'est pas une réponse');
+    lv(c1.midis[0]+12, c1.ans+0.3); lv(c1.midis[1]+1, c1.ans+1.4);
+    ok(c1.row.map(p=>p.state).join()==='ok,far' && c1.row[1].dir==='down' && P.view(now).row.length===2 && res===null, 'une feuille par note : juste (une octave au-dessus, MIDI), puis fausse');
+    lv(c1.midis[2], c1.ans+2.1);
+    ok(res && !res.ok && res.len===3 && res.next===3 && st.miss['p.premier']===1 && res.left===5 && !g.has('t.macros') && !P.cur && P.view(now).phase==='done', 'réponse fausse : ratée (reste à 3 notes, 1 sur 6), porte fermée');
+    // 3. the son: 3 slow notes, without rhythm (seconds apart, late in the window) → the gate opens
+    res=null; ok(until(()=>P.cur) && P.cur!==c1 && P.cur.len===3, 'nouvelle phrase une mesure plus tard');
+    { const c=P.cur; lv(c.midis[0], c.ans+1.2); lv(c.midis[1], c.ans+3.5); lv(c.midis[2], c.ans+6.8); }
+    ok(res && res.ok && res.open==='p.premier' && g.has('t.macros') && g.s.contracts.includes('p.premier') && ev.includes('unlock:p.premier') && st.len===4 && st.streak===1, '3 notes justes, lentes et sans rythme : Grands réglages s\'ouvre, la phrase suivante aura 4 notes');
+    ok(JSON.stringify(AMB.store.stableSnapshot())===snap, 'l\'ambiance n\'est pas touchée (store inchangé)');
+    // 4. the mastery loop (no gate): successes make the phrases longer; from 5 notes the rhythm counts
+    g.s.active=[]; res=null; run(bar*5);
+    ok(until(()=>P.cur && P.cur.len===4), 'sans porte : des phrases quand même (boucle de maîtrise), de 4 notes après la réussite');
+    { const c=P.cur; c.midis.forEach((m,i)=>lv(m, c.ans+i*0.9)); }
+    ok(res && res.ok && st.len===5 && st.streak===2, 'réussites d\'affilée : 4 → 5 notes');
+    res=null; ok(until(()=>P.cur) && P.cur.len===5 && P.cur.timed && P.cur.steps[0]===0 && P.cur.steps.every(x=>x%2===0), '5 notes : un rythme sur les croches ('+P.cur.steps.join(' ')+')');
+    { const c=P.cur; c.midis.forEach((m,i)=>lv(m, c.ans+c.steps[i]*sd+0.05)); }
+    ok(res && res.ok && st.len===6, 'en rythme (temps joués compensés de la latence, notes traitées 150 ms plus tard) : réussie, 6 notes ensuite');
+    res=null; until(()=>P.cur);
+    { const c=P.cur; c.midis.forEach((m,i)=>lv(m, c.ans+c.steps[i]*sd+(i===2?3*sd:0))); }
+    ok(res && !res.ok && res.row[2].state==='off' && res.row[2].dir==='late' && res.row.filter(p=>p.state==='ok').length===5 && st.len===5 && st.streak===0, 'décalée en rythme (la 3e note 3 doubles-croches en retard) : ratée, phrase plus courte (5)');
+    // 5. ignored: nothing changes, the music goes on (the Melody auto comes back), the next phrase comes later
+    res='x'; until(()=>P.cur); const ci=P.cur, m0=mel.length; until(()=>!P.cur, 30);
+    run(bar); ok(res===null && st.len===5 && P.wait>P.GAP.free-1 && mel.length>m0 && !P.cur, 'phrase ignorée : rien ne change, la musique continue, la suivante attend plus longtemps');
+    // 6. a 4-note gate stays at 4 notes, untimed, even for a long-streak player
+    gate('p.gamme'); st.len=7; P.wait=0; res=null; until(()=>P.cur);
+    ok(P.cur.len===4 && !P.cur.timed && P.cur.gate==='p.gamme', 'porte de 4 notes : 4 notes sans rythme même après de longues séries');
+    // 7. a gate never blocks: after 6 misses it opens anyway
+    gate('p.suite'); P.cancel(); let k=0;
+    while(!(res && res.out) && k++<10){ res=null; until(()=>P.cur); const c=P.cur; c.midis.forEach((m,i)=>lv(m+1, c.ans+i)); }
+    ok(res && res.out && res.open==='p.suite' && k===6 && g.has('m.phrase'), '6 réponses manquées : la porte (Phrases) s\'ouvre quand même');
+    // 8. stopped (panic), free mode: nothing
+    gate('p.composer'); until(()=>P.cur); AMB.bus.emit('panic'); ok(!P.cur, 'lecture arrêtée : la phrase s\'en va, rien de jugé');
+    g.setMode('free'); notes.length=0; run(bar*12); lv(60, now);
+    ok(!P.cur && !notes.length && P.view(now)===null, 'mode libre : aucune phrase, rien de jugé');
+    g.setMode('path'); g.s.ended=true; run(bar*12); ok(!P.cur && !notes.length, 'instrument remis : plus de phrase'); g.s.ended=false;
+    const srcOk=await fetch('../js/sequencer.js').then(r=>r.text()).then(t=>!/bells\.note\(/.test(t.replace(/melodyNote\(midi, time, vel\) \{[\s\S]*?\n    \}/,'')) && /puzzles\.onStep\(step, time, sd\)/.test(t));
+    ok(srcOk, 'toutes les notes de la Mélodie auto passent par melodyNote ; le séquenceur propose les phrases à chaque pas');
+    AMB.layers=L0; P.now=n0; P.cancel(); }
   g.reset();
   g.setMode('free'); ok(T.paramUnlocked('fx.echo') && T.uiUnlocked('song'), 'mode libre : tout ouvert');
   g.reset();

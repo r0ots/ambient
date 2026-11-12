@@ -4,7 +4,9 @@
 //   - it reacts to its own notes (bus `note` / `perc` / `grain` / `chord`): pulse of light + a leaf that pops out;
 //   - its height = the share of the tree nodes of its layer that are unlocked (a node belongs to a layer when one of
 //     its settings does: `<layer>.*`, js/tree.js);
-//   - rare plants (glowing crystals) = secrets found, on the ground between two plants.
+//   - rare plants (glowing crystals) = secrets found, on the ground between two plants;
+//   - S4.2 « Réponse » (js/puzzles.js view()): the Melody plant blinks while the marked phrase plays, stays lit while it
+//     waits for the answer, and grows one leaf per note played back (green = right, red = wrong).
 // Mode policy (wraps AMB.visual, visual.js is untouched): « Jardin » exists only in the Parcours, where it is the
 // default (own preference key ambient.vizMode.path); in free mode (or mode not chosen) the cycle, the stored choice
 // (ambient.vizMode) and the drawing are exactly the classic ones. Without this file the app is unchanged.
@@ -268,6 +270,8 @@
       this.lastT = t0; this.t = (this.t || 0) + dt;
       const now = this.clock();
       for (let i = this.pending.length - 1; i >= 0; i--) { const e = this.pending[i]; if (e.time <= now + 0.02) { this.pending.splice(i, 1); this.hit(e.layer, e.vel); } }
+      const ans = this.answer(now);
+      if (ans) this.lightAnswer(ans);
 
       g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-over"; g.globalAlpha = 1; g.imageSmoothingEnabled = false;
       g.drawImage(this.background(W, H, this.ground), 0, 0);
@@ -277,10 +281,12 @@
         const s = this.sprite(p, px), e = this.energy[p.id] || 0;
         const sway = red ? 0 : (Math.sin(this.t * 0.7 + p.phase) * 0.05 + Math.sin(this.t * 1.9 + p.phase * 2) * 0.015) * (1 + e * 1.5);
         const k = red ? 1 : 1 + e * 0.05;
+        p.sway = sway; p.k = k;
         g.setTransform(k, 0, -sway * k, k, p.x, p.y); // shear from the base: the plant bends, the root stays put
         g.drawImage(s.cv, -s.w / 2, -s.h);
         if (!p.rare) { const lb = this.label(p, fs, this.slotW * 0.96); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 0.85; g.drawImage(lb, Math.round(p.x - lb.width / 2), Math.round(p.y + px * 1.5)); g.globalAlpha = 1; }
       }
+      if (ans) this.drawAnswer(g, ans);
       g.setTransform(1, 0, 0, 1, 0, 0);
       g.globalCompositeOperation = 'lighter';
       for (const p of all) {
@@ -307,6 +313,31 @@
       this.frames++;
       return true;
     },
+    // ---- S4.2 « Réponse » on the Melody plant ----
+    LEAF_OK: [143, 227, 160], LEAF_BAD: [235, 84, 64],
+    answer(now) { const P = AMB.puzzles; return P && P.view && this.plants.some((q) => q.id === 'bells') ? P.view(now) : null; },
+    // its light: blinks with the phrase, steady while it waits, fades after the answer
+    lightAnswer(v) {
+      const e = v.phase === 'call' ? (this.reduced ? 0.6 : 0.4 + 0.5 * Math.abs(Math.sin((this.t || 0) * 7)))
+        : v.phase === 'answer' ? 0.6 : Math.max(0, 0.5 - v.age / 6);
+      this.energy.bells = Math.max(this.energy.bells || 0, e);
+    },
+    // one leaf per note of the phrase, up the stem, alternately left and right: dim = to play, green = right, red = wrong
+    drawAnswer(g, v) {
+      const p = this.plants.find((q) => q.id === 'bells'); if (!p) return 0;
+      const px = this.px, hC = this.heightCells(p), gap = px >= 4 ? 1 : 0, k = p.k || 1;
+      g.setTransform(k, 0, -(p.sway || 0) * k, k, p.x, p.y); // bends with the plant
+      let n = 0;
+      for (let i = 0; i < v.len; i++) {
+        const peg = v.row[i]; if (!peg && v.phase === 'call') continue;
+        const y = -Math.round(hC * (0.2 + 0.68 * (v.len > 1 ? i / (v.len - 1) : 0.5))) * px, s = i % 2 ? 1 : -1;
+        g.fillStyle = !peg ? rgb(p.col, 0.8, 0.5) : rgb(peg.state === 'ok' ? this.LEAF_OK : this.LEAF_BAD);
+        for (const [dx, dy] of [[1, 0], [2, 0], [3, 0], [2, -1], [3, -1], [4, -1], [5, -1], [4, -2], [5, -2]]) g.fillRect(s * dx * px - (s < 0 ? px : 0), y + dy * px, px - gap, px - gap);
+        n++;
+      }
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      return n;
+    },
     stats() {
       const a = this.times.slice().sort((x, y) => x - y), n = a.length;
       return { frames: this.frames, avg: n ? a.reduce((s, v) => s + v, 0) / n : 0, p95: n ? a[Math.floor(n * 0.95) - (n > 1 ? 1 : 0)] : 0, max: n ? a[n - 1] : 0, sprites: this.sprites.size };
@@ -326,6 +357,7 @@
       bus.on('grain', (n) => n && this.onEvent('grains', n.time, n.vel));
       bus.on('perc', (n) => n && this.onEvent('perc', n.time, n.vel));
       bus.on('chord', (c) => { if (!c) return; this.onEvent('drone', c.time, 0.6); this.onEvent('pad', c.time, 0.3); });
+      bus.on('game:puzzle', (e) => { if (e && e.peg && e.peg.state === 'ok') this.onEvent('bells', 0, 0.9); }); // a right note: a spark
       ['game:unlock', 'game:reset', 'game:secret'].forEach((ev) => bus.on(ev, () => { this.sig = null; }));
     },
   };

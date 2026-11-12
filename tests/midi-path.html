@@ -122,13 +122,14 @@ f.addEventListener('load', async () => {
     kb.on(67, 64); kb.off(67); kb.on(40, 90);
     ok(app.notes.length === 1 && app.notes[0][0] === 67 && app.live.length === 1 && !app.chords.length && !d.getElementById('midi').closest('.is-locked'), 'Parcours, Mélodie achetée : le clavier MIDI joue l\'instrument (accords avec le Pad)');
     A.game.unlock('h.pad'); kb.on(40, 90); kb.off(40); await wait(60); ok(app.chords.length === 1, 'Pad ouvert : notes graves → accords');
-    // S4.1: stopped, a MIDI note sounds in the path too; S3.8: an Écho opened while stopped is played back on MIDI
+    // S4.1: stopped, a MIDI note sounds in the path too; S4.2: a Réponse waiting for its answer takes MIDI at any octave
     A.ui.stop(); hush(); await wait(20); reset(); kb.on(67, 100); const pk = await peak(250); kb.off(67);
     const ignored = app.notes.length === 1 && pk > 0.02; reset();
-    A.game.unlock('t.son'); A.garden.openPuzzle('p.premier'); A.puzzles.echoUntil = 0;
-    kb.on(A.puzzles.echoMidis()[0] + 12, 90); kb.off(A.puzzles.echoMidis()[0] + 12);
-    ok(ignored && !A.seq.playing && app.notes.length === 1 && A.puzzles.echoRow.length === 1 && A.puzzles.echoRow[0].state === 'ok', 'Parcours, à l\'arrêt : une note MIDI sonne (crête ' + pk.toFixed(3) + ') et un Écho ouvert se rejoue au MIDI (1re note juste, une octave au-dessus)');
-    A.garden.closePuzzle();
+    const P = A.puzzles; A.game.unlock('t.son');
+    P.cur = { midis: [62, 64, 65], steps: [0, 4, 8], len: 3, row: [], timed: false, sd: 0.25, t0: -9, from: -1, until: 1e9, ans: 0 };
+    kb.on(62 + 12, 90); kb.off(62 + 12);
+    ok(ignored && !A.seq.playing && app.notes.length === 1 && P.cur.row.length === 1 && P.cur.row[0].state === 'ok', 'Parcours, à l\'arrêt : une note MIDI sonne (crête ' + pk.toFixed(3) + ') ; une Réponse prend le MIDI à toute octave (1re note juste, une octave au-dessus)');
+    P.cancel();
     A.seq.playMidi = pm; A.seq.forceChord = fc; A.perform.setMacro = sm; A.ui.stop();
     localStorage.removeItem('ambient.game.midipath');
     log('durée ' + ((performance.now() - T0) / 1000).toFixed(1) + ' s');

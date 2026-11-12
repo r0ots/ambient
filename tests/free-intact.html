@@ -46,6 +46,7 @@ f.addEventListener('load', async () => {
     const midiOk = await kb.connect(); kb.on(72, 100); kb.off(72); kb.on(36, 90); kb.on(40, 90); kb.off(36); kb.off(40); await wait(80);
     ok(midiOk && !A.seq.playing && notes.includes(72) && JSON.stringify(A.game.s) === g0, 'MIDI en libre : bouton de la barre, note jouée lecture arrêtée, rien du jeu ne bouge' + (midiOk && notes.includes(72) ? '' : ' (branché ' + midiOk + ', notes ' + notes + ', audio ' + !!A.engine.ctx + ')'));
 
+    ok(A.puzzles.onStep(0, A.engine.ctx.currentTime + 0.1, 0.25) === false && !A.puzzles.cur && A.puzzles.view() === null && JSON.stringify(A.game.s) === g0, 'S4.2 : aucune Réponse en libre (pas de phrase marquée sur une mesure)');
     // --- old links of removed features (#dj score of the day, #df cousin challenge): ignored, no exception, nothing stored
     for (const h of ['#dj=eyJ2IjoxfQ~1a2b', '#df=eyJ2IjoxLCJrIjoibSJ9~3c4d', '#dj=', '#df=%%%~1']) { w.location.hash = h; await wait(80); }
     ok(A.game.s.mode === 'free' && !d.querySelector('.modal:not([hidden])'), 'anciens liens #dj / #df : ignorés, aucune boîte, mode libre intact');
@@ -57,9 +58,9 @@ f.addEventListener('load', async () => {
     for (const k of Object.keys(before)) ok(before[k] === after[k], 'identique : ' + k + (before[k] === after[k] ? '' : '\n  avant ' + String(before[k]).slice(0, 300) + '\n  après ' + String(after[k]).slice(0, 300)));
     ok(shareAfter === shareBefore, 'lien de partage identique');
     ok(A.history.past.length === undoBefore, 'annulation : aucune entrée ajoutée');
-    const GAMEUI = ['treeBtn', 'pads', 'lcdTask', 'puzzle', 'treeDlg', 'welcomeDlg'];
+    const GAMEUI = ['treeBtn', 'pads', 'lcdTask', 'treeDlg', 'welcomeDlg'];
     const showing = GAMEUI.filter(id => { const e = d.getElementById(id); return e && vis(e); });
-    ok(!showing.length && !d.querySelector('.gain-feed,.tree-badge,#lcdShards'), 'aucun élément de jeu visible (arbre, défi, Écho) ' + showing.join());
+    ok(!showing.length && !d.querySelector('.gain-feed,.tree-badge,#lcdShards'), 'aucun élément de jeu visible (arbre, défi, pastilles) ' + showing.join());
     d.querySelector('.more').open = true; await wait(40);
     ok(vis(d.getElementById('gameMode')), 'menu ⋯ ouvert : la bascule vers le Parcours');
     d.querySelector('.more').open = false;

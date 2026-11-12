@@ -1,5 +1,6 @@
-// « Jardin sonore » : the game's interface (welcome choice, path/free switch, the challenge on the LCD, Écho card, end of the
-// path; the tree screen is in garden-tree.js). Progression lives in game.js, the tree and locks in tree.js.
+// « Jardin sonore » : the game's interface (welcome choice, path/free switch, the challenge on the LCD, the Réponse's
+// feedback (S4.2: LCD and chime; the phrase itself lives in the music, js/puzzles.js), end of the path; the tree
+// screen is in garden-tree.js). Progression lives in game.js, the tree and locks in tree.js.
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const $ = (s) => document.querySelector(s);
@@ -19,8 +20,7 @@
       const b = $('#gameMode'); if (!b) return;
       b.textContent = AMB.game.path ? '◎ Passer en mode libre' : '🌱 Parcours (débloquer pas à pas)';
     },
-    // ---- the challenge on the 2nd line of the LCD (v1.06): one at a time, ↷ = the next one, a tap = how to do it
-    // (an Écho: a tap opens its card) ----
+    // ---- the challenge on the 2nd line of the LCD (v1.06): one at a time, ↷ = the next one, a tap = how to do it ----
     renderContracts(flashId) {
       const box = $('#lcdTask'), line = $('#lcdLine'); if (!box || !AMB.contracts) return;
       const K = AMB.contracts, g = AMB.game, id = g.path && !this.handedOver() ? K.state().active[0] : null, d = id && K.byId[id];
@@ -28,11 +28,11 @@
       if (!d) return;
       if (box.dataset.id !== id) box.classList.remove('help');
       box.dataset.id = id;
-      const n = K.progress(id), echo = d.kind === 'echo', help = !echo && box.classList.contains('help') && d.hint;
+      const n = K.progress(id), echo = d.kind === 'echo', help = box.classList.contains('help') && d.hint;
       const txt = box.querySelector('.lcd-task-txt');
-      txt.textContent = help ? d.hint : echo ? `◈ Écho : ${d.title}` : `◇ ${d.title}`;
-      txt.title = echo ? 'Toucher : écouter la phrase et la rejouer' : help ? 'Toucher : revenir au défi' : `${d.hint}\n(Toucher : comment faire)`;
-      box.querySelector('.lcd-task-n').textContent = echo ? '▶' : d.goal > 1 ? `${n}/${d.goal}` : n ? '✓' : '·';
+      txt.textContent = help ? d.hint : echo ? `↺ Réponse : ${d.title}` : `◇ ${d.title}`;
+      txt.title = help ? 'Toucher : revenir au défi' : `${d.hint}\n(Toucher : comment faire)`;
+      box.querySelector('.lcd-task-n').textContent = echo ? `${AMB.puzzles.need(d)} ♪` : d.goal > 1 ? `${n}/${d.goal}` : n ? '✓' : '·';
       if (flashId === id) { box.classList.remove('bump'); void box.offsetWidth; box.classList.add('bump'); }
     },
     paramLabel(key) {
@@ -99,92 +99,30 @@
       this.handing = true;
       setTimeout(() => {
         this.showTree(false); this.chime('solve'); this.lcd('✦ L\'instrument est à toi', 6000);
-        setTimeout(() => { this.handing = false; this.closePuzzle(); this.renderContracts(); }, 2000);
+        setTimeout(() => { this.handing = false; this.renderContracts(); }, 2000);
       }, 900);
       return true;
     },
 
-    // ---- Écho card (S3.1): the phrase is heard, then played back note by note ----
-    pz: null, // { id }
-    openPuzzle(id) {
-      const P = AMB.puzzles; if (!P || !P.isEcho(id)) return;
-      this.showTree(false);
-      this.pz = { id };
-      P.start(id);
-      const card = $('#puzzle'); card.hidden = false;
-      document.body.classList.add('pz-open', 'pz-echo'); // the card has its own pads: the bar under the screen steps aside
-      card.querySelector('.pz-title').textContent = `Écho · ${AMB.contracts.byId[id].title}`;
-      card.querySelector('.pz-intro').textContent = AMB.contracts.byId[id].intro;
-      this.renderPuzzle();
-      clearTimeout(this._echoT);
-      this._echoT = setTimeout(() => P.echoPlay(id), 400); // an echo starts by being heard
-    },
-    closePuzzle() {
-      if (AMB.puzzles && AMB.puzzles.current) AMB.puzzles.stop();
-      this.pz = null;
-      const c = $('#puzzle'); if (c) c.hidden = true;
-      document.body.classList.remove('pz-open', 'pz-echo');
-    },
-    get PADS() { return AMB.play.PADS; }, // the 9 pads of the bar under the screen (js/play.js), also on the Écho card
-    DIR: { up: ['⬆', 'plus haut'], down: ['⬇', 'plus bas'] },
-    pegHTML(p) { // ✓ right, ⬆ / ⬇ which way the note should go
-      const dir = p.dir && this.DIR[p.dir];
-      return `<span class="pz-peg ${p.state}" data-k="${p.key}" title="Note ${p.key.slice(1)} : ${dir ? dir[1] : 'juste'}">${dir ? dir[0] : '✓'}</span>`;
-    },
-    // one row per phrase played back, the one in progress last (its notes to come as « · »)
-    renderBoard() {
-      const P = AMB.puzzles, id = this.pz.id, r = P.run(id), board = $('#puzzle .pz-board');
-      const n = P.echoMidis(id).length, cur = P.echoRow;
-      board.style.setProperty('--n', n);
-      const rows = r.tries.map((t, i) => [i + 1, t.pegs]);
-      if (cur.length || r.tries.length) rows.push([r.tries.length + 1, cur]);
-      board.innerHTML = !rows.length ? '' : `<div class="pz-row pz-head"><span></span>${Array.from({ length: n }, (_, i) => `<span>${i + 1}</span>`).join('')}</div>`
-        + rows.map(([k, pegs]) => `<div class="pz-row"><span class="pz-n">${k}</span>${pegs.map((p) => this.pegHTML(p)).join('')}${'<span class="pz-peg wait">·</span>'.repeat(Math.max(0, n - pegs.length))}</div>`).join('');
-    },
-    statusText(r) {
-      const P = AMB.puzzles, left = P.TRIES - r.tries.length, last = r.tries[r.tries.length - 1];
-      const leftTxt = `${left} essai${left > 1 ? 's' : ''} restant${left > 1 ? 's' : ''} sur ${P.TRIES}`;
-      const n = P.echoMidis(this.pz.id).length, at = P.echoRow.length;
-      if (at) return `Note ${at + 1} sur ${n}. ${leftTxt}.`;
-      if (!last) return `${n} notes à rejouer. ${leftTxt}.`;
-      const k = last.pegs.filter((p) => p.state === 'ok').length;
-      return `Pas encore : ${k} note${k > 1 ? 's' : ''} juste${k > 1 ? 's' : ''} sur ${n}. Nouvelle phrase. ${leftTxt}.`;
-    },
-    renderPuzzle() {
-      const card = $('#puzzle'), P = AMB.puzzles; if (!card || !this.pz || !P) return;
-      const pads = card.querySelector('.pz-pads');
-      if (pads && !pads.children.length) pads.innerHTML = this.PADS.map((k, i) => `<button type="button" class="pz-pad" data-deg="${i}" title="Touche ${k}">${k}</button>`).join('');
-      this.renderBoard();
-      card.querySelector('.pz-hint').textContent = this.statusText(P.run(this.pz.id));
-    },
-    // after an attempt (the last note of the phrase): done (its node opens: the unlock sequence), out of attempts (it
-    // opens anyway), or the next phrase
-    puzzleResult(id, res) {
-      if (res.ok || res.out) {
-        this.closePuzzle();
-        const d = AMB.contracts.byId[id], node = d.node && AMB.tree.byId[d.node];
-        AMB.ui.toast(res.ok ? `✓ Écho réussi en ${res.tries} essai${res.tries > 1 ? 's' : ''}${node ? ` : ${node.name} s'ouvre` : ''}`
-          : `Pas cette fois, mais ${node ? `${node.name} s'ouvre` : 'la suite s\'ouvre'} quand même.`);
-      } else {
-        this.renderPuzzle();
-        // the new phrase is heard right away (never idle)
-        clearTimeout(this._echoT);
-        this._echoT = setTimeout(() => { if (this.pz && this.pz.id === id) AMB.puzzles.echoPlay(id); }, 1200);
+    // ---- « Réponse » (S4.2): no card, the instrument says it — « ↺ À toi » when the answer bar comes, a soft note
+    // for a right answer, the unlock sequence when it opens a gate ----
+    reponse(e) {
+      const P = AMB.puzzles; if (!e || !P || !AMB.game.path) return;
+      if (e.phase === 'call') {
+        const ctx = AMB.engine && AMB.engine.ctx, c = P.cur, ms = ctx ? Math.max(0, (e.ans - ctx.currentTime) * 1000) : 0;
+        clearTimeout(this._toiT);
+        this._toiT = setTimeout(() => { if (P.cur === c && c) this.lcd('↺ À toi', 2500); }, ms);
+      } else if (e.phase === 'end' && e.res) {
+        const r = e.res, node = r.open && AMB.tree.byId[AMB.contracts.byId[r.open].node];
+        if (r.out) AMB.ui.toast(`Pas cette fois, mais ${node ? `${node.name} s'ouvre` : 'la suite s\'ouvre'} quand même.`);
+        else if (r.open) return; // the unlock sequence says it
+        else if (r.ok) { this.chime('small'); this.lcd(`✓ Juste · prochaine : ${r.next}`, 2500); }
+        else this.lcd(`↺ Presque · prochaine : ${r.next}`, 2500);
       }
     },
 
     build() {
       this.hookActions();
-      const pzc = $('#puzzle');
-      if (pzc) {
-        pzc.querySelector('.pz-x').addEventListener('click', () => this.closePuzzle());
-        pzc.querySelector('.pz-ab').addEventListener('click', () => AMB.puzzles.echoPlay());
-        const pads = pzc.querySelector('.pz-pads');
-        if (pads) pads.addEventListener('pointerdown', (e) => {
-          const b = e.target.closest('.pz-pad'); if (!b || !AMB.puzzles.isEcho() || !AMB.seq) return;
-          e.preventDefault(); AMB.seq.playDegree(+b.dataset.deg);
-        });
-      }
       if (AMB.bus) {
         // a node opens: by a challenge = the unlock sequence on the map (garden-tree.js); by a secret = chime + LCD
         AMB.bus.on('game:unlock', (d) => {
@@ -197,15 +135,12 @@
           const c = AMB.contracts.byId[d && d.id]; if (!AMB.game.path || !c || c.node) return;
           this.chime('small'); this.lcd('✓ défi réussi', 2500);
         });
-        AMB.bus.on('game:puzzle', (e) => { if (e && e.res && this.pz && this.pz.id === e.id) this.puzzleResult(e.id, e.res); else this.renderPuzzle(); });
-        AMB.bus.on('game:mode', () => { if (!AMB.game.path) this.closePuzzle(); });
-        AMB.bus.on('game:reset', () => this.closePuzzle());
+        AMB.bus.on('game:puzzle', (e) => this.reponse(e));
       }
       const task = $('#lcdTask');
       if (task) {
         task.querySelector('.lcd-skip').addEventListener('click', () => { const id = task.dataset.id; if (id) AMB.contracts.skip(id); });
         task.querySelector('.lcd-task-txt').addEventListener('click', () => {
-          const id = task.dataset.id; if (AMB.puzzles && AMB.puzzles.isEcho(id)) return this.openPuzzle(id); // an Écho: its card
           clearTimeout(this._helpT);
           task.classList.toggle('help'); this.renderContracts();
           if (task.classList.contains('help')) this._helpT = setTimeout(() => { task.classList.remove('help'); this.renderContracts(); }, 15000);

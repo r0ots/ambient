@@ -76,10 +76,10 @@
       if (!map.querySelector('.tree-stage') || map.dataset.n !== String(T.NODES.length)) this.buildMap(map);
       this.paintTree();
     },
-    // what opens a node: its challenge, or a secret (S4.3) — « ◇ Joue 6 notes », « ◈ Écho : Premier reflet », « ✦ Secret : ??? »
+    // what opens a node: its challenge, or a secret (S4.3) — « ◇ Joue 6 notes », « ↺ Réponse « Premier reflet » (3 notes) », « ✦ Secret : ??? »
     openers(id) {
       const K = AMB.contracts, S = AMB.secrets, d = K && K.forNode(id), out = [];
-      if (d) out.push({ kind: d.kind === 'echo' ? 'echo' : 'défi', d, text: d.kind === 'echo' ? `◈ Réussis l'Écho « ${d.title} »` : `◇ ${d.title}` });
+      if (d) out.push({ kind: d.kind === 'echo' ? 'echo' : 'défi', d, text: d.kind === 'echo' ? `↺ Réponse « ${d.title} » (${AMB.puzzles.need(d)} notes)` : `◇ ${d.title}` });
       if (S) for (const [sid, nid] of Object.entries(S.OPENS)) if (nid === id) out.push({ kind: 'secret', text: `✦ Secret : ${S.has(sid) ? S.byId[sid].title : '???'}` });
       return out;
     },
@@ -141,7 +141,7 @@
         const n = T.byId[b.dataset.id]; if (!n) return;
         const st = T.status(n.id), op = this.openers(n.id)[0];
         for (const s of Object.keys(STATE_TXT)) b.classList.toggle('st-' + s, s === st);
-        b.querySelector('span').textContent = st === 'owned' ? '✓' : !op ? '' : op.kind === 'echo' ? '◈ Écho' : '◇ défi';
+        b.querySelector('span').textContent = st === 'owned' ? '✓' : !op ? '' : op.kind === 'echo' ? '↺ Réponse' : '◇ défi';
         const ext = n.req.filter((r) => T.byId[r].branch !== n.branch);
         b.setAttribute('aria-label', `${n.name}, ${T.BRANCHES[n.branch].name}, ${STATE_TXT[st]}`
           + (st !== 'owned' && op ? `, s'ouvre par : ${op.text.slice(2)}` : '')
@@ -217,15 +217,14 @@
       if (id && map) { const b = map.querySelector(`.tree-node[data-id="${id}"]`); if (b) b.classList.add('is-sel'); }
       this.mark(id); this.showInfo(id);
     },
-    // the node card: what it opens, what it needs, and what opens it (S4.3: no button to buy; an Écho that can be
-    // played now has its ▶)
+    // the node card: what it opens, what it needs, and what opens it (S4.3: no button to buy; S4.2: a Réponse is played
+    // in the music, no button either)
     showInfo(id) {
       const box = $('#treeDlg .tree-info'); if (!box) return;
       const T = AMB.tree, g = AMB.game, K = AMB.contracts, n = id && T.byId[id];
       if (!n) { box.hidden = true; box.dataset.id = ''; return; }
       const st = T.status(id), br = T.BRANCHES[n.branch], ops = st === 'owned' ? [] : this.openers(id);
       const req = n.req.map((r) => `<span class="${g.has(r) ? 'ok' : ''}">${g.has(r) ? '✓' : '·'} ${T.byId[r].name}</span>`).join(' ');
-      const echo = ops.find((o) => o.kind === 'echo' && K.eligible(o.d) && !g.s.ended);
       const now = ops.find((o) => o.d && K.state().active[0] === o.d.id);
       box.style.setProperty('--c', br.color);
       box.dataset.id = id; box.className = `tree-info st-${st}`;
@@ -233,8 +232,7 @@
         + `<p class="ti-d">${n.desc}</p>`
         + `<p class="ti-g">Ouvre : ${T.grantsText(id) || '—'}</p>`
         + (n.req.length ? `<p class="ti-r">Demande : ${req}</p>` : '')
-        + (ops.length ? `<p class="ti-o">Pour l'ouvrir : ${ops.map((o) => `<span>${o.text}</span>`).join(' · ou ')}${now ? ' <em>(le défi en cours)</em>' : ''}</p>` : '')
-        + (echo ? '<button type="button" class="btn small tree-buy">▶ Jouer l\'Écho</button>' : '');
+        + (ops.length ? `<p class="ti-o">Pour l'ouvrir : ${ops.map((o) => `<span>${o.text}</span>`).join(' · ou ')}${now ? ' <em>(le défi en cours)</em>' : ''}</p>` : '');
       // the card sits in the empty corner opposite to the node (the fan leaves both bottom corners free)
       const map = $('#treeDlg .tree-map'), el = map && map.querySelector(`.tree-node[data-id="${id}"]`);
       if (el && map) { const r = map.getBoundingClientRect(), e = el.getBoundingClientRect(); box.classList.toggle('right', e.left + e.width / 2 < r.left + r.width / 2); }
@@ -296,11 +294,6 @@
         this.select(b.dataset.id);
         const box = $('#treeDlg .tree-info');
         if (box && getComputedStyle(box).position === 'absolute') this.panToNode(b.dataset.id, touchy() ? box.offsetHeight + 8 : 0);
-      });
-      const info = $('#treeDlg .tree-info');
-      if (info) info.addEventListener('click', (e) => {
-        const d = info.dataset.id && AMB.contracts.forNode(info.dataset.id);
-        if (e.target.closest('.tree-buy') && d && d.kind === 'echo') this.openPuzzle(d.id);
       });
       const zm = $('#treeDlg .tree-zoom');
       if (zm) zm.addEventListener('click', (e) => {
