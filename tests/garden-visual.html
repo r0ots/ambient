@@ -94,7 +94,7 @@ window.addEventListener('load', async () => {
       const e = GV.grow.grains;
       ok(e && e.from === 0 && Math.abs(e.start - t0) < 1e-6 && !GV.grow.bells, 'nouvelle couche : sa plante pousse depuis 0, sur le temps fort annoncé, les autres ne bougent pas');
       const a = GV.growth('grains', t0 - 0.1), b = GV.growth('grains', t0 + 0.3), c = GV.growth('grains', t0 + 0.6), dd = GV.growth('grains', t0 + 1.0);
-      ok(a === 0 && b > 0.2 && b < c && c < 1.15 && dd > 0.9, 'croissance animée : 0 avant le temps fort, puis ' + [b, c, dd].map((x) => x.toFixed(2)).join(' → '));
+      ok(a === 0 && b > 0.05 && b < c && c < 0.8 && dd > 0.85 && dd < 1.1, 'croissance animée : 0 avant le temps fort, puis ' + [b, c, dd].map((x) => x.toFixed(2)).join(' → '));
       GV.retime(t0 + 2); ok(GV.grow.grains.start === t0 + 2, 'la carte fermée plus tard : la croissance attend (retime)');
       // mid-growth frame: the sprite is drawn scaled (no new sprite in the cache)
       const m0 = GV.cacheMisses; GV.grow.grains.start = GV.clock() - 0.5; frame();

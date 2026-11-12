@@ -13,7 +13,7 @@
       AMB.game.setMode(mode);
       this.welcome(false);
       this.renderSwitch();
-      AMB.ui.toast(mode === 'path' ? '🌱 Parcours : une seule note pour commencer. Lance la lecture et explore.' : '◎ Mode libre : tout est ouvert');
+      AMB.ui.toast(mode === 'path' ? '🌱 Parcours : une seule note pour commencer. Glisse sur l\'écran pour l\'entendre.' : '◎ Mode libre : tout est ouvert');
     },
     renderSwitch() {
       const b = $('#gameMode'); if (!b) return;

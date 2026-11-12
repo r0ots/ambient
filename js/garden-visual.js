@@ -125,9 +125,9 @@
   }
 
   // sky per chord: a hue per scale degree; minor scales (minor third) darker and cooler
-  const HUES = [32, 290, 200, 165, 18, 245, 330];
+  const HUES = [35, 315, 190, 160, 215, 275, 0]; // I amber, ii magenta, iii cyan, IV teal, V blue, vi violet, vii red
   const GROW = 1.2, SKY_FADE = 2; // s
-  const easeBack = (q) => 1 + 2.4 * (q - 1) ** 3 + 1.4 * (q - 1) ** 2; // a small overshoot: it springs up
+  const ease = (q) => q * q * (3 - 2 * q) + 0.1 * Math.sin(Math.PI * q) * q * q; // slow start, a slight overshoot at the end
 
   const gv = {
     LAYERS, byLayer, layout, cells, hash, GROW,
@@ -244,7 +244,7 @@
       if (key === 'dawn') return [[0, '#141a33'], [0.5, '#4d2f4f'], [0.82, '#b0584a'], [1, '#f2a65a']];
       const [d, mi] = key.split('|'), h = HUES[(+d % 7 + 7) % 7] + (mi === '1' ? 18 : 0);
       const c = (sa, l) => `rgb(${hsl2rgb(h, sa, l).join()})`;
-      return [[0, c(0.4, 0.03)], [0.6, c(0.45, mi === '1' ? 0.06 : 0.075)], [1, c(0.5, mi === '1' ? 0.1 : 0.13)]];
+      return [[0, c(0.35, 0.03)], [0.55, c(0.5, mi === '1' ? 0.07 : 0.09)], [1, c(0.6, mi === '1' ? 0.17 : 0.22)]];
     },
     sky(key, W, ground) {
       const k = key + '|' + W + 'x' + ground;
@@ -282,7 +282,7 @@
       const e = this.grow[id]; if (!e) return 1;
       const q = (now - e.start) / GROW;
       if (q >= 1) { delete this.grow[id]; return 1; }
-      return q <= 0 ? e.from : e.from + (1 - e.from) * easeBack(q);
+      return q <= 0 ? e.from : e.from + (1 - e.from) * ease(q);
     },
 
     // ---- S4.5w finale: the recorded song is heard again (garden.finale); its events light the plants ----
