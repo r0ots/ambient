@@ -34,3 +34,15 @@ body.kid .big-play { inset: 50px 0 auto 0; } /* the landscape's play button move
   .quick-play { min-width: 200px; min-height: 58px; font-size: 26px; bottom: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .quick-play, .pf-banner, .pf-stars i { animation: none; } }
+
+/* ⋯ menu: the Parcours' entries folded in one sub-section (js/placement.js) */
+.menu-sub { display: flex; flex-direction: column; }
+.menu-sub > summary { list-style: none; cursor: pointer; text-align: left; }
+.menu-sub > summary::-webkit-details-marker { display: none; }
+.menu-sub > summary::after { content: ' ▸'; color: var(--muted); }
+.menu-sub[open] > summary::after { content: ' ▾'; }
+.menu-sub-body { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 0 10px; padding-left: 8px; border-left: 1px solid var(--line); }
+.menu-sub[hidden] { display: none; }
+/* the open ⋯ menu stays above the fixed panels (Contrats, énigme) and scrolls on a short screen */
+.more[open] { position: relative; z-index: 45; }
+.more[open] > .menu { z-index: 45; max-height: calc(100vh - 90px); overflow-y: auto; }

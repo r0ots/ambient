@@ -33,7 +33,10 @@
 //                                      while sustain is true the note still rings: a game that cares waits for onCC
 //   onCC?(ch, {cc, value, time, sustain, input}, api)     any MIDI control change (value 0..1). Decision (G9b.2): the
 //                                      engine tracks CC64 (sustain pedal) in arcade.sustain and puts it on every note
-//                                      event; onCC gets the pedal's own moves (e.g. Dictée evaluates on pedal release)
+//                                      event; onCC gets the pedal's own moves (e.g. Dictée evaluates on pedal release).
+//                                      Lifecycle of arcade.sustain: false at load; CC64 >= 0.5 sets it, < 0.5 clears it
+//                                      (MIDI reaches the engine only while the cabinet is open, js/play.js); js/arcade-ui.js
+//                                      resets it to false when the cabinet opens and when it closes (no stuck pedal)
 //   rhythm games: prepare(api) { return AMB.latency.ensure(api); } and subtract AMB.latency.get(src, input) from the
 //                                      tap times (js/latency.js: per device, per input key / touch / midi / MIDI keyboard)
 //                                      while the cabinet is open the app never plays MIDI (js/play.js): without
@@ -43,9 +46,19 @@
 //   t0 = performance.now() ms at which the last stimulus really starts sounding (compare with MIDI / key times)
 //   note(ev) = immediate feedback sound on the audition bus ({midi|hz, dur?, vel?, cents?, voice?}), does not move t0
 // arcade.open = the cabinet is on screen (set by js/arcade-ui.js); arcade.active = a round is running.
-// arcade.kid (also api.kid) = the player profile is « découverte » (AMB.game.isKid()): rounds start at d = 0 and
-//   plugins show kid labels (read it in make() and store it in the challenge, e.g. Chasseur de modes).
-// start(id, {seed, pacts, duration, d (start level), dMax (level cap), practice (no record, no play counted)}).
+// arcade.kid (also api.kid) = the player profile is « découverte » (AMB.game.isKid()): plugins show kid labels (read it
+//   in make() and store it in the challenge, e.g. Chasseur de modes); a round starts from the kid's own level (kept from one
+//   session to the next, in the arcade profile 'decouverte') under the soft cap KID.cap; never any pact.
+//
+// start(gameId, opts) -> the round (null if unknown game / no audition). opts, all optional:
+//   kind: 'normal' | 'practice' | 'ghost'   (default 'normal'; the older flags ghost: true / practice: true map to it)
+//         decides what the round may touch:
+//           normal   (a cartridge)            pacts = opts.pacts or the ticked ones (none for the kid); record, play counted,
+//                                             level saved
+//           practice (placement, Jouer 2 min) no pact, no record, no play counted; level saved (it is the player's ear)
+//           ghost    (défi du jour, duel)     no pact; nothing saved (level, plays, records untouched)
+//   round settings (any kind): seed, d (starting level instead of the player's), dMax (level cap), fixed (level frozen:
+//   no staircase), count (the round ends after that many answers), duration (ms; Infinity = no clock, « zen »), pacts.
 //
 // Pacts (G9.8, chosen difficulty à la Hades; definitions, multipliers and per-game choice in js/pacts.js):
 // start(id, {pacts: ['une-ecoute', …]}) — the engine applies their rules, the score is multiplied by
@@ -56,9 +69,8 @@
 //               ended = wrong (late)        `pacts: {transpose: false}`); the staircase level is never touched
 //   metronome   no answer 3 s after the stimulus ended = wrong (late)   funambule  first wrong answer ends the round
 //   silence     UI only (no verdict, no score until the end)
-// start(id, opts): opts.seed, opts.duration (ms; Infinity = no clock, « zen »), opts.d (starting level instead of the
-// player's), opts.fixed (level frozen: no staircase), opts.count (the round ends after that many answers),
-// opts.ghost (nothing saved: level, plays and records untouched — daily challenge, duels: js/daily.js, js/duel.js)
+// « Avant la fin » / « Métronome » time from the end of the challenge's FIRST stimulus (round.stimEnd): a replay never
+// moves it. The rule « which pacts » lives here (kind), not in the UI (js/arcade-ui.js only draws the chips).
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const q = new URLSearchParams(location.search);
@@ -74,6 +86,10 @@
   const STARS = [0.4, 0.8, 1.3];
   // pact rules (G9.8): level offset of « Leurres proches », max transposition (semitones), « Métronome » window (ms)
   const PACT = { near: 0.2, transpose: 6, metronome: 3000 };
+  // round kinds: what a round may touch (see the header « Round kinds »)
+  const KINDS = ['normal', 'practice', 'ghost'];
+  // the kid (profile « découverte »): soft cap on the level a new round starts from (the staircase may still climb)
+  const KID = { cap: 0.35 };
 
   const fresh = () => ({ v: 1, profile: 'default', profiles: {} });
 
@@ -88,7 +104,7 @@
   const arcade = {
     key: KEY,
     DURATION: 75000,
-    STAIR, SCORE, STARS, REVEAL, PACT,
+    STAIR, SCORE, STARS, REVEAL, PACT, KINDS, KID,
     games: [], byId: {},
     clock: { now: () => (window.performance ? performance.now() : Date.now()) },
     s: fresh(),
@@ -139,6 +155,8 @@
 
     // ---- round ----
     combo() { return (AMB.juice && AMB.juice.combo) || ownCombo; },
+    // the round's kind (opts.kind, or the older flags opts.ghost / opts.practice)
+    kindOf(opts = {}) { return KINDS.includes(opts.kind) ? opts.kind : opts.ghost ? 'ghost' : opts.practice ? 'practice' : 'normal'; },
     start(gameId, opts = {}) {
       const g = this.byId[gameId];
       if (!g) return null;
@@ -147,13 +165,18 @@
       const seed = opts.seed != null ? opts.seed >>> 0 : (Math.floor(now * 1000) ^ 0x9e3779b9) >>> 0;
       const rng = AMB.audition ? AMB.audition.rng(seed) : null;
       if (!rng) return null;
-      const d0 = clamp(opts.d != null && isFinite(opts.d) ? +opts.d : this.kid ? 0 : st.d, STAIR.lo, opts.dMax != null ? +opts.dMax : STAIR.hi);
-      const pacts = (opts.pacts || []).slice(), P = AMB.pacts;
+      const kind = this.kindOf(opts), kid = this.kid;
+      // the kid's level carries over from one session to the next, under a soft cap (KID.cap): never back to 0 each time
+      const d0 = clamp(opts.d != null && isFinite(opts.d) ? +opts.d : kid ? Math.min(st.d, KID.cap) : st.d, STAIR.lo, opts.dMax != null ? +opts.dMax : STAIR.hi);
+      // pacts only in a normal round, never for the kid (« découverte »); a normal round without opts.pacts takes the ones
+      // ticked on the cartridge (js/pacts.js). Practice and ghost rounds play without (scores stay comparable)
+      const P = AMB.pacts;
+      const pacts = kind !== 'normal' || kid ? [] : (opts.pacts || (P && P.chosen ? P.chosen(gameId) : [])).slice();
       this.round = {
         game: g, seed, rng, pacts, t0: now,
         pmult: P && P.mult ? P.mult(pacts) : 1, trRng: pacts.includes('transpose') ? AMB.audition.rng((seed ^ 0x5bd1e995) >>> 0) : null, tr: 0, stimEnd: 0, dur: opts.duration || this.DURATION,
-        d0, stair: { d: d0, step: Math.max(st.step, STAIR.restart), run: 0, dir: 0, hi: opts.dMax }, peak: d0, practice: !!opts.practice, kid: this.kid,
-        fixed: !!opts.fixed, count: Math.max(0, opts.count | 0), ghost: !!opts.ghost,
+        d0, stair: { d: d0, step: Math.max(st.step, STAIR.restart), run: 0, dir: 0, hi: opts.dMax }, peak: d0, kind, practice: kind === 'practice', kid,
+        fixed: !!opts.fixed, count: Math.max(0, opts.count | 0), ghost: kind === 'ghost',
         score: 0, n: 0, good: 0, clean: 0, replays: 0, chReplays: 0, ch: null, history: [], over: false, t0Stim: 0,
       };
       this.active = true;
@@ -197,7 +220,8 @@
       if (r) {
         r.t0Stim = res.t0 || 0;
         const lead = res.t0 && window.performance ? Math.max(0, res.t0 - performance.now()) : 0;
-        r.stimEnd = this.clock.now() + lead + (res.dur || 0) * 1000; // end of the stimulus (pacts « Avant la fin », « Métronome »)
+        // end of the challenge's FIRST stimulus (pacts « Avant la fin », « Métronome »): a replay never moves it
+        if (!r.stimEnd) r.stimEnd = this.clock.now() + lead + (res.dur || 0) * 1000;
       }
       return res;
     },
@@ -280,21 +304,22 @@
     end(opts = {}) {
       const r = this.round; if (!r) return null;
       r.over = true;
-      const g = r.game, abort = !!opts.abort, ghost = r.ghost;
+      const g = r.game, abort = !!opts.abort, ghost = r.kind === 'ghost';
       // a ghost round (daily challenge, duel) leaves the player's own stats alone
       const st = ghost ? { ...this.stats(g.id), best: { ...this.stats(g.id).best } } : this.stats(g.id);
       // the level always follows the staircase (it is the player's ear), even after an abort
       st.d = r.stair.d; st.step = r.stair.step; st.peak = Math.max(st.peak || 0, r.peak);
       const stars = abort || !isFinite(r.dur) ? 0 : this.starsFor(r.score, r.d0, r.dur);
       const pk = this.pactKey(r.pacts), prev = st.best[pk];
-      const record = !abort && !ghost && !r.practice && r.score > 0 && (!prev || r.score > prev.score);
-      if (!abort && !ghost && !r.practice) {
+      const counted = !abort && r.kind === 'normal'; // only a normal round counts a play and may set a record
+      const record = counted && r.score > 0 && (!prev || r.score > prev.score);
+      if (counted) {
         st.plays++;
         if (record) st.best[pk] = { score: r.score, stars: Math.max(stars, prev ? prev.stars : 0), at: Date.now() };
         else if (prev && stars > prev.stars) prev.stars = stars;
       }
       if (!ghost) this.save();
-      const out = { ghost, d0: r.d0, seed: r.seed, id: g.id, score: r.score, stars, record, abort, good: r.good, clean: r.clean, total: r.history.length, replays: r.replays, d: st.d, peak: st.peak, best: st.best[pk] || null, pacts: r.pacts, pmult: r.pmult, fall: !!opts.fall };
+      const out = { kind: r.kind, ghost, d0: r.d0, seed: r.seed, id: g.id, score: r.score, stars, record, abort, good: r.good, clean: r.clean, total: r.history.length, replays: r.replays, d: st.d, peak: st.peak, best: st.best[pk] || null, pacts: r.pacts, pmult: r.pmult, fall: !!opts.fall };
       this.round = null; this.active = false; this.last = out;
       if (AMB.audition) AMB.audition.session(false);
       emit('arcade:end', out);

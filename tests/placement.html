@@ -25,10 +25,15 @@ f.addEventListener('load', async ()=>{
   ok(AR.kid && AR.profile==='decouverte', 'arcade.kid suit le profil ; profil d\'arcade à part (niveaux, records)');
   g.reset(); ok(g.isKid() && g.s.mode==='path', 'reset du Parcours : le profil est gardé');
   // kid: easy start level, kid labels, api.kid
-  AR.stats('modes').d=0.8; AR.stats('modes', 'decouverte').d=0.8;
+  AR.stats('modes').d=0.8; AR.stats('modes', 'decouverte').d=0;
   let r=AR.start('modes',{seed:5}); const lk=AR.choices().map(c=>c.label).join('/');
   ok(r.d0===0 && AR.api().kid && /Joyeux/.test(lk), 'découverte : départ au niveau 0, api.kid, libellés enfant ('+lk+')');
   AR.end({abort:true});
+  // v1.02: the kid's level carries over from one session to the next, under a soft cap
+  AR.stats('modes', 'decouverte').d=0.2; r=AR.start('modes',{seed:5}); const dk1=r.d0; AR.end({abort:true});
+  AR.stats('modes', 'decouverte').d=0.8; r=AR.start('modes',{seed:5}); const dk2=r.d0; AR.end({abort:true});
+  ok(Math.abs(dk1-0.2)<1e-9 && dk2===AR.KID.cap, 'découverte : niveau repris d\'une session à l\'autre (0,2 → '+dk1+'), plafond doux '+AR.KID.cap+' (0,8 → '+dk2+')');
+  AR.stats('modes', 'decouverte').d=0;
   g.setProfile('musicien'); await wait(10);
   ok(AR.profile==='default' && !AR.kid, 'musicien : profil d\'arcade par défaut');
   AR.stats('modes').d=0; r=AR.start('modes',{seed:5}); const lm=AR.choices().map(c=>c.label).join('/');
@@ -46,6 +51,11 @@ f.addEventListener('load', async ()=>{
   ok(g.profile()==='musicien' && g.s.profile==='musicien' && dlg().querySelector('[data-pf=go]') && dlg().querySelectorAll('.pf-row').length===5, 'musicien : intro du test (5 épreuves)');
   ok(!d.getElementById('placeBtn').hidden && d.getElementById('quickPlay').hidden, 'menu ⋯ : test de placement visible pour le musicien');
   dlg().querySelector('[data-pf=close]').click(); ok(dlg().hidden, '« Plus tard » : sautable');
+  // v1.02: the ⋯ menu folds the Parcours' entries (Profil, Test de placement, Sauvegarde) in one « Parcours » sub-section
+  { const pm=d.getElementById('pathMenu'), body=pm&&pm.querySelector('.menu-sub-body');
+    ok(pm && !pm.hidden && !pm.open && ['profileBtn','placeBtn','saveBtn'].every(id=>body.contains(d.getElementById(id))) && pm.closest('.more .menu'), 'menu ⋯ : Profil, Test de placement, Sauvegarde dans la sous-section repliée « Parcours »');
+    g.setMode('free'); await wait(10); const hid=pm.hidden; g.setMode('path'); await wait(10);
+    ok(hid && !pm.hidden, 'mode libre : sous-section « Parcours » cachée'); }
 
   // --- 3. plan (pure)
   const names=(ids)=>ids.join(',');

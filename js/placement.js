@@ -92,11 +92,12 @@
         const idx = run.i, st = steps[idx], tally = (run.tally = { ok: 0, miss: 0, decided: false, step: st });
         if (!A.open) U.open();
         await U.start(st.game, { ...st.opts, label: st.label, onEnd: (d) => {
-          if (this.cur !== run) return;
-          if (d.abort && !tally.decided) return finish(true);
+          if (this.cur !== run) return true;
+          if (d.abort && !tally.decided) { finish(true); return true; }
           const res = hooks.result(st, d, tally); run.results.push(res);
           this.banner(res.text, res.good);
           run.i++; setTimeout(go, this.BETWEEN);
+          return true; // our banner, not the cabinet's end screen
         } });
         if (this.cur === run && run.i === idx && !A.round) { U.run = null; finish(true); } // left during prepare, or refused
       };
@@ -126,7 +127,7 @@
       this.show(false);
       const steps = todo.map((t, i) => ({
         ...t, label: `Placement ${i + 1}/${n} · ${T.BRANCHES[t.branch].name}`,
-        opts: { d: t.d, duration: this.DUR, practice: true },
+        opts: { d: t.d, duration: this.DUR, kind: 'practice' },
         decide: (k) => k.ok >= this.NEED || k.miss >= this.MISS,
       }));
       return this.chain(steps, {
@@ -175,7 +176,7 @@
     startQuick() {
       const A = AMB.arcade, g = AMB.game; if (!g.path || !A) return false;
       const ids = QUICK.games.filter((id) => A.byId[id] && typeof A.byId[id].prepare !== 'function'), n = ids.length;
-      const steps = ids.map((id, i) => ({ game: id, label: `Jouer 2 min · ${i + 1}/${n} · ${A.byId[id].title}`, opts: { d: 0, dMax: QUICK.dMax, duration: QUICK.dur, practice: true } }));
+      const steps = ids.map((id, i) => ({ game: id, label: `Jouer 2 min · ${i + 1}/${n} · ${A.byId[id].title}`, opts: { d: 0, dMax: QUICK.dMax, duration: QUICK.dur, kind: 'practice' } }));
       return this.chain(steps, {
         result: (st, d) => ({ game: st.game, stars: d.stars, good: d.good, total: d.total, text: d.good ? `${'★'.repeat(Math.max(1, d.stars))} Bravo ! ${d.good} juste${d.good > 1 ? 's' : ''}` : 'Bien essayé !' }),
         done: (res) => { if (res.length) this.quickDone(res); },
@@ -245,6 +246,7 @@
       const g = AMB.game, path = g.path, kid = g.isKid();
       const pb = $('#profileBtn'); if (pb) { pb.hidden = !path; pb.textContent = `👤 Profil : ${PROFILE_TXT[g.profile()]}`; }
       const tb = $('#placeBtn'); if (tb) tb.hidden = !path || kid;
+      const pm = $('#pathMenu'); if (pm) { pm.hidden = !path; if (!path) pm.open = false; }
       const q = $('#quickPlay'); if (q) q.hidden = !path || !kid;
       document.body.classList.toggle('kid', path && kid);
     },
@@ -256,9 +258,13 @@
       document.body.append(d);
       d.addEventListener('click', (e) => this.onClick(e));
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !d.hidden) this.show(false); });
+      // the ⋯ menu: the Parcours' own entries (Profil, Test de placement, Sauvegarde of js/save.js) folded in one
+      // « Parcours » sub-section (Parcours only) so the menu stays short on a phone
       const sw = $('#gameMode');
       if (sw) {
-        sw.insertAdjacentHTML('afterend', '<button id="profileBtn" class="btn" title="Qui joue : musicien ou découverte" hidden></button><button id="placeBtn" class="btn" title="Test d\'oreille de 3 min : chaque épreuve réussie ouvre une branche de l\'arbre" hidden>🎹 Test de placement</button>');
+        sw.insertAdjacentHTML('afterend', '<details id="pathMenu" class="menu-sub" hidden><summary class="btn">🌱 Mon Parcours</summary><div class="menu-sub-body">'
+          + '<button id="profileBtn" class="btn" title="Qui joue : musicien ou découverte" hidden></button><button id="placeBtn" class="btn" title="Test d\'oreille de 3 min : chaque épreuve réussie ouvre une branche de l\'arbre" hidden>🎹 Test de placement</button></div></details>');
+        const save = $('#saveBtn'); if (save) $('#pathMenu .menu-sub-body').append(save);
         $('#profileBtn').addEventListener('click', () => this.profileScreen(false));
         $('#placeBtn').addEventListener('click', () => this.introScreen());
       }

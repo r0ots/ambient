@@ -1,6 +1,11 @@
 /* Pacts (G9.8): chips under each arcade cartridge (js/pacts.js), « Silence » hides the round's verdicts. */
 .arc-slot { display: grid; align-content: start; }
-.arc-slot:has(.arc-pacts) .arc-cart { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.arc-slot:has(.arc-pacts-tog) .arc-cart { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+/* folded by default (one line per cartridge), unfolded by its toggle (js/arcade-ui.js pactsHTML); none for the kid */
+.arc-pacts-tog { min-height: 34px; padding: 2px 10px; text-align: left; background: #0b0702; border: 1px solid var(--lcd-dim); border-top: 1px dashed #5a4218; color: var(--lcd-dim); font: 17px/1 var(--f-lcd); letter-spacing: .04em; cursor: pointer; }
+.arc-slot:has(.arc-pacts) .arc-pacts-tog { border-bottom: 0; }
+.arc-slot:not(:has(.arc-pacts)) .arc-pacts-tog { border-radius: 0 0 4px 4px; }
+.arc-pacts-tog.on { color: var(--fx-combo); }
 .arc-pacts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 10px; background: #0b0702; border: 1px solid var(--lcd-dim); border-top: 1px dashed #5a4218; border-radius: 0 0 4px 4px; }
 .arc-pacts-total { flex: 1 0 100%; font-size: 17px; color: var(--lcd-dim); letter-spacing: .04em; }
 .arc-pacts-total.on { color: var(--fx-combo); }
@@ -13,3 +18,4 @@
 .arc-pact:hover, .arc-pact:focus-visible { border-color: var(--lcd-fg); outline: none; }
 .arc-silent .arc-combo-slot { visibility: hidden; }
 @media (max-width: 560px) { .arc-pact { font-size: 16px; padding: 2px 8px; } .arc-pacts { gap: 5px; padding: 7px 8px; } }
+.arc-pacts-tog + .arc-pacts .arc-pacts-total { display: none; }

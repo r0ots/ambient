@@ -52,6 +52,27 @@ f.addEventListener('load', async ()=>{
     ok(P2.api.cancelled() && U.screen==='menu' && !AR.prep, 'Échap pendant prepare : annulé, retour au menu');
     P2.res(); await wait(60); ok(!AR.active && !AR.round, 'prepare annulé : aucune manche ne démarre');
     U.close(); delete AR.byId['t.prep']; AR.games.splice(AR.games.findIndex(g=>g.id==='t.prep'),1); }
+  // --- v1.02: the sustain pedal never sticks across the cabinet (reset on open and close)
+  U.open(); AR.cc({cc:64, value:1}); const held=AR.sustain; U.close(); const afterClose=AR.sustain;
+  AR.sustain=true; U.open(); const afterOpen=AR.sustain; U.close();
+  ok(held && !afterClose && !afterOpen, 'sustain (CC64) remis à false à la fermeture et à l\'ouverture de la borne');
+  // --- R1: one end-of-round hook, onEnd per call (true = the caller keeps its own screen)
+  { const until=async(f)=>{ for(let i=0;i<60&&!f();i++) await wait(50); };
+    ok(!('after' in U), 'plus d\'emplacement global arcadeUI.after');
+    let got=[]; U.open(); U.start('hautbas',{onEnd:(d)=>{ got.push(d); U.show('menu'); return true; }}); await until(()=>AR.active);
+    AR.end(); await wait(10);
+    ok(got.length===1 && !got[0].abort && U.screen==='menu', 'onEnd → true : l\'appelant garde son écran (pas d\'écran de fin)');
+    got=[]; U.start('hautbas',{onEnd:(d)=>{ got.push(d); }}); await until(()=>AR.active);
+    AR.end(); await wait(10);
+    ok(got.length===1 && U.screen==='end', 'onEnd sans true : écran de fin de la borne');
+    got=[]; U.start('hautbas',{onEnd:(d)=>{ got.push(d); return true; }}); await until(()=>AR.active);
+    U.menu(); await wait(10);
+    ok(got.length===1 && got[0].abort && U.screen==='menu', 'manche quittée : onEnd reçoit l\'abandon, une seule fois');
+    // a recording refuses a caller's round on its own screen: false, nothing changed (the caller shows its message)
+    U.show('daily'); const rec1=A.rec.recording; A.rec.recording=()=>true;
+    const res=await U.start('hautbas',{onEnd:()=>true});
+    ok(res===false && U.screen==='daily' && !AR.active, 'enregistrement : start → false, l\'écran de l\'appelant reste (rien d\'écrit)');
+    A.rec.recording=rec1; U.close(); }
   localStorage.removeItem('ambient.game.arcui'); localStorage.removeItem('ambient.arcade.arcui');
   done();
   }catch(e){ fail(e); }

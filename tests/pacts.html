@@ -60,6 +60,19 @@ window.addEventListener('load', async () => {
     A.stats('hautbas').d = 0.3; T = 0; A.start('hautbas', { seed: 3, pacts: ['avant-fin'] }); A.listen();
     T = 1000; const a1 = A.answer(A.round.ch.answer); A.listen(); T = 1000 + STIM * 1000 + 50; const a2 = A.answer(A.round.ch.answer);
     ok(a1.ok && !a1.late && !a2.ok && a2.late && a2.pts === 0, 'Avant la fin : juste pendant le son, raté après (late)'); A.end({ abort: true });
+    // v1.02: a replay never moves the end of the challenge's first stimulus (stimEnd frozen)
+    T = 0; A.start('hautbas', { seed: 3, pacts: ['avant-fin'] }); A.listen(); const e0 = A.round.stimEnd;
+    T = 1300; A.replay(); T = STIM * 1000 + 100; const a3 = A.answer(A.round.ch.answer);
+    ok(e0 === STIM * 1000 && a3.late && !a3.ok, 'Avant la fin : réécouter ne repousse pas la fin du son (stimEnd figé au 1er stimulus)'); A.end({ abort: true });
+    T = 0; A.start('hautbas', { seed: 3, pacts: ['metronome'] }); A.listen(); T = 2500; A.replay(); T = STIM * 1000 + 3100; A.tick();
+    ok(A.round.n === 2 && A.round.history[0].ok === false, 'Métronome : réécouter ne remet pas le délai de 3 s à zéro'); A.end({ abort: true });
+    // R2: the round's kind decides the pacts (normal: the ticked ones; practice / ghost: none)
+    P.set('hautbas', ['une-ecoute']);
+    A.start('hautbas', { seed: 1 }); const pn = A.round.pacts.join(); A.end({ abort: true });
+    A.start('hautbas', { seed: 1, kind: 'practice', pacts: ['proches'] }); const pp = A.round.pacts.length; A.end({ abort: true });
+    A.start('hautbas', { seed: 1, ghost: true }); const pg = A.round.pacts.length, kg = A.round.kind; A.end({ abort: true });
+    ok(pn === 'une-ecoute' && pp === 0 && pg === 0 && kg === 'ghost', 'kind : manche normale = pactes cochés, entraînement et fantôme sans pacte (ghost: true → kind ghost)');
+    P.set('hautbas', []);
 
     // --- Métronome: nothing within 3 s after the stimulus = wrong
     T = 0; A.start('hautbas', { seed: 3, pacts: ['metronome'] }); A.listen(); const late = []; AMB.bus.on('arcade:answer', (d) => late.push(d.late));
@@ -82,6 +95,7 @@ window.addEventListener('load', async () => {
 });
 
 // ---- the cartridge chips in the real app ----
+const AMB_chosen = (A) => A.pacts.chosen('hautbas').length;
 function ui() {
   const f = document.createElement('iframe'); f.style.cssText = 'width:1200px;height:800px;border:0';
   f.src = '../index.html?gamekey=ambient.game.pacts&arcadekey=ambient.arcade.pactsui';
@@ -93,11 +107,16 @@ function ui() {
       A.game.setMode('free'); A.garden.welcome(false); writes.length = 0;
       d.getElementById('arcadeBtn').click(); await wait(30);
       const chip = (g, p) => d.querySelector(`.arc-pacts[data-for="${g}"] [data-pact="${p}"]`);
-      const tot = (g) => d.querySelector(`.arc-pacts[data-for="${g}"] .arc-pacts-total`).textContent;
+      const tog = (g) => d.querySelector(`[data-pacts-tog="${g}"]`), tot = (g) => tog(g).textContent;
+      // v1.02: folded by default (one « Pactes ×1,00 ▸ » line per cartridge), unfolded per cartridge
+      ok(!d.querySelector('.arc-pacts') && tog('hautbas') && /^Pactes ×1,00 ▸$/.test(tot('hautbas').trim()) && tog('hautbas').getAttribute('aria-expanded') === 'false', 'pactes repliés par défaut : « ' + tot('hautbas').trim() + ' » par cartouche');
+      tog('hautbas').click(); tog('reponds').click(); await wait(20);
+      ok(chip('hautbas', 'une-ecoute') && !chip('intrus', 'une-ecoute') && tog('hautbas').getAttribute('aria-expanded') === 'true' && d.activeElement === tog('reponds'), 'bouton : déplie les pastilles de sa cartouche seulement, focus gardé');
       ok(d.querySelectorAll('.arc-cart').length === AR.games.length && chip('hautbas', 'une-ecoute') && !chip('hautbas', 'silence') && !chip('reponds', 'transpose') && /×1,00/.test(tot('hautbas')), 'cartouches : pastilles de pactes, total ×1,00 (secrets absents, Réponds sans Transposé)');
       chip('hautbas', 'une-ecoute').click(); chip('hautbas', 'proches').click(); await wait(20);
       ok(chip('hautbas', 'une-ecoute').getAttribute('aria-pressed') === 'true' && /×1,56/.test(tot('hautbas')) && /×1,00/.test(tot('intrus')) && d.activeElement === chip('hautbas', 'proches'), 'pastilles cochées : total ' + tot('hautbas') + ' (cartouche seule), focus gardé');
       U.close(); d.getElementById('arcadeBtn').click(); await wait(20);
+      if (!chip('hautbas', 'proches')) tog('hautbas').click();
       ok(chip('hautbas', 'proches').getAttribute('aria-pressed') === 'true', 'choix retrouvé à la réouverture');
       d.querySelector('.arc-cart[data-game=hautbas]').click(); for (let i = 0; i < 40 && !AR.active; i++) await wait(50);
       ok(AR.active && AR.round.pacts.join() === 'une-ecoute,proches' && d.querySelector('.arc-replay').hidden && /PACTES ×1,56/.test(d.querySelector('.arc-level').textContent), 'manche : pactes passés au moteur, Réécouter masqué, HUD « ' + d.querySelector('.arc-level').textContent + ' »');
@@ -112,7 +131,13 @@ function ui() {
       AR.end(); await wait(20);
       ok(U.screen === 'end' && /pactes Silence ×1,20/.test(d.querySelector('.arc-end-stats').textContent) && /^\d{6}$/.test(d.querySelector('.arc-end-score').textContent) && !d.getElementById('arcadeDlg').classList.contains('arc-silent'), 'fin : score révélé, pactes rappelés (« ' + d.querySelector('.arc-end-stats').textContent + ' »)');
       ok(writes.length === 0, 'aucune écriture dans AMB.store (' + writes.join(',') + ')');
-      U.close();
+      // Découverte: no pacts shown, none applied (even the ticked ones)
+      U.menu(); A.game.setProfile('decouverte'); U.renderMenu(); await wait(10);
+      ok(!d.querySelector('[data-pacts-tog], .arc-pacts') && AR.kid, 'profil Découverte : aucun pacte affiché');
+      A.pacts.set('hautbas', ['une-ecoute']);
+      d.querySelector('.arc-cart[data-game=hautbas]').click(); for (let i = 0; i < 40 && !AR.active; i++) await wait(50);
+      ok(AR.active && AR.round.pacts.length === 0 && AMB_chosen(A) > 0, 'profil Découverte : pactes cochés jamais appliqués');
+      A.game.setProfile('musicien'); U.close();
       localStorage.removeItem('ambient.game.pacts'); localStorage.removeItem('ambient.arcade.pactsui');
       log('durée ' + ((performance.now() - T00) / 1000).toFixed(1) + ' s');
       done();

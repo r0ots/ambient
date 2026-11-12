@@ -8,10 +8,16 @@
 // and refuses to start while a recording runs (the round ducks the ambience).
 // A plugin's prepare(api) runs before arcade.start, off the clock (keys / MIDI routed to it, Échap cancels);
 // after an answer the next challenge waits the plugin's `reveal` ms (default arcade.REVEAL).
-// start(id, opts): opts go to arcade.start (d, dMax, duration, practice) plus `label` (HUD title) and `onEnd(result)`:
-// a chained run (placement test, « Jouer 2 min », js/placement.js) gets the result instead of the end screen (abort too).
-// Pacts (G9.8, js/pacts.js): chips under each cartridge, the ticked ones are passed to arcade.start; « Une écoute »
-// hides Réécouter, « Silence » hides the verdicts and the score until the end screen.
+// start(id, opts) -> Promise<boolean> (false = refused: recording, closed meanwhile, unknown game): opts go to
+// arcade.start (kind, seed, d, dMax, fixed, count, duration, pacts) plus `label` (HUD title) and `onEnd(result)`, the ONE
+// end-of-round hook: called once for this round, abort included; it returns true to keep its own screen (placement,
+// « Jouer 2 min », défi du jour, duel), otherwise the cabinet shows its end screen (nothing for an abort).
+// A recording refuses the round BEFORE anything else (the caller writes nothing): the message goes to the menu, or the
+// caller shows its own when it is on another screen (start resolves false).
+// Pacts (G9.8, js/pacts.js): the rule lives in arcade.start (kind 'normal' = the ticked ones); here, a « Pactes ×1,00 ▸ »
+// toggle per cartridge unfolds its chips (folded by default, hidden for the kid); « Une écoute » hides Réécouter,
+// « Silence » hides the verdicts and the score until the end screen. MIDI sustain (arcade.sustain) is reset to false
+// whenever the cabinet opens or closes (a pedal held across it never sticks).
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const $ = (s, r = document) => r.querySelector(s);
@@ -35,6 +41,8 @@
       this.el('.arc-again').addEventListener('click', () => this.start(this.gameId));
       this.el('.arc-menu-btn').addEventListener('click', () => this.menu());
       this.el('.arc-carts').addEventListener('click', (e) => {
+        const t = e.target.closest('[data-pacts-tog]');
+        if (t) { this.togglePactsFold(t.dataset.pactsTog); return; }
         const p = e.target.closest('[data-pact]');
         if (p) { this.togglePact(p.closest('[data-for]').dataset.for, p.dataset.pact); return; }
         const c = e.target.closest('[data-game]'); if (c) this.start(c.dataset.game);
@@ -60,7 +68,7 @@
     },
     open() {
       if (!this.dlg) return;
-      this.dlg.hidden = false; this.A.open = true;
+      this.dlg.hidden = false; this.A.open = true; this.A.sustain = false;
       document.body.classList.add('arcade-on');
       this.setInert(true);
       this.say('');
@@ -72,7 +80,7 @@
       if (this.A.round) this.A.end({ abort: true });
       this.stopTimer();
       if (AMB.juice) AMB.juice.showCombo(false);
-      this.dlg.hidden = true; this.A.open = false; this.screen = 'closed';
+      this.dlg.hidden = true; this.A.open = false; this.A.sustain = false; this.screen = 'closed';
       if (AMB.bus) AMB.bus.emit('arcade:screen', 'closed');
       document.body.classList.remove('arcade-on');
       this.setInert(false);
@@ -102,6 +110,19 @@
       const first = this.el('.arc-cart'); if (first) first.focus();
     },
     pacts(id) { return AMB.pacts ? AMB.pacts.chosen(id) : []; },
+    unfolded: {}, // cartridge id -> its pact chips are shown
+    togglePactsFold(id) {
+      this.unfolded[id] = !this.unfolded[id];
+      this.renderMenu();
+      const b = this.el(`[data-pacts-tog="${id}"]`); if (b) b.focus();
+    },
+    // the pacts of a cartridge: a « Pactes ×1,00 ▸ » toggle, chips folded behind it; none for the kid
+    pactsHTML(id) {
+      const P = AMB.pacts; if (!P || this.A.kid || !P.available(id).length) return '';
+      const on = this.pacts(id), open = !!this.unfolded[id];
+      return `<button class="arc-pacts-tog${on.length ? ' on' : ''}" data-pacts-tog="${esc(id)}" aria-expanded="${open}" title="Pactes : difficulté choisie, score multiplié">Pactes ${P.fmt(P.mult(on))} ${open ? '▾' : '▸'}</button>`
+        + (open ? P.chipsHTML(id) : '');
+    },
     togglePact(id, pact) {
       if (!AMB.pacts || !AMB.pacts.toggle(id, pact)) return;
       this.renderMenu();
@@ -115,36 +136,35 @@
           <span class="arc-cart-top"><b>${esc(g.title)}</b>${g.kid ? '<i class="arc-kid">facile</i>' : ''}</span>
           <span class="arc-cart-blurb">${esc(g.blurb)}</span>
           <span class="arc-cart-meta"><span title="Niveau atteint">NIV ${Math.round((st.peak || 0) * 100)}%</span><span title="Record">REC ${pad6(rec ? rec.score : 0)}</span><span class="arc-cart-stars" title="Étoiles">${starStr(rec ? rec.stars : 0)}</span></span>
-        </button>${AMB.pacts ? AMB.pacts.chipsHTML(g.id) : ''}</div>`;
+        </button>${this.pactsHTML(g.id)}</div>`;
       }).join('') || '<p class="arc-empty">Aucune cartouche.</p>';
       const lat = this.el('.arc-lat'); if (lat) lat.textContent = `⟲ Latence : ${AMB.latency.summary()}`;
     },
 
     // ---- round ----
-    // opts go to arcade.start (seed, duration, d, dMax, fixed, count, ghost, practice, pacts); ui.after(endData) → true = the caller shows its own screen
+    // opts: see the header (onEnd(endData) → true = the caller keeps its own screen)
+    RECORDING: '● Enregistrement en cours : arrête-le avant de lancer une manche (elle baisserait le son enregistré).',
     async start(id, opts = {}) {
       const A = this.A;
-      if (!id || !A.byId[id]) return;
-      if (this.recording()) {
-        if (this.screen !== 'menu') this.menu();
-        this.say('● Enregistrement en cours : arrête-le avant de lancer une manche (elle baisserait le son enregistré).');
-        return;
+      if (!id || !A.byId[id]) return false;
+      if (this.recording()) { // refused before anything: the caller has written nothing yet
+        if (this.screen === 'menu' || this.screen === 'end' || !opts.onEnd) { if (this.screen !== 'menu') this.menu(); this.say(this.RECORDING); }
+        return false;
       }
       const tok = ++this.startTok;
       await this.audioReady();
-      if (tok !== this.startTok || !this.dlg || this.dlg.hidden) return; // closed (or another start) meanwhile
+      if (tok !== this.startTok || !this.dlg || this.dlg.hidden) return false; // closed (or another start) meanwhile
       this.say('');
+      if (A.round) A.end({ abort: true }); // the previous round's end goes to its own hook, never to this one
       this.gameId = id; this.lastPick = null; this.lockUntil = 0; this.run = opts.onEnd ? opts : null;
       this.show('play');
       this.el('.arc-game').textContent = opts.label || A.byId[id].title;
       if (typeof A.byId[id].prepare === 'function') {
         await this.prepare(A.byId[id], tok);
-        if (tok !== this.startTok || !this.dlg || this.dlg.hidden) return; // left during the preparation
+        if (tok !== this.startTok || !this.dlg || this.dlg.hidden) return false; // left during the preparation
       }
-      // pacts: the ones ticked on the cartridge for a plain round; a chained run (placement, « Jouer 2 min ») or a
-      // ghost round (défi du jour, duel) plays without any (scores stay comparable); an explicit opts.pacts wins
-      const r = A.start(id, Object.assign({}, opts, { pacts: opts.pacts || (this.run || opts.ghost ? [] : this.pacts(id)) }));
-      if (!r) { this.menu(); return; }
+      const r = A.start(id, opts); // the round's kind decides its pacts (js/arcade.js)
+      if (!r) { this.run = null; this.menu(); return false; }
       this.silent = r.pacts.includes('silence');
       this.el('.arc-replay').hidden = r.pacts.includes('une-ecoute');
       this.dlg.classList.toggle('arc-silent', this.silent);
@@ -152,6 +172,7 @@
       this.renderHud();
       this.stopTimer();
       this.timer = setInterval(() => { if (!this.A.tick()) this.renderHud(); }, 100);
+      return true;
     },
     // the round must be heard: start / resume the audio first (a click on a cartridge is a user gesture)
     // (bounded: a browser that never resumes without a gesture must not freeze the cabinet)
@@ -269,10 +290,9 @@
       if (AMB.juice) AMB.juice.showCombo(false);
       this.silent = false; if (this.dlg) this.dlg.classList.remove('arc-silent');
       const run = this.run; this.run = null;
-      if (run) { run.onEnd(d); return; } // a chained run handles its own end (even an abort)
+      if (run && run.onEnd(d) === true) { this.token++; return; } // the caller keeps its own screen (abort included)
       if (this.screen !== 'play' || d.abort) return;
       this.token++;
-      if (typeof this.after === 'function' && this.after(d) === true) return;
       this.show('end');
       const g = this.A.byId[d.id];
       this.el('.arc-end-game').textContent = g ? g.title : d.id;
