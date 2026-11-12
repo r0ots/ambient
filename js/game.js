@@ -1,5 +1,5 @@
 // « Jardin sonore » : progression state for the gamified path.
-// S4.3: no currency. Each challenge (contract or Écho, js/contracts.js) or secret (js/secrets.js) opens a node of the
+// S4.3: no currency. Each challenge (contract or Réponse gate, js/contracts.js) or secret (js/secrets.js) opens a node of the
 // tree directly. "Free mode" unlocks everything (the classic app).
 (function () {
   const AMB = (window.AMB = window.AMB || {});
@@ -13,7 +13,7 @@
     v: 1,
     mode: null, // null = not chosen yet (behaves as free until asked), 'path' or 'free'
     nodes: [], // unlocked node ids
-    contracts: [], // challenges done (contracts and Échos)
+    contracts: [], // challenges done (contracts and Réponse gates)
     resp: null, // « Réponse » (S4.2, puzzles.js): length reached, successes in a row, misses per gate
     active: [], prog: {}, // the active challenge (one at a time) and its progress (contracts.js)
     skipped: [], // challenges passed (back of the queue)

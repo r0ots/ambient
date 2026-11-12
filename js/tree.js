@@ -1,7 +1,7 @@
 // « Jardin sonore » : the unlock tree, as data.
 // A node unlocks parameters (`params`: exact keys, "section.*" or "*.suffix") and interface
 // features (`ui`: names used as data-node on elements). `req`: all must be owned first.
-// No cost (S4.3): each node is opened by a challenge, an Écho or a secret (table OPENS in js/contracts.js).
+// No cost (S4.3): each node is opened by a challenge (a Réponse gate among them) or a secret (table OPENS in js/contracts.js).
 // Param resolution: exact key > "*.suffix" > "section.*".
 (function () {
   const AMB = (window.AMB = window.AMB || {});

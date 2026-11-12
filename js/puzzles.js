@@ -39,7 +39,7 @@
     MIN, MAX, RHYTHM, TRIES, GAP, echoLen, phrase, rhythm,
     cur: null, // the phrase waiting for its answer: { gate, degs, midis, steps, len, timed, sd, t0, from, ans, until, row }
     last: null, // the phrase just answered (its leaves stay a moment on the plant)
-    wait: 0, // bar lines to let pass before the next phrase
+    wait: GAP.free, // bar lines to let pass before the next phrase (the music first)
     ignored: 0, // phrases left unanswered in a row (the next ones come more rarely)
     now() { const c = AMB.engine && AMB.engine.ctx; return c ? c.currentTime : 0; },
     // saved: the length reached, successes in a row, the best, the misses per gate
@@ -67,8 +67,9 @@
       const S = AMB.seq;
       if (this.cur || (step - ((S && S.origin) || 0)) % 16 !== 0) return false;
       const g = AMB.game; if (!this.can(g)) return false;
-      if (this.wait > 0) { this.wait--; return false; }
       const gate = this.gate(g);
+      if (gate) this.wait = Math.min(this.wait, GAP.gate); // a gate to open: its phrase comes soon
+      if (this.wait > 0) { this.wait--; return false; }
       if (!gate && !store.get('bells.on')) return false; // the mastery loop needs the Melody heard
       if (AMB.pianoRoll && AMB.pianoRoll.roll && AMB.pianoRoll.roll.recording) return false; // Rec live: the notes are the roll's
       return this.launch(time, sd, gate);
@@ -141,7 +142,7 @@
     },
     // playback stopped, free mode, path restarted: the phrase goes, nothing is judged
     cancel() {
-      const was = this.cur || this.last; this.cur = null; this.last = null; this.wait = 0; this.ignored = 0;
+      const was = this.cur || this.last; this.cur = null; this.last = null; this.wait = GAP.free; this.ignored = 0;
       if (was && AMB.game) AMB.game.emit('puzzle', { phase: 'end', res: null });
     },
     // what the Melody plant shows (js/garden-visual.js): 'call' (the phrase is played: it blinks), 'answer' (lit, one leaf
@@ -160,7 +161,6 @@
     AMB.bus.on('live', (n) => { if (n && R.cur) R.input(n.midi, n.played != null ? n.played : n.time != null ? n.time : R.now()); });
     AMB.bus.on('panic', () => R.cancel()); // playback stopped
     ['game:mode', 'game:reset'].forEach((e) => AMB.bus.on(e, () => R.cancel()));
-    AMB.bus.on('game:contract', () => { if (R.gate() && !R.cur) R.wait = Math.min(R.wait, 0); }); // a gate: its phrase at the next bar
   }
 
   AMB.puzzles = R;

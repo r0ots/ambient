@@ -1,7 +1,8 @@
 // « Jardin sonore » : challenges — small musical goals ("play 6 notes", "force 3 chords") and gates opened by a
-// « Réponse » (answer a phrase marked in the music, js/puzzles.js). S4.3: each one opens a node of the tree (table OPENS below), no currency. One at a time, on the
-// 2nd line of the LCD, in the order of OPENS among those whose node can be reached now; ↷ passes to the next one.
-// Judged on usage only, never on taste. Progress lives in game.s.prog, completion in game.s.contracts.
+// « Réponse » (answer a phrase marked in the music, js/puzzles.js). S4.3: each one opens a node of the tree (table OPENS
+// below), no currency. One at a time, on the 2nd line of the LCD, in the order of OPENS among those whose node can be
+// reached now; ↷ passes to the next one. Judged on usage only, never on taste. Progress lives in game.s.prog,
+// completion in game.s.contracts.
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const store = AMB.store;
@@ -145,7 +146,7 @@
   for (const [node, id] of Object.entries(OPENS)) byId[id].node = node;
   byId['c.morceau'].first = true;
   const ORDER = Object.values(OPENS).map((id) => byId[id]).concat(DEFS.filter((d) => !d.node));
-  // an Écho's difficulty from the depth of its node: 3 notes up to depth 3, one more per level, up to 6
+  // a Réponse gate's difficulty from the depth of its node: 3 notes up to depth 3, one more per level, up to 6
   const depth = (id) => { const n = AMB.tree.byId[id]; return n.req.length ? 1 + Math.max(...n.req.map(depth)) : 0; };
   for (const d of DEFS) if (d.kind === 'echo') {
     d.d = Math.max(0, Math.min(1, (depth(d.node) - 3) / 3));
