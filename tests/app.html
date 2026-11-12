@@ -30,7 +30,7 @@ f.addEventListener('load', async ()=>{
   await wait(200); log('undo toast='+d.getElementById('toast').textContent);
   // Jardin sonore (G6.4): free mode = the whole app; a round trip through the path leaves it intact
   const ok=(c,m)=>log((c?'ok ':'ERROR fail ')+m);
-  ok(!d.body.classList.contains('game') && !d.querySelector('.is-locked') && d.getElementById('contracts').hidden && d.getElementById('welcomeDlg').hidden, 'mode libre : rien de verrouillé, pas de jeu à l\'écran');
+  ok(!d.body.classList.contains('game') && !d.querySelector('.is-locked') && d.getElementById('lcdTask').hidden && d.getElementById('welcomeDlg').hidden, 'mode libre : rien de verrouillé, pas de jeu à l\'écran');
   const before=JSON.stringify(A.store.snapshot()), ctrls=d.querySelectorAll('[data-key]').length;
   A.game.setMode('path'); await wait(100);
   ok(d.body.classList.contains('game') && d.querySelectorAll('.is-locked').length>20 && !A.store.get('pad.on'), 'parcours : outil réduit à la graine');
