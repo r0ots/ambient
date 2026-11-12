@@ -18,8 +18,9 @@
     const g = AMB.game, can = (id) => !g || g.isUnlocked(id);
     if ((MELODY_LOW.includes(e.code) || MELODY_HIGH.includes(e.code)) && !can('m.bells')) return;
     if (CHORDS.includes(e.code) && !can('h.pad')) return;
-    if ((i = MELODY_LOW.indexOf(e.code)) >= 0) AMB.seq.playDegree(i, e.shiftKey ? 0.5 : 0.85);
-    else if ((i = MELODY_HIGH.indexOf(e.code)) >= 0) AMB.seq.playDegree(i + 7, e.shiftKey ? 0.5 : 0.85);
+    const mir = AMB.secrets && AMB.secrets.mirrorOn(), md = (d) => (mir ? AMB.secrets.mirrorDeg(d) : d); // G10.1 mirror keyboard (a found gift)
+    if ((i = MELODY_LOW.indexOf(e.code)) >= 0) AMB.seq.playDegree(md(i), e.shiftKey ? 0.5 : 0.85);
+    else if ((i = MELODY_HIGH.indexOf(e.code)) >= 0) AMB.seq.playDegree(md(i + 7), e.shiftKey ? 0.5 : 0.85);
     else if ((i = CHORDS.indexOf(e.code)) >= 0) AMB.seq.forceChord(i);
     else return;
     e.preventDefault();
@@ -41,7 +42,7 @@
     if (type === 0x90 && d2 > 0) {
       if (!AMB.seq.playing) return;
       if (d1 < 48) AMB.seq.forceChord(degreeForPitch(d1));
-      else AMB.seq.playMidi(d1, 0.25 + (d2 / 127) * 0.75);
+      else AMB.seq.playMidi(AMB.secrets && AMB.secrets.mirrorOn() ? AMB.secrets.mirrorMidi(d1) : d1, 0.25 + (d2 / 127) * 0.75);
     } else if (type === 0xb0) {
       const v = d2 / 127;
       // CCs drive the same macros as the XY pad: mod wheel = Densité, CC74 = Lumière, CC91 = Espace, CC93 = Nostalgie
