@@ -48,6 +48,7 @@
       const lv = Math.max(0, Math.min(1, +((st.levels || {})[id]) || 0));
       return {
         id, kind: byLayer[id].kind, col: byLayer[id].col, label: byLayer[id].label, short: byLayer[id].short, level: lv,
+        played: (st.played || []).includes(id), // never played in the arcade: « — » instead of « 0% »
         flowers: Math.max(0, Math.min(MAX_FLOWERS, ((st.flowers || {})[id]) | 0)),
         x: Math.round(W * 0.05 + slotW * (i + 0.5) + (r() - 0.5) * slotW * 0.3),
         y: ground + Math.round((r() - 0.5) * H * 0.02), phase: r() * 6.283, rare: false,
@@ -144,13 +145,14 @@
 
     // ---- read the game / arcade / secrets state (read-only: never arcade.stats(), which creates entries) ----
     readState() {
-      const g = AMB.game, A = AMB.arcade, st = { layers: [], levels: {}, flowers: {}, secrets: [] };
+      const g = AMB.game, A = AMB.arcade, st = { layers: [], levels: {}, flowers: {}, secrets: [], played: [] };
       if (!g || !g.s) return st;
       st.layers = LAYERS.filter((l) => (g.s.nodes || []).includes(l.node)).map((l) => l.id);
       const P = A && A.s && A.s.profiles ? A.s.profiles[A.s.profile] : null;
       for (const l of LAYERS) {
         const gs = P && P.games ? P.games[l.game] : null;
         st.levels[l.id] = gs ? Math.max(0, Math.min(1, +gs.peak || 0)) : 0;
+        if (gs && ((gs.plays | 0) > 0 || +gs.peak > 0)) st.played.push(l.id);
         const pacts = new Set();
         if (gs && gs.best) for (const k of Object.keys(gs.best)) if (k && gs.best[k]) k.split('+').forEach((p) => p && pacts.add(p));
         st.flowers[l.id] = Math.min(MAX_FLOWERS, pacts.size);
@@ -159,11 +161,25 @@
       st.secrets = sq ? Object.keys(sq).filter((k) => sq[k]) : [];
       return st;
     },
-    signature(st) { return JSON.stringify([st.layers, st.levels, st.flowers, st.secrets.slice().sort()]); },
+    signature(st) { return JSON.stringify([st.layers, st.levels, st.flowers, st.secrets.slice().sort(), (st.played || []).slice().sort()]); },
 
     // ---- sizes ----
-    cellPx(W, H, n) { return Math.max(2, Math.min(Math.floor((H * 0.52) / 58), Math.floor((W * 0.9) / Math.max(1, n) / 22))); },
-    heightCells(p) { return p.rare ? 9 : Math.round(16 + 42 * p.level); },
+    // The tallest plant stays under the stage HUD (chord + « D Lydien · 66 bpm » line, top left) and the tool chips (top
+    // right): `ceil` = fraction of the canvas they cover (measured, 0.3 without a DOM). A sprite is at most ~1.1 × its
+    // height in cells + 4 (heads, caps), hence `hMax`; heights stay comparable between plants (same scale for all).
+    cellPx(W, H, n, avail = H * 0.52) { return Math.max(2, Math.min(Math.floor(avail / 68), Math.floor((W * 0.9) / Math.max(1, n) / 22))); },
+    heightCells(p) { if (p.rare) return 9; const M = this.hMax || 58, m = Math.min(16, Math.round(M * 0.35)); return Math.round(m + (M - m) * p.level); },
+    ceilFrac() {
+      try {
+        const c = this.observed, ch = document.getElementById('chordName'), info = document.getElementById('hudInfo'), tools = document.querySelector('.stage-tools');
+        const r = c && c.getBoundingClientRect();
+        if (!r || !r.height || !ch) return 0.3;
+        let b = ch.getBoundingClientRect().bottom;
+        if (info) { const cs = getComputedStyle(info); b += (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.fontSize) || 12) * 1.3; } // even while empty
+        if (tools) b = Math.max(b, tools.getBoundingClientRect().bottom);
+        return Math.max(0.12, Math.min(0.5, (b - r.top) / r.height + 0.03));
+      } catch (e) { return 0.3; }
+    },
 
     sprite(p, px) {
       const hC = this.heightCells(p), key = `${p.kind}|${p.id}|${hC}|${p.flowers}|${px}`;
@@ -193,9 +209,9 @@
       this.glows.set(key, cv);
       return cv;
     },
-    // « MÉLODIE 95% » under the plant; when it does not fit its slot (phone): « MÉLO » over « 95% »
+    // « MÉLODIE 95% » (« MÉLODIE — » when its game was never played) under the plant; when it does not fit its slot (phone): « MÉLO » over « 95% »
     label(p, fs, maxW) {
-      const pc = `${Math.round(p.level * 100)}%`, full = `${p.label.toUpperCase()} ${pc}`, key = full + '|' + fs + '|' + Math.round(maxW);
+      const pc = p.played ? `${Math.round(p.level * 100)}%` : '—', full = `${p.label.toUpperCase()} ${pc}`, key = full + '|' + fs + '|' + Math.round(maxW);
 
       let s = this.labels.get(key);
       if (s) return s;
@@ -229,12 +245,15 @@
 
     // ---- state refresh (events + a cheap 1 s signature check, e.g. after a save import) ----
     refresh(W, H, force) {
-      const st = this.readState(), sig = this.signature(st) + W + 'x' + H;
-      if (!force && sig === this.sig) return false;
+      const st = this.readState(), ceil = this.ceilFrac(), sig = this.signature(st) + W + 'x' + H + '|' + ceil.toFixed(3);
+      if (!force && sig === this.sig) { this.lastCheck = this.now(); return false; }
       this.sig = sig; this.state = st;
       const L = layout(st, W, H);
       this.plants = L.plants; this.rares = L.rares; this.ground = L.ground; this.slotW = L.slotW;
-      this.px = this.cellPx(W, H, this.plants.length);
+      const avail = Math.max(H * 0.2, this.ground - H * ceil);
+      this.px = this.cellPx(W, H, this.plants.length, avail);
+      this.hMax = Math.max(12, Math.min(58, Math.floor((avail / this.px - 4) / 1.1)));
+      this.ceil = ceil;
       this.W = W; this.H = H; this.lastCheck = this.now();
       return true;
     },

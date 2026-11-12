@@ -14,7 +14,7 @@
 <script>
 document.getElementById('f').addEventListener('load', () => {
   const A = document.getElementById('f').contentWindow.AMB, doc = document.getElementById('f').contentDocument, h = location.hash;
-  if (/arcade|pf-|save-|more|garden/.test(h) && A.juice) {
+  if (/arcade|pf-|save-|more|garden|help-/.test(h) && A.juice) {
     const J = A.juice; J.reduced = true;
     ['burst', 'floatText', 'flash', 'shake', 'hitstop', 'pulseCombo', 'chime'].forEach(k => { J[k] = () => 0; });
     const fx = doc.getElementById('fx'); if (fx) fx.style.display = 'none';

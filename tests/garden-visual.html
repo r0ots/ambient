@@ -46,6 +46,12 @@ window.addEventListener('load', async () => {
     G.s.secrets = { found: { jazz: 1, tons: 2 } };
     st = GV.readState();
     ok(st.layers.length === 8 && st.levels.bells === 0.85 && st.levels.drone === 0.15 && st.levels.pad === 0 && st.flowers.bells === 2 && st.flowers.drone === 0, 'taille = niveau atteint en arcade (Mélodie ↔ Chasseur de modes 85 %), fleurs = pactes distincts des records (2)');
+    const lp = GV.layout(st, 1280, 800).plants, pb = lp.find((p) => p.id === 'bells'), pPad = lp.find((p) => p.id === 'pad');
+    ok(pb.played && !pPad.played && GV.label(pPad, 14, 999).width < GV.label(pb, 14, 999).width, 'jeu jamais joué : « PAD — » au lieu de « PAD 0% »');
+    { const W = 700, H = 360; st.levels.bass = 1; GV.refresh(W, H, true); const tall = GV.plants.find((p) => p.id === 'bass') || GV.plants[0];
+      const top = tall.y - GV.sprite({ ...tall, level: 1 }, GV.px).h;
+      ok(top >= H * GV.ceil - GV.px, 'plafond : la plus haute plante (niveau 1) reste sous le HUD (haut ' + top + ' px ≥ ' + Math.round(H * GV.ceil) + ' px)');
+      GV.sig = null; }
     const a1 = GV.layout(st, 1280, 800), a2 = GV.layout({ ...st, secrets: ['tons'] }, 1280, 800);
     ok(a1.rares.length === 2 && JSON.stringify(a1.plants) === JSON.stringify(a2.plants) && a1.rares.find((r) => r.id === 'secret:tons').x === a2.rares[0].x, 'plantes rares = secrets (2), un secret de plus ne déplace rien d\'autre');
     const sB = GV.sprite(a1.plants.find((p) => p.id === 'bells'), 4), sD = GV.sprite(a1.plants.find((p) => p.id === 'drone'), 4);

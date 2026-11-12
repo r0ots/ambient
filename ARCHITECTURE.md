@@ -1,4 +1,4 @@
-# Architecture (v1.02)
+# Architecture (v1.03)
 
 Scripts classiques, pas de build. État global `window.AMB`. Un module = un IIFE qui pose `AMB.<nom>` (ordre de chargement = `index.html`). Bus : `AMB.bus.on/emit` (js/sequencer.js). Réglages : `AMB.store` (js/params.js, schéma `AMB.SCHEMA`).
 
@@ -54,6 +54,8 @@ Optionnels : `reveal` (ms, pause après la réponse avant le défi suivant, rép
 ## Mode libre intact
 - En libre : aucun verrou, aucune interface de jeu, aucun gain ni détection, pas de juice (sauf dans la borne), pas de carillon. Son, journal, annulation et liens partagés sans trace du jeu.
 - `AMB.game.freePlay()` = les effets et gains du Parcours peuvent s'appliquer (Parcours, pas de manche d'arcade, pas d'écoute de cible d'énigme).
+- Exception assumée (v1.03) : la borne d'arcade est un espace à part, offerte aussi en libre. Ses manches y écrivent leurs records, parties et niveaux (`ambient.arcade.v1`, `arcade.s`) ; rien d'autre du jeu (pas de ✧, pas de `game.s`, pas de défi du jour ni de duel, pas de juice hors de la borne). `tests/free-intact.html` tolère cette seule clé (`CABINET`) et vérifie le reste : store, journal, annulation, lien de partage, UI visible, menu « Mon Parcours » caché, aide de base seule, pas de visuel Jardin, liens `#dj` / `#df` / `#save` (boîte « Sauvegarde reçue », « Plus tard » n'écrit rien).
+- Aide (G11.4, js/ui.js `showHelp`) : en Parcours, deux niveaux « Pour commencer » / « Pour aller loin » + l'aide de base en 3e onglet ; en libre, l'aide de base seule.
 - Cadeaux : timbres trouvés disponibles partout ; clavier miroir et thèmes LCD seulement en Parcours. Borne ouverte : l'appli ne joue pas le MIDI et le reste de la page est inert ; pas de manche pendant un enregistrement.
 - Menu ⋯ : les entrées du Parcours (Profil, Test de placement, Sauvegarde) sont dans une sous-section repliable « Mon Parcours » (`#pathMenu`, js/placement.js), cachée en mode libre ; le menu ouvert passe au-dessus des panneaux fixes (Contrats).
 
