@@ -5,6 +5,7 @@ Scripts classiques, pas de build. État global `window.AMB`. Un module = un IIFE
 ## Où mettre quoi
 - Mini-jeu = `js/arcade/<id>.js` + `css/arcade-<id>.css` + `tests/arcade-<id>.html`, rien d'autre. Coquilles déjà déclarées dans `index.html`, `sw.js`, `tests/run-all.sh` (intrus, bouge, reponds, modes, accordeur, dictee ; démo : hautbas).
 - Nouveau module = sa page `tests/<module>.html` (≤ 10 s) avec l'en-tête `tests/lib.js` (log, ok, wait, done, fail, testBus ; erreurs capturées). Plus rien dans gameui.html. Une CSS par module (`css/<module>.css`) : les agents ne touchent pas `css/style.css`. Les agents lancent seulement leurs pages ; la suite complète est lancée à la fusion. `tests/game.html` vérifie que `sw.js` précache tout `index.html`, dans l'ordre.
+- Visuel « Jardin » (G11.2) : `js/garden-visual.js` (à charger après visual.js et game.js) enveloppe `AMB.visual.draw` / `cycleMode` ; Jardin n'existe qu'en Parcours (défaut, préférence `ambient.vizMode.path`), le libre garde `ambient.vizMode` et ses 3 visuels. Lecture seule de `game.s.nodes`, `arcade.s` (jamais `arcade.stats()`, qui crée des entrées) et `game.s.secrets.found` ; correspondance couche ↔ mini-jeu en tête du fichier.
 - Seul le réconciliateur modifie `index.html`, `sw.js` (ASSETS dans l'ordre d'index.html + CACHE), `ROADMAP.md`, `css/style.css` et les manifestes.
 
 ## Plugin d'arcade (contrat : en-tête de js/arcade.js)
@@ -44,7 +45,7 @@ Optionnels : `reveal` (ms, pause après la réponse avant le défi suivant, rép
 ## Tester
 - Un serveur par worktree : `python3 -u -m http.server $PORT 2> $LOG` (PORT=87xx), puis `PORT=… LOG=… tests/run.sh <page>.html 0.4` ; suite : `tests/run-all.sh` (ALL OK).
 - Page dédiée ≤ 10 s, sans audio réel (horloge injectée `arcade.clock.now`, rng à graine, OfflineAudioContext si le son doit être vérifié).
-- 2 captures regardées (bureau + 390 px). Chrome headless impose ≥ 500 px : pour 390 px, `tests/shot-tree.html?w=390&h=780` (page dans une iframe de 390 px). Modes : `#sel=<nœud>`, `#pz`, `#bar`, `#free`, `#arcade`, `#arcade-pacts`, `#arcade-play=<id>` (`&d=0.7`, `&mut=…`), `#arcade-end`, `#arcade-daily`, `#arcade-duel`, `#pf-profile`, `#pf-end`, `#pf-kid`, `#pf-joy`, `#save-open`, `#save-confirm`, `#save-back` (manche : ajouter `--autoplay-policy=no-user-gesture-required` ; en `#arcade*`, `#pf-*`, `#save-*` particules et juice coupés).
+- 2 captures regardées (bureau + 390 px). Chrome headless impose ≥ 500 px : pour 390 px, `tests/shot-tree.html?w=390&h=780` (page dans une iframe de 390 px). Modes : `#sel=<nœud>`, `#pz`, `#bar`, `#free`, `#arcade`, `#arcade-pacts`, `#arcade-play=<id>` (`&d=0.7`, `&mut=…`), `#arcade-end`, `#arcade-daily`, `#arcade-duel`, `#pf-profile`, `#pf-end`, `#pf-kid`, `#pf-joy`, `#save-open`, `#save-confirm`, `#save-back`, `#garden`, `#garden-adv` (manche : ajouter `--autoplay-policy=no-user-gesture-required` ; en `#arcade*`, `#pf-*`, `#save-*`, `#garden*` particules et juice coupés).
 
 ## Points ouverts
 - Aucun pour l'instant.

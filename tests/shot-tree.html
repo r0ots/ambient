@@ -2,7 +2,8 @@
   Modes: #free, #pz, #bar, #sel=<node>, #buy=<node>;
   #arcade (menu), #arcade-pacts (menu with pacts ticked, secret pacts shown), #arcade-play=<id> (round; &d=0.7 sets the level and skips the latency calibration, &mut=miroir|retro|transpose forces a Réponds mutator), #arcade-end (end screen), #arcade-daily (défi du jour + classement), #arcade-duel (lien de défi reçu);
   #pf-profile (who plays?), #pf-end (placement result), #pf-kid (« Jouer 2 min » button), #pf-joy (its end);
-  #save-open / #save-confirm (sauvegarde), #save-back (encart « depuis ta dernière visite » dans le menu ⋯).
+  #save-open / #save-confirm (sauvegarde), #save-back (encart « depuis ta dernière visite » dans le menu ⋯);
+  #garden (Jardin visuel débutant : 3 couches), #garden-adv (8 couches, niveaux d'arcade, pactes, secrets) — notes simulées sur le bus.
   #arcade*, #pf-* and #save-* cut particles and juice for clean captures --><meta charset="utf-8"><style>body{margin:0}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body>
 <script>localStorage.removeItem('ambient.game.shot');</script>
 <iframe id="f" src="../index.html?gamekey=ambient.game.shot"></iframe>
@@ -10,7 +11,7 @@
 <script>
 document.getElementById('f').addEventListener('load', () => {
   const A = document.getElementById('f').contentWindow.AMB, doc = document.getElementById('f').contentDocument, h = location.hash;
-  if (/arcade|pf-|save-/.test(h) && A.juice) {
+  if (/arcade|pf-|save-|garden/.test(h) && A.juice) {
     const J = A.juice; J.reduced = true;
     ['burst', 'floatText', 'flash', 'shake', 'hitstop', 'pulseCombo', 'chime'].forEach(k => { J[k] = () => 0; });
     const fx = doc.getElementById('fx'); if (fx) fx.style.display = 'none';
@@ -58,6 +59,20 @@ document.getElementById('f').addEventListener('load', () => {
       if (mm && A.arcade.byId.reponds) A.arcade.byId.reponds.forceMut = mm[1];
       U.start(m[1]);
     } else if (h.includes('arcade-end')) U.start('hautbas').then(() => { const R = A.arcade; for (let i = 0; i < 7; i++) R.answer(i === 3 ? 'nope' : R.round.ch.answer); R.end(); });
+  } else if (h.includes('garden')) {
+    const go = () => {
+      if (h.includes('garden-adv')) {
+        A.game.s.nodes = A.tree.NODES.map((n) => n.id);
+        const pk = (peak, ...keys) => ({ d: peak, peak, step: 0.05, plays: 9, best: Object.fromEntries(keys.map((k) => [k, { score: 5000, stars: 3 }])) });
+        A.arcade.s.profiles[A.arcade.s.profile] = { games: { accordeur: pk(0.55, '', 'une-ecoute'), dictee: pk(0.7, 'proches', 'une-ecoute+proches'), modes: pk(0.95, 'une-ecoute', 'avant-fin+transpose', 'metronome'), intrus: pk(0.8, ''), bouge: pk(0.45, 'proches'), hautbas: pk(1, 'transpose+une-ecoute'), reponds: pk(0.65, 'metronome', 'silence') } };
+        A.game.s.secrets = Object.assign(A.game.s.secrets || {}, { found: { jazz: 1, tons: 1, dim: 1, lent: 1, pulse: 1 } });
+      }
+      A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none';
+      const L = ['pad', 'bells', 'seq', 'bass', 'grains']; let i = 0;
+      setInterval(() => { const l = L[i++ % L.length]; if (l === 'grains') A.bus.emit('grain', { layer: l, time: 0, vel: 0.6 }); else A.bus.emit('note', { layer: l, midi: 60, time: 0, vel: 0.8 }); if (i % 3 === 0) A.bus.emit('chord', { time: 0 }); if (i % 2) A.bus.emit('perc', { time: 0, vel: 0.7 }); }, 180);
+    };
+    if (A.gardenVisual) go(); // not yet in index.html (the reconciler declares it): load it into the frame
+    else { const sc = doc.createElement('script'); sc.src = 'js/garden-visual.js'; sc.onload = go; doc.body.appendChild(sc); }
   } else if (!h.includes('bar')) {
     A.garden.showTree(true);
     const m = /sel=([\w.]+)/.exec(h); if (m) A.garden.select(m[1]);
