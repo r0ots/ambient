@@ -1,1 +1,19 @@
-/* Arcade mini-game « Chasseur de modes » (G9.6) — à coder. Classes prefixed .arc-modes- only. */
+/* Arcade mini-game « Chasseur de modes » (G9.6). Classes prefixed .arc-modes- only. */
+.arc-modes-stage { width: min(100%, 720px); display: grid; gap: 10px; justify-items: center; }
+.arc-modes-hint { margin: 0; color: var(--lcd-fg); opacity: .75; font-size: 20px; text-align: center; }
+/* beat strip: rhythm only (no pitch shown), strong beats taller, lit in time with the phrase */
+.arc-modes-strip { position: relative; width: calc(100% - 24px); margin-right: 24px; height: 46px; border-bottom: 1px dashed var(--lcd-dim); }
+.arc-modes-dot { position: absolute; bottom: 10px; width: 12px; height: 12px; margin-left: 2px; border-radius: 50%; border: 2px solid var(--lcd-dim); background: transparent; }
+.arc-modes-dot.strong { width: 18px; height: 18px; bottom: 7px; margin-left: -1px; }
+.arc-modes-dot.lit { animation: arc-modes-hit .45s ease-out both; }
+.arc-modes-drone { position: absolute; left: 0; right: 0; bottom: -3px; height: 4px; border-radius: 2px; background: var(--lcd-dim); opacity: .5; }
+.arc-modes-drone.lit { animation: arc-modes-drone 2.4s ease-in-out infinite alternate; }
+@keyframes arc-modes-hit { 0% { background: var(--lcd-fg); border-color: var(--lcd-fg); box-shadow: 0 0 14px var(--lcd-glow); transform: scale(1.5); } 100% { background: #ffb34766; border-color: var(--lcd-fg); transform: none; } }
+@keyframes arc-modes-drone { from { opacity: .35; } to { opacity: .9; box-shadow: 0 0 10px var(--lcd-glow); } }
+/* mode names are long: smaller answer text for this game only */
+.arc-play:has(.arc-modes-names) .arc-choice { font-size: 30px; }
+@media (max-width: 560px) {
+  .arc-modes-hint { font-size: 17px; }
+  .arc-play:has(.arc-modes-names) .arc-choice { font-size: 22px; padding: 16px 6px 8px; overflow-wrap: anywhere; }
+}
+@media (prefers-reduced-motion: reduce) { .arc-modes-dot.lit, .arc-modes-drone.lit { animation: none; } .arc-modes-dot.lit { background: #ffb34766; } }
