@@ -38,12 +38,8 @@
       act(st, id) { if (id === 'keep') st.n = Math.max(st.n || 0, 1); else if (id === 'restore' && st.n === 1) st.n = 2; },
     }, 'Sculpter > Journal'),
     C('k.enreg', ['t.rec'], 'Enregistre au moins 30 secondes', 10, 1, {
-      act(st, id) {
-        if (id !== 'rec') return;
-        if (!st.start) st.start = Date.now();
-        else { if (Date.now() - st.start >= 30000) st.n = 1; st.start = 0; }
-      },
-    }, '● Rec, puis ● Rec à nouveau pour arrêter'),
+      rec(st, secs) { if (secs >= 30) st.n = 1; }, // real duration of the finished recording
+    }, '● Rec, puis ● Rec à nouveau pour arrêter (ou une durée fixe)'),
     C('k.xy', ['t.macros'], 'Glisse sur l\'écran pendant 4 mesures', 8, 4, {
       act(st, id) { if (id === 'xy') st.last = Date.now(); },
       bar(st) { if (st.last && Date.now() - st.last < 4000) st.n = (st.n || 0) + 1; },
@@ -243,6 +239,7 @@
   if (AMB.bus) {
     AMB.bus.on('chord', (c) => contracts.dispatch('chord', c));
     AMB.bus.on('act', (id) => contracts.dispatch('act', id));
+    AMB.bus.on('rec:done', (secs) => contracts.dispatch('rec', secs));
     AMB.bus.on('live', (n) => contracts.dispatch('note', n));
     AMB.bus.on('phrase', (p) => contracts.dispatch('phrase', p));
     AMB.bus.on('section', (x) => contracts.dispatch('section', x));

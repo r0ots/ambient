@@ -43,11 +43,13 @@
       recState.endT = setTimeout(() => { finishRec(btn); setTimeout(() => AMB.seq.playing && AMB.engine.fadeIn(2), 300); }, mins * 60 * 1000);
     }
     btn.textContent = '■ 0:00';
+    if (AMB.bus) AMB.bus.emit('act', 'rec');
   }
   function finishRec(btn) {
     if (!recState) return;
     clearInterval(recState.iv); clearTimeout(recState.fadeT); clearTimeout(recState.endT);
     if (recState.fading && AMB.seq.playing) AMB.engine.fadeIn(2); // stopped during the end fade: bring sound back
+    if (AMB.bus) AMB.bus.emit('rec:done', (Date.now() - recState.t0) / 1000); // real duration, however it stopped
     if (recState.fmt === 'wav') download(AMB.engine.stopCapture(), 'wav');
     else if (recorder) recorder.stop();
     recState = null;

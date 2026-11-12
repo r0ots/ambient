@@ -135,6 +135,7 @@
     // Player-forced chord (keyboard / MIDI): plays now and holds for one chord length
     forceChord(deg) {
       if (!this.playing) return;
+      if (AMB.bus) AMB.bus.emit('act', 'chord');
       const ctx = AMB.engine.ctx, t = ctx.currentTime + 0.03;
       const barLen = store.get('pad.length');
       this.chordDeg = deg;
@@ -154,6 +155,7 @@
     }
     playMidi(midi, vel = 0.85) {
       if (!AMB.engine.ctx) return;
+      if (AMB.bus) AMB.bus.emit('act', 'note');
       const L = AMB.layers;
       const wasOn = store.get('bells.on');
       // the melody voice is used as the instrument even if its generative part is muted

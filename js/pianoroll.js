@@ -380,6 +380,7 @@
         btn.classList.toggle('rec', this.recording);
         btn.textContent = this.recording ? '■ Stop rec' : '● Rec live';
         if (this.recording) {
+          if (AMB.bus) AMB.bus.emit('act', 'reclive');
           this.recCount = 0;
           if (!store.get('seq.on')) store.set('seq.on', true, 'user');
           if (store.get('seq.mode') !== 'Piano roll') store.set('seq.mode', 'Piano roll', 'user');

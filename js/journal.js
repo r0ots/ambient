@@ -22,6 +22,7 @@
       const it = this.items[i];
       if (!it) return;
       AMB.ui.applyPatch(it.state);
+      if (AMB.bus) AMB.bus.emit('act', 'restore');
       AMB.ui.toast(`↺ Retour à ${this.fmt(it.at - this.t0)} · ${it.label}`);
     },
     keep() {
@@ -29,6 +30,7 @@
       const state = store.stableSnapshot();
       const name = `♥ ${it ? it.label : 'Moment'} · ${new Date().toLocaleTimeString().slice(0, 5)}`;
       AMB.ui.saveUserPatch(name, state);
+      if (AMB.bus) AMB.bus.emit('act', 'keep');
       AMB.ui.toast(`Gardé dans « Mes patchs » : ${name}`);
     },
     render() {

@@ -34,13 +34,13 @@
       midiExport: ['c.midi', 5, 'exporter en MIDI'], midiConnect: ['c.midi', 3, 'connecter un clavier MIDI'],
       reclive: ['c.motifs', 8, 'Rec live'],
     },
-    // clicks that count as an action (checked in the capture phase, before any handler runs)
+    // clicks that always succeed count right away (captured before any handler runs); actions that
+    // can fail or be cancelled (save, share, rec, journal, MIDI, live rec, chords, notes) are emitted
+    // by their own code once they really happened
     CLICKS: [
-      ['#play, #bigPlay', 'play'], ['#vizMode', 'viz'], ['#listen', 'listen'],
-      ['#keepMoment', 'keep'], ['.moment', 'restore'], ['#save', 'save'], ['#rec', 'rec'], ['#share', 'share'], ['#dice', 'dice'],
+      ['#play, #bigPlay', 'play'], ['#vizMode', 'viz'], ['#listen', 'listen'], ['#dice', 'dice'],
       ['.sc-store', 'sceneStore'], ['[data-c=random]', 'suggest'], ['.roll-wrap [data-act=random]', 'random'],
-      ['[data-s=add]', 'section'], ['[data-s=play]', 'song'], ['#exportMidi, .roll-wrap [data-act=midi]', 'midiExport'], ['#midi', 'midiConnect'],
-      ['[data-act=liverec]', 'reclive'],
+      ['[data-s=add]', 'section'], ['[data-s=play]', 'song'],
     ],
     act(id) {
       const a = this.ACTS[id], g = AMB.game;
@@ -58,13 +58,6 @@
       }, true);
       const pre = $('#preset'); if (pre) pre.addEventListener('change', () => emit('preset'));
       if (AMB.bus) AMB.bus.on('act', (id) => this.act(id));
-      // live playing (computer keyboard and MIDI) goes through these two sequencer calls
-      const seq = AMB.seq, me = this;
-      if (seq) {
-        const fc = seq.forceChord, pm = seq.playMidi;
-        seq.forceChord = function (...a) { emit('chord'); return fc.apply(this, a); };
-        seq.playMidi = function (...a) { emit('note'); return pm.apply(this, a); };
-      }
       AMB.store.on((k, v, src) => { if (src === 'xy') emit('xy'); });
     },
     // ---- discovery notebook (G3.3) ----

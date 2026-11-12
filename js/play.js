@@ -54,6 +54,7 @@
     if (!navigator.requestMIDIAccess) { AMB.ui.toast('Web MIDI non supporté par ce navigateur'); return; }
     try {
       midiAccess = midiAccess || (await navigator.requestMIDIAccess());
+      if (AMB.bus) AMB.bus.emit('act', 'midiConnect');
       const bind = () => {
         let n = 0;
         midiAccess.inputs.forEach((inp) => { inp.onmidimessage = onMidi; n++; });

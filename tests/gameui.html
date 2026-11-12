@@ -66,7 +66,9 @@ f.addEventListener('load', async ()=>{
   d.getElementById('vizMode').click(); ok(A.game.s.shards===s1, 'visuels pas encore acquis : rien');
   A.game.earn(20,'test'); A.tree.buy('t.viz'); A.tree.buy('h.pad'); const s2=A.game.s.shards;
   d.getElementById('vizMode').click(); d.getElementById('vizMode').click(); ok(A.game.s.shards===s2+3 && A.game.s.found.includes('a:viz'), 'clic Visuel : +3 une seule fois');
-  A.seq.forceChord(3); ok(A.game.s.found.includes('a:chord'), 'forcer un accord (clavier/MIDI) compte');
+  A.seq.forceChord(3); ok(!A.game.s.found.includes('a:chord'), 'accord forcé à l\'arrêt : rien ne se passe, rien ne compte');
+  await A.ui.ensureStarted(); await A.ui.play(); A.seq.forceChord(3); A.ui.stop();
+  ok(A.game.s.found.includes('a:chord'), 'forcer un accord (clavier/MIDI) compte');
   await wait(30); ok(/forcer un accord/.test(d.getElementById('gainFeed').textContent), 'note de découverte d\'action');
   const nb=A.garden.notebook(), nbH=A.garden.notebook('harmonie');
   ok(nb.total>100 && nb.done===A.game.s.found.filter(x=>A.garden.discoverables().some(y=>y.id===x)).length && nbH.todo.some(x=>/Pad · Brillance/.test(x.label)), 'carnet : '+nb.done+'/'+nb.total+', Harmonie à essayer '+nbH.todo.length);
@@ -99,6 +101,17 @@ f.addEventListener('load', async ()=>{
     ok(!A.tree.paramUnlocked('bells.send') && A.game.has('h.pad') , 'pré-achat');
     A.tree.buy('e.reverb'); ok(A.tree.paramUnlocked('pad.send') && !A.tree.paramUnlocked('bells.send'), 'Espace d\'une couche seulement si la couche est là');
     A.tree.buy('e.echo'); ok(A.store.get('fx.echo')===A.store.spec('fx.echo').def, 'écho acheté = on l\'entend (valeur par défaut)');
+    A.game.reset(); }
+  // --- actions paid on success (G7.2)
+  { A.game.reset(); A.game.earn(300,'test'); ['t.son','t.journal'].forEach(i=>A.tree.buy(i));
+    const op=w.prompt; w.prompt=()=>null; d.getElementById('save').click(); await wait(20);
+    ok(!A.game.s.found.includes('a:save'), 'Sauver annulé : rien gagné');
+    w.prompt=()=>'Test G7'; d.getElementById('save').click(); await wait(20); w.prompt=op;
+    ok(A.game.s.found.includes('a:save'), 'Sauver réussi : découverte');
+    A.game.earn(50,'test'); A.tree.buy('t.rec'); const C=A.contracts;
+    if (!C.state(A.game).active.includes('k.enreg')) C.state(A.game).active.push('k.enreg');
+    A.bus.emit('rec:done', 12); ok(!A.game.s.contracts.includes('k.enreg'), 'enregistrement de 12 s : contrat pas rempli');
+    A.bus.emit('rec:done', 31); ok(A.game.s.contracts.includes('k.enreg'), 'enregistrement réel de 31 s : contrat rempli');
     A.game.reset(); }
   // --- feedback (G6.2)
   A.game.earn(50,'test'); A.tree.buy('e.reverb'); await wait(400);
