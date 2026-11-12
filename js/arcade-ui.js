@@ -42,7 +42,9 @@
     // ---- screens ----
     show(name) {
       this.screen = name;
-      ['menu', 'play', 'end'].forEach((n) => { this.el('.arc-' + n).hidden = n !== name; });
+      // every section of the cabinet (.arc-<name>), including those added by other modules (js/daily.js, js/duel.js)
+      this.dlg.querySelectorAll('.arc-cab > section').forEach((s) => { s.hidden = !s.classList.contains('arc-' + name); });
+      if (AMB.bus) AMB.bus.emit('arcade:screen', name);
     },
     open() {
       if (!this.dlg) return;
@@ -59,6 +61,7 @@
       this.stopTimer();
       if (AMB.juice) AMB.juice.showCombo(false);
       this.dlg.hidden = true; this.A.open = false; this.screen = 'closed';
+      if (AMB.bus) AMB.bus.emit('arcade:screen', 'closed');
       document.body.classList.remove('arcade-on');
       this.setInert(false);
       const btn = $('#arcadeBtn'); if (btn) btn.focus();
@@ -99,7 +102,8 @@
     },
 
     // ---- round ----
-    async start(id) {
+    // opts go to arcade.start (seed, duration, d, fixed, count, ghost); ui.after(endData) → true = the caller shows its own screen
+    async start(id, opts = {}) {
       const A = this.A;
       if (!id || !A.byId[id]) return;
       if (this.recording()) {
@@ -125,7 +129,7 @@
         await this.prepare(A.byId[id], tok);
         if (tok !== this.startTok || !this.dlg || this.dlg.hidden) return; // left during the preparation
       }
-      const r = A.start(id, {});
+      const r = A.start(id, opts);
       if (!r) { this.menu(); return; }
       if (AMB.juice) { const c = AMB.juice.comboEl(); this.el('.arc-combo-slot').append(c); AMB.juice.showCombo(true); }
       this.renderHud();
@@ -160,6 +164,12 @@
     renderHud() {
       const A = this.A, r = A.round; if (!r) return;
       const left = A.timeLeft();
+      if (!isFinite(r.dur)) { // no clock (zen): answers given / to give
+        this.el('.arc-time').textContent = r.count ? `${Math.min(r.history.length + 1, r.count)}/${r.count}` : '∞';
+        this.el('.arc-time').classList.remove('low'); this.el('.arc-bar i').style.width = '100%';
+        this.el('.arc-score').textContent = pad6(r.score); this.el('.arc-level').textContent = `NIV ${Math.round(r.stair.d * 100)}%`;
+        return;
+      }
       this.el('.arc-time').textContent = String(Math.ceil(left / 1000)).padStart(2, '0');
       this.el('.arc-time').classList.toggle('low', left < 10000);
       this.el('.arc-bar i').style.width = `${(left / r.dur) * 100}%`;
@@ -216,6 +226,7 @@
       if (AMB.juice) AMB.juice.showCombo(false);
       if (this.screen !== 'play' || d.abort) return;
       this.token++;
+      if (typeof this.after === 'function' && this.after(d) === true) return;
       this.show('end');
       const g = this.A.byId[d.id];
       this.el('.arc-end-game').textContent = g ? g.title : d.id;
@@ -234,7 +245,7 @@
       if (g && g.passKeys && g.passKeys.includes(e.code)) return; // asked for by the mini-game
       e.stopPropagation(); // no app shortcut: Space, Enter, A–L, Z–M, 1–8, ⌘Z…
       if (e.metaKey || e.ctrlKey || e.altKey) { if (/^Key[ZY]$/.test(e.code)) e.preventDefault(); return; }
-      if (e.key === 'Escape') { e.preventDefault(); if (this.screen === 'play' || this.screen === 'end') this.menu(); else this.close(); return; }
+      if (e.key === 'Escape') { e.preventDefault(); if (this.screen !== 'menu') this.menu(); else this.close(); return; }
       if (this.screen === 'play' && !r && this.prep) { if (!e.repeat && this.prep.key && this.prep.key(e)) e.preventDefault(); return; }
       if (this.screen !== 'play' || !r) return;
       if (e.code === 'Space') e.preventDefault(); // never "click" a focused answer by accident

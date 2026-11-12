@@ -35,6 +35,9 @@
 //   t0 = performance.now() ms at which the last stimulus really starts sounding (compare with MIDI / key times)
 //   note(ev) = immediate feedback sound on the audition bus ({midi|hz, dur?, vel?, cents?, voice?}), does not move t0
 // arcade.open = the cabinet is on screen (set by js/arcade-ui.js); arcade.active = a round is running.
+// start(id, opts): opts.seed, opts.duration (ms; Infinity = no clock, « zen »), opts.d (starting level instead of the
+// player's), opts.fixed (level frozen: no staircase), opts.count (the round ends after that many answers),
+// opts.ghost (nothing saved: level, plays and records untouched — daily challenge, duels: js/daily.js, js/duel.js)
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const q = new URLSearchParams(location.search);
@@ -115,20 +118,21 @@
       const g = this.byId[gameId];
       if (!g) return null;
       if (this.round) this.end({ abort: true });
-      const st = this.stats(gameId), now = this.clock.now();
+      const st = this.stats(gameId), now = this.clock.now(), d0 = opts.d != null && isFinite(opts.d) ? clamp(+opts.d, 0, 1) : st.d;
       const seed = opts.seed != null ? opts.seed >>> 0 : (Math.floor(now * 1000) ^ 0x9e3779b9) >>> 0;
       const rng = AMB.audition ? AMB.audition.rng(seed) : null;
       if (!rng) return null;
       this.round = {
         game: g, seed, rng, pacts: (opts.pacts || []).slice(), t0: now, dur: opts.duration || this.DURATION,
-        d0: st.d, stair: { d: st.d, step: Math.max(st.step, STAIR.restart), run: 0, dir: 0 }, peak: st.d,
+        d0, stair: { d: d0, step: Math.max(st.step, STAIR.restart), run: 0, dir: 0 }, peak: d0,
+        fixed: !!opts.fixed, count: Math.max(0, opts.count | 0), ghost: !!opts.ghost,
         score: 0, n: 0, good: 0, clean: 0, replays: 0, chReplays: 0, ch: null, history: [], over: false, t0Stim: 0,
       };
       this.active = true;
       this.combo().reset();
       if (AMB.audition) AMB.audition.session(true);
       this.next();
-      emit('arcade:start', { id: g.id, seed, d: st.d, pacts: this.round.pacts });
+      emit('arcade:start', { id: g.id, seed, d: d0, pacts: this.round.pacts });
       return this.round;
     },
     next() {
@@ -204,12 +208,13 @@
         pts = Math.round(pts * mult);
       }
       r.score += pts; if (ok) { r.good++; if (clean) r.clean++; }
-      const dWas = r.stair.d, d = this.stair(r.stair, ok);
+      const dWas = r.stair.d, d = r.fixed ? dWas : this.stair(r.stair, ok);
       r.peak = Math.max(r.peak, d);
       r.history.push({ ok, pts, d: dWas, replays: r.chReplays });
       const reveal = typeof r.game.reveal === 'number' && r.game.reveal >= 0 ? Math.min(r.game.reveal, 5000) : REVEAL;
       const out = { ok, partial: res.partial, bonus, reveal, pts, d, combo: C.n, mult, clean, score: r.score, ch: r.ch, answer: x };
       emit('arcade:answer', out);
+      if (r.count && r.history.length >= r.count) { this.end(); return out; }
       this.next();
       return out;
     },
@@ -219,19 +224,21 @@
     end(opts = {}) {
       const r = this.round; if (!r) return null;
       r.over = true;
-      const g = r.game, st = this.stats(g.id), abort = !!opts.abort;
+      const g = r.game, abort = !!opts.abort, ghost = r.ghost;
+      // a ghost round (daily challenge, duel) leaves the player's own stats alone
+      const st = ghost ? { ...this.stats(g.id), best: { ...this.stats(g.id).best } } : this.stats(g.id);
       // the level always follows the staircase (it is the player's ear), even after an abort
       st.d = r.stair.d; st.step = r.stair.step; st.peak = Math.max(st.peak || 0, r.peak);
-      const stars = abort ? 0 : this.starsFor(r.score, r.d0, r.dur);
+      const stars = abort || !isFinite(r.dur) ? 0 : this.starsFor(r.score, r.d0, r.dur);
       const pk = this.pactKey(r.pacts), prev = st.best[pk];
-      const record = !abort && r.score > 0 && (!prev || r.score > prev.score);
-      if (!abort) {
+      const record = !abort && !ghost && r.score > 0 && (!prev || r.score > prev.score);
+      if (!abort && !ghost) {
         st.plays++;
         if (record) st.best[pk] = { score: r.score, stars: Math.max(stars, prev ? prev.stars : 0), at: Date.now() };
         else if (prev && stars > prev.stars) prev.stars = stars;
       }
-      this.save();
-      const out = { id: g.id, score: r.score, stars, record, abort, good: r.good, clean: r.clean, total: r.history.length, replays: r.replays, d: st.d, peak: st.peak, best: st.best[pk] || null, pacts: r.pacts };
+      if (!ghost) this.save();
+      const out = { ghost, d0: r.d0, seed: r.seed, id: g.id, score: r.score, stars, record, abort, good: r.good, clean: r.clean, total: r.history.length, replays: r.replays, d: st.d, peak: st.peak, best: st.best[pk] || null, pacts: r.pacts };
       this.round = null; this.active = false; this.last = out;
       if (AMB.audition) AMB.audition.session(false);
       emit('arcade:end', out);
