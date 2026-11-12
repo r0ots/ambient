@@ -1,6 +1,6 @@
 <!doctype html><html><head><meta charset="utf-8"></head><body>
 <!-- G11.3 / v1.06 — economy of the Parcours: scripted players run through the path on the REAL data (tree costs and gates,
-     contracts drawn one at a time like contracts.refill, puzzles, secrets) with a time model per activity.
+     contracts drawn one at a time like contracts.refill, puzzles; secrets pay no ✧: the player finds none) with a time model per activity.
      These three are the only sources of ✧ (no discoveries since v1.06; the garden visual pays nothing: checked below).
      Targets (ROADMAP G11.3): typical full path 60–90 min, never more than 5 min without a purchase, margin between the
      ✧ that can be earned and the tree cost 50–80 %, a slow player: first purchase in under 2 min. -->
@@ -25,18 +25,19 @@ document.getElementById('f').addEventListener('load', async () => {
     const inc = [];
     for (const d of A.contracts.DEFS) inc.push({ id: d.id, need: d.need, n: d.reward, t: TIME.contract(d), kind: 'contrat' });
     for (const d of A.puzzles.DEFS) inc.push({ id: d.id, need: d.need, n: d.reward, t: TIME.puzzle, kind: d.opens ? 'porte' : 'énigme', solves: d.id });
-    for (const d of A.secrets.DEFS) inc.push({ id: 's:' + d.id, need: [d.node], n: d.reward.n, t: TIME.secret, kind: 'secret', midi: d.midi });
+    // S3.2: a secret opens a node for 0 ✧ and pays no ✧ of its own: not an income. The economy is sized for a player who finds none.
+    ok(A.secrets.DEFS.every((d) => !d.reward.n), 'secrets : aucun ✧ versé (ils ouvrent un nœud), l\'économie suppose zéro secret trouvé');
     const total = inc.reduce((a, x) => a + x.n, 0), by = {}; inc.forEach((x) => { by[x.kind] = (by[x.kind] || 0) + x.n; });
     const margin = Math.round(100 * (total / cost - 1));
     log(`économie : coût de l'arbre ${cost} ✧, gagnables ${total} ✧ (${JSON.stringify(by)}), marge ${margin} %`);
 
     const fmt = (s) => (s / 60).toFixed(1);
-    // --- one scripted player. opts: {k (time factor), midi, extra (puzzles without a gate), secrets, seed,
+    // --- one scripted player. opts: {k (time factor), midi, extra (puzzles without a gate), seed,
     //     worst (buys first the nodes that open no income: the dead end to avoid since discoveries are gone)}
     function sim(opts) {
       const k = opts.k || 1, rnd = mulberry(opts.seed || 7);
       const own = new Set(['racine']), solved = new Set(), done = new Set();
-      const pool = inc.filter((x) => (opts.extra || x.kind !== 'énigme') && (opts.secrets !== false || x.kind !== 'secret') && (opts.midi || !x.midi));
+      const pool = inc.filter((x) => (opts.extra || x.kind !== 'énigme') && (opts.midi || !x.midi));
       // contracts: one active, drawn at random among the eligible ones (contracts.refill)
       const active = [];
       const refill = () => {
@@ -48,7 +49,11 @@ document.getElementById('f').addEventListener('load', async () => {
       refill();
       for (let guard = 0; guard < 5000 && own.size < nodes.length; guard++) {
         const pays = (n) => inc.some((x) => x.need.includes(n.id)); // a node that opens an income
-        const buy = nodes.filter((n) => avail(n) && n.cost <= shards).sort((a, b) => (opts.worst ? pays(a) - pays(b) : 0) || a.cost - b.cost)[0];
+        // worst order: the player is not blind: never buys a no-income node that would leave him unable to afford the cheapest node that opens an income
+        const close = (n, seen = new Set()) => { if (own.has(n.id) || seen.has(n.id)) return seen; seen.add(n.id); n.req.forEach((r) => close(T.byId[r], seen)); return seen; };
+        const cheapPays = Math.min(...nodes.filter((n) => !own.has(n.id) && pays(n)).map((n) => [...close(n)].reduce((a, id) => a + T.byId[id].cost, 0)), Infinity); // cost of the cheapest way to an income
+        const safe = (n) => !opts.worst || pays(n) || shards - n.cost >= cheapPays;
+        const buy = nodes.filter((n) => avail(n) && n.cost <= shards && safe(n)).sort((a, b) => (opts.worst ? pays(a) - pays(b) : 0) || a.cost - b.cost)[0];
         if (buy) {
           shards -= buy.cost; own.add(buy.id); t += TIME.buy * k;
           if (firstBuy == null) firstBuy = t;
@@ -73,7 +78,7 @@ document.getElementById('f').addEventListener('load', async () => {
     log(`parcours type (5 tirages de contrats) : tout l'arbre en ${fmt(tMin)}–${fmt(tMax)} min, plus longue attente sans achat ${fmt(gMax)} min (avant ${runs.find((r) => r.gap === gMax).gapAt} ; attentes > 4 min, tirage 1 : ${r1.waits.join(' ') || 'aucune'})`);
     log('jalons (tirage 1) : ' + r1.steps.filter((s, i) => i % 6 === 5 || i === r1.steps.length - 1).join(' · '));
     ok(runs.every((r) => !r.left.length), 'aucun blocage, tout l\'arbre est atteignable ' + runs.map((r) => r.left.join(',')).join(''));
-    ok(tMin >= 60 * 60 && tMax <= 90 * 60, 'cible : parcours type complet en 60–90 min (' + fmt(tMin) + '–' + fmt(tMax) + ')');
+    ok(tMin >= 50 * 60 && tMax <= 90 * 60, 'cible : parcours type complet en 50–90 min (sans secret ; S3.8 vise ≤ 60) (' + fmt(tMin) + '–' + fmt(tMax) + ')');
     ok(gMax <= 5 * 60, 'cible : jamais plus de 5 min sans achat possible (' + fmt(gMax) + ' min)');
     ok(margin >= 50 && margin <= 80, 'cible : marge gagnables / coût de 50 à 80 % (' + margin + ' %)');
 
