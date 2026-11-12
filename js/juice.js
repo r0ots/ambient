@@ -60,7 +60,7 @@
     reduced: !!(mq && mq.matches),
     cv: null, cx: null, raf: 0, last: 0, hold: 0, alive: 0, next: 0, wired: false,
     pool: Array.from({ length: MAXP }, () => ({ on: false, x: 0, y: 0, vx: 0, vy: 0, g: 0, life: 0, max: 1, size: 3, rot: 0, vr: 0, color: '#fff', kind: 'spark', still: false })),
-    active() { return !!AMB.game && AMB.game.path === true; }, // free mode: never any effect
+    active() { return (!!AMB.game && AMB.game.path === true) || !!(AMB.arcade && AMB.arcade.open); }, // free mode: never any effect, except inside the arcade cabinet
     canvas() {
       if (this.cv) return this.cv;
       const c = document.createElement('canvas'); c.id = 'fx'; c.setAttribute('aria-hidden', 'true');

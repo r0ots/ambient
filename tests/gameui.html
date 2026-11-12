@@ -5,9 +5,9 @@ const S=+(new URLSearchParams(location.search).get('s')||0.4);
 const log=(m)=>fetch('/__log?'+encodeURIComponent(TAG+'|'+m)).catch(()=>{});
 const wait=(ms)=>new Promise(r=>setTimeout(r,ms));
 window.onerror=(m,s,l)=>log('ERROR '+m+' @'+s+':'+l);
-localStorage.removeItem('ambient.game.uitest');
+localStorage.removeItem('ambient.game.uitest'); localStorage.removeItem('ambient.arcade.uitest');
 </script>
-<iframe id="f" src="../index.html?gamekey=ambient.game.uitest" style="width:1300px;height:900px"></iframe>
+<iframe id="f" src="../index.html?gamekey=ambient.game.uitest&arcadekey=ambient.arcade.uitest" style="width:1300px;height:900px"></iframe>
 <script>
 const ok=(c,m)=>log((c?'ok ':'ERROR fail ')+m);
 const f=document.getElementById('f');
@@ -220,7 +220,51 @@ f.addEventListener('load', async ()=>{
   A.game.earn(200,'t'); A.garden.showTree(true); await wait(20); const jnb=Jz.alive, av=A.tree.NODES.find(n=>n.cost&&A.tree.status(n.id)==='available'); A.tree.buy(av.id); ok(Jz.alive>jnb && !!d.querySelector('.fx-flash'), 'achat de nœud → burst + flash'); A.garden.showTree(false);
   Jz.pool.forEach(p=>p.on=false); Jz.alive=0;
   g.setMode('free'); ok(!shown('#treeBtn') && !shown('#lcdShards') && !shown('#contracts'), 'pas d\'arbre, d\'éclats ni de contrats en libre');
-  localStorage.removeItem('ambient.game.uitest');
+  // --- arcade (G9.1–G9.2)
+  { const AR=A.arcade, dlg=d.getElementById('arcadeDlg'), key=(code,k,o={})=>d.body.dispatchEvent(new w.KeyboardEvent('keydown',{code,key:k||code,bubbles:true,cancelable:true,...o}));
+    ok(AR.key==='ambient.arcade.uitest', 'arcade : clé de test ('+AR.key+')');
+    g.setMode('path'); g.reset(); await wait(30);
+    ok(shown('#arcadeBtn'), 'bouton Arcade visible en Parcours dès le début');
+    d.getElementById('arcadeBtn').click(); await wait(30);
+    ok(!dlg.hidden && d.querySelectorAll('.arc-cart').length===AR.games.length && /facile/.test(d.querySelector('.arc-cart').textContent) && /REC 000000/.test(d.querySelector('.arc-cart').textContent), 'arcade ouverte : cartouches, pastille « facile », record 000000');
+    d.querySelector('.arc-cart[data-game=hautbas]').click(); await wait(60);
+    ok(AR.active && !dlg.querySelector('.arc-play').hidden && d.querySelectorAll('.arc-choice').length===2 && A.seq.frozen && A.audition.active, 'manche lancée : 2 réponses, session d\'audition (dérive gelée)');
+    ok(A.engine.ducked===true, 'ambiance atténuée pendant la manche');
+    ok(!Jz.comboEl().hidden && d.querySelector('.arc-hud #fxCombo'), 'combo affiché dans la borne');
+    AR.answer(AR.round.ch.answer); await wait(20);
+    ok(d.querySelector('.arc-choice.good') && d.querySelector('.arc-score').textContent==='000150' && Jz.combo.n===1, 'bonne réponse : bonne case allumée, score 000150, combo');
+    await wait(900); const n0=AR.round.history.length, wrong=AR.round.ch.answer==='up'?'2':'1';
+    key('Digit'+wrong, wrong); await wait(20);
+    ok(AR.round.history.length===n0+1 && !AR.round.history[n0].ok && d.querySelector('.arc-choice.bad') && Jz.combo.n===0, 'raccourci '+wrong+' : mauvaise réponse, case rouge, combo à 0');
+    await wait(900); AR.answer(AR.round.ch.answer); const res=AR.end(); await wait(30);
+    ok(!AR.active && !dlg.querySelector('.arc-end').hidden && d.querySelectorAll('.arc-star').length===3 && d.querySelectorAll('.arc-star.on').length===res.stars, 'écran de fin : '+res.stars+' étoile(s) sur 3');
+    ok(res.record && !d.querySelector('.arc-record').hidden && d.querySelector('.arc-end-score').textContent===String(res.score).padStart(6,'0'), 'RECORD ! affiché, score '+d.querySelector('.arc-end-score').textContent);
+    ok(!A.seq.frozen && A.engine.ducked===false, 'fin : dérive et ambiance rendues');
+    d.querySelector('.arc-again').click(); await wait(30); ok(AR.active && !dlg.querySelector('.arc-play').hidden, 'Rejouer');
+    key('Escape'); await wait(20); ok(!AR.active && !dlg.querySelector('.arc-menu').hidden && !dlg.hidden && !A.audition.active, 'Échap : manche abandonnée proprement, retour au menu');
+    ok(/REC 0*[1-9]/.test(d.querySelector('.arc-cart').textContent), 'cartouche : record affiché '+d.querySelector('.arc-cart-meta').textContent.replace(/\s+/g,' '));
+    key('Escape'); await wait(20); ok(dlg.hidden && !AR.open, 'Échap au menu : borne fermée');
+    // free mode: playable, no trace at all
+    g.setMode('free'); await wait(250); // macros re-sync 60 ms after the free sound comes back
+    ok(shown('#arcadeBtn'), 'bouton Arcade visible en mode libre');
+    const snap=JSON.stringify(A.store.stableSnapshot()), gs=JSON.stringify(A.game.s), hist=A.history.past.length+'/'+A.history.future.length, jn=A.journal?A.journal.items.length:0, playing=A.seq.playing;
+    const writes=[]; const off=A.store.on((k,v,s)=>{ if(s==='user') writes.push(k); });
+    let reached=0; const spy=(e)=>{ reached++; }; d.addEventListener('keydown', spy);
+    d.getElementById('arcadeBtn').click(); await wait(20); d.querySelector('.arc-cart[data-game=hautbas]').click(); await wait(40);
+    ok(AR.active, 'libre : manche lancée');
+    key('Space',' '); key('Enter','Enter'); key('KeyA','a'); key('KeyZ','z'); key('Digit5','5'); key('KeyZ','z',{metaKey:true});
+    ok(reached===0 && A.seq.playing===playing && A.history.past.length+'/'+A.history.future.length===hist, 'raccourcis de l\'appli neutralisés (Espace, Entrée, A, Z, 5, ⌘Z)');
+    d.querySelectorAll('.fx-flash').forEach(e=>e.remove());
+    for(let i=0;i<3;i++) AR.answer(AR.round.ch.answer); AR.answer('nope'); await wait(20);
+    ok(!!d.querySelector('.fx-flash') && Jz.mult>=1, 'libre : effets visibles dans la borne');
+    AR.end(); await wait(30); key('Escape'); key('Escape'); await wait(20);
+    ok(dlg.hidden && !AR.active && !A.seq.frozen, 'libre : sortie propre');
+    d.removeEventListener('keydown', spy); off && off();
+    ok(JSON.stringify(A.store.stableSnapshot())===snap && writes.length===0, 'libre : stableSnapshot identique, aucune écriture utilisateur '+writes.join()+' | '+(()=>{const a=JSON.parse(snap),b=A.store.stableSnapshot();return Object.keys(b).filter(k=>JSON.stringify(a[k])!==JSON.stringify(b[k])).map(k=>k+':'+JSON.stringify(a[k])+'→'+JSON.stringify(b[k])).join(' ');})());
+    ok(JSON.stringify(A.game.s)===gs, 'libre : contrats, découvertes, éclats inchangés');
+    ok(A.history.past.length+'/'+A.history.future.length===hist && (A.journal?A.journal.items.length:0)===jn, 'libre : annulation et journal inchangés');
+    d.querySelectorAll('.fx-flash,.fx-float').forEach(e=>e.remove()); Jz.pool.forEach(p=>p.on=false); Jz.alive=0; }
+  localStorage.removeItem('ambient.game.uitest'); localStorage.removeItem('ambient.arcade.uitest');
   for (const k of Object.keys(localStorage)) if (k.startsWith('ambient.game.uitest')) localStorage.removeItem(k);
   log('DONE');
   }catch(e){log('EXC '+e.stack)}
