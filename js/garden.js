@@ -136,7 +136,7 @@
         if (d.opens) this.showTree(true);
       } else {
         this.pz.fails++;
-        this.shake($('#puzzle'));
+        this.shake($('#puzzle')); if (AMB.juice) AMB.juice.shake($('#puzzle'), 7);
         this.renderPuzzle();
       }
     },
