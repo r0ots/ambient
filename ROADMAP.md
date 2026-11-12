@@ -163,6 +163,8 @@ Méthode : tâches indépendantes codées en parallèle par des sous-agents dans
 
 Ordre réel des vagues (dépendances) : V1 = G7.3, G7.4, G8.1, G8.2-3 ; V2 = G9.1+G9.2 (moteur + écran arcade), G8.5+G11.1 (arbre-carte + déblocage, même code), G10.1 (moteur de secrets, sans affichage dans l'arbre) ; V3 = mini-jeux G9.3–G9.7 en parallèle (un fichier plugin chacun) ; V4 = G8.4 (test de placement, réutilise les mini-jeux), G9.8–G9.9, G10.2–G10.4 ; V5 = G11.2–G11.5.
 
+Règles de méthode (rétrospective après V1, 2026-11-12) : une page de test PAR tâche/module (`tests/<module>.html`, ≤ 10 s, sans audio réel quand c'est possible) — on n'ajoute plus rien à gameui.html ; mini-jeux dans `js/arcade/<id>.js` + `css/arcade-<id>.css` ; seul le réconciliateur touche index.html, sw.js, ROADMAP.md et les manifestes ; chaque agent rend 2 captures (bureau + 390 px) qu'il a regardées ; revue légère (bugs, mobile, mode libre) après chaque vague, corrections dans la vague suivante. Mesures : smoke 40 s, engines 29 s, gameui 7 s, app 5 s, balance 2 s, game 1 s.
+
 ### G7 — Fondations
 - [x] G7.1 (v0.91) Découper garden.js : `juice.js` (carillon, LCD, notes de gain, secousse), `garden-actions.js` (actions, découvertes, carnet), `garden-tree.js` (écran Arbre) ; aucun changement de comportement. Fait : `garden.js` (accueil, contrats, fin, énigmes, build : 221 l.), `juice.js` (notes de gain, carillon, LCD, `shake()` commun), `garden-tree.js` (arbre, achat, compteur), `garden-actions.js` (découvertes, actions, carnet) ; chacun étend `AMB.garden` via Object.assign, chargé après garden.js (build au DOMContentLoaded)
 - [x] G7.2 (v0.92) Actions payées à la réussite, plus au clic : émettre `act` depuis les chemins de succès (sauver, partager, paysage, journal, scènes, morceau, MIDI, rec live, accord) ; supprimer CLICKS et le patch de forceChord/playMidi ; enregistrement : événements `rec` / `rec:done` réels. Fait : sauver (après le nom saisi), partager, garder/revenir (journal), rec (démarrage réel), export et connexion MIDI, Rec live, accord forcé (seulement s'il a lieu : lecture en cours) et note jouée émettent `act` depuis leur propre code ; CLICKS réduit aux clics qui réussissent toujours (lecture, visuel, écoute, paysage, scènes, suggestion, motif aléatoire, section, morceau) ; plus de patch de seq.forceChord/playMidi. `rec:done` (durée réelle, quel que soit l'arrêt : bouton, durée fixe, plafond WAV) nourrit le contrat « Enregistre au moins 30 s »
@@ -191,13 +193,19 @@ Ordre réel des vagues (dépendances) : V1 = G7.3, G7.4, G8.1, G8.2-3 ; V2 = G9.
 - [ ] G10.1 Secrets : nœuds « ??? » dans l'arbre, déclencheurs musicaux (suite d'intervalles jouée au clavier, cadence forcée, combinaisons de réglages), récompenses réelles (timbre caché, mode visuel, mode miroir du clavier, Pacte secret), indices gradués cryptiques
 - [ ] G10.2 Défi du jour : même graine pour tous ce jour-là, variante zen sans chrono, score partageable par lien
 - [ ] G10.3 « Défie ton cousin » : fixer une cible (son, motif) → lien ; il faut réussir son propre défi avant de l'envoyer ; relevé en Mastermind ou en Réponds en jouant ; score relatif au niveau de chacun
-- [ ] G10.4 Commandes générées (briefs à contraintes vérifiables + optimisation à la Opus Magnum : moins de gestes, moins de couches) pour remplacer peu à peu les contrats d'interface
+- [ ] G10.4 Sauvegarde exportable de la progression (fichier + lien), import ; « depuis ta dernière visite » à la reprise
+- [ ] G10.5 Classement du jour entre cousins (scores du défi du jour comparés via liens, score relatif au niveau)
+
+### G9bis — Jouer avec un vrai clavier
+- [ ] G9b.1 Faux clavier MIDI pour les tests (injection d'événements note on/off, vélocité) + test automatisé du chemin MIDI des mini-jeux
+- [ ] G9b.2 Calibration de latence globale (clic → frappe, mémorisée par appareil), utilisée par tous les jeux rythmiques ; vélocité, sustain (CC64), entrées multiples
+- [ ] G9b.3 Fils pressé : « Jouer 2 min » en un geste depuis l'accueil (enchaîne des manches faciles), niveau facile garanti réussi en < 1 min
 
 ### G11 — Visuel et finition
 - [ ] G11.1 Arbre en vraie carte de talents : nœuds ronds façon LED, liens SVG animés, liens entre branches dessinés, pan/zoom sur mobile (corrige le débordement à 390 px)
 - [ ] G11.2 Jardin visuel (mode « Jardin » de l'écran, défaut en Parcours) comme vitrine de maîtrise : une plante par couche débloquée, qui réagit à ses notes ; taille = niveau atteint en arcade, fleurs = Pactes, plantes rares = secrets ; perf (sprites pré-rendus, cache, dt réel, pause hors écran)
 - [ ] G11.3 Équilibrage global (simulation parcours + escalier de difficulté : niveau facile réussi par un débutant en < 1 min, haut de l'échelle vraiment dur) ; suite de tests toujours ~2 min (moteur testé sans audio, fusion de petites pages si besoin)
 - [ ] G11.4 Aide, README, test « mode libre intact » étendu (arcade en mode libre sans trace) ; test index.html ↔ sw.js
-- [ ] G11.5 Revue par sous-agents (musicien gamer exigeant + débutant + code) puis corrections
+- [ ] G11.5 Revue finale par sous-agents (musicien gamer exigeant + débutant + code) puis corrections (des revues légères ont lieu après chaque vague)
 
-**Backlog (après le parcours)** : horloge MIDI + note-off, MIDI learn, mute/solo, parameter locks, stems WAV par couche, banc de scènes 8 slots, catalogue de sons commun à toutes les parties.
+**Backlog (après le parcours)** : commandes générées (briefs à contraintes + optimisation, ex-G10.4, reporté : lourd, moins lié à l'oreille) ; horloge MIDI + note-off, MIDI learn, mute/solo, parameter locks, stems WAV par couche, banc de scènes 8 slots, catalogue de sons commun à toutes les parties.
