@@ -22,51 +22,49 @@ f.addEventListener('load', async ()=>{
   ok(shown('#treeBtn'), 'bouton Arbre visible en parcours'); d.getElementById('treeBtn').click(); await wait(50);
   const tn=(id)=>d.querySelector('.tree-node[data-id="'+id+'"]');
   ok(!d.getElementById('treeDlg').hidden && d.querySelectorAll('.tree-node').length===A.tree.NODES.length && !d.querySelector('.tree-col, .tree-nb, .tree-sub'), 'écran Arbre : tous les nœuds, en-tête allégé (ni cartes de branche, ni ligne de compteurs)');
-  ok(/Débloque : .*Pad/.test(tn('h.pad').title) && /demande Pad, Mélodie auto/.test(tn('c.seq').getAttribute('aria-label')), 'infobulle « débloque » + prérequis d\'une autre branche (aria-label)');
+  ok(/Ouvre : .*Pad/.test(tn('h.pad').title) && /demande Pad, Mélodie auto/.test(tn('c.seq').getAttribute('aria-label')), 'infobulle « débloque » + prérequis d\'une autre branche (aria-label)');
   { const miss=A.tree.NODES.flatMap(n=>n.req.map(r=>[r,n.id])).filter(([r,n])=>!d.querySelector('#treeDlg .tree-link[data-from="'+r+'"][data-to="'+n+'"]'));
     ok(!miss.length && d.querySelectorAll('#treeDlg .tree-link.x').length>0 && d.querySelector('#treeDlg svg.tree-links'), 'G11.1 : un lien SVG par prérequis, liens entre branches compris'+(miss.length?' manquants '+miss.join(' '):''));
     ok(d.querySelector('.tree-link[data-from="racine"][data-to="h.pad"]').classList.contains('available') && d.querySelector('.tree-link[data-from="h.pad"][data-to="h.key"]').classList.contains('locked'), 'liens : disponible / verrouillé');
-    ok(tn('h.pad').tagName==='BUTTON' && /^Pad, Harmonie, disponible, coûte 4 éclats/.test(tn('h.pad').getAttribute('aria-label')) && /verrouillé/.test(tn('h.scale').getAttribute('aria-label')) && /porte d'énigme/.test(tn('t.macros').getAttribute('aria-label')||'')===false, 'nœuds : boutons, aria-label état + coût '+tn('h.pad').getAttribute('aria-label')); }
+    ok(tn('h.pad').tagName==='BUTTON' && /^Pad, Harmonie, peut s'ouvrir, s'ouvre par : Joue 8 notes/.test(tn('h.pad').getAttribute('aria-label')) && /fermé/.test(tn('h.scale').getAttribute('aria-label')) && !/éclat|✧/.test(tn('h.pad').getAttribute('aria-label')), 'nœuds : boutons, aria-label état + ce qui ouvre '+tn('h.pad').getAttribute('aria-label')); }
   tn('h.pad').dispatchEvent(new w.MouseEvent('mouseover',{bubbles:true})); ok(tn('racine').classList.contains('is-req') && tn('h.key').classList.contains('is-dep'), 'survol : prérequis et suites surlignés');
   ok(tn('racine').classList.contains('st-owned') && tn('h.pad').classList.contains('st-available') && tn('h.scale').classList.contains('st-locked'), 'états acquis / disponible / verrouillé');
-  const badge=d.querySelector('#treeBtn .tree-badge'), lcdS=d.getElementById('lcdShards');
-  ok(badge.hidden && lcdS.textContent==='✧ 0', 'LCD ✧ 0, pas de pastille');
-  A.game.earn(5,'t'); await wait(20); ok(!badge.hidden && +badge.textContent===A.tree.NODES.filter(n=>A.tree.status(n.id)==='available'&&n.cost<=5).length && lcdS.textContent==='✧ 5', 'pastille = nœuds abordables ('+badge.textContent+')');
-  A.game.spend(5); await wait(20); ok(badge.hidden, 'plus rien d\'abordable → pas de pastille');
-  tn('h.scale').click(); ok(!A.game.has('h.scale') && !d.getElementById('treeDlg').hidden, 'clic sur verrouillé : rien');
-  tn('h.pad').click(); ok(!A.game.has('h.pad') && /manque/.test(d.getElementById('toast').textContent), 'pas assez d\'éclats : refus '+d.getElementById('toast').textContent);
+  ok(!d.getElementById('lcdShards') && !d.querySelector('#treeBtn .tree-badge') && !d.querySelector('.tree-puzzles'), 'S4.3 : ni compteur ✧ sur le LCD, ni pastille sur l\'Arbre, ni liste d\'énigmes');
+  tn('h.scale').click(); ok(!A.game.has('h.scale') && !d.getElementById('treeDlg').hidden && A.garden.sel==='h.scale', 'clic sur un nœud fermé : sa fiche, rien d\'ouvert');
+  tn('h.pad').click(); ok(!A.game.has('h.pad') && /Joue 8 notes/.test(d.querySelector('#treeDlg .tree-info .ti-o').textContent), 'clic sur un nœud à ouvrir : la fiche dit ce qui l\'ouvre, rien d\'acheté');
   // touch: a tap selects (card + « Débloquer »), it does not buy
   { const pe=(t,el,o)=>el.dispatchEvent(new w.PointerEvent(t,Object.assign({bubbles:true,pointerId:7,pointerType:'touch',isPrimary:true},o)));
     pe('pointerdown',tn('h.pad')); pe('pointerup',tn('h.pad')); tn('h.pad').dispatchEvent(new w.MouseEvent('click',{bubbles:true,detail:1}));
     const info=d.querySelector('#treeDlg .tree-info');
-    ok(!A.game.has('h.pad') && !info.hidden && /Pad/.test(info.textContent) && /Débloquer · ✧ 4/.test(info.querySelector('.tree-buy').textContent) && tn('h.pad').classList.contains('is-sel') && tn('racine').classList.contains('is-req'), 'toucher = sélection : fiche + bouton Débloquer');
+    ok(!A.game.has('h.pad') && !info.hidden && /Pad/.test(info.textContent) && !info.querySelector('.tree-buy') && /Pour l'ouvrir : ◇ Joue 8 notes/.test(info.textContent) && tn('h.pad').classList.contains('is-sel') && tn('racine').classList.contains('is-req'), 'toucher = sélection : la fiche dit ce qui ouvre le nœud, pas de bouton « Débloquer »');
     // pan (drag) and wheel zoom move the stage; the click that ends a drag does nothing
     const map=d.querySelector('#treeDlg .tree-map'), v=A.garden.view, k0=v.k;
     map.dispatchEvent(new w.WheelEvent('wheel',{bubbles:true,cancelable:true,deltaY:-200,clientX:600,clientY:400})); ok(v.k>k0 && /scale/.test(d.querySelector('.tree-stage').style.transform), 'molette : zoom '+k0.toFixed(2)+' → '+v.k.toFixed(2));
     const tx0=v.tx; pe('pointerdown',tn('h.key'),{clientX:300,clientY:300}); pe('pointermove',tn('h.key'),{clientX:380,clientY:330}); pe('pointerup',tn('h.key'),{clientX:380,clientY:330}); tn('h.key').dispatchEvent(new w.MouseEvent('click',{bubbles:true,detail:1}));
     ok(v.tx>tx0+40 && A.garden.sel==='h.pad', 'glisser : la carte suit le doigt, pas de sélection en fin de glissé');
     pe('pointerdown',map,{pointerType:'mouse',pointerId:1}); pe('pointerup',map,{pointerType:'mouse',pointerId:1}); A.garden.fitTree(); }
-  // unlock sequence (G8.5): the tree stays open, link lights up, node bought at the chime, children blink, then close + reveal
-  A.game.earn(A.tree.byId['h.pad'].cost,'t'); A.perform.setMode('listen'); A.garden.select(null); tn('h.pad').click(); await wait(60);
-  ok(A.garden.seq && !d.getElementById('treeDlg').hidden && d.querySelector('.tree-glow.lit[data-from="racine"][data-to="h.pad"]') && tn('h.pad').classList.contains('is-buying') && !A.game.has('h.pad'), 'séquence : arbre ouvert, lien racine→Pad qui s\'allume');
+  // unlock sequence (G8.5, S4.3): a challenge opens its node — the tree opens, link lights up, node born at the chime, children
+  // blink, then close + reveal
+  A.perform.setMode('listen'); A.garden.showTree(false); A.garden.select(null); A.game.unlock('m.bells'); await wait(1400); A.garden.showTree(false); A.perform.setMode('listen');
+  A.contracts.finish('m.notes'); await wait(60);
+  ok(A.garden.seq && !d.getElementById('treeDlg').hidden && d.querySelector('.tree-glow.lit[data-from="racine"][data-to="h.pad"]') && tn('h.pad').classList.contains('is-buying') && A.game.has('h.pad'), 'défi réussi → séquence : l\'arbre s\'ouvre, lien racine→Pad qui s\'allume');
   await wait(450);
-  ok(A.game.has('h.pad') && A.game.s.shards===0 && tn('h.pad').classList.contains('st-owned') && tn('h.pad').classList.contains('is-born') && tn('h.key').classList.contains('is-blink') && tn('h.drone').classList.contains('is-blink') && !d.getElementById('treeDlg').hidden, 'au carillon : nœud acquis, enfants devenus disponibles qui clignotent');
+  ok(tn('h.pad').classList.contains('st-owned') && tn('h.pad').classList.contains('is-born') && tn('h.key').classList.contains('is-blink') && tn('h.drone').classList.contains('is-blink') && !d.getElementById('treeDlg').hidden, 'au carillon : nœud ouvert, enfants devenus atteignables qui clignotent');
   await wait(900);
-  ok(!A.garden.seq && A.game.has('h.pad') && d.getElementById('treeDlg').hidden, 'fin de séquence : achat fait, arbre fermé');
+  ok(!A.garden.seq && d.getElementById('treeDlg').hidden, 'fin de séquence : arbre fermé');
   ok(A.mode==='sculpt' && d.querySelector('.panel[data-sec=pad] .is-new'), 'révélé : mode Sculpter, réglages du Pad en surbrillance');
-  d.getElementById('treeBtn').click(); await wait(30);
   // a click during the sequence fast-forwards it; reduced motion = final state at once
-  { A.game.earn(20,'t'); tn('h.drone').click(); ok(A.garden.seq && !A.game.has('h.drone'), 'séquence lancée');
-    d.querySelector('#treeDlg .tree-card').click(); ok(!A.garden.seq && A.game.has('h.drone') && d.getElementById('treeDlg').hidden && !d.querySelector('#treeDlg .is-buying, #treeDlg .is-born, #treeDlg .tree-glow.lit'), 'clic pendant la séquence : accélérée jusqu\'à la fin');
-    A.garden.showTree(true); await wait(20); A.garden.reduced=true; tn('h.pad2').click();
+  { A.contracts.finish('h.forcer'); await wait(30); ok(A.garden.seq && A.game.has('h.drone'), 'séquence lancée');
+    d.querySelector('#treeDlg .tree-card').click(); ok(!A.garden.seq && d.getElementById('treeDlg').hidden && !d.querySelector('#treeDlg .is-buying, #treeDlg .is-born, #treeDlg .tree-glow.lit'), 'clic pendant la séquence : accélérée jusqu\'à la fin');
+    A.garden.showTree(true); await wait(20); A.garden.reduced=true; A.contracts.finish('h.son');
     ok(A.game.has('h.pad2') && tn('h.pad2').classList.contains('st-owned') && !tn('h.pad2').classList.contains('is-born') && !d.querySelector('#treeDlg .tree-glow.lit') && !d.getElementById('treeDlg').hidden, 'mouvement réduit : état final tout de suite, sans animation');
     await wait(800); ok(d.getElementById('treeDlg').hidden && !A.garden.seq, 'mouvement réduit : puis fermeture'); A.garden.reduced=false;
-    A.game.reset(); A.game.earn(A.tree.byId['h.pad'].cost,'t'); A.tree.buy('h.pad'); A.game.spend(A.game.s.shards); }
+    A.game.reset(); A.game.unlock('h.pad'); }
   // G11.1: at 390 px the map pans / zooms inside the card, nothing overflows horizontally
   { f.style.width='390px'; f.style.height='844px'; await wait(200); A.garden.showTree(true); await wait(80);
     const de=d.documentElement, card=d.querySelector('#treeDlg .tree-card'), map=d.querySelector('#treeDlg .tree-map');
     ok(de.scrollWidth<=de.clientWidth && card.getBoundingClientRect().right<=de.clientWidth && map.clientWidth<=card.clientWidth && Math.abs(A.garden.view.k-0.6)<0.01 && (A.garden.fitTree(true), A.garden.treeLayout().W*A.garden.view.k<=map.clientWidth+1 && A.garden.treeLayout().H*A.garden.view.k<=map.clientHeight+1), '390 px : aucun débordement ('+de.scrollWidth+'/'+de.clientWidth+'), ouvre à k≈0,6 (libellés lisibles), ⤢ = toute la carte (zoom '+A.garden.view.k.toFixed(2)+')'); A.garden.fitTree();
-    ok(/Énigmes \d+\/12/.test(d.querySelector('.tree-puzzles').textContent) && card.getBoundingClientRect().bottom<=de.clientHeight+1, '390 px : énigmes visibles, carte dans l\'écran');
+    ok(/^\d+\/32$/.test(d.querySelector('.tree-shards').textContent) && card.getBoundingClientRect().bottom<=de.clientHeight+1, '390 px : nœuds ouverts '+d.querySelector('.tree-shards').textContent+', carte dans l\'écran');
     A.garden.showTree(false); f.style.width='1300px'; f.style.height='900px'; await wait(200); A.garden.showTree(true); await wait(30); }
   d.querySelector('#treeDlg [data-close]').click(); ok(d.getElementById('treeDlg').hidden, 'fermeture');
   ok(!locked('#play') && !locked('[data-key="drone.vol"]') && !locked('[data-mode=sculpt]'), 'racine visible (lecture, drone, Sculpter)');
@@ -74,82 +72,91 @@ f.addEventListener('load', async ()=>{
   ok(locked('.panel[data-sec=fx]') && locked('.panel[data-sec=bells]') && !locked('.panel[data-sec=drone]') && locked('.chords-panel'), 'panneaux vides cachés');
   A.perform.setMode('sculpt'); await wait(50);
   ok(shown('.panel[data-sec=drone]') && shown('[data-key="drone.tone"]') && !shown('[data-key="drone.wave"]'), 'Sculpter : seul le drone de base');
-  A.game.earn(100,'test'); ok(A.game.has('h.pad') && A.tree.buy('t.son'), 'achats'); await wait(50);
-  ok(shown('.panel[data-sec=pad]') && shown('[data-key="drone.wave"]') && !shown('[data-key="pad.attack"]'), 'achat → réglages révélés');
-  A.game.earn(100,'test'); A.game.solve('p.composer'); A.tree.buy('m.bells'); ok(A.tree.buy('c.seq'), 'Mélodie écrite achetée'); await wait(50);
+  ok(A.game.has('h.pad') && A.game.unlock('t.son'), 'nœuds ouverts'); await wait(50);
+  ok(shown('.panel[data-sec=pad]') && shown('[data-key="drone.wave"]') && !shown('[data-key="pad.attack"]'), 'nœud ouvert → réglages révélés');
+  A.game.unlock('m.bells'); ok(A.game.unlock('c.seq'), 'Mélodie écrite ouverte'); await wait(50);
   ok(!locked('[data-mode=compose]') && !locked('.roll-wrap') && !locked('.slot-tabs') && !locked('.roll-wrap [data-act=liverec]') && !locked('[data-key="seq.arpDir"]') && locked('[data-key="bass.wave"]') && locked('.song-panel'), 'S3.5 : Mélodie écrite = piano roll, motifs, arpège et Rec live ; Rythme et Morceau encore fermés');
   A.game.setMode('free'); await wait(50);
   ok(!d.body.classList.contains('game') && d.querySelectorAll('.is-locked').length===0, 'mode libre : appli intacte');
   A.game.setMode('path'); A.game.reset(); A.perform.setMode('compose'); A.tree.applyLocks(); await wait(50);
   ok(A.mode==='listen', 'mode verrouillé → retour Écouter');
   // --- v1.06: no discoveries; the keys line and the MIDI button open with the Melody (no « MIDI » node any more)
-  A.game.reset(); await wait(20); const s0=A.game.s.shards;
+  A.game.reset(); await wait(20); const n0=A.game.s.nodes.length;
   A.seq.playing=true; A.store.set('drone.vol',0.3,'user'); A.store.set('drone.motion',0.7,'user'); A.seq.playing=false;
-  ok(A.game.s.shards===s0 && !('found' in A.game.s) && !A.garden.notebook && !A.garden.ACTS, 'toucher un réglage ne paie plus rien (découvertes supprimées)');
+  ok(A.game.s.nodes.length===n0 && !('found' in A.game.s) && !A.garden.notebook && !A.garden.ACTS, 'toucher un réglage n\'ouvre rien (découvertes supprimées)');
   ok(!A.tree.byId['c.midi'] && locked('.stage .hint') && locked('#midi'), 'avant la Mélodie : ligne « touches A–L » et bouton MIDI cachés, pas de nœud MIDI');
-  A.game.earn(10,'t'); A.tree.buy('m.bells'); await wait(20);
-  ok(!locked('.stage .hint') && !locked('#midi') && locked('#exportMidi') && /Clavier MIDI/.test(A.tree.grantsText('m.bells')) && /\.mid/.test(A.tree.grantsText('c.seq')), 'Mélodie achetée : touches et MIDI ouverts ; l\'export .mid vient avec la Mélodie écrite');
-  // --- the contract on the LCD (v1.06): one at a time on the 2nd line, ↷ = next, a tap = how to do it
-  A.game.reset(); await wait(30);
+  A.game.unlock('m.bells'); await wait(20);
+  ok(!locked('.stage .hint') && !locked('#midi') && locked('#exportMidi') && /Clavier MIDI/.test(A.tree.grantsText('m.bells')) && /\.mid/.test(A.tree.grantsText('c.seq')), 'Mélodie ouverte : touches et MIDI ouverts ; l\'export .mid vient avec la Mélodie écrite');
+  // --- the challenge on the LCD (v1.06): one at a time on the 2nd line, ↷ = next, a tap = how to do it
+  // S4.3: the first one is « glisse sur l'écran », which works from the Graine (the 5 macro knobs stay locked); no jargon yet
+  A.game.reset(); A.perform.setMode('listen'); A.lcdMsg=null; await wait(400);
   const task=d.getElementById('lcdTask'), lline=d.getElementById('lcdLine');
-  ok(!d.getElementById('contracts') && shown('#lcdTask') && lline.hidden && /couleur du drone/.test(task.textContent) && /0\/2/.test(task.querySelector('.lcd-task-n').textContent), 'contrat sur la 2e ligne du LCD, pas de panneau ni de compteur : '+task.textContent);
-  A.seq.playing=true; A.store.set('drone.tone',0.3,'user'); await wait(20);
-  ok(/1\/2/.test(task.querySelector('.lcd-task-n').textContent), 'progression affichée '+task.querySelector('.lcd-task-n').textContent);
+  ok(!d.getElementById('contracts') && shown('#lcdTask') && lline.hidden && /Glisse sur l'écran/.test(task.textContent) && /0\/4/.test(task.querySelector('.lcd-task-n').textContent) && !/✧/.test(task.textContent), 'premier défi sur la 2e ligne du LCD, sans ✧ : '+task.textContent);
+  ok(d.body.classList.contains('jargon-off') && d.getElementById('lcdTop').textContent==='AMBIENT' && w.getComputedStyle(d.getElementById('hudInfo')).visibility==='hidden' && w.getComputedStyle(d.getElementById('chordName')).visibility==='hidden', 'début : ni nom de paysage, ni tonalité, gamme, tempo ou accord à l\'écran (« '+d.getElementById('lcdTop').textContent+' »)');
+  ok(!locked('#xyTip'), 'l\'invitation à glisser sur l\'écran est là dès la Graine');
+  A.seq.playing=true; const tone0=A.store.get('drone.tone'), mac0=A.store.get('macro.light');
+  for (const x of [0.1,0.9,0.2,0.8]) { A.contracts.state().prog['k.xy'].t_xy=0; A.perform.setMacro('macro.light', x); A.perform.setMacro('macro.density', 0.5); }
+  ok(A.store.get('drone.tone')!==tone0 && A.store.get('macro.light')===mac0 && locked('.macros [data-key="macro.light"]') && A.game.has('m.bells'), 'glisser sur l\'écran dès la Graine : la couleur du drone suit, les grands réglages restent fermés ; 4 glissés → Mélodie ouverte');
+  await wait(1500); A.garden.showTree(false); A.perform.setMode('listen'); await wait(30);
+  ok(/0\/8/.test(task.querySelector('.lcd-task-n').textContent) && /8 notes/.test(task.textContent), 'défi suivant : '+task.textContent);
   task.querySelector('.lcd-task-txt').click(); await wait(20);
-  ok(task.classList.contains('help') && task.querySelector('.lcd-task-txt').textContent===A.contracts.byId['k.couleur'].hint, 'toucher le contrat : son aide s\'affiche sur le LCD');
-  task.querySelector('.lcd-task-txt').click(); await wait(20); ok(!task.classList.contains('help') && /◇/.test(task.textContent), 'toucher encore : retour au contrat');
-  A.game.earn(20,'t'); A.tree.buy('m.bells'); A.tree.buy('h.pad'); await wait(20);
+  ok(task.classList.contains('help') && task.querySelector('.lcd-task-txt').textContent===A.contracts.byId['m.notes'].hint, 'toucher le défi : son aide s\'affiche sur le LCD');
+  task.querySelector('.lcd-task-txt').click(); await wait(20); ok(!task.classList.contains('help') && /◇/.test(task.textContent), 'toucher encore : retour au défi');
   const first=task.dataset.id; task.querySelector('.lcd-skip').click(); await wait(20);
-  ok(task.dataset.id && task.dataset.id!==first && A.game.s.skipped.includes(first), '↷ : le contrat suivant ('+first+' → '+task.dataset.id+')');
+  ok(task.dataset.id && task.dataset.id!==first && A.game.s.skipped.includes(first), '↷ : le défi suivant ('+first+' → '+task.dataset.id+')');
+  A.game.unlock('h.pad'); A.game.unlock('h.key'); await wait(4000);
+  ok(!d.body.classList.contains('jargon-off') && d.getElementById('lcdTop').textContent!=='AMBIENT' && w.getComputedStyle(d.getElementById('hudInfo')).visibility==='visible', 'nœud Tonalité : tonalité, gamme, tempo et nom du paysage reviennent (« '+d.getElementById('lcdTop').textContent+' »)');
+  // an Écho as the current challenge: a tap on the LCD opens its card
+  { const st=A.contracts.state(); A.game.unlock('t.son'); st.active=['p.premier']; A.garden.renderContracts(); await wait(20);
+    ok(/◈ Écho : Premier reflet/.test(task.textContent), 'un Écho sur le LCD : '+task.textContent);
+    task.querySelector('.lcd-task-txt').click(); await wait(30);
+    ok(!d.getElementById('puzzle').hidden && A.puzzles.current==='p.premier', 'toucher l\'Écho du LCD : sa carte s\'ouvre'); A.garden.closePuzzle(); }
   A.seq.playing=false;
   A.game.setMode('free'); await wait(20); ok(!shown('#lcdTask') && !lline.hidden, 'mode libre : la 2e ligne redevient l\'état du son'); A.game.setMode('path'); await wait(20);
   // 390 px: the contract stays in the LCD, nothing floats over the macros
-  { f.style.width='390px'; f.style.height='844px'; await wait(250); A.perform.setMode('listen'); A.game.earn(50,'t'); A.game.solve('p.premier'); A.tree.buy('t.son'); A.tree.buy('t.macros'); await wait(100);
+  { f.style.width='390px'; f.style.height='844px'; await wait(250); A.perform.setMode('listen'); A.game.unlock('t.son'); A.game.unlock('t.macros'); await wait(100);
     const R=(e)=>e.getBoundingClientRect(), mac=d.getElementById('macros'), lr=R(d.getElementById('lcd')), de=d.documentElement;
     const over=[...d.querySelectorAll('body *')].filter(e=>{ const cs=w.getComputedStyle(e); return (cs.position==='fixed') && e.getClientRects().length && !e.hidden && cs.display!=='none' && cs.visibility!=='hidden' && e.id!=='toast'; }).filter(e=>{ const a=R(e), m=R(mac); return a.width && a.height && a.left<m.right && a.right>m.left && a.top<m.bottom && a.bottom>m.top; });
     ok(shown('#macros') && lr.right<=de.clientWidth+1 && task.getBoundingClientRect().bottom<=lr.bottom+1 && !over.length, '390 px : contrat dans le LCD, rien ne recouvre les macros '+over.map(e=>e.id||e.className).join());
     f.style.width='1300px'; f.style.height='900px'; await wait(200); }
   // --- the instrument handed over (G6.3, S3.7): on the instrument, no dialog; the sound stays, the game interface goes
-  const buyAll=()=>{ A.game.reset(); A.game.earn(5000,'test'); A.puzzles.DEFS.filter(x=>x.opens).forEach(x=>A.game.solve(x.id));
-    let guard=0; while (A.tree.NODES.some(n=>!A.game.has(n.id)) && guard++<200) A.tree.NODES.forEach(n=>{ if(A.tree.status(n.id)==='available') A.tree.buy(n.id); }); };
+  const buyAll=()=>{ A.game.reset(); let guard=0; while (A.tree.NODES.some(n=>!A.game.has(n.id)) && guard++<200) A.tree.NODES.forEach(n=>{ if(A.tree.status(n.id)==='available') A.game.unlock(n.id); }); };
   const sdiff=(was,now)=>Object.keys(now).filter(k=>JSON.stringify(now[k])!==JSON.stringify(was[k])).map(k=>k+':'+JSON.stringify(was[k])+'→'+JSON.stringify(now[k])).join(' ');
   { buyAll(); await wait(200); // macro positions settle (perform.js syncs them 60 ms after a change)
-    ok(A.garden.complete() && !A.game.s.ended && task.dataset.id==='c.morceau' && shown('#lcdTask'), 'arbre complet : le dernier contrat d\'abord, « '+task.querySelector('.lcd-task-txt').textContent+' »');
+    ok(A.garden.complete() && !A.game.s.ended && task.dataset.id==='c.morceau' && shown('#lcdTask'), 'arbre complet : le dernier défi d\'abord, « '+task.querySelector('.lcd-task-txt').textContent+' »');
     const snap=JSON.stringify(A.store.stableSnapshot());
     A.bus.emit('act','songRec'); await wait(20);
     ok(A.game.s.ended && A.game.s.contracts.includes('c.morceau') && JSON.parse(localStorage.getItem('ambient.game.uitest')).ended, 'morceau enregistré → remise, état sauvegardé');
     for(let i=0;i<40 && !/INSTRUMENT/.test(d.getElementById('lcdTop').textContent);i++) await wait(50);
     ok(d.getElementById('treeDlg').hidden && /INSTRUMENT EST À TOI/.test(d.getElementById('lcdTop').textContent) && !d.querySelector('.modal:not([hidden])'), 'remise : carillon et message sur le LCD (« '+d.getElementById('lcdTop').textContent+' »), aucune boîte');
     await wait(2200);
-    ok(!shown('#lcdTask') && !lline.hidden && !d.getElementById('lcdShards').textContent && badge.hidden, 'arbre complet → ligne de contrat et ✧ masqués, la 2e ligne redevient l\'état du son');
+    ok(!shown('#lcdTask') && !lline.hidden && !/✧/.test(d.getElementById('lcd').textContent), 'S3.7 : remise → la ligne de défi s\'efface, la 2e ligne redevient l\'état du son');
     { const df=sdiff(JSON.parse(snap),A.store.stableSnapshot()); ok(!df, 'remise : son inchangé (snapshot du store) '+df); }
-    const sh=A.game.s.shards; A.seq.playing=true; A.store.set('drone.tone',0.31,'user'); A.store.set('drone.tone',0.62,'user'); for(let i=0;i<8;i++) A.bus.emit('live',{midi:60,time:0,vel:1}); A.seq.playing=false; await wait(20);
-    ok(!A.game.counts() && A.game.s.shards===sh && !shown('#lcdTask'), 'après la remise : plus rien ne compte ni ne s\'affiche');
+    const nc=A.game.s.contracts.length; A.seq.playing=true; A.store.set('drone.tone',0.31,'user'); A.store.set('drone.tone',0.62,'user'); for(let i=0;i<8;i++) A.bus.emit('live',{midi:60,time:0,vel:1}); A.seq.playing=false; await wait(20);
+    ok(!A.game.counts() && A.game.s.contracts.length===nc && !shown('#lcdTask'), 'après la remise : plus rien ne compte ni ne s\'affiche');
     A.garden.showTree(true); await wait(30);
-    ok(!d.getElementById('treeDlg').hidden && /instrument est à toi/.test(d.querySelector('#treeDlg .tree-shards').textContent) && !/✧/.test(d.querySelector('#treeDlg .tree-shards').textContent) && d.querySelector('#treeDlg .tree-puzzles').hidden && A.tree.NODES.every(n=>tn(n.id).classList.contains('st-owned')), 'l\'arbre reste consultable : tout acquis, ni ✧ ni énigmes');
+    ok(!d.getElementById('treeDlg').hidden && /instrument est à toi/.test(d.querySelector('#treeDlg .tree-shards').textContent) && A.tree.NODES.every(n=>tn(n.id).classList.contains('st-owned')), 'l\'arbre reste consultable : tout ouvert');
     A.garden.showTree(false); ok(!A.garden.checkEnd(), 'remise une seule fois');
     A.game.reset(); }
-  // --- review fixes (G6.5): mode switch while hearing a target, sends, neutral effects
-  { A.game.reset(); A.game.earn(300,'test'); ['t.son','h.pad'].forEach(i=>A.tree.buy(i));
-    A.store.set('pad.wave','Nappe','user'); A.garden.openPuzzle('p.gamme'); A.puzzles.listen('target');
-    A.game.setMode('free'); await wait(30); ok(!A.puzzles.ab && d.getElementById('puzzle').hidden, 'passage en libre pendant la cible : écoute arrêtée');
-    A.game.setMode('path'); await wait(30); ok(A.store.get('pad.wave')==='Nappe', 'retour au parcours : mon son, pas la cible');
-    ok(!A.tree.paramUnlocked('bells.send') && A.game.has('h.pad') , 'pré-achat');
-    A.tree.buy('e.reverb'); ok(A.tree.paramUnlocked('pad.send') && !A.tree.paramUnlocked('bells.send'), 'Espace d\'une couche seulement si la couche est là');
-    A.tree.buy('e.echo'); ok(A.store.get('fx.echo')===A.store.spec('fx.echo').def, 'écho acheté = on l\'entend (valeur par défaut)');
+  // --- review fixes (G6.5): sends, neutral effects
+  { A.game.reset(); ['t.son','h.pad'].forEach(i=>A.game.unlock(i));
+    ok(!A.tree.paramUnlocked('bells.send') && A.game.has('h.pad') , 'avant Reverb');
+    A.game.unlock('e.reverb'); ok(A.tree.paramUnlocked('pad.send') && !A.tree.paramUnlocked('bells.send'), 'Espace d\'une couche seulement si la couche est là');
+    A.game.unlock('e.echo'); ok(A.store.get('fx.echo')===A.store.spec('fx.echo').def, 'écho ouvert = on l\'entend (valeur par défaut)');
     A.game.reset(); }
   // --- Écho card (S3.1): Réécouter, no Valider nor gauge, pegs ✓ ⬆ ⬇ after each note, the screen stays where it is
-  { A.game.reset(); A.game.earn(300,'test'); ['h.pad','m.bells'].forEach(i=>A.tree.buy(i)); A.perform.setMode('listen');
+  { A.game.reset(); ['h.pad','m.bells','t.son'].forEach(i=>A.game.unlock(i)); A.perform.setMode('listen');
     const pzc=d.getElementById('puzzle'), P=A.puzzles, mid=(dg)=>A.theory.degreeToMidi(dg,A.seq.root,A.seq.scale,4), live=(m)=>{ P.echoUntil=0; A.bus.emit('live',{midi:m,time:0,vel:0.85,raw:null}); };
     A.garden.openPuzzle('p.premier'); await wait(20); const t=P.target().degs;
-    ok(!pzc.hidden && /Premier reflet/.test(pzc.querySelector('.pz-title').textContent) && /Réécouter/.test(pzc.querySelector('.pz-ab').textContent) && !shown('#puzzle .pz-ok') && !shown('#puzzle .pz-help') && !shown('#puzzle .pz-gauge') && A.mode==='listen' && /3 notes/.test(pzc.querySelector('.pz-hint').textContent), 'carte Écho : Réécouter, ni Valider ni jauge, écran inchangé');
+    ok(!pzc.hidden && /Premier reflet/.test(pzc.querySelector('.pz-title').textContent) && /Réécouter/.test(pzc.querySelector('.pz-ab').textContent) && !pzc.querySelector('.pz-ok, .pz-help, .pz-gauge') && A.mode==='listen' && /3 notes/.test(pzc.querySelector('.pz-hint').textContent), 'carte Écho : Réécouter, ni Valider ni jauge, écran inchangé');
     live(mid(t[0])); live(mid(t[1])+1); await wait(20);
     const pegs=[...pzc.querySelectorAll('.pz-row:not(.pz-head) .pz-peg')].map(e=>e.textContent).join(' ');
     ok(pegs==='✓ ⬇ ·' && /Note 3 sur 3/.test(pzc.querySelector('.pz-hint').textContent), 'pions affichés après chaque note : '+pegs);
     live(mid(t[2])-1); await wait(20);
     ok(pzc.querySelectorAll('.pz-row:not(.pz-head)').length===2 && /1 note juste sur 3\. Nouvelle phrase\. 5 essais/.test(pzc.querySelector('.pz-hint').textContent), 'phrase finie : la ligne reste, nouvelle phrase ('+pzc.querySelector('.pz-hint').textContent+')');
     P.target().degs.forEach(dg=>live(mid(dg))); await wait(20);
-    ok(pzc.hidden && A.game.s.puzzles.includes('p.premier') && /Premier reflet/.test(d.getElementById('toast').textContent), 'phrase juste : carte fermée, réussite');
+    ok(pzc.hidden && A.game.s.contracts.includes('p.premier') && A.game.has('t.macros') && /Écho réussi en 2 essais : Grands réglages s'ouvre/.test(d.getElementById('toast').textContent), 'phrase juste : carte fermée, Grands réglages s\'ouvre ('+d.getElementById('toast').textContent+')');
+    await wait(1400); A.garden.showTree(false); A.perform.setMode('listen'); A.game.s.nodes=A.game.s.nodes.filter(x=>x!=='t.macros');
     // S3.6: the card's 9 pads play A–L (a phone has no keys); at 390 px the pegs show note by note, nothing overflows
     { f.style.width='390px'; f.style.height='780px'; await wait(250); A.garden.openPuzzle('p.premier'); await wait(20);
       const pads=[...pzc.querySelectorAll('.pz-pads .pz-pad')], pd=A.seq.playDegree, got=[]; A.seq.playDegree=(dg)=>got.push(dg);
@@ -163,10 +170,10 @@ f.addEventListener('load', async ()=>{
     A.garden.openPuzzle('p.premier'); A.game.setMode('free'); await wait(20); ok(pzc.hidden && !P.current, 'passage en libre : carte Écho fermée');
     A.game.setMode('path'); A.game.reset(); }
   // --- S4.4 touch pads: under the screen once the Melody is owned, play like A–L (held, multitouch), long press = chord
-  { A.game.reset(); A.game.earn(300,'test'); A.perform.setMode('listen'); await wait(30);
+  { A.game.reset(); A.perform.setMode('listen'); await wait(30);
     const bar=d.getElementById('pads'), pads=[...bar.querySelectorAll('.pad')], PE=(t,id)=>new w.PointerEvent(t,{bubbles:true,pointerId:id,pointerType:'touch'});
     ok(bar.hidden && !shown('#pads'), 'pastilles : cachées avant la Mélodie auto');
-    A.tree.buy('m.bells'); await wait(30);
+    A.game.unlock('m.bells'); await wait(1500); A.garden.showTree(false); A.perform.setMode('listen'); await wait(30);
     const stage=d.querySelector('.stage').getBoundingClientRect(), br=bar.getBoundingClientRect();
     ok(!bar.hidden && pads.length===9 && A.play.PADS.length===9 && br.top>=stage.bottom-1 , 'pastilles : 9, sous l\'écran, dès la Mélodie auto');
     const sp=A.seq.playMidi, rel=[], lives=[]; A.bus.on('live',e=>lives.push(e.midi)); A.seq.playing=true;
@@ -181,7 +188,7 @@ f.addEventListener('load', async ()=>{
     pads[6].dispatchEvent(PE('pointercancel',2)); await wait(10);
     ok(rel.length===2 && A.play.held===0, 'pointercancel : note relâchée');
     ok(((A.game.s.prog['m.notes']||{}).n||0)===n0+2 || A.game.s.contracts.includes('m.notes'), 'une pastille compte pour « Joue 8 notes » ('+(((A.game.s.prog['m.notes']||{}).n||0)-n0)+')');
-    const ch=[], fc=A.seq.forceChord; A.seq.forceChord=(dg)=>ch.push(dg); A.tree.buy('h.pad');
+    const ch=[], fc=A.seq.forceChord; A.seq.forceChord=(dg)=>ch.push(dg); A.game.unlock('h.pad');
     pads[3].dispatchEvent(PE('pointerdown',3)); await wait(250); const early=ch.length; await wait(350);
     ok(early===0 && ch.join()==='3' && pads[3].classList.contains('chord'), 'appui long : l\'accord du degré (pas avant)');
     pads[3].dispatchEvent(PE('pointerup',3)); A.seq.forceChord=fc; A.seq.playMidi=sp; A.seq.endLive=eo; A.seq.playing=false;
@@ -194,82 +201,23 @@ f.addEventListener('load', async ()=>{
     A.game.setMode('free'); await wait(30); ok(bar.hidden && !shown('#pads'), 'mode libre (tactile ou non) : aucune pastille');
     A.game.setMode('path'); A.game.reset(); }
   // --- actions on success (G7.2): a cancelled save emits nothing, a real one does (contracts count it)
-  { A.game.reset(); A.game.earn(300,'test'); ['t.son','t.journal'].forEach(i=>A.tree.buy(i)); const acts=[]; A.bus.on('act',id=>acts.push(id));
+  { A.game.reset(); ['t.son','t.journal'].forEach(i=>A.game.unlock(i)); const acts=[]; A.bus.on('act',id=>acts.push(id));
     const op=w.prompt; w.prompt=()=>null; d.getElementById('save').click(); await wait(20);
     ok(!acts.includes('save'), 'Sauver annulé : aucune action');
     w.prompt=()=>'Test G7'; d.getElementById('save').click(); await wait(20); w.prompt=op;
     ok(acts.includes('save'), 'Sauver réussi : action émise');
-    A.game.earn(50,'test'); A.tree.buy('t.rec'); const C=A.contracts;
-    if (!C.state(A.game).active.includes('k.enreg')) C.state(A.game).active.push('k.enreg');
-    A.bus.emit('rec:done', 12); ok(!A.game.s.contracts.includes('k.enreg'), 'enregistrement de 12 s : contrat pas rempli');
-    A.bus.emit('rec:done', 31); ok(A.game.s.contracts.includes('k.enreg'), 'enregistrement réel de 31 s : contrat rempli');
+    A.game.unlock('t.rec'); const C=A.contracts; C.state(A.game).active=['k.enreg'];
+    A.bus.emit('rec:done', 12); ok(!A.game.s.contracts.includes('k.enreg'), 'enregistrement de 12 s : défi pas réussi');
+    A.bus.emit('rec:done', 31); ok(A.game.s.contracts.includes('k.enreg') && A.game.has('t.share'), 'enregistrement réel de 31 s : défi réussi, Partage ouvert');
+    await wait(1400); A.garden.showTree(false);
     A.game.reset(); }
   // --- feedback (G6.2)
-  A.game.earn(50,'test'); A.tree.buy('e.reverb'); await wait(400);
-  ok(/REVERB DÉBLOQUÉ/.test(d.getElementById('lcdTop').textContent) && d.getElementById('lcdTop').classList.contains('lcd-flash'), 'LCD : « reverb débloqué » '+d.getElementById('lcdTop').textContent);
+  A.game.unlock('e.reverb'); await wait(400);
+  ok(/REVERB OUVERT/.test(d.getElementById('lcdTop').textContent) && d.getElementById('lcdTop').classList.contains('lcd-flash'), 'LCD : « reverb ouvert » '+d.getElementById('lcdTop').textContent);
   await A.ui.ensureStarted(); const ctx=A.engine.ctx; if (ctx.state!=='running') await ctx.resume();
   ok(ctx.state!=='running' || A.garden.chime('unlock')===4 && A.garden.chime('solve')===6, 'carillon joué ('+ctx.state+')');
   A.game.setMode('free'); ok(A.garden.chime('unlock')===0, 'pas de carillon en mode libre'); A.game.setMode('path');
   A.ui.stop && A.ui.stop();
-  // --- puzzle card (G5.3; v1.06: one kind, named controls, a new target per attempt, no stars; the screen goes to Sculpter)
-  A.game.reset(); A.game.earn(100,'test'); A.tree.buy('h.pad'); A.tree.buy('m.bells'); A.perform.setMode('listen');
-  A.store.setMany({'bells.wave':'Cloche','bells.range':0.35,'bells.tone':0.4,'drone.tone':0.2},'user');
-  const FIX={'bells.wave':'Verre','bells.range':0.75,'bells.tone':0.2,'drone.tone':0.8};
-  A.game.s.runs={'p.composer':{tries:[],target:{...FIX}}}; // a known target for the checks below (a real attempt draws its own)
-  A.garden.showTree(true); await wait(30); tn('c.seq').click(); await wait(30);
-  const pzc=d.getElementById('puzzle');
-  ok(!pzc.hidden && /Boîte à musique/.test(pzc.textContent) && d.getElementById('treeDlg').hidden, 'nœud-porte → carte d\'énigme ouverte');
-  ok(A.mode==='sculpt' && shown('[data-key="bells.tone"]') && shown('[data-key="bells.wave"]'), 'énigme ouverte : l\'écran passe en Sculpter, les réglages en jeu sont visibles');
-  ok(/Joue sur : Mélodie/.test(pzc.querySelector('.pz-keys').textContent) && !/record|★/.test(pzc.textContent) && pzc.querySelector('.pz-gauge').hidden && !pzc.querySelector('.pz-row') && /1\/6/.test(pzc.querySelector('.pz-ok').textContent), 'réglages nommés, pas d\'étoiles, pas de jauge en direct, Valider (1/6)');
-  pzc.querySelector('.pz-ab').click(); await wait(20); ok(/Revenir/.test(pzc.querySelector('.pz-ab').textContent) && pzc.querySelector('.pz-ok').disabled && A.store.get('bells.wave')==='Verre', 'écoute de la cible');
-  ok(d.body.classList.contains('pz-veil') && d.querySelector('[data-key="bells.wave"]').classList.contains('pz-veiled'), 'cible : valeurs masquées sur les réglages');
-  ok(A.store.stableSnapshot()['bells.wave']==='Cloche', 'instantanés (journal, annuler, partage) = mon son, pas la cible');
-  pzc.querySelector('.pz-ab').click(); await wait(20); ok(A.store.get('bells.wave')==='Cloche' && !d.querySelector('.pz-veiled'), 'retour à mon son');
-  const pzEarn=[]; A.bus.on('game:earn',e=>{ if(e.reason==='énigme') pzEarn.push(e.id+':'+e.n); });
-  pzc.querySelector('.pz-ok').click(); await wait(20);
-  { const rows=pzc.querySelectorAll('.pz-row:not(.pz-head)'), pegs=[...rows[0].querySelectorAll('.pz-peg')], tip=(k)=>pegs.find(p=>p.dataset.k===k);
-    ok(!A.game.s.puzzles.includes('p.composer') && rows.length===1 && pegs.length===4 && pzc.querySelectorAll('.pz-head span').length===5, 'échec → 1 ligne d\'essai, 4 pions nommés');
-    ok(tip('bells.wave').classList.contains('far') && /autre option/.test(tip('bells.wave').title) && /autre/.test(tip('bells.wave').textContent)
-      && /loin, plus haut/.test(tip('bells.range').title) && /⬆/.test(tip('bells.range').textContent)
-      && tip('bells.tone').classList.contains('near') && /⬇/.test(tip('bells.tone').textContent), 'pions : '+pegs.map(p=>p.title).join(' | '));
-    ok(/Pas encore : 0 juste, 1 proche\. 5 essais restants/.test(pzc.querySelector('.pz-hint').textContent) && /2\/6/.test(pzc.querySelector('.pz-ok').textContent), 'état : '+pzc.querySelector('.pz-hint').textContent); }
-  A.store.setMany({'bells.wave':'Verre','bells.range':0.73,'bells.tone':0.22,'drone.tone':0.8},'user'); await wait(20);
-  ok(!pzc.querySelector('.pz-ok').classList.contains('ready') && pzc.querySelector('.pz-gauge').hidden, 'à la cible : rien ne s\'allume sans aide (il faut valider)');
-  pzc.querySelector('.pz-ok').click(); await wait(40);
-  ok(A.game.s.puzzles.includes('p.composer') && pzc.hidden && !d.getElementById('treeDlg').hidden && tn('c.seq').classList.contains('st-available') && A.mode==='listen', 'résolue → arbre rouvert, nœud achetable, écran revenu en Écouter');
-  ok(/2 essais/.test(d.getElementById('toast').textContent) && !/★/.test(d.getElementById('toast').textContent) && pzEarn.join()==='p.composer:25', 'résolue en 2 essais, ✧ 25, sans étoiles : '+d.getElementById('toast').textContent);
-  // replay from the tree's puzzle list: a new target for the same controls, no ✧ again
-  { const rb=d.querySelector('.tree-puzzles [data-pz="p.composer"]'); ok(rb && /◈ Boîte à musique ✓/.test(rb.textContent) && /Énigmes 1\/12/.test(d.querySelector('.tree-puzzles').textContent), 'liste des énigmes dans l\'arbre : '+(rb&&rb.textContent));
-    rb.click(); await wait(30); const t2=A.puzzles.target();
-    ok(!pzc.hidden && A.mode==='sculpt' && JSON.stringify(t2)!==JSON.stringify(FIX) && Object.keys(t2).join()===Object.keys(FIX).join(), 'rejouer : nouvelle cible pour les mêmes réglages');
-    pzc.querySelector('.pz-x').click(); await wait(20); ok(pzc.hidden && A.mode==='listen', 'fermer : l\'écran revient au mode d\'avant');
-    rb.click(); await wait(20); A.store.setMany(t2,'user'); pzc.querySelector('.pz-ok').click(); await wait(30);
-    ok(pzc.hidden && pzEarn.length===1 && /1 essai/.test(d.getElementById('toast').textContent), 'rejouée (même cible tant que l\'essai dure), pas de ✧ : '+d.getElementById('toast').textContent); A.garden.showTree(false); }
-  // 6 failed validations → the gate opens anyway, without ✧
-  { A.game.earn(200,'test'); A.tree.buy('h.key'); A.garden.showTree(true); await wait(20);
-    tn('h.scale').click(); await wait(30); ok(!pzc.hidden && /Autre lumière/.test(pzc.textContent), 'porte « Gammes » → énigme');
-    const t=A.puzzles.target(); A.store.setMany(Object.fromEntries(Object.entries(t).map(([k,v])=>[k, typeof v==='number' ? (v>0.5?0:1) : A.store.spec(k).options.find(o=>o!==v)])),'user');
-    for (let i=0;i<5;i++) pzc.querySelector('.pz-ok').click();
-    ok(pzc.querySelectorAll('.pz-row:not(.pz-head)').length===5 && /1 essai restant/.test(pzc.querySelector('.pz-hint').textContent), '5 lignes, 1 essai restant');
-    pzc.querySelector('.pz-ok').click(); await wait(40);
-    ok(pzc.hidden && !d.getElementById('treeDlg').hidden && tn('h.scale').classList.contains('st-available') && !A.game.s.puzzles.includes('p.gamme') && pzEarn.length===1, '6 échecs → porte ouverte, sans ✧');
-    ok(/la porte s'ouvre quand même/.test(d.getElementById('toast').textContent) && d.querySelector('.tree-puzzles [data-pz="p.gamme"]'), 'message bienveillant, énigme à rejouer'); }
-  // help: the live gauge (for the son), the ✧ of the first resolution still come
-  { d.querySelector('.tree-puzzles [data-pz="p.gamme"]').click(); await wait(30);
-    const hb=pzc.querySelector('.pz-help input'); hb.click(); await wait(20);
-    ok(!pzc.querySelector('.pz-gauge').hidden && /%/.test(pzc.querySelector('.pz-pct').textContent), 'aide → jauge en direct '+pzc.querySelector('.pz-pct').textContent);
-    A.store.setMany(A.puzzles.target(),'user'); await wait(20); ok(pzc.querySelector('.pz-ok').classList.contains('ready'), 'aide : Valider s\'allume à ≥ 90 %');
-    pzc.querySelector('.pz-ok').click(); await wait(40);
-    ok(A.game.s.puzzles.includes('p.gamme') && pzEarn.includes('p.gamme:20'), 'aide → résolue, ✧ 20');
-    A.puzzles.setHelp(false); A.garden.showTree(false); }
-  // puzzles without a gate: same card, named controls from the first validation
-  A.game.earn(500,'test'); A.tree.buy('h.scale'); A.garden.showTree(true); await wait(30);
-  const bb=[...d.querySelectorAll('.tree-puzzles .btn')]; ok(bb.some(b=>/Quelle couleur.*✧ 25/.test(b.textContent)), 'énigme sans porte proposée dans l\'arbre');
-  bb.find(b=>/Quelle couleur/.test(b.textContent)).click(); await wait(30);
-  ok(!pzc.hidden && /Joue sur : Global · Tonalité, Global · Gamme/.test(pzc.querySelector('.pz-keys').textContent), 'réglages nommés dès le début');
-  pzc.querySelector('.pz-ok').click(); await wait(20);
-  ok(pzc.querySelector('.pz-head') && /Tonalité/.test(pzc.querySelector('.pz-row:not(.pz-head) .pz-peg').title), 'pions nommés dès le 1er essai');
-  A.garden.closePuzzle();
   // --- sound locking (G1.5)
   const St=A.store, g=A.game;
   g.setMode('free'); St.set('fx.echo',0.6,'user'); St.set('pad.on',true,'user');
@@ -277,25 +225,25 @@ f.addEventListener('load', async ()=>{
   ok(St.get('pad.on')===false && St.get('fx.echo')===0 && St.get('global.evolve')===0 && St.get('drone.on')===true, 'verrouillé = neutre (pad muet, pas d\'écho), drone joue');
   St.set('pad.on',true,'user'); A.ui.applyPatch({'pad.on':true,'fx.echo':0.8,'drone.tone':0.9});
   ok(St.get('pad.on')===false && St.get('fx.echo')===0 && Math.abs(St.get('drone.tone')-0.9)<0.02, 'presets/utilisateur ne touchent pas le verrouillé '+St.get('drone.tone'));
-  g.earn(50,'t'); A.tree.buy('h.pad'); ok(St.get('pad.on')===true, 'acheter le Pad le fait jouer');
+  g.unlock('h.pad'); ok(St.get('pad.on')===true, 'ouvrir le Pad le fait jouer');
   g.setMode('free'); ok(Math.abs(St.get('fx.echo')-0.6)<0.02 && St.get('pad.on')===true, 'retour en libre : son libre rendu');
   St.set('pad.on',false,'user'); ok(St.get('pad.on')===false, 'libre : tout modifiable');
   g.setMode('path'); ok(St.get('fx.echo')===0 && St.get('pad.on')===true, 'retour au parcours : son du parcours rendu');
-  // --- feedback without juice (v1.06): a gain is a « +n ✧ » note under the LCD, no canvas, no flash
-  g.setMode('path'); await wait(20); A.game.earn(4,'gain'); await wait(20);
-  ok(!d.getElementById('fx') && !A.juice && /\+4 ✧/.test(d.getElementById('gainFeed').textContent), 'gain d\'éclats → note « +4 ✧ » sous le LCD, pas de canvas #fx');
-  A.garden.showTree(true); A.game.s.shards=0; tn('t.rec').click(); ok(true, 'refus sans erreur'); A.garden.showTree(false);
+  // --- S4.3 no currency anywhere: no « +n ✧ » note, no counter, nothing to buy
+  g.setMode('path'); await wait(20); A.contracts.finish(A.game.s.active[0]); await wait(1500); A.garden.showTree(true); await wait(20);
+  ok(!d.getElementById('fx') && !A.juice && !d.getElementById('gainFeed') && !/✧|éclat/.test(d.body.innerText), 'un défi réussi : aucune note « +n ✧ », aucun ✧ ni « éclat » à l\'écran');
+  A.garden.showTree(false);
   // S3.8: the path help is short and says how secrets work now (a node opened, hint 2 after 2 secrets, never with time)
   { d.getElementById('help').click(); const hp=d.querySelector('#helpDlg .help-path'), tx=hp.textContent;
     ok(!hp.hidden && hp.querySelectorAll('.help-grid h4').length===4 && /ouvre un nœud/.test(tx) && /après 2 secrets/.test(tx) && /Écho/.test(tx) && !/avec le temps/.test(tx), 'aide du Parcours : 4 rubriques, secrets-clés, indice 2 après 2 secrets, Écho');
     d.querySelector('#helpDlg [data-close]').click(); }
-  g.setMode('free'); ok(!shown('#treeBtn') && !shown('#lcdShards') && !shown('#contracts'), 'pas d\'arbre, d\'éclats ni de contrats en libre');
+  g.setMode('free'); await wait(400); ok(!shown('#treeBtn') && !shown('#lcdTask') && !d.body.classList.contains('jargon-off'), 'pas d\'arbre ni de défi en libre, l\'écran garde tonalité et tempo');
   // --- S3.7: the handover is saved: ↷ on the last contract hands over too; a reload keeps the instrument handed over
   { g.setMode('path'); buyAll(); await wait(200); task.querySelector('.lcd-skip').click(); await wait(3300);
-    ok(A.game.s.ended && !shown('#lcdTask') && !d.getElementById('lcdShards').textContent, '↷ sur le dernier contrat : remise aussi');
+    ok(A.game.s.ended && !shown('#lcdTask'), '↷ sur le dernier défi : remise aussi');
     await new Promise(r=>{ f.addEventListener('load',r,{once:true}); w.location.reload(); }); await wait(300);
     const w2=f.contentWindow, d2=f.contentDocument, A2=w2.AMB, vis=(sel)=>{ const e=d2.querySelector(sel); return !!e && e.getClientRects().length>0; };
-    ok(A2.game.path && A2.game.s.ended && !vis('#lcdTask') && !d2.getElementById('lcdShards').textContent && d2.querySelector('#treeBtn .tree-badge').hidden && vis('#treeBtn'), 'sauvegarde rechargée : toujours remis (ni contrat ni ✧, arbre là)');
+    ok(A2.game.path && A2.game.s.ended && !vis('#lcdTask') && vis('#treeBtn'), 'sauvegarde rechargée : toujours remis (pas de défi, arbre là)');
     ok(!d2.querySelector('.is-locked') && !A2.game.counts(), 'rechargé : tout l\'instrument ouvert, plus rien ne compte'); // the sound itself is never kept across a reload (both modes)
     A2.game.reset(); }
   localStorage.removeItem('ambient.game.uitest');
