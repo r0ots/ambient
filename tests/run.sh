@@ -1,14 +1,14 @@
 #!/bin/bash
 # Headless test of one page: prints its tagged log lines (levels, checks, JS errors).
-# Needs a static server on :8765 logging requests to $LOG (python3 -u -m http.server 8765 2> $LOG).
+# Needs a static server on :$PORT (default 8765) logging requests to $LOG (python3 -u -m http.server $PORT 2> $LOG).
 # Usage: LOG=... ./run.sh page.html [scale]   (scale multiplies all waits, default 0.4)
-LOG=${LOG:-/tmp/ambient-server.log}
+LOG=${LOG:-/tmp/ambient-server.log}; PORT=${PORT:-8765}
 PAGE=${1:-smoke.html}; TAG=${PAGE%.html}; SCALE=${2:-0.4}
 START=$(( $(wc -l < "$LOG") + 1 ))
 launch() {
   UD=$(mktemp -d)
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --autoplay-policy=no-user-gesture-required \
-    --user-data-dir="$UD" --no-first-run --disable-gpu --mute-audio --disable-audio-output "http://localhost:8765/tests/$PAGE?s=$SCALE" >/dev/null 2>&1 &
+    --user-data-dir="$UD" --no-first-run --disable-gpu --mute-audio --disable-audio-output "http://localhost:$PORT/tests/$PAGE?s=$SCALE" >/dev/null 2>&1 &
   CPID=$!
 }
 stopc() { kill $CPID 2>/dev/null; sleep 0.3; rm -rf "$UD" 2>/dev/null; }
