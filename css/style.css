@@ -514,3 +514,16 @@ body.pz-veil .pz-veiled { filter: blur(4px) grayscale(.6); opacity: .55; }
 .fx-combo.up { animation: fx-pop .3s ease-out; }
 @keyframes fx-pop { 40% { transform: scale(1.3); } }
 @media (prefers-reduced-motion: reduce) { .fx-float { animation: fx-fade .9s ease-out forwards; } .fx-combo.up { animation: none; } }
+/* G8.1 « Mastermind » puzzles: one row of pegs per validation, live gauge only with help */
+.pz-gauge[hidden] { display: none; }
+.pz-board { display: grid; gap: 3px; max-height: 190px; overflow-y: auto; }
+.pz-board:empty { display: none; }
+.pz-row { display: grid; grid-template-columns: 18px repeat(var(--n, 4), minmax(0, 1fr)); gap: 3px; align-items: center; }
+.pz-head span { font: 10.5px var(--f-mono, monospace); color: var(--muted); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pz-n { font: 13px var(--f-lcd); color: var(--lcd-dim, #6b4a1a); text-align: right; }
+.pz-peg { height: 20px; display: grid; place-items: center; border-radius: 4px; background: var(--lcd-bg, #120d05); box-shadow: var(--bevel-in, none); font: 11.5px var(--f-mono, monospace); white-space: nowrap; overflow: hidden; }
+.pz-peg.ok { color: #8fe3a0; box-shadow: inset 0 0 0 1px #8fe3a088; }
+.pz-peg.near { color: var(--lcd-fg); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lcd-fg) 55%, transparent); }
+.pz-peg.far { color: #e08a7a; }
+.pz-help { display: flex; gap: 6px; align-items: center; font-size: 11.5px; color: var(--muted); cursor: pointer; }
+.pz-help input { margin: 0; accent-color: var(--lcd-fg); }

@@ -133,13 +133,13 @@
       return suffix[key.slice(dot)] || prefix[key.slice(0, dot + 1)] || null;
     },
     nodeForUi(name) { return uiNode[name] || null; },
-    // can this node be bought now? (prerequisites owned and gate puzzle solved)
+    // can this node be bought now? (prerequisites owned and gate puzzle solved, or opened after 6 failures)
     status(id, g = AMB.game) {
       const n = byId[id];
       if (!n) return 'none';
       if (g.has(id)) return 'owned';
       if (!n.req.every((r) => g.has(r))) return 'locked';
-      if (n.gate && !g.s.puzzles.includes(n.gate)) return 'gated';
+      if (n.gate && !g.s.puzzles.includes(n.gate) && !(g.s.opened || []).includes(n.gate)) return 'gated';
       return 'available';
     },
     buy(id, g = AMB.game) {

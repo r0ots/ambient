@@ -22,12 +22,18 @@
       if (pzEl && AMB.puzzles) {
         const P = AMB.puzzles, solved = P.DEFS.filter((x) => g.s.puzzles.includes(x.id)).length;
         const open = P.available().filter((x) => x.bonus);
-        pzEl.innerHTML = `<span>Énigmes ${solved}/${P.DEFS.length}</span>` + (open.length ? ' · bonus :' : '');
-        for (const x of open) {
-          const b = document.createElement('button'); b.className = 'btn small'; b.textContent = `◈ ${x.title} · ✧ ${x.reward}`;
-          b.title = x.intro; b.addEventListener('click', () => this.openPuzzle(x.id));
+        // G8.1: solved puzzles (or gates opened after 6 failures) can be replayed for the stars
+        const replay = P.DEFS.filter((x) => (g.s.puzzles.includes(x.id) || P.given(x.id)) && P.best(x.id) < 3 && x.need.every((n) => g.has(n)));
+        const stars = P.DEFS.reduce((a, x) => a + P.best(x.id), 0);
+        pzEl.innerHTML = `<span>Énigmes ${solved}/${P.DEFS.length} · ★ ${stars}/${P.DEFS.length * 3}</span>` + (open.length ? ' · bonus :' : '');
+        const add = (x, text, tip) => {
+          const b = document.createElement('button'); b.className = 'btn small'; b.dataset.pz = x.id; b.textContent = text;
+          b.title = tip; b.addEventListener('click', () => this.openPuzzle(x.id));
           pzEl.append(b);
-        }
+        };
+        for (const x of open) add(x, `◈ ${x.title} · ✧ ${x.reward}`, x.intro);
+        if (replay.length) pzEl.append(' · à rejouer :');
+        for (const x of replay) add(x, `↻ ${x.title} ${this.starText(P.best(x.id))}`, `${x.intro}\n\nRejouer pour les étoiles (moins d'essais, moins d'écoutes).`);
       }
       for (const [bid, br] of Object.entries(T.BRANCHES)) {
         const col = document.createElement('div');

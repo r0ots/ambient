@@ -14,6 +14,7 @@
     found: [], // discovery ids
     contracts: [], // completed contract ids
     puzzles: [], // solved puzzle ids
+    stars: {}, opened: [], runs: {}, pzHelp: false, // puzzles (G8.1): best stars per puzzle, gates opened after 6 failures, attempts in progress, live gauge
     active: [], prog: {}, // active contracts and their progress (contracts.js)
     ended: false, // the end screen was shown (whole tree owned)
   });

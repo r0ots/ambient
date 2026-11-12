@@ -126,24 +126,56 @@ f.addEventListener('load', async ()=>{
   A.garden.showTree(true); await wait(30); tn('t.macros').click(); await wait(30);
   const pzc=d.getElementById('puzzle');
   ok(!pzc.hidden && /Premier reflet/.test(pzc.textContent) && d.getElementById('treeDlg').hidden, 'nœud-porte → carte d\'énigme ouverte');
-  ok(/Joue sur : Drone · Son/.test(pzc.querySelector('.pz-keys').textContent) && parseInt(pzc.querySelector('.pz-pct').textContent)<50, 'réglages en jeu + jauge basse '+pzc.querySelector('.pz-pct').textContent);
+  ok(/Joue sur : Drone · Son/.test(pzc.querySelector('.pz-keys').textContent) && pzc.querySelector('.pz-gauge').hidden && !pzc.querySelector('.pz-row') && /1\/6/.test(pzc.querySelector('.pz-ok').textContent), 'réglages en jeu, pas de jauge en direct, Valider (1/6)');
   pzc.querySelector('.pz-ab').click(); await wait(20); ok(/Revenir/.test(pzc.querySelector('.pz-ab').textContent) && pzc.querySelector('.pz-ok').disabled && A.store.get('pad.wave')==='Verre', 'écoute de la cible');
   ok(d.body.classList.contains('pz-veil') && d.querySelector('[data-key="pad.wave"]').classList.contains('pz-veiled'), 'cible : valeurs masquées sur les réglages');
   ok(A.store.stableSnapshot()['pad.wave']==='Nappe', 'instantanés (journal, annuler, partage) = mon son, pas la cible');
   pzc.querySelector('.pz-ab').click(); await wait(20); ok(A.store.get('pad.wave')==='Nappe' && !d.querySelector('.pz-veiled'), 'retour à mon son');
-  pzc.querySelector('.pz-ok').click(); await wait(20); ok(!A.game.s.puzzles.includes('p.premier') && /plus éloigné/.test(pzc.querySelector('.pz-hint').textContent), 'échec → indice : '+pzc.querySelector('.pz-hint').textContent);
-  pzc.querySelector('.pz-ok').click(); pzc.querySelector('.pz-ok').click(); await wait(20); ok(/plus haut|plus bas|autre option/.test(pzc.querySelector('.pz-hint').textContent), 'indices détaillés après 3 échecs');
+  const pzEarn=[]; A.bus.on('game:earn',e=>{ if(e.reason==='énigme') pzEarn.push(e.id+':'+e.n); });
+  // a validation = a row of pegs (G8.1)
+  pzc.querySelector('.pz-ok').click(); await wait(20);
+  { const rows=pzc.querySelectorAll('.pz-row:not(.pz-head)'), pegs=[...rows[0].querySelectorAll('.pz-peg')], tip=(k)=>pegs.find(p=>p.dataset.k===k);
+    ok(!A.game.s.puzzles.includes('p.premier') && rows.length===1 && pegs.length===4 && pzc.querySelectorAll('.pz-head span').length===5, 'échec → 1 ligne d\'essai, 4 pions nommés');
+    ok(tip('pad.wave').classList.contains('far') && /autre option/.test(tip('pad.wave').title) && /autre/.test(tip('pad.wave').textContent)
+      && /loin, plus haut/.test(tip('drone.tone').title) && /⬆/.test(tip('drone.tone').textContent)
+      && tip('pad.tone').classList.contains('near') && /⬇/.test(tip('pad.tone').textContent), 'pions : '+pegs.map(p=>p.title).join(' | '));
+    ok(/Pas encore : 0 juste, 1 proche\. 5 essais restants/.test(pzc.querySelector('.pz-hint').textContent) && /2\/6/.test(pzc.querySelector('.pz-ok').textContent), 'état : '+pzc.querySelector('.pz-hint').textContent); }
   A.store.setMany({'drone.wave':'Orgue','pad.wave':'Verre','drone.tone':0.73,'pad.tone':0.22},'user'); await wait(20);
-  ok(pzc.querySelector('.pz-ok').classList.contains('ready'), 'jauge ≥ 90 % → Valider s\'allume');
+  ok(!pzc.querySelector('.pz-ok').classList.contains('ready') && pzc.querySelector('.pz-gauge').hidden, 'à la cible : rien ne s\'allume sans aide (il faut valider)');
   pzc.querySelector('.pz-ok').click(); await wait(40);
   ok(A.game.s.puzzles.includes('p.premier') && pzc.hidden && !d.getElementById('treeDlg').hidden && tn('t.macros').classList.contains('st-available'), 'résolue → arbre rouvert, nœud achetable');
-  A.garden.showTree(false);
-  // bonus puzzles (G5.5)
-  A.game.earn(500,'test'); A.game.solve('p.gamme'); ['h.key','h.scale'].forEach(i=>A.tree.buy(i)); A.garden.showTree(true); await wait(30);
+  ok(A.puzzles.best('p.premier')===2 && /2 essais.*★★☆/.test(d.getElementById('toast').textContent) && pzEarn.join()==='p.premier:15', 'résolue en 2 essais, 1 écoute → ★★ et ✧ 15 : '+d.getElementById('toast').textContent);
+  // replay for the stars: 1 validation without listening → 3 stars, no ✧ again
+  { const rb=d.querySelector('.tree-puzzles [data-pz="p.premier"]'); ok(rb && /↻ Premier reflet ★★☆/.test(rb.textContent), 'à rejouer dans l\'arbre : '+(rb&&rb.textContent));
+    rb.click(); await wait(30); ok(!pzc.hidden && /record ★★☆/.test(pzc.querySelector('.pz-keys').textContent), 'rejouer : record affiché');
+    pzc.querySelector('.pz-ok').click(); await wait(30);
+    ok(pzc.hidden && A.puzzles.best('p.premier')===3 && pzEarn.length===1 && /1 essai.*★★★.*record/.test(d.getElementById('toast').textContent), '1 essai sans écoute → ★★★ (record), pas de ✧ : '+d.getElementById('toast').textContent);
+    A.garden.showTree(true); await wait(20); ok(!d.querySelector('.tree-puzzles [data-pz="p.premier"]') && /★ 3\/36/.test(d.querySelector('.tree-puzzles').textContent), '3 étoiles : plus à rejouer, total ★ 3/36'); A.garden.showTree(false); }
+  // 6 failed validations → the gate opens anyway, without ✧ nor star
+  { A.game.earn(200,'test'); A.tree.buy('h.key'); A.store.set('global.key','D','user'); A.garden.showTree(true); await wait(20);
+    tn('h.scale').click(); await wait(30); ok(!pzc.hidden && /Autre lumière/.test(pzc.textContent), 'porte « Gammes » → énigme');
+    for (let i=0;i<5;i++) pzc.querySelector('.pz-ok').click();
+    ok(pzc.querySelectorAll('.pz-row:not(.pz-head)').length===5 && /1 essai restant/.test(pzc.querySelector('.pz-hint').textContent), '5 lignes, 1 essai restant');
+    pzc.querySelector('.pz-ok').click(); await wait(40);
+    ok(pzc.hidden && !d.getElementById('treeDlg').hidden && tn('h.scale').classList.contains('st-available') && !A.game.s.puzzles.includes('p.gamme') && pzEarn.length===1 && !A.puzzles.best('p.gamme'), '6 échecs → porte ouverte, sans ✧ ni étoile');
+    ok(/la porte s'ouvre quand même/.test(d.getElementById('toast').textContent) && d.querySelector('.tree-puzzles [data-pz="p.gamme"]'), 'message bienveillant, énigme à rejouer'); }
+  // help: live gauge, no stars (the ✧ of the first resolution still come)
+  { d.querySelector('.tree-puzzles [data-pz="p.gamme"]').click(); await wait(30);
+    const hb=pzc.querySelector('.pz-help input'); hb.click(); await wait(20);
+    ok(!pzc.querySelector('.pz-gauge').hidden && /%/.test(pzc.querySelector('.pz-pct').textContent) && /Aide utilisée/.test(pzc.querySelector('.pz-hint').textContent), 'aide → jauge en direct '+pzc.querySelector('.pz-pct').textContent);
+    A.store.setMany(A.puzzles.byId['p.gamme'].target,'user'); await wait(20); ok(pzc.querySelector('.pz-ok').classList.contains('ready'), 'aide : Valider s\'allume à ≥ 90 %');
+    pzc.querySelector('.pz-ok').click(); await wait(40);
+    ok(A.game.s.puzzles.includes('p.gamme') && !A.puzzles.best('p.gamme') && pzEarn.includes('p.gamme:20') && /avec l'aide/.test(d.getElementById('toast').textContent), 'aide → résolue, ✧ 20, aucune étoile');
+    A.puzzles.setHelp(false); A.garden.showTree(false); }
+  // bonus puzzles (G5.5): pegs say neither which control nor which way until the last validation
+  A.game.earn(500,'test'); A.tree.buy('h.scale'); A.garden.showTree(true); await wait(30);
   const bb=[...d.querySelectorAll('.tree-puzzles .btn')]; ok(bb.some(b=>/Quelle couleur/.test(b.textContent)), 'énigme bonus proposée dans l\'arbre');
   bb.find(b=>/Quelle couleur/.test(b.textContent)).click(); await wait(30);
   ok(!pzc.hidden && /bonus : 2 réglages/.test(pzc.querySelector('.pz-keys').textContent), 'bonus : réglages tenus secrets');
-  A.garden.pz.fails=3; A.garden.renderPuzzle(); ok(/Joue sur : Global · Tonalité/.test(pzc.querySelector('.pz-keys').textContent), 'révélés au dernier indice');
+  A.store.setMany({'global.key':'D','global.scale':'Lydien'},'user'); pzc.querySelector('.pz-ok').click(); await wait(20);
+  { const pegs=[...pzc.querySelectorAll('.pz-row .pz-peg')]; ok(pegs.length===2 && !pzc.querySelector('.pz-head') && pegs.every(p=>/^(loin|proche|juste)$/.test(p.title) && !/[⬆⬇]|autre/.test(p.textContent)), 'bonus : pions sans nom ni sens'); }
+  for (let i=0;i<4;i++) pzc.querySelector('.pz-ok').click(); await wait(20);
+  ok(/Joue sur : Global · Tonalité/.test(pzc.querySelector('.pz-keys').textContent) && pzc.querySelector('.pz-head') && /Tonalité/.test(pzc.querySelector('.pz-peg').title), 'révélés au dernier essai');
   A.garden.closePuzzle();
   // --- sound locking (G1.5)
   const St=A.store, g=A.game;

@@ -126,13 +126,15 @@
     <aside id="puzzle" class="puzzle-card" aria-label="Énigme d'écoute" hidden>
       <header><b class="pz-title"></b><button class="pz-x" title="Abandonner pour l'instant">✕</button></header>
       <p class="pz-intro"></p>
-      <div class="pz-gauge"><i></i><span class="pz-pct"></span></div>
       <p class="pz-keys"></p>
+      <div class="pz-gauge" hidden><i></i><span class="pz-pct"></span></div>
+      <div class="pz-board" aria-label="Tes essais"></div>
       <div class="pz-btns">
         <button class="btn small pz-ab" title="Écouter le son à retrouver, puis revenir au tien">▶ Écouter la cible</button>
-        <button class="btn small pz-ok" title="Valider quand la jauge dépasse 90 %">Valider</button>
+        <button class="btn small pz-ok" title="Valider : chaque essai te dit, réglage par réglage, si tu es juste, proche ou loin">Valider</button>
       </div>
       <p class="pz-hint"></p>
+      <label class="pz-help" title="Affiche une jauge en direct. Une énigme résolue avec l'aide ne donne pas d'étoiles."><input type="checkbox"> Aide : jauge en direct (sans étoiles)</label>
     </aside>
 
     <div id="welcomeDlg" class="modal" hidden>
@@ -196,7 +198,7 @@
             <li>⬇/⬆ <b>MIDI</b> pour passer dans ton logiciel de musique</li></ul></div>
           <div><h4>Jardin sonore</h4><ul>
             <li><b>Parcours</b> : commence avec une seule note et débloque l'outil pièce par pièce dans l'<b>🌱 Arbre</b></li>
-            <li>Gagne des <b>✧ éclats</b> en essayant chaque réglage, en remplissant des <b>contrats</b> (défis d'usage) et en résolvant des <b>énigmes d'écoute</b> (retrouver un son cible : ▶ cible / ◀ mon son)</li>
+            <li>Gagne des <b>✧ éclats</b> en essayant chaque réglage, en remplissant des <b>contrats</b> (défis d'usage) et en résolvant des <b>énigmes d'écoute</b> (retrouver un son cible : ▶ cible / ◀ mon son, 6 validations qui disent pour chaque réglage ✓ juste, ≈ proche ou ✗ loin et le sens ⬆ ⬇ ; étoiles selon les essais et les écoutes ; « Aide » affiche une jauge, sans étoiles ; après 6 échecs la porte s'ouvre quand même)</li>
             <li><b>Mode libre</b> (menu ⋯) : tout ouvert, à tout moment ; ton parcours est gardé</li></ul></div>
           <div><h4>Garder</h4><ul>
             <li><b>Rec</b> WAV ou compressé, durée fixe avec fondu</li>
