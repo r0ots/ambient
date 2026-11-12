@@ -376,6 +376,7 @@
       g.globalAlpha = 1 - dawn * 0.85; g.drawImage(bg.stars, 0, 0);
       g.globalAlpha = 1; g.drawImage(bg.ground, 0, gd);
       const px = this.px, red = this.reduced, fs = Math.round(Math.max(11 * dpr, px * 2.6));
+      this.dpr = dpr;
       // the ground breathes on the beat (stronger on beats 1 and 3); still in reduced motion and during the finale
       const bp = red || R ? null : this.beatPhase(now);
       if (bp || dawn > 0) {
@@ -432,18 +433,22 @@
         : v.phase === 'answer' ? 0.6 : Math.max(0, 0.5 - v.age / 6);
       this.energy.bells = Math.max(this.energy.bells || 0, e);
     },
-    // one leaf per note of the phrase, up the stem, alternately left and right: dim = to play, green = right, red = wrong
+    // one leaf per note of the phrase, up the stem, alternately left and right: dim = to play, green = right, red = wrong.
+    // The leaves keep a readable size (≥ 4 CSS px a cell) even on a small plant: the stem then reaches up to carry them.
     drawAnswer(g, v) {
       const p = this.plants.find((q) => q.id === 'bells'); if (!p) return 0;
       const gy = p.gy == null ? 1 : p.gy; if (gy < 0.05) return 0; // S4.5w: a plant still growing carries its leaves up
-      const px = this.px, hC = this.heightCells(p) * gy, gap = px >= 4 ? 1 : 0, k = p.k || 1;
+      const px = this.px, lp = Math.max(px, Math.round(4 * (this.dpr || 1))), gap = lp >= 4 ? 1 : 0, k = p.k || 1;
+      const h = this.heightCells(p) * px * gy, room = Math.max(h, p.y - (this.H || 0) * (this.ceil || 0) - 3 * lp);
+      const y0 = Math.max(h * 0.2, 2 * lp), top = Math.min(room, Math.max(h * 0.88, y0 + (v.len - 1) * 2.4 * lp));
       g.setTransform(k, 0, -(p.sway || 0) * k * gy, k, p.x, p.y); // bends with the plant
+      if (top > h * 0.9) { g.fillStyle = rgb(p.col, 0.7, 0.6); g.fillRect(-Math.floor(lp / 4), -Math.round(top), Math.max(1, Math.round(lp / 2)), Math.round(top - h * 0.85)); }
       let n = 0;
       for (let i = 0; i < v.len; i++) {
         const peg = v.row[i]; if (!peg && v.phase === 'call') continue;
-        const y = -Math.round(hC * (0.2 + 0.68 * (v.len > 1 ? i / (v.len - 1) : 0.5))) * px, s = i % 2 ? 1 : -1;
+        const y = -Math.round(y0 + (top - y0) * (v.len > 1 ? i / (v.len - 1) : 0.5)), s = i % 2 ? 1 : -1;
         g.fillStyle = !peg ? rgb(p.col, 0.8, 0.5) : rgb(peg.state === 'ok' ? this.LEAF_OK : this.LEAF_BAD);
-        for (const [dx, dy] of [[1, 0], [2, 0], [3, 0], [2, -1], [3, -1], [4, -1], [5, -1], [4, -2], [5, -2]]) g.fillRect(s * dx * px - (s < 0 ? px : 0), y + dy * px, px - gap, px - gap);
+        for (const [dx, dy] of [[1, 0], [2, 0], [3, 0], [2, -1], [3, -1], [4, -1], [5, -1], [4, -2], [5, -2]]) g.fillRect(s * dx * lp - (s < 0 ? lp : 0), y + dy * lp, lp - gap, lp - gap);
         n++;
       }
       g.setTransform(1, 0, 0, 1, 0, 0);

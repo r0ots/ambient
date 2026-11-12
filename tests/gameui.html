@@ -205,6 +205,9 @@ f.addEventListener('load', async ()=>{
     const leaves=gv.drawAnswer(g2, P.view()), px=g2.getImageData(0,0,480,320).data; let green=0, red=0;
     for(let i=0;i<px.length;i+=4){ if(px[i]===143&&px[i+1]===227&&px[i+2]===160) green++; if(px[i]===235&&px[i+1]===84&&px[i+2]===64) red++; }
     ok(leaves===3 && green>0 && red>0 && gv.answer(ctx.currentTime) && gv.answer(ctx.currentTime).row.length===2, 'plante Mélodie : une feuille verte (juste), une rouge (fausse), une à jouer ('+green+' / '+red+' px)');
+    { const pb=gv.plants.find(q=>q.id==='bells'), gy0=pb.gy; g2.clearRect(0,0,480,320);
+      pb.gy=0; const none=gv.drawAnswer(g2, P.view()); pb.gy=0.5; const half=gv.drawAnswer(g2, P.view()); pb.gy=gy0;
+      ok(none===0 && half===3 && green>=81, 'S4.5w + S4.2 : une plante Mélodie qui pousse porte ses feuilles de Réponse (aucune avant de sortir, toutes à mi-hauteur) ; une feuille ≥ 4 px par carreau ('+green+' px verts)'); }
     A.bus.emit('live',{midi:c.midis[2],time:0,vel:0.85,raw:null,played:c.ans+1}); await wait(350);
     ok(!P.cur && /PRESQUE/.test(d.getElementById('lcdTop').textContent) && !A.game.has('t.macros'), 'réponse fausse : « Presque » sur le LCD, porte fermée');
     P.launch(ctx.currentTime+0.05, sd); const c2=P.cur; c2.midis.forEach((m,i)=>A.bus.emit('live',{midi:m+12,time:0,vel:0.85,raw:null,played:c2.ans+0.5+i})); await wait(30);

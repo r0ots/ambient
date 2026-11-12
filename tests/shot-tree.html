@@ -41,7 +41,7 @@ document.getElementById('f').addEventListener('load', () => {
     P.cur = { midis: [62, 64, 65, 67, 69], steps: [0, 2, 6, 8, 12], len: leaves ? 5 : 3, timed: leaves, sd: 0.25, t0: -9, from: -1, until: 1e12, ans: 0,
       row: leaves ? [{ state: 'ok' }, { state: 'ok' }, { state: 'far', dir: 'up' }, { state: 'ok' }] : [] };
     const st = A.contracts.state(); st.active = ['p.premier']; st.prog['p.premier'] = { n: 0 }; A.garden.renderContracts();
-    setInterval(() => A.garden.lcd('↺ À toi', 2000), 400);
+    setInterval(() => { A.garden.lcd('↺ À toi', 2000); A.gardenVisual.grow = {}; }, 400); // plants shown grown (headless frames are sparse)
   } else if (h.includes('composer')) { // S3.5: the Composer branch in 3 nodes (Mélodie écrite, Rythme open; Morceau to open)
     ['h.pad2', 'h.key', 'h.scale', 'h.prog', 'c.seq', 'c.rythme'].forEach((i) => A.game.unlock(i));
     A.garden.showTree(true); setTimeout(() => { const G = A.garden, r = doc.querySelector('#treeDlg .tree-map').getBoundingClientRect();
