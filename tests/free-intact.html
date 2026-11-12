@@ -103,7 +103,7 @@ f.addEventListener('load', async () => {
     const load2 = async (hash) => {
       const g2 = document.createElement('iframe'); g2.style.cssText = 'width:1200px;height:800px;border:0';
       g2.src = '../index.html?' + QS + hash;
-      const loaded = new Promise(r => g2.addEventListener('load', r)); document.body.append(g2); await loaded; await wait(600);
+      const loaded = new Promise(r => g2.addEventListener('load', r)); document.body.append(g2); await loaded; await wait(350);
       return g2;
     };
     const lsBefore2 = LS();

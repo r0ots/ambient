@@ -322,7 +322,7 @@
         body = `<div class="arc-dj-btns arc-du-kinds"><button class="btn${this.kind === 'r' ? ' on' : ''}" data-du="kind" data-k="r">Réponds en jouant</button><button class="btn${this.kind === 'm' ? ' on' : ''}" data-du="kind" data-k="m">Énigme Mastermind</button></div>
           ${inner}
           ${dr ? `<div class="arc-dj-btns"><button class="btn arc-dj-main" data-du="try" data-du-go>▶ Réussir mon défi</button><button class="btn" data-du="reroll">🎲 Autre ${this.kind === 'r' ? 'motif' : 'cible'}</button></div>` : ''}
-          <p class="arc-dj-line arc-dj-small">Il faut réussir ton défi avant de l'envoyer. Ton cousin reçoit un lien ; le score compare vos niveaux (musicien ×1, découverte ×1,35).</p>
+          <p class="arc-dj-line arc-dj-small">Il faut réussir ton défi avant de l'envoyer. Ton cousin reçoit un lien ; le score compare vos niveaux (musicien ×1, découverte ×0,8 : son départ est plus facile).</p>
           <div class="arc-dj-btns"><button class="btn" data-du="menu">◂ Menu</button></div>`;
       }
       this.sec.innerHTML = `<h3 class="arc-title">${esc(title)}</h3>${this.note ? `<p class="arc-dj-note" role="status">${esc(this.note)}</p>` : ''}${body}`;

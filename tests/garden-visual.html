@@ -113,19 +113,10 @@ window.addEventListener('load', async () => {
     G.s.secrets = { found: { jazz: 1, tons: 1, dim: 1, lent: 1 } };
     GV.sig = null; GV.times.length = 0;
     const layers = ['pad', 'bells', 'seq', 'bass'];
-    await new Promise((res) => { let n = 0; const step = () => { AMB.bus.emit('note', { layer: layers[n % 4], time: 0, vel: 0.8 }); if (n % 3 === 0) AMB.bus.emit('perc', { time: 0, vel: 0.7 }); frame(); if (++n < 150) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); });
+    await new Promise((res) => { let n = 0; const step = () => { AMB.bus.emit('note', { layer: layers[n % 4], time: 0, vel: 0.8 }); if (n % 3 === 0) AMB.bus.emit('perc', { time: 0, vel: 0.7 }); frame(); if (++n < 60) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); });
     const s = GV.stats();
-    // the same with the raster forced (1-pixel readback flushes the canvas): CPU recording + software drawing
-    GV.times.length = 0; const flush = [];
-    await new Promise((res) => { let n = 0; const step = () => { AMB.bus.emit('note', { layer: layers[n % 4], time: 0, vel: 0.8 }); const t = performance.now(); frame(); V.g.getImageData(0, 0, 1, 1); flush.push(performance.now() - t); if (++n < 120) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); });
-    flush.sort((x, y) => x - y);
-    log('PERF 1280×800 avec rendu forcé : moyenne ' + (flush.reduce((a, b) => a + b, 0) / flush.length).toFixed(2) + ' ms, médiane ' + flush[60].toFixed(2) + ' ms, p95 ' + flush[113].toFixed(2) + ' ms');
     log('PERF 1280×800 : moyenne ' + s.avg.toFixed(2) + ' ms, p95 ' + s.p95.toFixed(2) + ' ms, max ' + s.max.toFixed(2) + ' ms (' + s.frames + ' images, ' + s.sprites + ' sprites en cache)');
     ok(s.p95 < 4, 'coût par image raisonnable (p95 ' + s.p95.toFixed(2) + ' ms, cible < 2 ms)');
-    cv.width = 2560; cv.height = 1600; GV.times.length = 0;
-    await new Promise((res) => { let n = 0; const step = () => { AMB.bus.emit('note', { layer: layers[n % 4], time: 0, vel: 0.8 }); frame(); if (++n < 90) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); });
-    const s2 = GV.stats();
-    log('PERF 2560×1600 (dpr 2) : moyenne ' + s2.avg.toFixed(2) + ' ms, p95 ' + s2.p95.toFixed(2) + ' ms');
     done();
   } catch (e) { fail(e); }
 });

@@ -28,7 +28,7 @@ window.addEventListener('load', async ()=>{
   const a1=play(42,12,alt), a2=play(42,12,alt), a3=play(43,12,alt);
   ok(a1===a2 && a1!==a3, 'même graine → mêmes défis, autre graine → autres');
   const mr=Math.random; A.start('hautbas',{seed:1}); A.end({abort:true}); ok(Math.random===mr, 'Math.random intact');
-  ok(A.byId.hautbas.gap(0)===700 && A.byId.hautbas.gap(1)===15 && A.byId.hautbas.gap(0.5)<A.byId.hautbas.gap(0.2), 'écart décroissant avec d (700 → 15 cents)');
+  ok(A.byId.hautbas.gap(0)===700 && A.byId.hautbas.gap(1)===1.5 && A.byId.hautbas.gap(0.5)<A.byId.hautbas.gap(0.2), 'écart décroissant avec d (700 → 1,5 cents)');
   // --- staircase
   A.stats('hautbas').d=0.3; A.stats('hautbas').step=0.12;
   A.start('hautbas',{seed:5}); const R=A.round;
@@ -40,7 +40,7 @@ window.addEventListener('load', async ()=>{
   // convergence: a listener who hears gaps above 60 cents only
   { const st={d:0, step:0.12, run:0, dir:0}, hb=A.byId.hautbas, ds=[];
     for(let i=0;i<120;i++){ A.stair(st, hb.gap(st.d)>=60); ds.push(st.d); }
-    const tail=ds.slice(-30), lo=Math.min(...tail), hi=Math.max(...tail), dT=1-Math.sqrt((60-15)/685);
+    const tail=ds.slice(-30), lo=Math.min(...tail), hi=Math.max(...tail), dT=Math.log(60/700)/Math.log(1.5/700);
     ok(hi-lo<0.08 && Math.abs((lo+hi)/2-dT)<0.06 && st.step>=A.STAIR.minStep, 'escalier : converge vers le seuil ('+((lo+hi)/2).toFixed(2)+' ≈ '+dT.toFixed(2)+', amplitude '+(hi-lo).toFixed(3)+')'); }
   { const st={d:0.98,step:0.12,run:0,dir:0}; for(let i=0;i<6;i++) A.stair(st,true); ok(st.d===1, 'plafond 1'); for(let i=0;i<40;i++) A.stair(st,false); ok(st.d===0, 'plancher 0'); }
   // --- score / combo / stars with the clock moved by hand
@@ -58,9 +58,9 @@ window.addEventListener('load', async ()=>{
   T+=30000; ok(A.timeLeft()===45000 && !A.tick(), 'horloge injectée : 45 s restantes');
   T+=46000; const e1=A.tick();
   ok(e1 && !A.active && !A.round && ev[ev.length-1]==='end' && sessions[sessions.length-1]===false, 'temps écoulé → fin, session(false), arcade:end');
-  ok(e1.record && e1.score===before && e1.stars===A.starsFor(before, 0) && e1.total===8 && e1.good===7, 'fin : score '+e1.score+', '+e1.stars+'★, record');
+  ok(e1.record && e1.score===before && e1.stars===A.starsFor(before, 0, e1.total) && e1.total===8 && e1.good===7, 'fin : score '+e1.score+', '+e1.stars+'★, record');
   ok(A.answer('up')===null && A.replay()===null, 'plus de réponse après la fin');
-  ok(A.starsFor(0,0)===0 && A.starsFor(A.par(0),0)===2 && A.starsFor(A.par(0)*2,0)===3 && A.starsFor(A.par(0),1)<A.starsFor(A.par(0),0), 'étoiles relatives au niveau (par '+A.par(0)+' à d=0, '+A.par(1)+' à d=1)');
+  { const P0=A.par(0,10); ok(A.starsFor(0,0,10)===0 && A.starsFor(P0,0,10)===2 && A.starsFor(P0*2,0,10)===3 && A.starsFor(P0,1,10)<A.starsFor(P0,0,10) && A.starsFor(P0,0,20)<2 && A.starsFor(P0/2,0,0)===A.starsFor(P0/2,0,A.PAR.min), 'étoiles relatives au niveau et au nombre de réponses (par '+P0+' pour 10 réponses à d=0, '+A.par(1,10)+' à d=1 ; moins de '+A.PAR.min+' réponses comptent pour '+A.PAR.min+')'); }
   // --- records (per mini-game, per pacts combination), persisted
   { const rec=A.record('hautbas'); ok(rec && rec.score===before && rec.stars===e1.stars, 'record mémorisé');
     T=0; A.start('hautbas',{seed:3}); A.answer('nope'); A.answer(A.round.ch.answer); const e2=A.end();

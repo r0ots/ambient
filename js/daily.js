@@ -11,8 +11,9 @@
 // the day's entry (days[day].p): changing profile applies to the challenge the next day. A recording refuses the run
 // BEFORE the official try is written. Découverte (level k): its own draw among the kid games (KID_POOL, non-rhythmic: no
 // latency calibration) and its own leaderboard (category = level k vs the others).
-// Relative score = score × coefficient of the player's level (AMB.game profile: musicien ×1, découverte ×1.35;
-// profile not chosen yet (game.s.profile null) → neutral « standard » ×1.15). Path only: nothing of this shows in free mode; a link opened in free
+// Relative score = score × coefficient of the player's level (AMB.game profile: musicien ×1, découverte ×0.8 — G11.3: the easy start and the kid pool already give more
+// points per round, tests/balance-arcade.html checks that nobody gains by declaring a lower level;
+// profile not chosen yet (game.s.profile null) → neutral « standard » ×1). Path only: nothing of this shows in free mode; a link opened in free
 // mode offers to switch to the path (nothing is stored before that).
 (function () {
   const AMB = (window.AMB = window.AMB || {});
@@ -55,8 +56,8 @@
   // ---------- player level (AMB.game.profile() comes from the placement test; neutral fallback) ----------
   const LEVELS = {
     m: { label: 'musicien', coef: 1, d: 0.45 },
-    n: { label: 'standard', coef: 1.15, d: 0.25 },
-    k: { label: 'découverte', coef: 1.35, d: 0.1 },
+    n: { label: 'standard', coef: 1, d: 0.25 },
+    k: { label: 'découverte', coef: 0.8, d: 0.1 },
   };
   function level() {
     let p = null;
@@ -353,7 +354,7 @@
       const B = this.board(day, zen);
       if (!B.length) return '';
       return `<table class="arc-dj-board"><caption>${zen ? 'Classement zen' : 'Classement du jour'}${this.cat(this.dayLevel(day)) === 'k' ? ' · Découverte' : ''}</caption>
-        <thead><tr><th>#</th><th>Joueur</th><th>Niveau</th><th>Score</th><th title="Score × coefficient du niveau : musicien ×1, découverte ×1,35">Relatif</th></tr></thead><tbody>${
+        <thead><tr><th>#</th><th>Joueur</th><th>Niveau</th><th>Score</th><th title="Score × coefficient du niveau : musicien et standard ×1, découverte ×0,8 (départ plus facile)">Relatif</th></tr></thead><tbody>${
         B.map((x, i) => `<tr class="${x.me ? 'me' : ''}${this.hi && !x.me && x.n.toLowerCase() === this.hi ? ' hi' : ''}"><td>${i + 1}</td><td>${esc(x.n)}${x.me ? ' <i>(toi)</i>' : ''}</td><td>${esc(lvlLabel(x.p))}</td><td>${fmt(x.s)}</td><td><b>${fmt(x.r)}</b></td></tr>`).join('')}</tbody></table>`;
     },
     shareHtml(zen) {

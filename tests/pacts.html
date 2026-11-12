@@ -14,7 +14,7 @@ window.addEventListener('load', async () => {
     const run = (pacts, seed, n, answerFn) => { A.stats('hautbas').d = 0.3; A.stats('hautbas').step = 0.12; T = 0; A.start('hautbas', { seed, pacts }); const out = []; for (let i = 0; i < n && A.round; i++) { A.listen(); const ch = A.round.ch; out.push(A.answer(answerFn(ch, i))); } return out; };
 
     // --- definitions, multipliers, applicability
-    ok(P.DEFS.length === 7 && P.mult([]) === 1 && P.mult(['une-ecoute', 'proches']) === 1.56 && P.fmt(1.56) === '×1,56', 'multiplicateurs : produit (×1,2 × ×1,3 = ' + P.fmt(P.mult(['une-ecoute', 'proches'])) + ')');
+    ok(P.DEFS.length === 7 && P.mult([]) === 1 && P.mult(['une-ecoute', 'proches']) === 1.43 && P.fmt(1.43) === '×1,43', 'multiplicateurs : produit (×1,1 × ×1,3 = ' + P.fmt(P.mult(['une-ecoute', 'proches'])) + ')');
     ok(P.available('hautbas').map((p) => p.id).join() === 'une-ecoute,transpose,proches,avant-fin', 'hautbas : 4 pactes génériques, secrets cachés tant qu\'ils ne sont pas trouvés');
     ok(!P.available('reponds').some((p) => ['transpose', 'avant-fin'].includes(p.id)) && P.available('reponds').some((p) => p.id === 'une-ecoute'), 'Réponds : pas de Transposé ni Avant la fin (réponse jouée après l\'appel, dans sa tonalité)');
     AMB.game = { s: {} }; AMB.secrets = { hasPact: (id) => id === 'funambule' };
@@ -37,8 +37,8 @@ window.addEventListener('load', async () => {
     // --- score weighted by the multiplier, same challenges
     const base = run([], 9, 6, (ch) => ch.answer), bs = A.end({ abort: true });
     const w = run(['une-ecoute'], 9, 6, (ch) => ch.answer), ws = A.end({ abort: true });
-    ok(base.every((o, i) => Math.abs(w[i].pts - o.pts * 1.2) <= 1), 'score × multiplicateur à chaque réponse (' + base[0].pts + ' → ' + w[0].pts + ')');
-    ok(Math.abs(ws.score - bs.score * 1.2) <= 6 && ws.pmult === 1.2, 'fin : score pondéré ' + bs.score + ' → ' + ws.score + ' (×' + ws.pmult + ')');
+    ok(base.every((o, i) => Math.abs(w[i].pts - o.pts * 1.1) <= 1), 'score × multiplicateur à chaque réponse (' + base[0].pts + ' → ' + w[0].pts + ')');
+    ok(Math.abs(ws.score - bs.score * 1.1) <= 6 && ws.pmult === 1.1, 'fin : score pondéré ' + bs.score + ' → ' + ws.score + ' (×' + ws.pmult + ')');
 
     // --- Transposé: every stimulus event shifted, the challenges are the same
     played = []; run([], 21, 5, (ch) => ch.answer); const plain = played.slice(), chPlain = A.round.history.length; A.end({ abort: true });
@@ -114,12 +114,12 @@ function ui() {
       ok(chip('hautbas', 'une-ecoute') && !chip('intrus', 'une-ecoute') && tog('hautbas').getAttribute('aria-expanded') === 'true' && d.activeElement === tog('reponds'), 'bouton : déplie les pastilles de sa cartouche seulement, focus gardé');
       ok(d.querySelectorAll('.arc-cart').length === AR.games.length && chip('hautbas', 'une-ecoute') && !chip('hautbas', 'silence') && !chip('reponds', 'transpose') && /×1,00/.test(tot('hautbas')), 'cartouches : pastilles de pactes, total ×1,00 (secrets absents, Réponds sans Transposé)');
       chip('hautbas', 'une-ecoute').click(); chip('hautbas', 'proches').click(); await wait(20);
-      ok(chip('hautbas', 'une-ecoute').getAttribute('aria-pressed') === 'true' && /×1,56/.test(tot('hautbas')) && /×1,00/.test(tot('intrus')) && d.activeElement === chip('hautbas', 'proches'), 'pastilles cochées : total ' + tot('hautbas') + ' (cartouche seule), focus gardé');
+      ok(chip('hautbas', 'une-ecoute').getAttribute('aria-pressed') === 'true' && /×1,43/.test(tot('hautbas')) && /×1,00/.test(tot('intrus')) && d.activeElement === chip('hautbas', 'proches'), 'pastilles cochées : total ' + tot('hautbas') + ' (cartouche seule), focus gardé');
       U.close(); d.getElementById('arcadeBtn').click(); await wait(20);
       if (!chip('hautbas', 'proches')) tog('hautbas').click();
       ok(chip('hautbas', 'proches').getAttribute('aria-pressed') === 'true', 'choix retrouvé à la réouverture');
       d.querySelector('.arc-cart[data-game=hautbas]').click(); for (let i = 0; i < 40 && !AR.active; i++) await wait(50);
-      ok(AR.active && AR.round.pacts.join() === 'une-ecoute,proches' && d.querySelector('.arc-replay').hidden && /PACTES ×1,56/.test(d.querySelector('.arc-level').textContent), 'manche : pactes passés au moteur, Réécouter masqué, HUD « ' + d.querySelector('.arc-level').textContent + ' »');
+      ok(AR.active && AR.round.pacts.join() === 'une-ecoute,proches' && d.querySelector('.arc-replay').hidden && /PACTES ×1,43/.test(d.querySelector('.arc-level').textContent), 'manche : pactes passés au moteur, Réécouter masqué, HUD « ' + d.querySelector('.arc-level').textContent + ' »');
       U.menu();
       A.secrets.hasPact = (id) => id === 'silence'; U.renderMenu();
       ok(chip('hautbas', 'silence') && chip('hautbas', 'silence').classList.contains('secret') && !chip('accordeur', 'silence'), 'pacte secret trouvé : pastille ✦ (pas sur l\'Accordeur, dont l\'aiguille montre le verdict)');
@@ -129,7 +129,7 @@ function ui() {
       await wait(20);
       ok(!d.querySelector('.arc-replay').hidden && d.querySelector('.arc-score').textContent === '······' && !d.querySelector('.arc-choice.good,.arc-choice.bad') && d.getElementById('arcadeDlg').classList.contains('arc-silent'), 'Silence : ni verdict ni score pendant la manche');
       AR.end(); await wait(20);
-      ok(U.screen === 'end' && /pactes Silence ×1,20/.test(d.querySelector('.arc-end-stats').textContent) && /^\d{6}$/.test(d.querySelector('.arc-end-score').textContent) && !d.getElementById('arcadeDlg').classList.contains('arc-silent'), 'fin : score révélé, pactes rappelés (« ' + d.querySelector('.arc-end-stats').textContent + ' »)');
+      ok(U.screen === 'end' && /pactes Silence ×1,10/.test(d.querySelector('.arc-end-stats').textContent) && /^\d{6}$/.test(d.querySelector('.arc-end-score').textContent) && !d.getElementById('arcadeDlg').classList.contains('arc-silent'), 'fin : score révélé, pactes rappelés (« ' + d.querySelector('.arc-end-stats').textContent + ' »)');
       ok(writes.length === 0, 'aucune écriture dans AMB.store (' + writes.join(',') + ')');
       // Découverte: no pacts shown, none applied (even the ticked ones)
       U.menu(); A.game.setProfile('decouverte'); U.renderMenu(); await wait(10);

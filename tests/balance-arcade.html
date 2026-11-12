@@ -1,0 +1,199 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body>
+<!-- G11.3 — balance of the arcade: simulated players on the PURE engine (js/arcade.js + the 7 plugins), no audio,
+     injected clock, seeded rng. Each challenge is really made by the plugin (make, stimulus); the answer is drawn
+     from a psychometric model and given to the engine through the plugin's check (overridden here only).
+     Model (assumptions, to validate by ear, see ROADMAP G11.3):
+       - pitch games, physical: Plus haut ou plus bas (gap(d) cents), Accordeur (threshold(d) cents): P(right) =
+         g + (1 − g)(1 − lapse)·F, F = logistic(ln(gap / seuil) / 0.3), seuil = the player's 75 % threshold in cents;
+       - the other games, in level units: F = logistic((θ − d) / 0.08), θ = the player's level threshold;
+       - g = 1 / number of choices (Réponds: 0, partial 0.4, precision bonus 0.6 on success);
+       - time per challenge: stimulus (the plugin's own events) + response time (lognormal) after the last onset
+         + reveal + 0.3 s of interface; a replay (near the threshold) costs the stimulus, helps a little, breaks the combo.
+     Players: débutant (the son: seuil 35 cents, θ 0.3, 2.2 s), moyen (seuil 6 cents, θ 0.72, 1.3 s),
+     expert (the nephew: seuil 3 cents, θ 0.95, 0.9 s). -->
+<script src="lib.js"></script>
+<script>
+window.AMB_ARCADE_KEY = 'ambient.arcade.test-bal'; localStorage.removeItem(window.AMB_ARCADE_KEY);
+window.AMB = { bus: { fns: {}, on() {}, emit() {} } };
+</script>
+<script src="../js/theory.js"></script><script src="../js/audition.js"></script><script src="../js/arcade.js"></script><script src="../js/pacts.js"></script><script src="../js/latency.js"></script>
+<script src="../js/arcade/hautbas.js"></script><script src="../js/arcade/intrus.js"></script><script src="../js/arcade/bouge.js"></script><script src="../js/arcade/reponds.js"></script>
+<script src="../js/arcade/modes.js"></script><script src="../js/arcade/accordeur.js"></script><script src="../js/arcade/dictee.js"></script>
+<script>
+window.addEventListener('load', () => {
+  try {
+    const t0 = performance.now();
+    const A = AMB.arcade, PA = AMB.pacts, Au = AMB.audition;
+    A.save = () => {}; Au.session = () => {}; Au.play = () => ({ dur: 0, at: 0, t0: 0 }); Au.stop = () => {};
+    let T = 0; A.clock = { now: () => T };
+    let kid = false; AMB.game = { isKid: () => kid, profile: () => (kid ? 'decouverte' : 'musicien') };
+    // pacts: all owned (secret ones too)
+    PA.owned = () => true;
+    const GAMES = A.games.map((g) => g.id);
+    const PLAYERS = {
+      debutant: { cents: 35, th: 0.3, rt: 2.2, replay: 0.35, lapse: 0.08 },
+      moyen: { cents: 6, th: 0.72, rt: 1.3, replay: 0.15, lapse: 0.04 },
+      expert: { cents: 3, th: 0.95, rt: 0.9, replay: 0.05, lapse: 0.02 },
+    };
+    const mul = (a) => () => { a = (a + 0x6d2b79f5) >>> 0; let t = Math.imul(a ^ (a >>> 15), a | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const logistic = (x) => 1 / (1 + Math.exp(-x));
+    // forced verdict: the plugin's check is bypassed by the simulation only
+    let forced = null;
+    for (const g of A.games) { const orig = g.check; g.check = function (ch, x) { return forced || orig.call(this, ch, x); }; }
+
+    // probability of a right answer for this challenge (served level dS)
+    function pRight(id, ch, dS, P, eff) {
+      const g = A.byId[id], cs = g.choices ? g.choices(ch) : null, guess = cs && cs.length ? 1 / cs.length : 0;
+      let F;
+      if (id === 'hautbas' || id === 'accordeur') {
+        const gap = id === 'hautbas' ? Math.abs(ch.cents) : (ch.cents ? Math.abs(ch.cents) : g.threshold(dS));
+        F = logistic(Math.log(gap / (P.cents * eff.cents)) / 0.3);
+      } else F = logistic((P.th + eff.th - dS) / 0.08);
+      return guess + (1 - guess) * (1 - P.lapse) * F;
+    }
+    const stimInfo = (id, ch) => {
+      const ev = A.byId[id].stimulus(ch) || [];
+      let end = 0, last = 0; for (const e of ev) { end = Math.max(end, (e.t || 0) + (e.dur || 0)); if (!e.hz || e.dur > 0.1) last = Math.max(last, e.t || 0); }
+      return { dur: end, info: Math.min(end, last + 0.3) };
+    };
+    // one round; returns the engine's end record + answers count
+    function round(id, P, opts, rnd) {
+      const r = A.start(id, { seed: Math.floor(rnd() * 1e9), ...opts });
+      const pacts = r.pacts, oneShot = pacts.includes('une-ecoute');
+      const eff = { th: pacts.includes('transpose') ? -0.03 : 0, cents: pacts.includes('transpose') ? 1.1 : 1 };
+      let guard = 0, out = null;
+      const off = (d) => { out = d; };
+      while (A.round && guard++ < 400) {
+        const ch = A.round.ch, R = A.round, dS = Math.min(1, R.stair.d + (pacts.includes('proches') ? A.PACT.near : 0));
+        const st = stimInfo(id, ch), startT = T;
+        R.stimEnd = startT + st.dur * 1000;
+        let p = pRight(id, ch, dS, P, eff);
+        T += st.dur * 1000;
+        const near = p > 0.35 && p < 0.85;
+        if (!oneShot && near && rnd() < P.replay) { A.replay(); T += st.dur * 1000; p = pRight(id, ch, dS, P, { th: eff.th + 0.05, cents: eff.cents * 0.85 }); }
+        const rt = id === 'reponds' ? 200 : P.rt * 1000 * Math.exp(0.35 * (rnd() + rnd() + rnd() - 1.5));
+        // the answer comes RT after the information is complete (last onset), never before the stimulus ends for the timing
+        const ansAt = startT + (R.chReplays ? st.dur * 1000 : 0) + st.info * 1000 + rt;
+        T = Math.max(T, ansAt);
+        if (pacts.includes('metronome') && T > R.stimEnd + A.PACT.metronome) { A.tick(); if (!A.round) break; if (A.round !== R || A.round.ch !== ch) { T += 300; continue; } }
+        if (A.timeLeft() <= 0) { A.tick(); break; }
+        const ok = rnd() < p;
+        forced = id === 'reponds' ? (ok ? { ok: true, bonus: 0.6 } : { ok: false, partial: 0.4 }) : { ok };
+        const res = A.answer('sim'); forced = null;
+        if (!res) break;
+        T += (res.reveal || A.REVEAL) + 300;
+        if (A.round && A.timeLeft() <= 0) A.tick();
+      }
+      if (A.round) A.end();
+      return A.last;
+    }
+    const resetStats = () => { A.s = { v: 1, profile: 'default', profiles: {} }; };
+    const mean = (a) => a.reduce((s, x) => s + x, 0) / Math.max(1, a.length);
+    const f2 = (x) => x.toFixed(2);
+
+    // ---------- A. beginner (the son): easy level won in < 1 min on every kid game, with at least 1 star ----------
+    kid = true;
+    const KIDG = A.games.filter((g) => g.kid).map((g) => g.id);
+    const kidRows = [];
+    for (const id of KIDG) {
+      const stars = [], goodAt60 = [], quick = [];
+      for (let s = 1; s <= 6; s++) {
+        resetStats(); const rnd = mul(s * 31 + id.length);
+        const e = round(id, PLAYERS.debutant, { kind: 'practice', d: 0, duration: 60000 }, rnd);
+        stars.push(e.stars); goodAt60.push(e.good);
+        resetStats();
+        const q = round(id, PLAYERS.debutant, { kind: 'practice', d: 0, dMax: 0.15, duration: 25000 }, rnd); quick.push(q.stars);
+      }
+      kidRows.push(`${id} ${Math.min(...stars)}–${Math.max(...stars)}★ (${Math.round(mean(goodAt60))} justes/60 s ; 2 min : ${Math.min(...quick)}–${Math.max(...quick)}★)`);
+      ok(Math.min(...stars) >= 1 && Math.min(...goodAt60) >= 4, `débutant, ${id} : niveau facile réussi en 1 min avec au moins 1★ (${Math.min(...stars)}★ min, ${Math.min(...goodAt60)} justes min)`);
+      if (['hautbas', 'bouge', 'modes', 'intrus'].includes(id)) ok(mean(quick) >= 1.5, `débutant, « Jouer 2 min » ${id} (25 s, plafond 0,15) : ${f2(mean(quick))}★ en moyenne (≥ 1,5)`);
+    }
+    log('débutant (6 graines) : ' + kidRows.join(' · '));
+    kid = false;
+
+    // ---------- B. average musician: where the staircase settles, stars at his level ----------
+    // d* = level where P(right) = 0.707 (2-up-1-down target) from the model; 6 rounds of 75 s from 0
+    const dStar = (id, P) => { for (let d = 0; d <= 1.0001; d += 0.01) { let p = 0, n = 0; const rr = mul(5); for (let k = 0; k < 60; k++) { const ch = A.byId[id].make(Object.assign(rr, { int: (n2) => Math.floor(rr() * n2), pick: (a) => a[Math.floor(rr() * a.length)] }), d); p += pRight(id, ch, d, P, { th: 0, cents: 1 }); n++; } if (p / n < 0.707) return d; } return 1; };
+    const lvl = {}, ratio = {}, starsAt = {};
+    for (const [name, P] of [['moyen', PLAYERS.moyen], ['expert', PLAYERS.expert]]) {
+      const rows = [];
+      for (const id of GAMES) {
+        const fin = [], st = [], rs = [], three = [];
+        for (let s = 1; s <= 3; s++) {
+          resetStats(); const rnd = mul(s * 97 + id.length);
+          for (let k = 0; k < 8; k++) {
+            const e = round(id, P, { kind: 'normal', pacts: [] }, rnd);
+            if (k >= 4) { st.push(e.stars); rs.push(e.score / A.par(e.d0, e.total)); three.push(e.stars === 3); }
+          }
+          fin.push(A.stats(id).d);
+        }
+        const ds = dStar(id, P);
+        lvl[name + id] = { fin: mean(fin), ds }; ratio[name + id] = mean(rs); starsAt[name + id] = { mean: mean(st), three: mean(three) };
+        rows.push(`${id} ${f2(mean(fin))} (d* ${f2(ds)}, ${f2(mean(st))}★, score/par ${f2(mean(rs))})`);
+        ok(Math.abs(mean(fin) - ds) <= 0.12, `${name}, ${id} : l'escalier se pose au seuil du joueur (${f2(mean(fin))} vs d* ${f2(ds)})`);
+      }
+      log(`${name} (niveau après 8 manches, étoiles des 4 dernières) : ` + rows.join(' · '));
+    }
+    // physical anchors (pitch): the average musician tops out around 0.6–0.8, the expert stays under the top
+    for (const id of ['hautbas', 'accordeur']) {
+      const m = lvl['moyen' + id].fin;
+      ok(m >= 0.55 && m <= 0.85, `musicien moyen (seuil 6 cents), ${id} : plafonne vers 0,6–0,8 (${f2(m)})`);
+    }
+    // expert: the top of the scale stays hard: P(right) at d = 1 < 0.85 on every game, and 3 stars are not guaranteed
+    for (const id of GAMES) {
+      const rr = mul(9); Object.assign(rr, { int: (n) => Math.floor(rr() * n), pick: (a) => a[Math.floor(rr() * a.length)] });
+      let p = 0; for (let k = 0; k < 60; k++) p += pRight(id, A.byId[id].make(rr, 1), 1, PLAYERS.expert, { th: 0, cents: 1 });
+      p /= 60;
+      ok(p < 0.85 && starsAt['expert' + id].three < 1, `expert, ${id} : haut de l'échelle dur (réussite à d = 1 : ${Math.round(p * 100)} %, 3★ sur ${Math.round(starsAt['expert' + id].three * 100)} % des manches)`);
+    }
+    // fairness between games: the same player at his level gets comparable stars everywhere
+    const rM = GAMES.map((id) => ratio['moyen' + id]), sM = GAMES.map((id) => starsAt['moyen' + id].mean);
+    log('équité (moyen, score / par à son niveau) : ' + GAMES.map((id, i) => `${id} ${f2(rM[i])}`).join(' · '));
+    ok(Math.max(...rM) / Math.min(...rM) <= 1.5, `équité entre jeux : score/par du musicien moyen à son niveau dans un écart ≤ ×1,5 (${f2(Math.min(...rM))}–${f2(Math.max(...rM))})`);
+    ok(Math.min(...sM) >= 1.5 && Math.max(...sM) <= 2.6, `étoiles comparables : musicien moyen à son niveau entre 1,5 et 2,6★ en moyenne sur chaque jeu (${f2(Math.min(...sM))}–${f2(Math.max(...sM))})`);
+
+    // ---------- C. pacts: value = multiplier × score with / score without, average musician from his own level ----------
+    // baseline = his best strategy without the pact: never replay (a replay already costs the ×1.5 « sans réécoute » and the combo)
+    const val = {};
+    for (const pk of PA.DEFS) {
+      const vs = [];
+      for (const id of GAMES) {
+        if (!PA.applies(id, pk.id)) continue;
+        const sc = { with: [], without: [] };
+        for (const w of ['without', 'with']) {
+          for (let s = 1; s <= 4; s++) {
+            resetStats(); A.stats(id).d = lvl['moyen' + id].fin; A.stats(id).step = 0.04;
+            const rnd = mul(s * 13 + 7);
+            for (let k = 0; k < 3; k++) sc[w].push(round(id, { ...PLAYERS.moyen, replay: 0 }, { kind: 'normal', pacts: w === 'with' ? [pk.id] : [] }, rnd).score);
+          }
+        }
+        vs.push({ id, v: mean(sc.with) / Math.max(1, mean(sc.without)) });
+      }
+      val[pk.id] = { mean: mean(vs.map((x) => x.v)), rows: vs };
+    }
+    log('pactes (moyen, score avec / sans, multiplicateur compris) : ' + PA.DEFS.map((p) => `${p.id} ×${p.mult} → ${f2(val[p.id].mean)} [${val[p.id].rows.map((x) => x.id + ' ' + f2(x.v)).join(', ')}]`).join(' · '));
+    for (const p of PA.DEFS) ok(val[p.id].mean <= 1.15, `pacte ${p.id} (×${p.mult}) pas dominant : ×${f2(val[p.id].mean)} en moyenne (≤ ×1,15)`);
+
+    // ---------- D. daily challenge: relative score by declared profile (ghost rounds of 30 s, no pact) ----------
+    const LV = { m: { coef: 1, d: 0.45 }, n: { coef: 1, d: 0.25 }, k: { coef: 0.8, d: 0.1 } }; // = AMB.daily.LEVELS (js/daily.js)
+    const DPOOL = { m: ['intrus', 'bouge', 'reponds', 'modes', 'accordeur', 'dictee'], k: ['hautbas', 'intrus', 'bouge', 'modes'] };
+    const relOf = (P, p, isKid) => {
+      kid = isKid; const sc = [];
+      for (const id of (isKid ? DPOOL.k : DPOOL.m)) for (let s = 1; s <= 4; s++) { resetStats(); sc.push(round(id, P, { kind: 'ghost', d: LV[p].d, duration: 30000 }, mul(s * 71 + id.length)).score); }
+      kid = false; return 3 * mean(sc) * LV[p].coef;
+    };
+    const R = {
+      mm: relOf(PLAYERS.moyen, 'm', false), mk: relOf(PLAYERS.moyen, 'k', true),
+      dk: relOf(PLAYERS.debutant, 'k', true), dm: relOf(PLAYERS.debutant, 'm', false), mn: relOf(PLAYERS.moyen, 'n', false),
+    };
+    log(`défi du jour, relatif (3 × 30 s) : musicien moyen déclaré musicien ${Math.round(R.mm)}, déclaré découverte ${Math.round(R.mk)} · débutant déclaré découverte ${Math.round(R.dk)}, déclaré musicien ${Math.round(R.dm)}`);
+    ok(R.mn <= R.mm * 1.05, `défi du jour : un musicien ne gagne rien à rester « standard » (${Math.round(R.mn)} vs ${Math.round(R.mm)})`);
+    ok(R.mk <= R.mm * 1.05, `défi du jour : un musicien ne gagne rien à se déclarer Découverte (${Math.round(R.mk)} vs ${Math.round(R.mm)})`);
+    ok(R.dk >= R.dm * 0.95, `défi du jour : un débutant n'est pas pénalisé en Découverte (${Math.round(R.dk)} vs ${Math.round(R.dm)})`);
+    ok(R.dk < R.mm, `défi du jour : l'oreille compte, le débutant reste derrière le musicien (${Math.round(R.dk)} < ${Math.round(R.mm)})`);
+
+    log('durée de la simulation : ' + Math.round(performance.now() - t0) + ' ms');
+    done();
+  } catch (e) { fail(e); }
+});
+</script></body></html>

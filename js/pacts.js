@@ -14,12 +14,12 @@
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const DEFS = [
-    { id: 'une-ecoute', label: 'Une écoute', mult: 1.2, hint: 'Une seule écoute : pas de Réécouter' },
+    { id: 'une-ecoute', label: 'Une écoute', mult: 1.1, hint: 'Une seule écoute : pas de Réécouter' },
     { id: 'transpose', label: 'Transposé', mult: 1.15, hint: 'Chaque défi transposé (±1 à 6 demi-tons)' },
     { id: 'proches', label: 'Leurres proches', mult: 1.3, hint: 'Défis servis plus durs : leurres plus proches, écarts plus fins' },
     { id: 'avant-fin', label: 'Avant la fin', mult: 1.25, hint: 'Réponds avant la fin du son, sinon c\'est raté' },
-    { id: 'metronome', label: 'Métronome', mult: 1.25, secret: true, hint: 'Pacte secret : 3 s après le son pour répondre' },
-    { id: 'silence', label: 'Silence', mult: 1.2, secret: true, hint: 'Pacte secret : ni verdict ni score avant la fin' },
+    { id: 'metronome', label: 'Métronome', mult: 1.1, secret: true, hint: 'Pacte secret : 3 s après le son pour répondre' },
+    { id: 'silence', label: 'Silence', mult: 1.1, secret: true, hint: 'Pacte secret : ni verdict ni score avant la fin' },
     { id: 'funambule', label: 'Funambule', mult: 1.5, secret: true, hint: 'Pacte secret : une erreur et la manche s\'arrête' },
   ];
   const byId = Object.fromEntries(DEFS.map((p) => [p.id, p]));

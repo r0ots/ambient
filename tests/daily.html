@@ -36,7 +36,7 @@ f.addEventListener('load', async ()=>{
   gs.profile='musicien'; const m=DY.level(); gs.profile='decouverte'; const k=DY.level();
   const sv=A.game.s, pf=A.game.profile; A.game.s=null; A.game.profile=()=>{ throw new Error('x'); }; const n1=DY.level(); A.game.s=sv; A.game.profile=pf;
   gs.profile=prof0;
-  ok(n0==='n' && m==='m' && k==='k' && n1==='n' && DY.rel(1000,'m')===1000 && DY.rel(1000,'k')===1350 && DY.rel(1000,'n')===1150, 'niveau : profil pas encore choisi → standard (×1,15), musicien ×1, découverte ×1,35, profil qui plante → neutre'+(hadProfile?' (game.setProfile présent)':' (profil absent)'));
+  ok(n0==='n' && m==='m' && k==='k' && n1==='n' && DY.rel(1000,'m')===1000 && DY.rel(1000,'k')===800 && DY.rel(1000,'n')===1000, 'niveau : profil pas encore choisi → standard (×1), musicien ×1, découverte ×0,8, profil qui plante → neutre'+(hadProfile?' (game.setProfile présent)':' (profil absent)'));
 
   // --- free mode: no trace; a link proposes the path, nothing stored before
   A.game.setMode('free'); A.garden.welcome(false);
@@ -132,18 +132,18 @@ f.addEventListener('load', async ()=>{
     A.game.setProfile('decouverte'); DY.view='home'; DY.show(); await wait(10);
     A.game.setProfile('musicien'); // changed after the first opening: still « découverte » today
     d.querySelector('.arc-daily [data-dj=zen]').click(); await until(()=>AR.active);
-    ok(AR.round.d0===DY.LEVELS.k.d && DY.run.p==='k' && DY.rel(1000,'k')===1350 && JSON.stringify(DY.run.plan)!==JSON.stringify(DY.plan(day,'n')), 'Découverte : départ '+DY.LEVELS.k.d+', ×1,35, tirage à part, niveau figé malgré le changement de profil');
+    ok(AR.round.d0===DY.LEVELS.k.d && DY.run.p==='k' && DY.rel(1000,'k')===800 && JSON.stringify(DY.run.plan)!==JSON.stringify(DY.plan(day,'n')), 'Découverte : départ '+DY.LEVELS.k.d+', ×0,8, tirage à part, niveau figé malgré le changement de profil');
     for(let i=0;i<3;i++){ await until(()=>AR.active); for(let j=0;j<5;j++) AR.answer(AR.round.ch.v); await wait(30); if(i<2) d.querySelector('[data-dj=next]').click(); }
     DY.addEntry(day,{n:'Léo',s:9000,p:'m',z:1});
     ok(DY.board(day,true,'k').some(x=>x.me) && !DY.board(day,true,'k').some(x=>x.n==='Léo') && DY.board(day,true,'m').some(x=>x.n==='Léo') && /Découverte/.test(d.querySelector('.arc-daily caption').textContent), 'Découverte : classement à part (Léo, musicien, dans l\'autre catégorie)');
     DY.KID_POOL=POOL0; }
   // received link for another day, a forged one, and the same name twice (best kept)
   DY.now=()=>new Date();
-  await setHash('#dj='+L.encode({v:1,day:DY.today(),n:'léo',s:8000,p:'n',z:0,r:9200}));
+  await setHash('#dj='+L.encode({v:1,day:DY.today(),n:'léo',s:8000,p:'n',z:0,r:8000}));
   await setHash('#dj='+L.encode({v:1,day:DY.today(),n:'Léo',s:2000,p:'m',z:0,r:2000}));
   await setHash('#dj='+L.encode({v:1,day:DY.today(),n:'Ana',s:3000,p:'m',z:0,r:9999}));
   const leo=DY.board().filter(x=>x.n.toLowerCase()==='léo');
-  ok(leo.length===1 && leo[0].r===9200 && !DY.board().some(x=>x.n==='Ana') && !/dj=/.test(w.location.hash), 'même joueur deux fois : une ligne, meilleur relatif gardé ; lien falsifié (Ana) ignoré');
+  ok(leo.length===1 && leo[0].r===8000 && !DY.board().some(x=>x.n==='Ana') && !/dj=/.test(w.location.hash), 'même joueur deux fois : une ligne, meilleur relatif gardé ; lien falsifié (Ana) ignoré');
   ok(d.querySelector('.arc-daily .arc-dj-board') && d.querySelectorAll('.arc-daily .arc-dj-board tbody tr').length>=2, 'tableau du classement affiché');
   DY.now=()=>new Date(2026,10,12,9); const bl=DY.backLine(); DY.now=()=>new Date();
   ok(/^★ Défi du jour 12\/11 : [\d\u202f]+ · \d+(er|e) sur \d+$/.test(bl), 'backLine() en Parcours : « '+bl+' »');

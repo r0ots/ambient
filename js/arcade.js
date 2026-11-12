@@ -82,8 +82,9 @@
   const STAIR = { step: 0.12, shrink: 0.7, minStep: 0.02, restart: 0.04, lo: 0, hi: 1 };
   const SCORE = { base: 100, levelBonus: 100, noReplay: 0.5, bonus: 0.5 };
   const REVEAL = 450; // default pause (ms) after an answer, before the next challenge (plugin hook: reveal)
-  // stars: score relative to what is expected at the level the round started at
+  // stars: score relative to what is expected for that many answers at the level the round started at (par)
   const STARS = [0.4, 0.8, 1.3];
+  const PAR = { k: 1.4, min: 3 };
   // pact rules (G9.8): level offset of « Leurres proches », max transposition (semitones), « Métronome » window (ms)
   const PACT = { near: 0.2, transpose: 6, metronome: 3000 };
   // round kinds: what a round may touch (see the header « Round kinds »)
@@ -104,7 +105,7 @@
   const arcade = {
     key: KEY,
     DURATION: 75000,
-    STAIR, SCORE, STARS, REVEAL, PACT, KINDS, KID,
+    STAIR, SCORE, STARS, PAR, REVEAL, PACT, KINDS, KID,
     games: [], byId: {},
     clock: { now: () => (window.performance ? performance.now() : Date.now()) },
     s: fresh(),
@@ -299,8 +300,10 @@
       return out;
     },
     // expected score of a whole round at level d (the star thresholds scale with it)
-    par(d, dur) { return Math.round(2400 * (0.5 + d) * ((dur || this.DURATION) / 75000)); },
-    starsFor(score, d, dur) { const p = this.par(d, dur); return STARS.filter((k) => score >= k * p).length; },
+    // expected score of n answers at level d (G11.3: per answer, not per minute: a game with long stimuli gives fewer
+    // answers, so the same ear gets comparable stars on every game; a round with fewer than PAR.min answers counts that many)
+    par(d, n) { return Math.round(PAR.k * (SCORE.base + SCORE.levelBonus * d) * Math.max(PAR.min, n | 0)); },
+    starsFor(score, d, n) { const p = this.par(d, n); return STARS.filter((k) => score >= k * p).length; },
     end(opts = {}) {
       const r = this.round; if (!r) return null;
       r.over = true;
@@ -309,7 +312,7 @@
       const st = ghost ? { ...this.stats(g.id), best: { ...this.stats(g.id).best } } : this.stats(g.id);
       // the level always follows the staircase (it is the player's ear), even after an abort
       st.d = r.stair.d; st.step = r.stair.step; st.peak = Math.max(st.peak || 0, r.peak);
-      const stars = abort || !isFinite(r.dur) ? 0 : this.starsFor(r.score, r.d0, r.dur);
+      const stars = abort || !isFinite(r.dur) ? 0 : this.starsFor(r.score, r.d0, r.history.length);
       const pk = this.pactKey(r.pacts), prev = st.best[pk];
       const counted = !abort && r.kind === 'normal'; // only a normal round counts a play and may set a record
       const record = counted && r.score > 0 && (!prev || r.score > prev.score);
