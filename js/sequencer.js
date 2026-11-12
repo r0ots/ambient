@@ -267,7 +267,8 @@
       // ---- counter-melody: slow sustained inner voice moving by step between chord tones ----
       if (step % 8 === 4 && store.get('pad.on')) this.counterStep(time, sd);
 
-      // ---- melody ----
+      // ---- melody (S4.2: on a bar line, the path may mark a phrase for the player to answer) ----
+      if (AMB.puzzles) AMB.puzzles.onStep(step, time, sd);
       if (store.get('bells.mode') === 'Phrase') this.phraseStep(step, time, sd);
       else this.randomMelodyStep(step, time, sd);
 
@@ -327,7 +328,7 @@
       return best;
     }
 
-    // the Melody's own notes; silent while an Écho's phrase is played on the same voice (v1.08), back right after
+    // the Melody's own notes; silent from a Réponse phrase (S4.2, js/puzzles.js) to the end of its answer, back right after
     melodyNote(midi, time, vel) {
       const P = AMB.puzzles;
       if (P && P.hush(time)) return;

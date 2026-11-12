@@ -14,10 +14,10 @@
     mode: null, // null = not chosen yet (behaves as free until asked), 'path' or 'free'
     nodes: [], // unlocked node ids
     contracts: [], // challenges done (contracts and Échos)
-    runs: {}, // Écho attempts in progress (phrase + tries)
+    resp: null, // « Réponse » (S4.2, puzzles.js): length reached, successes in a row, misses per gate
     active: [], prog: {}, // the active challenge (one at a time) and its progress (contracts.js)
     skipped: [], // challenges passed (back of the queue)
-    rng: null, // seed of the Écho phrases (contracts.js)
+    rng: null, // seed of the Réponse phrases (contracts.js)
     secrets: null, // secrets state (secrets.js)
     ended: false, // whole tree owned: the instrument was handed over (S3.7), no game interface any more
   });

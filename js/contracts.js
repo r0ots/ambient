@@ -1,5 +1,5 @@
-// « Jardin sonore » : challenges — small musical goals ("play 6 notes", "force 3 chords") and Échos (play a phrase
-// back, js/puzzles.js). S4.3: each one opens a node of the tree (table OPENS below), no currency. One at a time, on the
+// « Jardin sonore » : challenges — small musical goals ("play 6 notes", "force 3 chords") and gates opened by a
+// « Réponse » (answer a phrase marked in the music, js/puzzles.js). S4.3: each one opens a node of the tree (table OPENS below), no currency. One at a time, on the
 // 2nd line of the LCD, in the order of OPENS among those whose node can be reached now; ↷ passes to the next one.
 // Judged on usage only, never on taste. Progress lives in game.s.prog, completion in game.s.contracts.
 (function () {
@@ -18,10 +18,9 @@
   // a contract: { id, need: [node ids it plays with], title, goal, on: { param|act|chord|note|rec|phrase|bass(st, …) }, hint }
   // v1.06: only challenges that make the player PLAY or LISTEN to something musical (no « min then max », no « try N options »)
   const C = (id, need, title, goal, on, hint) => ({ id, need, title, goal, on, hint: hint || '' });
-  // an Écho (S3.1, js/puzzles.js): the instrument plays a phrase, the player plays it back; its length grows with the
-  // depth of the node it opens (`d`, below). `need` holds the Melody, which plays it.
-  const E = (id, need, title, intro) => ({ id, kind: 'echo', need, title, intro, goal: 1, on: {},
-    hint: 'Touche ici : l\'instrument joue une phrase, rejoue-la note à note (pastilles, A à L ou MIDI).' });
+  // a gate opened by a « Réponse » (S4.2, js/puzzles.js): during playback the Melody marks a phrase, the player plays it
+  // back right after; N notes right open the node (N from the depth of the node, `d` below). `need` holds the Melody.
+  const E = (id, need, title) => ({ id, kind: 'echo', need, title, goal: 1, on: {} });
   // counting helpers: a run of notes where each one follows `rule` from the previous one; a setting, then playing
   const run = (rule) => ({ note(st, n) { st.n = st.p && rule(st.p, n) ? (st.n || 1) + 1 : 1; st.p = { midi: n.midi, time: n.time }; } });
   const thenNotes = (test) => ({
@@ -122,13 +121,13 @@
       act(st, id) { if (id === 'songRec') st.n = 1; },
     }, 'Composer > Morceau : + Section pour garder un son (fais-en au moins deux), puis ● Rec : le morceau joue du début à la fin et s\'enregistre.'),
 
-    // Échos (they replace the « set the knobs to a target » puzzles, S4.3)
-    E('p.premier', ['t.son', 'h.pad', 'm.bells'], 'Premier reflet', 'Écoute la petite phrase, puis rejoue-la note à note.'),
-    E('p.suite', ['m.bells'], 'Suite connue', 'Une phrase qui revient : écoute-la, puis rejoue-la note à note.'),
-    E('p.composer', ['h.pad', 'm.bells'], 'Boîte à musique', 'Avant d\'écrire ta mélodie : rejoue celle-ci.'),
-    E('p.gamme', ['h.scale', 'm.bells'], 'Autre lumière', 'Une phrase dans ta gamme : écoute-la, puis rejoue-la.'),
-    E('p.espace', ['e.tape', 'm.bells'], 'La grotte', 'Une phrase qui se perd dans l\'écho : retrouve-la note à note.'),
-    E('p.mouvement', ['m.evolve', 'm.bells'], 'Pluie de notes', 'Une longue phrase qui tombe : rejoue-la goutte à goutte.'),
+    // gates opened by a Réponse (S4.3: they replaced the « set the knobs to a target » puzzles; S4.2: played in the music)
+    E('p.premier', ['t.son', 'h.pad', 'm.bells'], 'Premier reflet'),
+    E('p.suite', ['m.bells'], 'Suite connue'),
+    E('p.composer', ['h.pad', 'm.bells'], 'Boîte à musique'),
+    E('p.gamme', ['h.scale', 'm.bells'], 'Autre lumière'),
+    E('p.espace', ['e.tape', 'm.bells'], 'La grotte'),
+    E('p.mouvement', ['m.evolve', 'm.bells'], 'Pluie de notes'),
   ];
   // S4.3 — THE table: which challenge opens which node, in the order of the path (the queue follows it). Secrets open
   // their own nodes too (js/secrets.js OPENS). A node waits for its prerequisites and for what its challenge plays with
@@ -148,7 +147,11 @@
   const ORDER = Object.values(OPENS).map((id) => byId[id]).concat(DEFS.filter((d) => !d.node));
   // an Écho's difficulty from the depth of its node: 3 notes up to depth 3, one more per level, up to 6
   const depth = (id) => { const n = AMB.tree.byId[id]; return n.req.length ? 1 + Math.max(...n.req.map(depth)) : 0; };
-  for (const d of DEFS) if (d.kind === 'echo') d.d = Math.max(0, Math.min(1, (depth(d.node) - 3) / 3));
+  for (const d of DEFS) if (d.kind === 'echo') {
+    d.d = Math.max(0, Math.min(1, (depth(d.node) - 3) / 3));
+    const n = 3 + Math.round(d.d * 3); // AMB.puzzles.echoLen
+    d.hint = `Pendant la lecture, la plante Mélodie s'allume et l'écran dit « ↺ À toi » : rejoue la phrase juste après (pastilles, A à L ou MIDI). ${n} notes justes ouvrent le nœud.`;
+  }
 
   const contracts = {
     DEFS, byId, OPENS, ORDER,
@@ -179,7 +182,7 @@
       if (next) { s.active.push(next.id); s.prog[next.id] = s.prog[next.id] || { n: 0 }; }
       g.save(); g.emit('contract', { active: s.active.slice() });
     },
-    // mulberry32 whose state lives in game.s.rng (older saves get a fresh seed): the Écho phrases
+    // mulberry32 whose state lives in game.s.rng (older saves get a fresh seed): the Réponse phrases
     seed(n, g = AMB.game) { g.s.rng = n >>> 0; },
     rng(g = AMB.game) {
       if (typeof g.s.rng !== 'number') this.seed((Date.now() ^ Math.floor(Math.random() * 4294967296)) >>> 0, g);
@@ -194,7 +197,6 @@
     dispatch(ev, ...args) {
       const g = AMB.game; if (!g.counts()) return; // free mode, or the instrument handed over: nothing counts
       if (ev === 'param' && args[2] === 'game') return;
-      if (ev === 'note' && AMB.puzzles && AMB.puzzles.isEcho()) return; // an Écho's notes are the Écho's
       const s = this.state(g); let changed = false;
       for (const id of s.active.slice()) {
         const d = byId[id]; const fn = d && d.on[ev]; if (!fn) continue;
