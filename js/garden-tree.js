@@ -351,28 +351,25 @@
     tryBuy(id) {
       const T = AMB.tree, g = AMB.game, n = T.byId[id], st = T.status(id);
       if (this.seq) { this.seqFinish(); return false; }
-      const el = document.querySelector(`.tree-node[data-id="${id}"]`);
-      const shake = () => { if (AMB.juice) AMB.juice.shake(el, 5); };
       if (st === 'owned') return false;
-      if (st === 'locked') { shake(); AMB.ui.toast(`D'abord : ${n.req.filter((r) => !g.has(r)).map((r) => T.byId[r].name).join(', ')}`); return false; }
+      if (st === 'locked') { AMB.ui.toast(`D'abord : ${n.req.filter((r) => !g.has(r)).map((r) => T.byId[r].name).join(', ')}`); return false; }
       if (st === 'gated') {
         const pz = AMB.puzzles && AMB.puzzles.forNode(id);
         if (pz && pz.need.every((r) => g.has(r))) { this.openPuzzle(pz.id); return false; }
-        shake(); AMB.ui.toast(pz ? `🔒 Énigme : débloque d'abord ${pz.need.filter((r) => !g.has(r)).map((r) => T.byId[r].name).join(', ')}` : '🔒 Énigme bientôt disponible');
+        AMB.ui.toast(pz ? `🔒 Énigme : débloque d'abord ${pz.need.filter((r) => !g.has(r)).map((r) => T.byId[r].name).join(', ')}` : '🔒 Énigme bientôt disponible');
         return false;
       }
-      if (!g.canAfford(n.cost)) { shake(); AMB.ui.toast(`Il te manque ✧ ${n.cost - g.s.shards}`); return false; }
+      if (!g.canAfford(n.cost)) { AMB.ui.toast(`Il te manque ✧ ${n.cost - g.s.shards}`); return false; }
       this.unlockSeq(id);
       return true;
     },
-    // ~1.2 s: hitstop, the parent→node links light up, the node is bought (chime + burst in its branch
-    // colour), newly available children blink, then the tree closes and reveal() shows what opened.
+    // ~1.2 s: the parent→node links light up, the node is bought (chime), newly available children blink, then the tree closes and reveal() shows what opened.
     // Reduced motion: final state + chime at once, short pause, close.
     seq: null,
     unlockSeq(id) {
-      const J = AMB.juice, dlg = $('#treeDlg');
+      const dlg = $('#treeDlg');
       const el = document.querySelector(`#treeDlg .tree-node[data-id="${id}"]`);
-      const reduced = !!(J && J.reduced), still = reduced || !el || !dlg || dlg.hidden;
+      const still = this.reduced || !el || !dlg || dlg.hidden;
       const s = (this.seq = { id, t: [], hit: false, failed: false });
       if (still) {
         this.seqImpact();
@@ -380,7 +377,6 @@
         return;
       }
       this.select(null);
-      if (J) J.hitstop(90);
       el.classList.add('is-buying');
       document.querySelectorAll(`#treeDlg .tree-glow[data-to="${id}"]`).forEach((p) => { p.classList.remove('lit'); void p.getBoundingClientRect(); p.classList.add('lit'); });
       s.t.push(setTimeout(() => this.seqImpact(), SEQ.link));
@@ -388,7 +384,7 @@
     },
     seqImpact() {
       const s = this.seq; if (!s || s.hit) return; s.hit = true;
-      const T = AMB.tree, n = T.byId[s.id], J = AMB.juice;
+      const T = AMB.tree, n = T.byId[s.id];
       const kids = T.dependents(s.id), before = Object.fromEntries(kids.map((k) => [k, T.status(k)]));
       if (!T.buy(s.id)) { // shards spent meanwhile: explain, nothing else
         s.failed = true;
@@ -398,9 +394,8 @@
       AMB.ui.toast(`🌱 ${n.name} débloqué`);
       this.paintTree();
       const el = document.querySelector(`#treeDlg .tree-node[data-id="${s.id}"]`);
-      if (!el || (J && J.reduced)) return;
+      if (!el || this.reduced) return;
       el.classList.remove('is-buying'); el.classList.add('is-born');
-      if (J) J.burstAt(el, { n: 36, color: T.BRANCHES[n.branch].color, kind: 'shard', speed: 260 });
       for (const k of kids) {
         const st = T.status(k); if (st === before[k] || (st !== 'available' && st !== 'gated')) continue;
         const c = document.querySelector(`#treeDlg .tree-node[data-id="${k}"]`); if (c) c.classList.add('is-blink');

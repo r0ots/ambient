@@ -182,13 +182,7 @@
       return true;
     },
     celebrate(d) {
-      const J = AMB.juice, G = AMB.garden;
-      if (J && J.active()) {
-        const x = window.innerWidth / 2, y = window.innerHeight / 2;
-        J.burst(x, y, { n: 110, speed: 340, kind: 'shard', color: 'var(--fx-combo)' });
-        J.burst(x, y, { n: 60, speed: 230, kind: 'petal' });
-        J.flash('var(--fx-combo)', 320);
-      }
+      const G = AMB.garden;
       if (G) { if (G.chime) G.chime('solve'); if (G.lcd) G.lcd(`✦ SECRET : ${d.title}`, 6000); }
       const gift = d.reward.gift;
       if (AMB.ui && AMB.ui.toast) AMB.ui.toast(`✦ Secret trouvé : ${d.title} · +${d.reward.n} ✧${gift ? ' · ' + gift.label : ''}`);

@@ -11,11 +11,6 @@
 <script>
 document.getElementById('f').addEventListener('load', () => {
   const A = document.getElementById('f').contentWindow.AMB, doc = document.getElementById('f').contentDocument, h = location.hash;
-  if (/save-|more|garden|help-/.test(h) && A.juice) {
-    const J = A.juice; J.reduced = true;
-    ['burst', 'floatText', 'flash', 'shake', 'hitstop'].forEach(k => { J[k] = () => 0; });
-    const fx = doc.getElementById('fx'); if (fx) fx.style.display = 'none';
-  }
   if (h.includes('help-free')) { A.game.setMode('free'); A.garden.welcome(false); doc.getElementById('help').click(); return; }
   if (h.includes('free')) { A.game.setMode('free'); A.garden.welcome(false); return; }
   A.game.setMode('path'); A.game.earn(200, 'x');

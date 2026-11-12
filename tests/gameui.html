@@ -57,9 +57,9 @@ f.addEventListener('load', async ()=>{
   // a click during the sequence fast-forwards it; reduced motion = final state at once
   { A.game.earn(20,'t'); tn('h.drone').click(); ok(A.garden.seq && !A.game.has('h.drone'), 'séquence lancée');
     d.querySelector('#treeDlg .tree-card').click(); ok(!A.garden.seq && A.game.has('h.drone') && d.getElementById('treeDlg').hidden && !d.querySelector('#treeDlg .is-buying, #treeDlg .is-born, #treeDlg .tree-glow.lit'), 'clic pendant la séquence : accélérée jusqu\'à la fin');
-    A.garden.showTree(true); await wait(20); A.juice.reduced=true; tn('h.pad2').click();
+    A.garden.showTree(true); await wait(20); A.garden.reduced=true; tn('h.pad2').click();
     ok(A.game.has('h.pad2') && tn('h.pad2').classList.contains('st-owned') && !tn('h.pad2').classList.contains('is-born') && !d.querySelector('#treeDlg .tree-glow.lit') && !d.getElementById('treeDlg').hidden, 'mouvement réduit : état final tout de suite, sans animation');
-    await wait(800); ok(d.getElementById('treeDlg').hidden && !A.garden.seq, 'mouvement réduit : puis fermeture'); A.juice.reduced=false;
+    await wait(800); ok(d.getElementById('treeDlg').hidden && !A.garden.seq, 'mouvement réduit : puis fermeture'); A.garden.reduced=false;
     A.game.reset(); A.game.earn(A.tree.byId['h.pad'].cost,'t'); A.tree.buy('h.pad'); A.game.spend(A.game.s.shards); }
   // G11.1: at 390 px the map pans / zooms inside the card, nothing overflows horizontally
   { f.style.width='390px'; f.style.height='844px'; await wait(200); A.garden.showTree(true); await wait(80);
@@ -219,29 +219,10 @@ f.addEventListener('load', async ()=>{
   g.setMode('free'); ok(Math.abs(St.get('fx.echo')-0.6)<0.02 && St.get('pad.on')===true, 'retour en libre : son libre rendu');
   St.set('pad.on',false,'user'); ok(St.get('pad.on')===false, 'libre : tout modifiable');
   g.setMode('path'); ok(St.get('fx.echo')===0 && St.get('pad.on')===true, 'retour au parcours : son du parcours rendu');
-  // --- juice (G7.4)
-  const Jz=A.juice;
-  ok(Jz && ['burst','burstAt','floatText','flash','shake','hitstop'].every(k=>typeof Jz[k]==='function') && typeof A.garden.pop==='function', 'juice : fonctions présentes, garden conservé');
-  g.setMode('free'); await wait(20); d.querySelectorAll('.fx-float,.fx-flash').forEach(e=>e.remove()); Jz.pool.forEach(p=>p.on=false); Jz.alive=0;
-  ok(Jz.burst(50,50,{n:5})===0 && Jz.alive===0 && !Jz.floatText({x:5,y:5},'+1') && !Jz.flash() && !d.querySelector('.fx-float,.fx-flash'), 'libre : aucun effet, aucun canvas');
-  g.setMode('path'); await wait(20);
-  ok(Jz.burst(60,60,{n:5,kind:'shard'})===5 && !!d.getElementById('fx') && Jz.alive===5 && Jz.raf!==0, 'parcours : 5 particules, canvas #fx, boucle lancée');
-  for(let i=0;i<40 && Jz.alive>0;i++) await wait(80); await wait(60);
-  ok(Jz.alive===0 && Jz.raf===0, 'tout éteint → boucle arrêtée');
-  Jz.burst(10,10,{n:1000}); ok(Jz.alive===300, 'pool plafonné à 300 ('+Jz.alive+')'); Jz.pool.forEach(p=>p.on=false); Jz.alive=0;
-  Jz.burstAt(d.getElementById('lcdShards'),{n:3}); ok(Jz.alive===3, 'burstAt centre un élément'); Jz.pool.forEach(p=>p.on=false); Jz.alive=0;
-  const fl=Jz.floatText(d.getElementById('lcdShards'),'+3 ✧'); ok(!!fl && fl.classList.contains('fx-float'), 'floatText créé'); fl.remove();
-  d.querySelectorAll('.fx-float').forEach(e=>e.remove()); A.game.earn(4,'gain'); ok(!!d.querySelector('.fx-float') && /\+4/.test(d.querySelector('.fx-float').textContent), 'gain d\'éclats → nombre flottant sur #lcdShards');
-  Jz.reduced=true;
-  ok(Jz.burst(30,30,{n:50})===4 && Jz.pool.filter(p=>p.on).every(p=>p.vx===0&&p.vy===0), 'mouvement réduit : 4 particules immobiles');
-  Jz.pool.forEach(p=>p.on=false); Jz.alive=0;
-  const fr=Jz.floatText({x:5,y:5},'+1'); ok(fr.classList.contains('still'), 'réduit : floatText sans montée'); fr.remove();
-  const fx=Jz.flash(); ok(+fx.style.getPropertyValue('--fx-peak')<=0.1, 'réduit : flash ≤ 0,1'); fx.remove();
-  let anims=0; const sh=d.createElement('div'); d.body.append(sh); sh.animate=()=>{anims++}; const h0=Jz.hold; Jz.shake(sh,5); Jz.hitstop(50); ok(anims===0 && Jz.hold===h0, 'réduit : shake et hitstop = rien');
-  Jz.reduced=false; Jz.shake(sh,5); ok(anims===1, 'shake actif sinon'); sh.remove();
+  // --- feedback without juice (v1.06): a gain is a « +n ✧ » note under the LCD, no canvas, no flash
+  g.setMode('path'); await wait(20); A.game.earn(4,'gain'); await wait(20);
+  ok(!d.getElementById('fx') && !A.juice && /\+4 ✧/.test(d.getElementById('gainFeed').textContent), 'gain d\'éclats → note « +4 ✧ » sous le LCD, pas de canvas #fx');
   A.garden.showTree(true); A.game.s.shards=0; tn('t.rec').click(); ok(true, 'refus sans erreur'); A.garden.showTree(false);
-  A.game.earn(200,'t'); A.garden.showTree(true); await wait(20); const jnb=Jz.alive, av=A.tree.NODES.find(n=>n.cost&&A.tree.status(n.id)==='available'); A.tree.buy(av.id); ok(Jz.alive>jnb && !!d.querySelector('.fx-flash'), 'achat de nœud → burst + flash'); A.garden.showTree(false);
-  Jz.pool.forEach(p=>p.on=false); Jz.alive=0;
   g.setMode('free'); ok(!shown('#treeBtn') && !shown('#lcdShards') && !shown('#contracts'), 'pas d\'arbre, d\'éclats ni de contrats en libre');
   localStorage.removeItem('ambient.game.uitest');
   for (const k of Object.keys(localStorage)) if (k.startsWith('ambient.game.uitest')) localStorage.removeItem(k);
