@@ -54,14 +54,14 @@
     },
   });
 
-  // ======== G7.4 : AMB.juice — canvas particles, floating text, flash, shake, hitstop, combo ========
+  // ======== G7.4 : AMB.juice — canvas particles, floating text, flash, shake, hitstop ========
   const MAXP = 300;
   const mq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
   const J = (AMB.juice = {
     reduced: !!(mq && mq.matches),
     cv: null, cx: null, raf: 0, last: 0, hold: 0, alive: 0, next: 0, wired: false,
     pool: Array.from({ length: MAXP }, () => ({ on: false, x: 0, y: 0, vx: 0, vy: 0, g: 0, life: 0, max: 1, size: 3, rot: 0, vr: 0, color: '#fff', kind: 'spark', still: false })),
-    active() { return (!!AMB.game && AMB.game.path === true) || !!(AMB.arcade && AMB.arcade.open); }, // free mode: never any effect, except inside the arcade cabinet
+    active() { return !!AMB.game && AMB.game.path === true; }, // free mode: never any effect
     canvas() {
       if (this.cv) return this.cv;
       const c = document.createElement('canvas'); c.id = 'fx'; c.setAttribute('aria-hidden', 'true');
@@ -155,31 +155,6 @@
       if (!el || this.reduced || !this.active() || !el.animate) return;
       el.animate(Array.from({ length: 9 }, (_, i) => ({ transform: `translateX(${i === 8 ? 0 : (1 - i / 8) * amp * (i % 2 ? -1 : 1)}px)` })), { duration: ms, easing: 'linear' });
     },
-    // ---- combo: x1 -> x4, +1 tier every 3 hits ----
-    combo: {
-      n: 0, mult: 1, best: 0,
-      emit() { if (AMB.bus) AMB.bus.emit('juice:combo', { n: this.n, mult: this.mult, best: this.best }); J.renderCombo(); },
-      hit() { this.n++; if (this.n > this.best) this.best = this.n; const m = Math.min(4, 1 + Math.floor(this.n / 3)), up = m > this.mult; this.mult = m; this.emit(); if (up) J.pulseCombo(); return this.mult; },
-      miss() { const had = this.n > 0; this.n = 0; this.mult = 1; if (had) this.emit(); return this.mult; },
-      reset() { this.n = 0; this.mult = 1; this.best = 0; this.emit(); },
-    },
-    hit() { return this.combo.hit(); },
-    miss() { return this.combo.miss(); },
-    reset() { this.combo.reset(); },
-    get mult() { return this.combo.mult; },
-    // small reusable counter, visible only after showCombo(true) (a round is running)
-    comboEl() {
-      let e = document.getElementById('fxCombo');
-      if (!e) { e = document.createElement('div'); e.id = 'fxCombo'; e.className = 'fx-combo'; e.hidden = true; e.innerHTML = '<b>×1</b><span></span>'; document.body.append(e); }
-      return e;
-    },
-    showCombo(on = true) { const e = this.comboEl(); e.hidden = !(on && this.active()); this.renderCombo(); },
-    renderCombo() {
-      const e = document.getElementById('fxCombo'); if (!e) return;
-      e.querySelector('b').textContent = `×${this.combo.mult}`; e.querySelector('span').textContent = this.combo.n ? `${this.combo.n}` : '';
-      e.dataset.mult = this.combo.mult;
-    },
-    pulseCombo() { const e = document.getElementById('fxCombo'); if (e && !this.reduced) { e.classList.remove('up'); void e.offsetWidth; e.classList.add('up'); } },
     // ---- wiring (path only: every method above is already a no-op in free mode) ----
     wire() {
       const B = AMB.bus; if (!B || this.wired) return; this.wired = true;

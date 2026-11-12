@@ -398,7 +398,7 @@
     if (q.get('autoplay')) play().catch(() => toast('Clique sur Lecture pour démarrer'));
   }
 
-  // Help: free mode keeps the base help; the Parcours adds two levels (« Pour commencer » / « Pour aller loin ») + the base help as a third tab
+  // Help: free mode keeps the base help; the Parcours adds its own page, with the base help as a second tab
   function helpTab(d, tab) {
     d.querySelectorAll('[data-help-lvl]').forEach((e) => { e.hidden = e.dataset.helpLvl !== tab; });
     const fr = d.querySelector('.help-free'); if (fr) fr.hidden = tab !== 'basics';
@@ -410,7 +410,7 @@
     if (!on) return;
     const path = !!(AMB.game && AMB.game.path), hp = d.querySelector('.help-path'), fr = d.querySelector('.help-free');
     if (hp) hp.hidden = !path;
-    if (path) helpTab(d, 'start'); else if (fr) fr.hidden = false;
+    if (path) helpTab(d, 'path'); else if (fr) fr.hidden = false;
   }
 
   // ---------- listening mode ----------

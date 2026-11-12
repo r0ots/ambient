@@ -2,55 +2,47 @@
 <div class="more"><summary class="btn">⋯</summary><div class="menu"><button id="saveBtn" class="btn" hidden>Sauvegarde</button></div></div>
 <script src="lib.js"></script>
 <script>
-window.AMB_GAME_KEY = 'ambient.game.savetest'; window.AMB_ARCADE_KEY = 'ambient.arcade.savetest'; window.AMB_VISIT_KEY = 'ambient.visit.savetest';
-['ambient.game.savetest', 'ambient.arcade.savetest', 'ambient.visit.savetest'].forEach((k) => localStorage.removeItem(k));
-localStorage.setItem('ambient.visit.savetest', JSON.stringify({ last: Date.now() - 26 * 3600e3 })); // came back after 26 h
+window.AMB_GAME_KEY = 'ambient.game.savetest';
+localStorage.removeItem('ambient.game.savetest');
 </script>
-<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/audition.js"></script><script src="../js/arcade.js"></script><script src="../js/pacts.js"></script><script src="../js/arcade/hautbas.js"></script><script src="../js/game.js"></script><script src="../js/tree.js"></script><script src="../js/contracts.js"></script><script src="../js/puzzles.js"></script><script src="../js/secrets.js"></script><script src="../js/save.js"></script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/game.js"></script><script src="../js/tree.js"></script><script src="../js/contracts.js"></script><script src="../js/puzzles.js"></script><script src="../js/secrets.js"></script><script src="../js/save.js"></script>
 <script>
 window.addEventListener('load', async () => { try {
-  const A = AMB, g = A.game, S = A.save, a = A.arcade;
+  const A = AMB, g = A.game, S = A.save;
   const clone = (o) => JSON.parse(JSON.stringify(o));
   await wait(50);
-  // first visit stamp read before this load: 26 h away
-  ok(S.away > 0 && Date.now() - S.away > 25 * 3600e3, 'absence détectée (> 1 h) au chargement');
 
   // a played path
   g.setMode('path'); g.earn(300, 'test');
   A.tree.buy('t.son'); A.tree.buy('h.pad');
   g.solve('p.gamme', 0); g.s.stars['p.gamme'] = 2; g.discover('d1', 0);
   A.contracts.refill ? A.contracts.refill() : A.contracts.fill && A.contracts.fill();
-  const q = A.secrets.state(); q.found.tons = 1700000000000; q.secs = 600; q.gifts.timbres.push({ sec: 'bells', opt: 'Givre' }); q.gifts.pacts.push('metronome'); q.gifts.themes.push('aurore'); q.theme = 'aurore';
+  const q = A.secrets.state(); q.found.tons = 1700000000000; q.secs = 600; q.gifts.timbres.push({ sec: 'bells', opt: 'Givre' }); q.gifts.themes.push('aurore'); q.theme = 'aurore';
   g.save();
-  a.stats('hautbas').best[''] = { score: 4200, stars: 2, at: 1700000000000 }; a.stats('hautbas').plays = 3; a.stats('hautbas').d = 0.36; a.stats('hautbas').best['metronome+silence'] = { score: 900, stars: 1, at: 1700000000001 };
-  a.save();
   const have = g.s.nodes.length;
 
   // ---- build / check roundtrip
   const sv = S.build();
-  ok(sv.app === 'jardin-sonore' && sv.v === 1 && sv.game.v === 1 && sv.arcade.v === 1, 'build : enveloppe');
+  ok(sv.app === 'jardin-sonore' && sv.v === 1 && sv.game.v === 1 && Object.keys(sv).sort().join() === 'app,at,game,kind,v', 'build : enveloppe (le Parcours seul)');
   const r = S.check(clone(sv));
   ok(r.ok, 'sauvegarde valide acceptée ' + (r.error || ''));
   ok(r.ok && r.data.game.nodes.length === have && r.data.game.shards === g.s.shards, 'nœuds et ✧ conservés');
-  ok(r.ok && r.data.game.secrets.found.tons && r.data.game.secrets.gifts.pacts[0] === 'metronome' && r.data.game.secrets.theme === 'aurore', 'secrets conservés');
-  ok(r.ok && r.data.arcade.profiles.default.games.hautbas.best[''].score === 4200 && r.data.arcade.profiles.default.games.hautbas.best['metronome+silence'].stars === 1, 'records d\'arcade (dont par Pactes) conservés');
-  ok(r.ok && r.summary.records === 2 && r.summary.secrets === 1 && r.summary.nodes === have && r.summary.nodesTotal === A.tree.NODES.length, 'résumé : nœuds, records, secrets');
+  ok(r.ok && r.data.game.secrets.found.tons && r.data.game.secrets.gifts.timbres[0].opt === 'Givre' && r.data.game.secrets.theme === 'aurore', 'secrets conservés');
+  ok(r.ok && r.summary.secrets === 1 && r.summary.nodes === have && r.summary.nodesTotal === A.tree.NODES.length, 'résumé : nœuds, secrets');
   const canon = (o) => JSON.stringify(o, (k, v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort()) : v));
   const want = Object.assign({}, clone(g.s), { runs: {} }), diff = Object.keys(want).concat(Object.keys(r.data.game)).filter((k, i, ar) => ar.indexOf(k) === i && canon(want[k]) !== canon(r.data.game[k]));
   ok(!diff.length, 'aller-retour identique (hors tentatives en cours) ' + diff.join(','));
 
   // ---- unknown extras kept, bad ones refused, never an exception
-  const ex = clone(sv); ex.game.newThing = { a: 1 }; ex.arcade.profiles.default.games.hautbas.fresh = 5; ex.game.__proto__x = 1;
-  const rex = S.check(ex); ok(rex.ok && rex.data.game.newThing.a === 1 && rex.data.arcade.profiles.default.games.hautbas.fresh === 5, 'champs inconnus simples conservés');
+  const ex = clone(sv); ex.game.newThing = { a: 1 }; ex.game.__proto__x = 1;
+  const rex = S.check(ex); ok(rex.ok && rex.data.game.newThing.a === 1, 'champs inconnus simples conservés');
   const mut = (f) => { const c = clone(sv); f(c); return c; };
   const bads = {
     null: null, nombre: 42, tableau: [], 'autre appli': mut((c) => { c.app = 'x'; }), 'version 2': mut((c) => { c.v = 2; }), 'jeu v2': mut((c) => { c.game.v = 2; }),
     'mode inconnu': mut((c) => { c.game.mode = 'zen'; }), '✧ négatifs': mut((c) => { c.game.shards = -1; }), '✧ flottants': mut((c) => { c.game.shards = 1.5; }), '✧ > gagnés': mut((c) => { c.game.shards = c.game.earned + 5; }),
     '✧ énormes': mut((c) => { c.game.shards = 1e12; c.game.earned = 1e12; }), 'nœud inconnu': mut((c) => { c.game.nodes.push('zzz'); }), 'nœuds pas liste': mut((c) => { c.game.nodes = 'racine'; }),
     'id piégé': mut((c) => { c.game.found.push('<img src=x onerror=1>'); }), 'étoiles 9': mut((c) => { c.game.stars['p.gamme'] = 9; }), 'secret inconnu': mut((c) => { c.game.secrets.found.nope = 1; }),
-    'thème non possédé': mut((c) => { c.game.secrets.theme = 'neon'; }), 'arcade absente': mut((c) => { delete c.arcade; }), 'd hors bornes': mut((c) => { c.arcade.profiles.default.games.hautbas.d = 3; }),
-    'score négatif': mut((c) => { c.arcade.profiles.default.games.hautbas.best[''].score = -5; }), 'mini-jeu inconnu': mut((c) => { c.arcade.profiles.default.games.fantome = c.arcade.profiles.default.games.hautbas; }),
-    'profil actif absent': mut((c) => { c.arcade.profile = 'autre'; }), 'jeu absent': mut((c) => { delete c.game; }), 'NaN': mut((c) => { c.game.secrets.secs = 'x'; }),
+    'thème non possédé': mut((c) => { c.game.secrets.theme = 'neon'; }), 'jeu absent': mut((c) => { delete c.game; }), 'NaN': mut((c) => { c.game.secrets.secs = 'x'; }),
   };
   let allBad = true, thrown = 0;
   for (const [k, v] of Object.entries(bads)) { let res; try { res = S.check(v); } catch (e) { thrown++; res = { ok: true }; } if (res.ok) { allBad = false; log('ERROR accepté : ' + k); } }
@@ -59,24 +51,12 @@ window.addEventListener('load', async () => { try {
   ok(true, 'textes invalides (vide, JSON cassé, trop gros…) : message, pas d\'exception');
   ok(S.parse(JSON.stringify(sv)).ok, 'parse d\'un fichier valide');
 
-  // ---- wave 4 integration: player profile + placement (G8.4), pacts ticked (G9.8), daily challenge (G10.2/G10.5); latency stays per device
-  g.setProfile('decouverte'); g.s.placed = ['h.pad']; g.s.placement = { at: 1700000000000, passed: ['harmonie'] }; g.save();
-  a.stats('hautbas').pacts = ['une-ecoute', 'proches']; a.save();
-  const fakeDaily = { s: { v: 1, name: 'Max', days: { '2026-11-12': { c: { s: 9800, r: 11270, p: 'n', at: 1 } } }, board: { '2026-11-12': [{ n: 'Léo', s: 12400, r: 12400, p: 'm', z: 0, at: 2 }, { n: 'Max', s: 9800, r: 11270, p: 'n', z: 0, at: 3, me: 1 }] } }, saved: 0, save() { this.saved++; } };
-  A.daily = fakeDaily;
-  const sv4 = S.build(), r4 = S.check(clone(sv4));
-  ok(r4.ok && r4.data.game.profile === 'decouverte' && r4.data.game.placed[0] === 'h.pad' && r4.data.game.placement.passed[0] === 'harmonie', 'profil joueur et test de placement exportés ' + (r4.error || ''));
-  ok(r4.ok && r4.data.arcade.profiles.default.games.hautbas.pacts.join() === 'une-ecoute,proches', 'pactes cochés exportés');
-  ok(r4.ok && r4.data.daily.name === 'Max' && r4.data.daily.board['2026-11-12'].length === 2 && r4.data.daily.days['2026-11-12'].c.s === 9800, 'défi du jour (nom, essai, classement) exporté');
-  ok(!JSON.stringify(sv4).includes('latency') && !('latency' in sv4), 'latence non exportée (par appareil)');
-  const bad4 = { 'profil inconnu': (c) => { c.game.profile = 'pro'; }, 'pacte inconnu': (c) => { c.arcade.profiles.default.games.hautbas.pacts = ['triche']; }, 'nœud placé inconnu': (c) => { c.game.placed = ['zzz']; },
-    'jour mal formé': (c) => { c.daily.days['12/11'] = {}; }, 'niveau du défi inconnu': (c) => { c.daily.board['2026-11-12'][0].p = 'x'; }, 'nom piégé': (c) => { c.daily.board['2026-11-12'][0].n = '<b>'; }, 'score du jour négatif': (c) => { c.daily.days['2026-11-12'].c.s = -1; } };
-  ok(Object.entries(bad4).every(([k, f]) => { const c = clone(sv4); f(c); const res = S.check(c); if (res.ok) log('ERROR accepté : ' + k); return !res.ok; }), 'validation : profil, pactes, placement et défi du jour (' + Object.keys(bad4).length + ' cas refusés)');
-  const old = clone(sv4); delete old.daily; delete old.game.profile; delete old.game.placed; delete old.game.placement;
-  const rOld = S.check(old); ok(rOld.ok && rOld.data.game.profile === null && !rOld.data.daily, 'ancienne sauvegarde (v1.00) : profil non choisi, défi du jour non touché');
-  g.setProfile('musicien'); a.stats('hautbas').pacts = []; fakeDaily.s = { v: 1, name: '', days: {}, board: {} };
-  ok(S.apply(r4, false) && g.s.profile === 'decouverte' && g.isKid() && a.stats('hautbas').pacts.join() === 'une-ecoute,proches' && fakeDaily.s.name === 'Max' && fakeDaily.saved === 1 && fakeDaily.s.board['2026-11-12'].length === 2, 'import : profil, pactes et défi du jour restaurés');
-  delete A.daily; g.s.profile = null; g.s.placed = []; g.s.placement = null; a.stats('hautbas').pacts = []; g.save(); a.save();
+  // ---- v1.05: a save link of v1.04 (fields of removed features) still imports, those fields unused
+  { const ro = await S.decode(OLD_SAVE);
+    ok(ro.ok && ro.data.game.shards === 321 && Object.keys(ro.data).sort().join() === 'at,game' && Object.keys(ro.data.game.secrets.gifts).sort().join() === 'mirror,themes,timbres', 'ancienne sauvegarde v1.04 : acceptée, champs retirés ignorés ' + (ro.error || ''));
+    const keys0 = Object.keys(localStorage).sort().join();
+    S.apply(ro, false); ok(g.s.shards === 321 && Object.keys(localStorage).sort().join() === keys0, 'import : seule la progression du Parcours est écrite');
+    S.apply(S.check(clone(sv)), false); }
 
   // ---- link
   const code = await S.encode(); ok(/^[zb][A-Za-z0-9_-]+$/.test(code), 'lien : ' + code[0] + ' (' + code.length + ' car.)');
@@ -103,7 +83,7 @@ window.addEventListener('load', async () => { try {
   // ---- import UI: confirm, cancel, replace
   let reloads = 0; S.reload = () => { reloads++; };
   const snapNodes = g.s.nodes.slice(), snapShards = g.s.shards;
-  const other = clone(sv); other.game.shards = 7; other.game.earned = 400; other.game.nodes = ['racine']; other.arcade.profiles.default.games.hautbas.best[''].score = 9999;
+  const other = clone(sv); other.game.shards = 7; other.game.earned = 400; other.game.nodes = ['racine'];
   S.open();
   ok(!document.getElementById('saveDlg').hidden, 'panneau ouvert');
   ok(document.querySelector('#saveDlg [data-act=file]') && document.querySelector('#saveDlg [data-act=link]'), 'boutons fichier et lien');
@@ -116,57 +96,14 @@ window.addEventListener('load', async () => { try {
   document.querySelector('[data-act=cancel]').click(); await wait(20);
   ok(g.s.shards === snapShards && reloads === 0, 'annuler : rien remplacé');
   S.confirm(S.check(other)); document.querySelector('[data-act=replace]').click(); await wait(20);
-  ok(g.s.shards === 7 && g.s.nodes.length === 1 && a.stats('hautbas').best[''].score === 9999 && reloads === 1, 'remplacer : progression + records remplacés, rechargement');
-  ok(JSON.parse(localStorage.getItem('ambient.game.savetest')).shards === 7 && JSON.parse(localStorage.getItem('ambient.arcade.savetest')).profiles.default.games.hautbas.best[''].score === 9999, 'sauvegardé en localStorage');
+  ok(g.s.shards === 7 && g.s.nodes.length === 1 && reloads === 1, 'remplacer : progression remplacée, rechargement');
+  ok(JSON.parse(localStorage.getItem('ambient.game.savetest')).shards === 7, 'sauvegardé en localStorage');
   S.close();
 
-  // ---- « depuis ta dernière visite »
-  g.setMode('path'); g.s.shards = 0; g.save();
-  A.contracts.state(); g.s.active = ['k.couleur']; g.s.prog = { 'k.couleur': { n: 1 } }; g.s.nodes = ['racine'];
-  const shardsBefore = g.s.shards, earnedBefore = g.s.earned;
-  const bc = S.backCard(Date.now() - 5 * 3600e3);
-  ok(bc && bc.lines.some((l) => /Contrat en cours/.test(l.k) && /1\/3/.test(l.v)), 'encart : contrat en cours avec progression');
-  ok(bc.lines.some((l) => /Prochain nœud/.test(l.k)), 'encart : prochain nœud');
-  ok(!bc.lines.some((l) => /Défi du jour/.test(l.k)), 'pas de défi du jour : ligne absente (repli)');
-  A.daily = {}; ok(S.backCard(1).lines.some((l) => l.k === 'Défi du jour' && /Arcade/.test(l.v)), 'défi du jour sans backLine : ligne générique');
-  A.daily = { backLine: () => 'même graine pour tous' }; ok(S.backCard(1).lines.some((l) => l.v === 'même graine pour tous'), 'défi du jour : backLine utilisée');
-  A.daily = { backLine() { throw new Error('boom'); } }; ok(!!S.backCard(1), 'module du défi en erreur : repli sans exception'); delete A.daily;
-  ok(g.s.shards === shardsBefore && g.s.earned === earnedBefore, 'aucun gain pendant l\'absence');
-  S.refreshCard(S.away);
-  const card = document.getElementById('backCard');
-  ok(card && /Depuis ta dernière visite/.test(card.textContent) && /Rien n'a bougé/.test(card.textContent) && document.querySelector('.more > summary').classList.contains('has-back'), 'encart rendu dans le menu ⋯ + pastille');
-  card.querySelector('.back-x').click(); ok(!document.getElementById('backCard'), 'encart masquable');
-  g.setMode('free'); ok(S.backCard(1) === null, 'mode libre : aucun encart');
-  ok(document.getElementById('saveBtn').hidden, 'mode libre : bouton de sauvegarde caché');
+  // ---- the button lives in the ⋯ menu, path only
+  g.setMode('free'); ok(document.getElementById('saveBtn').hidden, 'mode libre : bouton de sauvegarde caché');
   g.setMode('path'); ok(!document.getElementById('saveBtn').hidden, 'Parcours : bouton visible');
-  // short absence = no card
-  S.touch(Date.now() - 600e3); S.init(); ok(!S.away, 'retour après 10 min : pas d\'encart');
-  S.touch(Date.now() - 2 * 3600e3); S.init(); ok(S.away > 0, 'retour après 2 h : encart');
-  // ---- v1.02 anti-cheat: importing a save never erases a daily try already made (nor the day's frozen level)
-  { const day = '2026-11-12', mineTry = { s: 5000, r: 5750, p: 'n', at: 1 };
-    let saved = 0;
-    A.daily = { s: { v: 1, name: 'Max', days: { [day]: { p: 'n', c: mineTry } }, board: { [day]: [{ n: 'Max', s: 5000, r: 5750, p: 'n', z: 0, at: 1, me: 1 }] } }, save() { saved++; }, prune() {} };
-    const old = S.build(); old.daily = { v: 1, name: 'Max', days: {}, board: { [day]: [{ n: 'Léo', s: 900, r: 900, p: 'm', z: 0, at: 1 }] } };
-    const res = S.check(old); S.apply(res, false);
-    const D = A.daily.s;
-    ok(res.ok && D.days[day] && D.days[day].c.s === 5000 && D.days[day].p === 'n' && D.board[day].some((e) => e.me && e.s === 5000) && D.board[day].some((e) => e.n === 'Léo') && saved === 1, 'import d\'une ancienne sauvegarde : l\'essai du jour déjà fait reste (score 5000, niveau figé), classement fusionné');
-    const withTry = S.build(); withTry.daily.days[day].c = { s: 1, r: 1, p: 'n', at: 2 };
-    S.apply(S.check(withTry), false);
-    ok(A.daily.s.days[day].c.s === 5000, 'import d\'une sauvegarde au score différent : l\'essai déjà présent gagne');
-    ok(S.check({ ...S.build(), daily: { v: 1, name: '', days: { [day]: { p: 'x' } }, board: {} } }).ok === false, 'niveau figé du jour invalide → refusé');
-    delete A.daily; }
-  // ---- v1.02: a #save link opened in free mode first offers to switch to the path (like #dj / #df)
-  { const code = await S.encode(); localStorage.setItem('ambient.game.svfree', JSON.stringify({ v: 1, mode: 'free' }));
-    const f = document.createElement('iframe'); f.style.cssText = 'width:900px;height:600px;border:0';
-    document.body.append(f);
-    f.src = '../index.html?gamekey=ambient.game.svfree&arcadekey=ambient.arcade.svfree&dailykey=ambient.daily.svfree#save=' + code;
-    await new Promise((r) => f.addEventListener('load', r, { once: true })); await wait(400);
-    const fd = f.contentDocument, cz = fd.getElementById('cousinDlg'), sd = fd.getElementById('saveDlg');
-    ok(cz && !cz.hidden && /Sauvegarde reçue/.test(cz.textContent) && (!sd || sd.hidden) && f.contentWindow.AMB.game.s.mode === 'free', 'lien #save en mode libre : propose d\'abord le Parcours, rien remplacé');
-    cz.querySelector('[data-cz=path]').click(); await wait(300);
-    const sd2 = fd.getElementById('saveDlg');
-    ok(f.contentWindow.AMB.game.path && sd2 && !sd2.hidden && /Remplacer ta progression/.test(sd2.textContent), '« Passer en Parcours » : puis la confirmation d\'import');
-    f.remove(); ['game', 'arcade', 'daily'].forEach((k) => localStorage.removeItem('ambient.' + k + '.svfree')); }
+  localStorage.removeItem('ambient.game.savetest');
   log('DONE');
 } catch (e) { fail(e); } });
 </script></body></html>

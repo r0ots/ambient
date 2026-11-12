@@ -219,12 +219,12 @@
       // motifs mutated by the piano roll's « Variation » are saved as the user drew them
       const orig = AMB.pianoRoll && AMB.pianoRoll.originals ? AMB.pianoRoll.originals() : {};
       for (const [k, v] of Object.entries(orig)) if (v != null && k in snap) snap[k] = v;
-      // while the game borrows the sound (a puzzle's target, a duel's Mastermind), the player's own values are what counts
+      // while the game borrows the sound (a puzzle's target), the player's own values are what counts
       Object.assign(snap, this.borrowed());
       return snap;
     }
     // « Borrowing the sound » (source 'game'): a game mode plays other values on the real ambience for a while
-    // (puzzles' « ▶ cible », the duel's Mastermind). borrow(owner, vals) remembers the player's own value of each key
+    // (puzzles' « ▶ cible »). borrow(owner, vals) remembers the player's own value of each key
     // the first time this owner takes it, then sets vals; giveBack(owner, skip?) puts them back (except `skip`, a key
     // the player has just changed). While anything is borrowed: stableSnapshot() (journal, patches, mode snapshots)
     // sees the player's values, AMB.game.freePlay() is false, and a mode change gives everything back (js/tree.js).

@@ -1,18 +1,21 @@
 <!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
-<!-- Jardin visuel (G11.2): placement from the state (deterministic), reaction to the bus events, no gain, pause off
+<!-- Jardin visuel (G11.2): positions from the state (deterministic), reaction to the bus events, no gain, pause off
      screen / hidden tab, Parcours-only mode (free mode intact), reduced motion, cost per frame at 1280×800. No audio. -->
 <script src="lib.js"></script>
 <script>
-window.AMB_GAME_KEY = 'ambient.game.test-gv'; window.AMB_ARCADE_KEY = 'ambient.arcade.test-gv';
-[window.AMB_GAME_KEY, window.AMB_ARCADE_KEY, 'ambient.vizMode', 'ambient.vizMode.path'].forEach((k) => localStorage.removeItem(k));
+window.AMB_GAME_KEY = 'ambient.game.test-gv';
+[window.AMB_GAME_KEY, 'ambient.vizMode', 'ambient.vizMode.path'].forEach((k) => localStorage.removeItem(k));
 testBus(); AMB.engine = {}; // no audio: the visual's classic modes draw without an analyser
+// a slice of the real tree (js/tree.js): a node belongs to a layer through its settings
+AMB.tree = { NODES: [['racine', 'drone.on'], ['t.son', 'drone.wave'], ['h.drone', 'drone.follow'], ['h.pad', 'pad.on'], ['h.pad2', 'pad.attack'], ['h.prog', 'pad.prog'],
+  ['m.bells', 'bells.on'], ['m.phrase', 'bells.mode'], ['m.grains', 'grains.on'], ['c.seq', 'seq.on'], ['c.bass', 'bass.*'], ['c.perc', 'perc.*'], ['e.texture', 'texture.*'], ['e.reverb', '*.send']].map(([id, p]) => ({ id, params: [p] })) };
 </script>
-<script src="../js/arcade.js"></script><script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script>
+<script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script>
 <canvas id="c" width="1280" height="800" style="width:640px;height:400px;display:block"></canvas>
 <script>
 window.addEventListener('load', async () => {
   try {
-    const G = AMB.game, A = AMB.arcade, V = AMB.visual, GV = AMB.gardenVisual, cv = document.getElementById('c');
+    const G = AMB.game, V = AMB.visual, GV = AMB.gardenVisual, cv = document.getElementById('c');
     V.c = cv; V.g = cv.getContext('2d'); V.dpr = 1;
     const frame = () => V.draw();
 
@@ -31,23 +34,20 @@ window.addEventListener('load', async () => {
     ok(V.mode === 'Horizon' && !GV.active, 'libre : un Jardin forcé retombe sur le choix du libre, rien n\'est dessiné');
     G.setMode('path'); ok(V.mode === 'Jardin', 'Parcours : le Jardin revient');
 
-    // --- state read-only, deterministic placement
+    // --- state read-only, deterministic positions
     G.s.nodes = ['racine', 'h.pad', 'm.bells'];
-    const before = { g: JSON.stringify(G.s), a: JSON.stringify(A.s), lg: localStorage.getItem(G.key), la: localStorage.getItem(A.key) };
+    const before = { g: JSON.stringify(G.s), lg: localStorage.getItem(G.key) };
     let st = GV.readState();
     ok(st.layers.join() === 'drone,pad,bells' && st.secrets.length === 0, 'une plante par couche débloquée : ' + st.layers.join(', '));
-    ok(JSON.stringify(A.s) === before.a, 'lecture de l\'arcade sans créer d\'entrée (pas de arcade.stats)');
+    ok(JSON.stringify(G.s) === before.g, 'lecture seule de l\'état du jeu');
     const l1 = GV.layout(st, 1280, 800), l2 = GV.layout({ ...st, layers: st.layers.slice().reverse() }, 1280, 800);
-    ok(JSON.stringify(l1) === JSON.stringify(l2) && JSON.stringify(l1) === JSON.stringify(GV.layout(GV.readState(), 1280, 800)), 'placement déterministe (même état → mêmes positions, ordre des données indifférent)');
+    ok(JSON.stringify(l1) === JSON.stringify(l2) && JSON.stringify(l1) === JSON.stringify(GV.layout(GV.readState(), 1280, 800)), 'positions déterministes (même état → mêmes positions, ordre des données indifférent)');
     ok(l1.plants.every((p) => p.x > 0 && p.x < 1280) && l1.plants[0].x < l1.plants[1].x && l1.plants[1].x < l1.plants[2].x, 'plantes réparties dans l\'écran, ordre fixe des couches : ' + l1.plants.map((p) => p.x).join(' / '));
-    // advanced: more layers, arcade levels, pact records, secrets
-    G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.bass', 'c.perc', 'e.texture'];
-    A.s.profiles.default = { games: { modes: { d: 0.7, peak: 0.85, best: { '': { score: 1 }, 'une-ecoute': { score: 2 }, 'proches+une-ecoute': { score: 3 } } }, accordeur: { d: 0.1, peak: 0.15, best: {} } } };
+    // advanced: more layers and nodes, secrets
+    G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.phrase', 'm.grains', 'c.seq', 'c.bass', 'c.perc', 'e.texture'];
     G.s.secrets = { found: { jazz: 1, tons: 2 } };
     st = GV.readState();
-    ok(st.layers.length === 8 && st.levels.bells === 0.85 && st.levels.drone === 0.15 && st.levels.pad === 0 && st.flowers.bells === 2 && st.flowers.drone === 0, 'taille = niveau atteint en arcade (Mélodie ↔ Chasseur de modes 85 %), fleurs = pactes distincts des records (2)');
-    const lp = GV.layout(st, 1280, 800).plants, pb = lp.find((p) => p.id === 'bells'), pPad = lp.find((p) => p.id === 'pad');
-    ok(pb.played && !pPad.played && GV.label(pPad, 14, 999).width < GV.label(pb, 14, 999).width, 'jeu jamais joué : « PAD — » au lieu de « PAD 0% »');
+    ok(st.layers.length === 8 && st.levels.bells === 1 && Math.abs(st.levels.drone - 1 / 3) < 1e-9 && Math.abs(st.levels.pad - 1 / 3) < 1e-9 && st.levels.bass === 1, 'taille = part des nœuds de la couche débloqués (Mélodie 2/2, Drone 1/3, Pad 1/3)');
     { const W = 700, H = 360; st.levels.bass = 1; GV.refresh(W, H, true); const tall = GV.plants.find((p) => p.id === 'bass') || GV.plants[0];
       const top = tall.y - GV.sprite({ ...tall, level: 1 }, GV.px).h;
       ok(top >= H * GV.ceil - GV.px, 'plafond : la plus haute plante (niveau 1) reste sous le HUD (haut ' + top + ' px ≥ ' + Math.round(H * GV.ceil) + ' px)');
@@ -55,7 +55,7 @@ window.addEventListener('load', async () => {
     const a1 = GV.layout(st, 1280, 800), a2 = GV.layout({ ...st, secrets: ['tons'] }, 1280, 800);
     ok(a1.rares.length === 2 && JSON.stringify(a1.plants) === JSON.stringify(a2.plants) && a1.rares.find((r) => r.id === 'secret:tons').x === a2.rares[0].x, 'plantes rares = secrets (2), un secret de plus ne déplace rien d\'autre');
     const sB = GV.sprite(a1.plants.find((p) => p.id === 'bells'), 4), sD = GV.sprite(a1.plants.find((p) => p.id === 'drone'), 4);
-    ok(sB.hC > sD.hC + 20, 'plante plus haute quand le niveau est plus haut (' + sB.hC + ' vs ' + sD.hC + ' cellules)');
+    ok(sB.hC > sD.hC + 15, 'plante plus haute quand plus de nœuds de sa couche sont débloqués (' + sB.hC + ' vs ' + sD.hC + ' cellules)');
     const misses = GV.cacheMisses; GV.sprite(a1.plants.find((p) => p.id === 'bells'), 4);
     ok(GV.cacheMisses === misses, 'sprites en cache (pas de re-rendu)');
 
@@ -104,12 +104,11 @@ window.addEventListener('load', async () => {
     G.earn = ge; AMB.bus.emit = be;
     const foreign = emitted.filter((e) => !['note', 'perc', 'grain', 'chord'].includes(e));
     ok(earns === 0 && foreign.length === 0, 'aucun gain : ni earn, ni store, ni événement émis par le jardin');
-    G.s.nodes = ['racine', 'h.pad', 'm.bells']; delete G.s.secrets; A.s.profiles = JSON.parse(before.a).profiles;
-    ok(localStorage.getItem(G.key) === before.lg && localStorage.getItem(A.key) === before.la, 'aucune sauvegarde du jeu ou de l\'arcade écrite par le jardin');
+    G.s.nodes = ['racine', 'h.pad', 'm.bells']; delete G.s.secrets;
+    ok(localStorage.getItem(G.key) === before.lg, 'aucune sauvegarde du jeu écrite par le jardin');
 
     // --- cost per frame at 1280×800 (advanced garden, notes every frame), real rAF
     G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.bass', 'c.perc', 'e.texture'];
-    A.s.profiles.default = { games: { modes: { peak: 0.85, best: { 'une-ecoute': 1, 'proches+transpose': 1 } }, dictee: { peak: 0.6, best: { proches: 1 } }, accordeur: { peak: 0.4, best: {} }, hautbas: { peak: 1, best: { 'avant-fin+une-ecoute': 1 } }, reponds: { peak: 0.5, best: {} }, intrus: { peak: 0.7, best: {} }, bouge: { peak: 0.3, best: {} } } };
     G.s.secrets = { found: { jazz: 1, tons: 1, dim: 1, lent: 1 } };
     GV.sig = null; GV.times.length = 0;
     const layers = ['pad', 'bells', 'seq', 'bass'];

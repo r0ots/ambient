@@ -8,18 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=VT323&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/arcade.css">
-  <link rel="stylesheet" href="css/arcade-intrus.css">
-  <link rel="stylesheet" href="css/arcade-bouge.css">
-  <link rel="stylesheet" href="css/arcade-reponds.css">
-  <link rel="stylesheet" href="css/arcade-modes.css">
-  <link rel="stylesheet" href="css/arcade-accordeur.css">
-  <link rel="stylesheet" href="css/arcade-dictee.css">
   <link rel="stylesheet" href="css/save.css">
-  <link rel="stylesheet" href="css/placement.css">
-  <link rel="stylesheet" href="css/pacts.css">
-  <link rel="stylesheet" href="css/latency.css">
-  <link rel="stylesheet" href="css/daily.css">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon.svg">
@@ -76,9 +65,6 @@
         </div>
         <div class="tgrp tree-grp"><small>Jardin</small>
           <div class="tgrp-row"><button id="treeBtn" class="btn tree-btn" title="L'arbre du jardin : ce que tu as débloqué et ce qui t'attend">🌱 Arbre<i class="tree-badge" hidden></i></button></div>
-        </div>
-        <div class="tgrp arcade-grp"><small>Arcade</small>
-          <div class="tgrp-row"><button id="arcadeBtn" class="btn arcade-btn" title="Arcade de l'oreille : manches courtes pour entraîner ton oreille (sans effet sur ton son)">🕹 Arcade</button></div>
         </div>
         <span id="sleepLeft" class="sleep-left" title="Minuteur de sommeil"></span>
         <details class="more">
@@ -164,19 +150,6 @@
       </div>
     </div>
 
-    <div id="endDlg" class="modal" hidden>
-      <div class="modal-card welcome-card end-card" role="dialog" aria-label="Jardin complet">
-        <h3>✦ Ton jardin est complet</h3>
-        <p>Tout l'outil est à toi : chaque couche, chaque effet, chaque outil de composition. Tu n'as plus rien à débloquer.</p>
-        <ul class="end-stats"></ul>
-        <p class="end-left"></p>
-        <div class="end-btns">
-          <button class="btn" data-end="stay">Continuer à jouer</button>
-          <button class="btn" data-end="tree">Voir l'arbre</button>
-        </div>
-      </div>
-    </div>
-
     <div id="treeDlg" class="modal" hidden>
       <div class="modal-card tree-card" role="dialog" aria-label="Arbre du jardin">
         <button class="modal-x" data-close>✕</button>
@@ -193,92 +166,35 @@
       </div>
     </div>
 
-    <div id="arcadeDlg" class="modal arcade" hidden>
-      <div class="arc-cab" role="dialog" aria-label="Arcade de l'oreille">
-        <button class="arc-x" data-close title="Quitter l'arcade (Échap)">✕</button>
-        <section class="arc-menu">
-          <h3 class="arc-title">ARCADE DE L'OREILLE</h3>
-          <p class="arc-sub">Choisis une cartouche · manches de 75 s · Échap pour sortir</p>
-          <p class="arc-msg" role="status" hidden></p>
-          <div class="arc-carts"></div>
-        </section>
-        <section class="arc-play" hidden>
-          <div class="arc-hud"><span class="arc-time">75</span><b class="arc-game"></b><span class="arc-score">000000</span><span class="arc-combo-slot"></span></div>
-          <div class="arc-bar"><i></i></div>
-          <div class="arc-stage"></div>
-          <div class="arc-choices"></div>
-          <div class="arc-tools"><button class="btn arc-replay" title="Réécouter (R) : la bonne réponse rapporte moins et ne fait pas monter le combo">↻ Réécouter <kbd>R</kbd></button><span class="arc-level"></span></div>
-        </section>
-        <section class="arc-end" hidden>
-          <p class="arc-end-game"></p>
-          <div class="arc-end-score">000000</div>
-          <div class="arc-stars"></div>
-          <p class="arc-record" hidden>RECORD !</p>
-          <p class="arc-end-stats"></p>
-          <div class="arc-end-btns"><button class="btn arc-again">↻ Rejouer</button><button class="btn arc-menu-btn">Menu</button></div>
-        </section>
-      </div>
-    </div>
-
     <div id="helpDlg" class="modal" hidden>
       <div class="modal-card" role="dialog" aria-label="Aide">
         <button class="modal-x" data-close>✕</button>
         <h3>Comment ça marche</h3>
         <div class="help-path" hidden>
-          <div class="help-tabs"><button class="btn primary" data-help-tab="start">Pour commencer</button> <button class="btn" data-help-tab="far">Pour aller loin</button> <button class="btn" data-help-tab="basics">Les bases du son</button></div>
-          <div class="help-lvl" data-help-lvl="start">
+          <div class="help-tabs"><button class="btn primary" data-help-tab="path">Le Parcours</button> <button class="btn" data-help-tab="basics">Les bases du son</button></div>
+          <div class="help-lvl" data-help-lvl="path">
             <div class="help-grid">
               <div><h4>Le principe</h4><ul>
                 <li>Tu pars avec <b>une seule note</b>. Chaque réglage s'ouvre quand tu le mérites.</li>
                 <li>Joue, touche, essaie : tu gagnes des <b>✧ éclats</b>.</li>
                 <li>Ouvre l'<b>🌱 Arbre</b> et dépense-les pour débloquer la suite.</li></ul></div>
               <div><h4>Gagner des éclats</h4><ul>
-                <li><b>Découvrir</b> un réglage en le touchant</li>
+                <li><b>Découvrir</b> un réglage en le touchant pendant la lecture</li>
                 <li><b>Contrats</b> : un petit défi d'usage (« coupe le drone, rallume-le »)</li>
-                <li><b>Énigmes</b> : retrouve un son cible à l'oreille, en 6 essais. ▶ cible / ◀ mon son</li></ul></div>
-              <div><h4>Arcade</h4><ul>
-                <li>Bouton <b>Arcade</b> : des mini-jeux d'oreille de 2 minutes, sans pression</li>
-                <li>Commence par <b>Plus haut ou plus bas ?</b></li>
-                <li>Les records et les ★ restent sur ton appareil</li></ul></div>
-              <div><h4>Si tu bloques</h4><ul>
-                <li>Une énigme trop dure : après 6 essais la porte s'ouvre quand même</li>
-                <li>Un contrat qui ne vient pas : passe-le</li>
-                <li><b>Mode libre</b> (menu ⋯) : tout est ouvert, ton parcours est gardé</li></ul></div>
-            </div>
-          </div>
-          <div class="help-lvl" data-help-lvl="far" hidden>
-            <div class="help-grid">
+                <li><b>Secrets</b> : des surprises cachées, « ??? » dans l'arbre, qui se trouvent en jouant ; deux indices s'ouvrent avec le temps</li></ul></div>
               <div><h4>Énigmes</h4><ul>
+                <li>Retrouve un son cible à l'oreille : ▶ cible / ◀ mon son, 6 validations</li>
                 <li>Chaque validation dit, réglage par réglage : ✓ juste, ≈ proche, ✗ loin, et le sens ⬆ ⬇</li>
                 <li>0 à 3 ★ selon les essais et les écoutes. <b>Aide</b> = jauge en direct, sans étoile</li></ul></div>
               <div><h4>Le Jardin</h4><ul>
                 <li>L'écran montre une plante par couche débloquée, qui s'allume sur ses notes</li>
-                <li>Sa taille = ton niveau en arcade sur le jeu lié (« — » si jamais joué), ses fleurs = tes pactes, les cristaux = tes secrets. Bouton du visuel pour changer d'écran</li></ul></div>
-              <div><h4>Secrets</h4><ul>
-                <li>Des surprises cachées dans le jardin, affichées « ??? » dans l'arbre</li>
-                <li>Elles se trouvent en jouant ; deux indices s'ouvrent avec le temps</li></ul></div>
-              <div><h4>Les mini-jeux</h4><ul>
-                <li><b>Plus haut ou plus bas ?</b> : hauteur de deux notes</li>
-                <li><b>Accordeur</b> : plus haut, plus bas ou juste (jusqu'à 2 cents)</li>
-                <li><b>L'intrus</b> : X est-il A ou B ?</li>
-                <li><b>Qu'est-ce qui a bougé ?</b> : quel réglage a changé dans la boucle</li>
-                <li><b>Chasseur de modes</b> : la couleur d'un mode sur un bourdon</li>
-                <li><b>Réponds en jouant</b> : rejoue la mesure, juste et en place (clavier, MIDI, pads)</li>
-                <li><b>Dictée d'accords</b> : majeur, mineur, 7e, sus, dim, fonction</li></ul></div>
-              <div><h4>Pactes, défis, classement</h4><ul>
-                <li><b>Pactes</b> : des contraintes cochées sur la cartouche (une écoute, transposé, leurres proches…) pour un score multiplié. Certains sont secrets.</li>
-                <li><b>Défi du jour</b> : les mêmes 3 jeux pour tout le monde, au classement du jour</li>
-                <li><b>Défie ton cousin</b> : réussis ton défi, envoie le lien ; le score compare vos niveaux</li>
-                <li>Pas de pacte dans le défi du jour ni les duels : les scores restent comparables</li></ul></div>
-              <div><h4>Profil et placement</h4><ul>
-                <li>Menu ⋯ → <b>🌱 Mon Parcours</b> → <b>👤 Profil</b> : musicien ou découverte (départ plus doux, libellés simples)</li>
-                <li><b>Test de placement</b> : 5 courtes manches, une par branche, pour régler tes niveaux et te proposer des nœuds</li></ul></div>
+                <li>Elle grandit avec les nœuds débloqués de sa couche ; les cristaux sont tes secrets. Bouton du visuel pour changer d'écran</li></ul></div>
+              <div><h4>Si tu bloques</h4><ul>
+                <li>Une énigme trop dure : après 6 essais la porte s'ouvre quand même</li>
+                <li>Un contrat qui ne vient pas : passe-le</li>
+                <li><b>Mode libre</b> (menu ⋯) : tout est ouvert, ton parcours est gardé</li></ul></div>
               <div><h4>Sauvegarde</h4><ul>
-                <li>Menu ⋯ → <b>🌱 Mon Parcours</b> → <b>Sauvegarde du Parcours</b> : fichier ou lien, import avec confirmation</li>
-                <li>Contient progression, records, profil, pactes et classement ; pas la latence ni le mode libre</li></ul></div>
-              <div><h4>MIDI et latence</h4><ul>
-                <li>Branche un clavier ou des pads : ils jouent l'appli, et les jeux d'écoute et de rythme</li>
-                <li><b>⟲ Latence</b> (menu de l'Arcade) : tape en rythme pour compenser le retard de l'appareil ; une calibration par entrée (clavier, écran, MIDI)</li></ul></div>
+                <li>Menu ⋯ → <b>💾 Sauvegarde du Parcours</b> : fichier ou lien, import avec confirmation</li></ul></div>
             </div>
           </div>
         </div>
@@ -325,17 +241,6 @@
   <script src="js/engine.js"></script>
   <script src="js/layers.js"></script>
   <script src="js/sequencer.js"></script>
-  <script src="js/audition.js"></script>
-  <script src="js/arcade.js"></script>
-  <script src="js/pacts.js"></script>
-  <script src="js/latency.js"></script>
-  <script src="js/arcade/hautbas.js"></script>
-  <script src="js/arcade/intrus.js"></script>
-  <script src="js/arcade/bouge.js"></script>
-  <script src="js/arcade/reponds.js"></script>
-  <script src="js/arcade/modes.js"></script>
-  <script src="js/arcade/accordeur.js"></script>
-  <script src="js/arcade/dictee.js"></script>
   <script src="js/game.js"></script>
   <script src="js/tree.js"></script>
   <script src="js/presets.js"></script>
@@ -365,9 +270,5 @@
   <script src="js/garden-tree.js"></script>
   <script src="js/garden-actions.js"></script>
   <script src="js/save.js"></script>
-  <script src="js/arcade-ui.js"></script>
-  <script src="js/placement.js"></script>
-  <script src="js/daily.js"></script>
-  <script src="js/duel.js"></script>
 </body>
 </html>

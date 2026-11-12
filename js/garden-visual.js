@@ -1,44 +1,39 @@
-// « Jardin » (G11.2) : a visual mode of the screen, the showcase of what the player masters. Purely visual (never
-// earns, never writes the store, the game or the arcade state).
+// « Jardin » (G11.2) : a visual mode of the screen, the showcase of what the player has grown. Purely visual (never
+// earns, never writes the store or the game state).
 //   - one plant per UNLOCKED sound layer (tree node below), in a fixed order, spread evenly over the ground;
 //   - it reacts to its own notes (bus `note` / `perc` / `grain` / `chord`): pulse of light + a leaf that pops out;
-//   - its height = the peak level reached in the arcade on the associated mini-game (arcade.s, read-only);
-//   - its flowers = the pacts of its records (distinct pact ids among the game's record keys, max 6);
+//   - its height = the share of the tree nodes of its layer that are unlocked (a node belongs to a layer when one of
+//     its settings does: `<layer>.*`, js/tree.js);
 //   - rare plants (glowing crystals) = secrets found, on the ground between two plants.
-// Layer ↔ game (one simple rule: the skill the layer asks from the ear):
-//   drone ↔ accordeur (justesse d'une note tenue)   pad ↔ dictee (accords)        bells ↔ modes (mélodie sur un drone)
-//   seq ↔ bouge (motif écrit modifié)               bass ↔ hautbas (contour grave) perc ↔ reponds (rythme)
-//   grains ↔ intrus (grain du timbre)               texture ↔ intrus (texture, timbre ; pas de notes : elle respire)
 // Mode policy (wraps AMB.visual, visual.js is untouched): « Jardin » exists only in the Parcours, where it is the
 // default (own preference key ambient.vizMode.path); in free mode (or mode not chosen) the cycle, the stored choice
 // (ambient.vizMode) and the drawing are exactly the classic ones. Without this file the app is unchanged.
-// Perf: LED sprites pre-rendered in offscreen canvases (cache by species / size / flowers / pixel size), cached
+// Perf: LED sprites pre-rendered in offscreen canvases (cache by species / size / pixel size), cached
 // background and labels, real dt, nothing drawn while the tab is hidden or the canvas off screen, reduced motion =
 // no sway nor particles. stats() gives the cost per frame (ms).
 (function () {
   const AMB = (window.AMB = window.AMB || {});
 
   const LAYERS = [
-    { id: 'drone', node: 'racine', game: 'accordeur', label: 'Drone', short: 'Drone', col: [111, 159, 216], kind: 'reed' },
-    { id: 'pad', node: 'h.pad', game: 'dictee', label: 'Pad', short: 'Pad', col: [212, 150, 210], kind: 'bush' },
-    { id: 'bells', node: 'm.bells', game: 'modes', label: 'Mélodie', short: 'Mélo', col: [255, 196, 110], kind: 'bell' },
-    { id: 'texture', node: 'e.texture', game: 'intrus', label: 'Texture', short: 'Text.', col: [120, 210, 200], kind: 'fern' },
-    { id: 'grains', node: 'm.grains', game: 'intrus', label: 'Grains', short: 'Grain', col: [111, 207, 159], kind: 'puff' },
-    { id: 'seq', node: 'c.seq', game: 'bouge', label: 'Séquence', short: 'Séq.', col: [255, 150, 71], kind: 'vine' },
-    { id: 'bass', node: 'c.bass', game: 'hautbas', label: 'Basse', short: 'Basse', col: [127, 159, 224], kind: 'cactus' },
-    { id: 'perc', node: 'c.perc', game: 'reponds', label: 'Pulsations', short: 'Puls.', col: [255, 90, 60], kind: 'shroom' },
+    { id: 'drone', node: 'racine', label: 'Drone', short: 'Drone', col: [111, 159, 216], kind: 'reed' },
+    { id: 'pad', node: 'h.pad', label: 'Pad', short: 'Pad', col: [212, 150, 210], kind: 'bush' },
+    { id: 'bells', node: 'm.bells', label: 'Mélodie', short: 'Mélo', col: [255, 196, 110], kind: 'bell' },
+    { id: 'texture', node: 'e.texture', label: 'Texture', short: 'Text.', col: [120, 210, 200], kind: 'fern' },
+    { id: 'grains', node: 'm.grains', label: 'Grains', short: 'Grain', col: [111, 207, 159], kind: 'puff' },
+    { id: 'seq', node: 'c.seq', label: 'Séquence', short: 'Séq.', col: [255, 150, 71], kind: 'vine' },
+    { id: 'bass', node: 'c.bass', label: 'Basse', short: 'Basse', col: [127, 159, 224], kind: 'cactus' },
+    { id: 'perc', node: 'c.perc', label: 'Pulsations', short: 'Puls.', col: [255, 90, 60], kind: 'shroom' },
   ];
   const byLayer = Object.fromEntries(LAYERS.map((l) => [l.id, l]));
-  const MAX_FLOWERS = 6;
 
-  // ---- tiny deterministic helpers (never Math.random: placement and shapes depend only on the state) ----
+  // ---- tiny deterministic helpers (never Math.random: positions and shapes depend only on the state) ----
   const hash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
   const mulberry = (a) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   const rgb = (c, k = 1, a = 1) => `rgba(${Math.min(255, Math.round(c[0] * k))},${Math.min(255, Math.round(c[1] * k))},${Math.min(255, Math.round(c[2] * k))},${a})`;
   const hsl2rgb = (h, s, l) => { const f = (n) => { const k = (n + h / 30) % 12, a = s * Math.min(l, 1 - l); return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); }; return [f(0), f(8), f(4)]; };
 
   // ---- state → layout (pure) ----
-  // state = {layers: [ids], levels: {layer: 0..1}, flowers: {layer: n}, secrets: [ids]}
+  // state = {layers: [ids], levels: {layer: 0..1}, secrets: [ids]}
   function layout(st, W, H) {
     const ids = LAYERS.map((l) => l.id).filter((id) => (st.layers || []).includes(id));
     const n = ids.length, ground = Math.round(H * 0.74);
@@ -48,8 +43,6 @@
       const lv = Math.max(0, Math.min(1, +((st.levels || {})[id]) || 0));
       return {
         id, kind: byLayer[id].kind, col: byLayer[id].col, label: byLayer[id].label, short: byLayer[id].short, level: lv,
-        played: (st.played || []).includes(id), // never played in the arcade: « — » instead of « 0% »
-        flowers: Math.max(0, Math.min(MAX_FLOWERS, ((st.flowers || {})[id]) | 0)),
         x: Math.round(W * 0.05 + slotW * (i + 0.5) + (r() - 0.5) * slotW * 0.3),
         y: ground + Math.round((r() - 0.5) * H * 0.02), phase: r() * 6.283, rare: false,
       };
@@ -57,15 +50,15 @@
     const sec = (st.secrets || []).slice().sort();
     const rares = sec.map((id) => {
       const r = mulberry(hash('secret:' + id));
-      return { id: 'secret:' + id, kind: 'crystal', rare: true, level: 0, flowers: 0, col: hsl2rgb(Math.floor(r() * 360), 0.85, 0.7), x: Math.round(W * 0.05 + slotW * (Math.floor(r() * (n + 1)) + (r() - 0.5) * 0.3)), y: ground, phase: r() * 6.283 }; // between two plants, on the ground
+      return { id: 'secret:' + id, kind: 'crystal', rare: true, level: 0, col: hsl2rgb(Math.floor(r() * 360), 0.85, 0.7), x: Math.round(W * 0.05 + slotW * (Math.floor(r() * (n + 1)) + (r() - 0.5) * 0.3)), y: ground, phase: r() * 6.283 }; // between two plants, on the ground
     });
     return { plants, rares, ground, slotW };
   }
 
   // ---- sprites: plants drawn as LED dot matrices (1 cell = px device pixels, 1 px gap) ----
   const CW = 25; // sprite width in cells (stem at column 12)
-  function cells(kind, hC, nFlowers, seed) {
-    const r = mulberry(seed), out = []; // [x, y (0 = base), tone]  tone: 0 stem, 1 leaf, 2 light, 3 flower petal, 4 flower core
+  function cells(kind, hC, seed) {
+    const r = mulberry(seed), out = []; // [x, y (0 = base), tone]  tone: 0 stem, 1 leaf, 2 light, 4 dot
     const put = (x, y, t) => { if (x >= 0 && x < CW && y >= 0) out.push([x, y, t]); };
     const C = 12;
     if (kind === 'bush') {
@@ -124,17 +117,11 @@
       if (kind === 'reed') { for (let y = 0; y < 4; y++) { put(Math.round(x), hC + y, 2); put(Math.round(x) + 1, hC + y, 1); } }
       else { const X = Math.round(x); for (let y = 0; y < 4; y++) for (let k = -(1 + (y >> 1)); k <= 1 + (y >> 1); k++) put(X + k, hC + 3 - y, y === 0 ? 2 : 1); put(X, hC - 1, 2); }
     }
-    // pacts: flowers along the plant (deterministic heights, alternating sides)
-    for (let f = 0; f < nFlowers; f++) {
-      const y = Math.round(hC * (0.35 + 0.6 * ((f + 0.5) / Math.max(1, nFlowers)))), s = f % 2 ? 1 : -1;
-      const x = C + s * (3 + ((f * 3) % 4));
-      put(x, y, 4); put(x - 1, y, 3); put(x + 1, y, 3); put(x, y - 1, 3); put(x, y + 1, 3);
-    }
     return out;
   }
 
   const gv = {
-    LAYERS, byLayer, MAX_FLOWERS, layout, cells, hash,
+    LAYERS, byLayer, layout, cells, hash,
     sprites: new Map(), glows: new Map(), labels: new Map(),
     plants: [], rares: [], parts: [], pending: [],
     energy: {}, // plant id -> 0..1 pulse
@@ -143,25 +130,22 @@
     clock: () => (AMB.engine && AMB.engine.ctx ? AMB.engine.ctx.currentTime : performance.now() / 1000),
     now: () => performance.now(),
 
-    // ---- read the game / arcade / secrets state (read-only: never arcade.stats(), which creates entries) ----
+    // ---- read the game / secrets state; a layer's level = share of its tree nodes owned ----
+    layerNodes(id) { const T = AMB.tree; return T ? T.NODES.filter((n) => n.params.some((p) => p.startsWith(id + '.'))).map((n) => n.id) : []; },
     readState() {
-      const g = AMB.game, A = AMB.arcade, st = { layers: [], levels: {}, flowers: {}, secrets: [], played: [] };
+      const g = AMB.game, st = { layers: [], levels: {}, secrets: [] };
       if (!g || !g.s) return st;
-      st.layers = LAYERS.filter((l) => (g.s.nodes || []).includes(l.node)).map((l) => l.id);
-      const P = A && A.s && A.s.profiles ? A.s.profiles[A.s.profile] : null;
+      const own = g.s.nodes || [];
+      st.layers = LAYERS.filter((l) => own.includes(l.node)).map((l) => l.id);
       for (const l of LAYERS) {
-        const gs = P && P.games ? P.games[l.game] : null;
-        st.levels[l.id] = gs ? Math.max(0, Math.min(1, +gs.peak || 0)) : 0;
-        if (gs && ((gs.plays | 0) > 0 || +gs.peak > 0)) st.played.push(l.id);
-        const pacts = new Set();
-        if (gs && gs.best) for (const k of Object.keys(gs.best)) if (k && gs.best[k]) k.split('+').forEach((p) => p && pacts.add(p));
-        st.flowers[l.id] = Math.min(MAX_FLOWERS, pacts.size);
+        const ns = this.layerNodes(l.id);
+        st.levels[l.id] = ns.length ? ns.filter((n) => own.includes(n)).length / ns.length : 0;
       }
       const sq = g.s.secrets && g.s.secrets.found;
       st.secrets = sq ? Object.keys(sq).filter((k) => sq[k]) : [];
       return st;
     },
-    signature(st) { return JSON.stringify([st.layers, st.levels, st.flowers, st.secrets.slice().sort(), (st.played || []).slice().sort()]); },
+    signature(st) { return JSON.stringify([st.layers, st.levels, st.secrets.slice().sort()]); },
 
     // ---- sizes ----
     // The tallest plant stays under the stage HUD (chord + « D Lydien · 66 bpm » line, top left) and the tool chips (top
@@ -182,11 +166,11 @@
     },
 
     sprite(p, px) {
-      const hC = this.heightCells(p), key = `${p.kind}|${p.id}|${hC}|${p.flowers}|${px}`;
+      const hC = this.heightCells(p), key = `${p.kind}|${p.id}|${hC}|${px}`;
       let s = this.sprites.get(key);
       if (s) return s;
       this.cacheMisses++;
-      const cl = cells(p.kind, hC, p.flowers, hash(p.id));
+      const cl = cells(p.kind, hC, hash(p.id));
       let top = 0; for (const c of cl) top = Math.max(top, c[1]);
       const Hc = top + 1, cv = document.createElement('canvas');
       cv.width = CW * px; cv.height = Hc * px;
@@ -209,9 +193,9 @@
       this.glows.set(key, cv);
       return cv;
     },
-    // « MÉLODIE 95% » (« MÉLODIE — » when its game was never played) under the plant; when it does not fit its slot (phone): « MÉLO » over « 95% »
+    // « MÉLODIE 67% » under the plant; when it does not fit its slot (phone): « MÉLO » over « 95% »
     label(p, fs, maxW) {
-      const pc = p.played ? `${Math.round(p.level * 100)}%` : '—', full = `${p.label.toUpperCase()} ${pc}`, key = full + '|' + fs + '|' + Math.round(maxW);
+      const pc = `${Math.round(p.level * 100)}%`, full = `${p.label.toUpperCase()} ${pc}`, key = full + '|' + fs + '|' + Math.round(maxW);
 
       let s = this.labels.get(key);
       if (s) return s;
@@ -343,7 +327,7 @@
       bus.on('grain', (n) => n && this.onEvent('grains', n.time, n.vel));
       bus.on('perc', (n) => n && this.onEvent('perc', n.time, n.vel));
       bus.on('chord', (c) => { if (!c) return; this.onEvent('drone', c.time, 0.6); this.onEvent('pad', c.time, 0.3); });
-      ['game:unlock', 'game:reset', 'game:secret', 'arcade:end'].forEach((ev) => bus.on(ev, () => { this.sig = null; }));
+      ['game:unlock', 'game:reset', 'game:secret'].forEach((ev) => bus.on(ev, () => { this.sig = null; }));
     },
   };
 

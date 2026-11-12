@@ -1,19 +1,12 @@
-// « Jardin sonore » G10.4 : exportable save (file + link, import with strict validation) and
-// « depuis ta dernière visite » (a sober reminder card — never any gain collected while away).
-// A save = the path's state (AMB.game.s, secrets included: game.s.secrets; player profile, nodes opened by the
-// placement test) + the arcade's (AMB.arcade.s: levels, records per profile and Pacts, the pacts ticked per mini-game)
-// + the daily challenge's (AMB.daily.s: name, the day's tries, leaderboard; optional, an older save keeps the current one).
-// Not saved: latency calibration (per device, js/latency.js), duel tries, settings, patches.
-// Import MERGES the daily challenge's tries (anti-cheat: re-importing an older save never erases a try already made):
-// a day's try (and its frozen level) present here wins over the imported one, and so do my leaderboard lines; duel
-// tries are never in a save, so an import leaves them alone.
+// « Jardin sonore » G10.4 : exportable save of the path (file + link, import with strict validation).
+// A save = the path's state (AMB.game.s, secrets included: game.s.secrets). Not saved: settings, patches, free mode.
+// Older saves may carry fields of removed features (top-level or inside the game state): they are ignored.
 // Import never throws: validate() returns {ok, error, data}; unknown ids are refused, numbers are bounded,
 // unknown extra fields (added by later versions) are kept only if small and plain.
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const VERSION = 1, APP = 'jardin-sonore';
-  const MAX_FILE = 2e6, MAX_LINK = 300000, ABSENCE = 3600e3;
-  const VISIT_KEY = window.AMB_VISIT_KEY || new URLSearchParams(location.search).get('visitkey') || 'ambient.visit.v1';
+  const MAX_FILE = 2e6, MAX_LINK = 300000;
   const ID = /^[A-Za-z0-9_.\-]{1,48}$/;
 
   class Bad extends Error {}
@@ -42,7 +35,7 @@
   };
 
   // ---- validation ----
-  const GAME_KEYS = ['v', 'mode', 'shards', 'earned', 'nodes', 'found', 'contracts', 'puzzles', 'stars', 'opened', 'runs', 'pzHelp', 'active', 'prog', 'skipped', 'ended', 'secrets', 'profile', 'placed', 'placement'];
+  const GAME_KEYS = ['v', 'mode', 'shards', 'earned', 'nodes', 'found', 'contracts', 'puzzles', 'stars', 'opened', 'runs', 'pzHelp', 'active', 'prog', 'skipped', 'ended', 'secrets'];
   const gameState = (s) => {
     if (!isObj(s)) bad('progression absente');
     if (s.v !== 1) bad('version de progression inconnue');
@@ -73,21 +66,12 @@
     o.skipped = ids(s.skipped || [], 'contrats passés', C && ((x) => !!C.byId[x]));
     o.ended = s.ended == null ? false : bool(s.ended, 'fin');
     if (s.secrets != null) o.secrets = secretsState(s.secrets, X);
-    // player profile and placement test (G8.4, js/game.js, js/placement.js)
-    const PROF = (AMB.game && AMB.game.PROFILES) || ['musicien', 'decouverte'];
-    if (s.profile != null) { if (!PROF.includes(s.profile)) bad('profil de joueur invalide'); o.profile = s.profile; } else o.profile = null;
-    o.placed = ids(s.placed || [], 'nœuds du placement', T && ((x) => !!T.byId[x]));
-    if (s.placement != null) {
-      const pl = s.placement;
-      if (!isObj(pl)) bad('test de placement invalide');
-      o.placement = { at: num(pl.at, 0, 1e14, 'date du placement'), passed: ids(pl.passed || [], 'branches du placement', T && T.BRANCHES && ((x) => !!T.BRANCHES[x]), 10) };
-    } else o.placement = null;
     extras(s, o, GAME_KEYS);
     return o;
   };
   const secretsState = (q, X) => {
     if (!isObj(q)) bad('secrets invalides');
-    const o = { found: {}, secs: 0, mirrorOn: false, theme: '', gifts: { timbres: [], themes: [], mirror: false, pacts: [] } };
+    const o = { found: {}, secs: 0, mirrorOn: false, theme: '', gifts: { timbres: [], themes: [], mirror: false } };
     if (q.found != null) {
       if (!isObj(q.found)) bad('secrets invalides');
       for (const [k, v] of Object.entries(q.found)) { if (!ID.test(k) || (X && !X.byId[k])) bad('secret inconnu'); o.found[k] = num(v, 0, 1e14, 'date de secret'); }
@@ -98,7 +82,6 @@
     if (!isObj(g)) bad('cadeaux invalides');
     if (g.mirror != null) o.gifts.mirror = bool(g.mirror, 'miroir');
     o.gifts.themes = ids(g.themes || [], 'thèmes', (x) => !X || !!X.THEMES[x], 10);
-    o.gifts.pacts = ids(g.pacts || [], 'pactes', null, 20);
     if (!Array.isArray(g.timbres || []) || (g.timbres || []).length > 40) bad('timbres invalides');
     for (const t of g.timbres || []) {
       if (!isObj(t) || typeof t.sec !== 'string' || !ID.test(t.sec) || typeof t.opt !== 'string' || t.opt.length > 40) bad('timbres invalides');
@@ -108,118 +91,19 @@
     return o;
   };
 
-  const STAT_KEYS = ['d', 'peak', 'step', 'plays', 'best', 'pacts'];
-  const arcadeState = (a) => {
-    if (!isObj(a)) bad('arcade absente');
-    if (a.v !== 1) bad('version d\'arcade inconnue');
-    const A = AMB.arcade, o = { v: 1, profile: 'default', profiles: {} };
-    if (typeof a.profile !== 'string' || !a.profile || a.profile.length > 40) bad('profil invalide');
-    o.profile = a.profile;
-    if (!isObj(a.profiles) || Object.keys(a.profiles).length > 20) bad('profils invalides');
-    for (const [name, P] of Object.entries(a.profiles)) {
-      if (!name || name.length > 40 || !isObj(P) || !isObj(P.games)) bad('profil invalide');
-      const po = { games: {} };
-      for (const [id, st] of Object.entries(P.games)) {
-        if (!ID.test(id) || (A && A.games.length && !A.byId[id]) || !isObj(st)) bad('mini-jeu inconnu');
-        const so = {
-          d: num(st.d, 0, 1, 'niveau'), peak: num(st.peak, 0, 1, 'sommet'), step: num(st.step, 0, 1, 'pas'),
-          plays: int(st.plays, 0, 1e7, 'parties'), best: {},
-        };
-        if (!isObj(st.best) || Object.keys(st.best).length > 64) bad('records invalides');
-        for (const [pk, r] of Object.entries(st.best)) {
-          if (!/^[A-Za-z0-9_+\-]{0,80}$/.test(pk) || !isObj(r)) bad('records invalides');
-          const ro = { score: int(r.score, 0, 1e9, 'score'), stars: int(r.stars, 0, 3, 'étoiles'), at: num(r.at, 0, 1e14, 'date') };
-          extras(r, ro, ['score', 'stars', 'at']);
-          so.best[pk] = ro;
-        }
-        // the pacts ticked on this cartridge (G9.8, js/pacts.js)
-        if (st.pacts != null) so.pacts = ids(st.pacts, 'pactes', AMB.pacts && ((x) => !!AMB.pacts.byId[x]), 20);
-        extras(st, so, STAT_KEYS);
-        po.games[id] = so;
-      }
-      extras(P, po, ['games']);
-      o.profiles[name] = po;
-    }
-    if (!o.profiles[o.profile] && Object.keys(o.profiles).length) bad('profil actif absent');
-    extras(a, o, ['v', 'profile', 'profiles']);
-    return o;
-  };
-
-  // the daily challenge (G10.2 / G10.5, js/daily.js): name, official tries per day, leaderboard per day
-  const DAY = /^\d{4}-\d{2}-\d{2}$/, LVL = ['m', 'n', 'k'];
-  const str = (v, max, what) => { if (typeof v !== 'string' || v.length > max || /[\u0000-\u001f<>]/.test(v)) bad(what + ' invalide'); return v; };
-  const lvl = (v) => { if (!LVL.includes(v)) bad('niveau du défi invalide'); return v; };
-  const dailyState = (d) => {
-    if (!isObj(d) || d.v !== 1) bad('défi du jour invalide');
-    const o = { v: 1, name: d.name == null ? '' : str(d.name, 16, 'nom'), days: {}, board: {} };
-    if (!isObj(d.days || {}) || !isObj(d.board || {}) || Object.keys(d.days || {}).length > 30 || Object.keys(d.board || {}).length > 30) bad('défi du jour invalide');
-    for (const [day, D] of Object.entries(d.days || {})) {
-      if (!DAY.test(day) || !isObj(D)) bad('essai du jour invalide');
-      const od = {};
-      if (D.p != null) od.p = lvl(D.p); // the level frozen at the first opening of that day's challenge
-      for (const k of ['c', 'z']) {
-        if (D[k] == null) continue;
-        const t = D[k]; if (!isObj(t)) bad('essai du jour invalide');
-        od[k] = { s: int(t.s, 0, 1e7, 'score du jour'), r: int(t.r, 0, 1e7, 'score relatif'), p: lvl(t.p), at: num(t.at, 0, 1e14, 'date') };
-        if (t.partial != null) od[k].partial = bool(t.partial, 'essai');
-        if (t.left != null) od[k].left = t.left ? 1 : 0;
-      }
-      o.days[day] = od;
-    }
-    for (const [day, B] of Object.entries(d.board || {})) {
-      if (!DAY.test(day) || !Array.isArray(B) || B.length > 40) bad('classement invalide');
-      o.board[day] = B.map((e) => {
-        if (!isObj(e)) bad('classement invalide');
-        const oe = { n: str(e.n, 16, 'nom'), s: int(e.s, 0, 1e7, 'score'), r: int(e.r, 0, 1e7, 'score relatif'), p: lvl(e.p), z: e.z ? 1 : 0, at: num(e.at || 0, 0, 1e14, 'date') };
-        if (e.me) oe.me = 1;
-        return oe;
-      });
-    }
-    return o;
-  };
-
-  // import of the daily challenge: the imported state, except that every try already made here stays (per day and mode,
-  // with the day's frozen level) and so do my own leaderboard lines — a save can't be used to replay the day
-  const mergeDaily = (cur, imp) => {
-    const out = imp;
-    for (const [day, C] of Object.entries((cur && cur.days) || {})) {
-      if (!isObj(C)) continue;
-      const I = (out.days[day] = out.days[day] || {});
-      if (C.p != null) I.p = C.p;
-      for (const k of ['c', 'z']) if (C[k]) I[k] = C[k];
-    }
-    for (const [day, B] of Object.entries((cur && cur.board) || {})) {
-      if (!Array.isArray(B)) continue;
-      const mine = B.filter((e) => e && e.me);
-      if (!mine.length) continue;
-      const kept = (out.board[day] || []).filter((e) => !(e.me && mine.some((m) => !!m.z === !!e.z)));
-      out.board[day] = kept.concat(mine);
-    }
-    return out;
-  };
-
   // summary of a validated (or current) save: what the confirmation shows
-  const summarize = (game, arcade) => {
-    const T = AMB.tree, recs = [];
-    let nrec = 0;
-    for (const [pn, P] of Object.entries((arcade && arcade.profiles) || {})) {
-      for (const [id, st] of Object.entries(P.games || {})) {
-        const n = Object.keys(st.best || {}).length; nrec += n;
-        const top = Object.values(st.best || {}).reduce((m, r) => Math.max(m, r.score || 0), 0);
-        if (n) recs.push({ profile: pn, id, title: (AMB.arcade && AMB.arcade.byId[id] && AMB.arcade.byId[id].title) || id, best: top });
-      }
-    }
+  const summarize = (game) => {
+    const T = AMB.tree;
     return {
       mode: game.mode, shards: game.shards, earned: game.earned,
       nodes: game.nodes.length, nodesTotal: T ? T.NODES.length : null,
       contracts: game.contracts.length, puzzles: game.puzzles.length,
       secrets: Object.keys((game.secrets && game.secrets.found) || {}).length,
-      records: nrec, recList: recs,
     };
   };
   const sumText = (m) => [
     `✧ ${m.shards}`, `${m.nodes}${m.nodesTotal ? '/' + m.nodesTotal : ''} nœuds`,
-    `${m.records} record${m.records > 1 ? 's' : ''}`, m.secrets ? `${m.secrets} secret${m.secrets > 1 ? 's' : ''}` : null,
+    m.secrets ? `${m.secrets} secret${m.secrets > 1 ? 's' : ''}` : null,
   ].filter(Boolean).join(' · ');
 
   // ---- bytes <-> text <-> link ----
@@ -234,26 +118,22 @@
   };
 
   const save = {
-    VERSION, ABSENCE, VISIT_KEY, validate: null,
+    VERSION, validate: null,
     now: () => Date.now(), // overridable by tests
     reload: () => { try { location.reload(); } catch (e) {} },
 
     // the current state as a save object
     build() {
-      const g = AMB.game, a = AMB.arcade;
-      const o = { app: APP, kind: 'save', v: VERSION, at: this.now(), game: JSON.parse(JSON.stringify(g.s)), arcade: JSON.parse(JSON.stringify(a ? a.s : { v: 1, profile: 'default', profiles: {} })) };
-      if (AMB.daily && AMB.daily.s) o.daily = JSON.parse(JSON.stringify(AMB.daily.s));
-      return o;
+      return { app: APP, kind: 'save', v: VERSION, at: this.now(), game: JSON.parse(JSON.stringify(AMB.game.s)) };
     },
-    // never throws: {ok:true, data:{game, arcade, at}, summary} or {ok:false, error}
+    // never throws: {ok:true, data:{game, at}, summary} or {ok:false, error}
     check(o) {
       try {
         if (!isObj(o)) bad('ce n\'est pas une sauvegarde');
         if (o.app !== APP || o.kind !== 'save') bad('ce n\'est pas une sauvegarde du Jardin sonore');
         if (o.v !== VERSION) bad('version ' + (typeof o.v === 'number' ? o.v : '?') + ' non prise en charge');
-        const data = { game: gameState(o.game), arcade: arcadeState(o.arcade), at: typeof o.at === 'number' && Number.isFinite(o.at) ? o.at : 0 };
-        if (o.daily != null) data.daily = dailyState(o.daily);
-        return { ok: true, data, summary: summarize(data.game, data.arcade) };
+        const data = { game: gameState(o.game), at: typeof o.at === 'number' && Number.isFinite(o.at) ? o.at : 0 };
+        return { ok: true, data, summary: summarize(data.game) };
       } catch (e) { return { ok: false, error: e instanceof Bad ? e.message : 'fichier illisible' }; }
     },
     parse(text) {
@@ -267,10 +147,8 @@
     // replace the progression (after the player confirmed), save, and reload so every screen is rebuilt
     apply(res, reload = true) {
       if (!res || !res.ok) return false;
-      const g = AMB.game, a = AMB.arcade;
+      const g = AMB.game;
       g.s = JSON.parse(JSON.stringify(res.data.game)); g.save();
-      if (a) { a.s = JSON.parse(JSON.stringify(res.data.arcade)); a.save(); }
-      const D = AMB.daily; if (D && res.data.daily) { D.s = mergeDaily(D.s, JSON.parse(JSON.stringify(res.data.daily))); if (D.prune) D.prune(); D.save(); }
       if (AMB.secrets) { try { AMB.secrets.reset(); } catch (e) {} }
       g.emit('reset'); g.emit('mode', g.s.mode);
       if (reload) this.reload();
@@ -320,55 +198,11 @@
       return this.decode(code);
     },
 
-    // ---- « depuis ta dernière visite » ----
-    // reads the previous visit stamp, writes the new one; returns the card data or null (never gains)
-    visit: { last: 0, prev: 0 },
-    readVisit() { try { const o = JSON.parse(localStorage.getItem(VISIT_KEY)); return o && Number.isFinite(o.last) ? o.last : 0; } catch (e) { return 0; } },
-    touch(t = this.now()) { this.visit.last = t; try { localStorage.setItem(VISIT_KEY, JSON.stringify({ last: t })); } catch (e) {} },
-    // what waits for the player — only the state of things, nothing earned meanwhile
-    backCard(since, g = AMB.game) {
-      if (!g || !g.path || !since) return null;
-      const lines = [], T = AMB.tree, C = AMB.contracts;
-      const act = (g.s.active || []).filter((id) => C && C.byId[id]);
-      if (act.length) {
-        const d = C.byId[act[0]], n = C.progress ? C.progress(act[0]) : 0;
-        lines.push({ k: 'Contrat en cours', v: d.title + (d.goal > 1 ? ` (${n}/${d.goal})` : '') });
-      }
-      if (T) {
-        const av = T.NODES.filter((n) => T.status(n.id, g) === 'available').sort((a, b) => a.cost - b.cost);
-        const pick = av.find((n) => g.canAfford(n.cost)) || av[0];
-        if (pick) lines.push({ k: 'Prochain nœud', v: `${pick.name} · ✧ ${pick.cost}` + (g.canAfford(pick.cost) ? '' : ` (il te manque ${pick.cost - g.s.shards})`) });
-      }
-      // the daily challenge belongs to another module: use its line when it offers one, else a generic one
-      try {
-        const D = AMB.daily;
-        if (D) {
-          const t = typeof D.backLine === 'function' ? D.backLine() : null;
-          lines.push({ k: 'Défi du jour', v: typeof t === 'string' && t ? t : 'à relever dans l\'Arcade' });
-        }
-      } catch (e) {}
-      return { since, lines };
-    },
-    dateText(t) {
-      try { return new Date(t).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }); } catch (e) { return new Date(t).toISOString(); }
-    },
-    card: null, // pending return card
-    refreshCard(since) {
-      this.card = this.backCard(since);
-      if (this.renderCard) this.renderCard();
-    },
-    init() {
-      const prev = this.readVisit(), now = this.now();
-      this.touch(now);
-      this.visit.prev = prev;
-      this.away = prev && now - prev > ABSENCE ? prev : 0;
-    },
   };
   save.validate = save.check;
   AMB.save = save;
-  save.init();
 
-  // ---- interface (index.html : #saveBtn in the ⋯ menu; the dialog and card are built here) ----
+  // ---- interface (index.html : #saveBtn in the ⋯ menu, path only; the dialog is built here) ----
   const $ = (s) => document.querySelector(s);
   const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
   let dlg, msg, body, linkBox, pending = null;
@@ -377,13 +211,12 @@
   const summaryEl = (title, m) => {
     const box = el('div', 'sv-sum'); box.append(el('b', '', title));
     box.append(el('span', '', sumText(m)));
-    if (m.recList.length) box.append(el('small', '', 'Records : ' + m.recList.slice(0, 6).map((r) => `${r.title} ${r.best}`).join(' · ')));
     return box;
   };
   const showMain = () => {
     pending = null; body.replaceChildren();
     const g = AMB.game;
-    body.append(summaryEl('Ta progression', summarize(g.s, AMB.arcade.s)));
+    body.append(summaryEl('Ta progression', summarize(g.s)));
     const row = el('div', 'sv-row');
     const dl = el('button', 'btn', '⬇ Télécharger le fichier'); dl.dataset.act = 'file';
     dl.addEventListener('click', () => { const r = save.exportFile(); say(r ? `Fichier ${r.name} enregistré.` : 'Impossible de créer le fichier.', !r); });
@@ -410,7 +243,7 @@
     say(''); pending = res; body.replaceChildren();
     body.append(el('p', 'sv-ask', 'Remplacer ta progression ?'));
     const cmp = el('div', 'sv-cmp');
-    cmp.append(summaryEl('Actuelle', summarize(AMB.game.s, AMB.arcade.s)), summaryEl('Importée', res.summary));
+    cmp.append(summaryEl('Actuelle', summarize(AMB.game.s)), summaryEl('Importée', res.summary));
     body.append(cmp);
     const row = el('div', 'sv-row'), yes = el('button', 'btn sv-go', 'Remplacer'), no = el('button', 'btn', 'Annuler');
     yes.dataset.act = 'replace'; no.dataset.act = 'cancel';
@@ -426,7 +259,7 @@
     const card = el('div', 'modal-card sv-card'); card.setAttribute('role', 'dialog'); card.setAttribute('aria-label', 'Sauvegarde du Parcours');
     const x = el('button', 'modal-x', '✕'); x.setAttribute('aria-label', 'Fermer'); x.addEventListener('click', close);
     body = el('div', 'sv-body'); msg = el('p', 'sv-msg'); msg.hidden = true; msg.setAttribute('role', 'status');
-    card.append(x, el('h3', '', 'Sauvegarde du Parcours'), el('p', 'sv-sub', 'Ta progression, tes records d\'arcade et tes secrets, en fichier ou en lien. Le mode libre n\'en fait pas partie.'), body, msg);
+    card.append(x, el('h3', '', 'Sauvegarde du Parcours'), el('p', 'sv-sub', 'Ta progression et tes secrets, en fichier ou en lien. Le mode libre n\'en fait pas partie.'), body, msg);
     dlg.append(card); document.body.append(dlg);
     dlg.addEventListener('click', (e) => { if (e.target === dlg) close(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !dlg.hidden) close(); });
@@ -436,45 +269,16 @@
   save.close = close;
   save.confirm = (res) => confirm(res);
 
-  // the return card, at the top of the ⋯ menu, with a dot on ⋯ until it is read
-  save.renderCard = () => {
-    const menu = $('.more .menu'), sum = $('.more > summary'); if (!menu) return;
-    let c = $('#backCard');
-    const c0 = save.card;
-    if (!c0 || !c0.lines.length && !c0.since) { if (c) c.remove(); if (sum) sum.classList.remove('has-back'); return; }
-    if (!c) { c = el('aside', 'back-card'); c.id = 'backCard'; menu.prepend(c); }
-    c.replaceChildren();
-    const x = el('button', 'back-x', '✕'); x.setAttribute('aria-label', 'Masquer'); x.addEventListener('click', () => { save.card = null; save.renderCard(); });
-    const hd = el('span', 'back-hd'); hd.append(el('b', '', 'Depuis ta dernière visite'), el('small', '', ' · ' + save.dateText(c0.since)));
-    c.append(x, hd); // compact: one header line, one line per item (the menu stays reachable on a phone)
-    for (const l of c0.lines) { const p = el('p', ''); p.append(el('span', '', l.k + ' : '), document.createTextNode(l.v)); c.append(p); }
-    c.append(el('small', 'back-note', 'Rien n\'a bougé pendant ton absence : le jardin t\'attendait.'));
-    if (sum) sum.classList.add('has-back');
-  };
-
   const wire = () => {
     const b = $('#saveBtn');
-    const sync = () => { if (b) b.hidden = !AMB.game.path; if (!AMB.game.path) { save.card = null; save.renderCard(); } };
+    const sync = () => { if (b) b.hidden = !AMB.game.path; };
     if (b) b.addEventListener('click', () => { const d = $('.more'); if (d) d.open = false; save.open(); });
     if (AMB.bus) AMB.bus.on('game:mode', sync);
     sync();
-    if (save.away) save.refreshCard(save.away);
-    const more = $('.more'); if (more) more.addEventListener('toggle', () => { if (more.open) { const s = $('.more > summary'); if (s) s.classList.remove('has-back'); } });
-    // back to the tab after a long absence
-    let hiddenAt = 0;
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) { hiddenAt = save.now(); save.touch(hiddenAt); return; }
-      if (hiddenAt && save.now() - hiddenAt > ABSENCE) save.refreshCard(hiddenAt);
-      hiddenAt = 0; save.touch();
-    });
-    window.addEventListener('pagehide', () => save.touch());
-    // a link to import (#save=…): ask before anything is replaced
-    // in free mode it first offers to switch to the path, like the #dj / #df links (js/daily.js offerPath)
+    // a link to import (#save=…): the confirmation shows both progressions, nothing is written before « Remplacer »
     const m = /(?:^|[#&])save=([A-Za-z0-9_\-]+)/.exec(location.hash);
     if (m) {
-      const ask = () => save.decode(m[1]).then((res) => confirm(res));
-      if (!AMB.game.path && AMB.daily && AMB.daily.offerPath) AMB.daily.offerPath('Quelqu\'un t\'envoie une sauvegarde du Parcours (progression, records, défi du jour).', ask, '💾 Sauvegarde reçue');
-      else ask();
+      save.decode(m[1]).then((res) => confirm(res));
       try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
     }
   };

@@ -1,20 +1,18 @@
 <!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
-<!-- Mode libre intact (G11.4): in free mode, open/close the arcade, start and abandon rounds, open the #dj / #df / #save links;
+<!-- Mode libre intact (G11.4, v1.05): in free mode, play notes, open old #dj / #df links (removed features: ignored) and #save;
      afterwards the store (all settings), journal, undo history, share link, body classes and visible UI are identical to the
      snapshot taken before, no game element is visible, and localStorage got no new game key (only the harmless ones listed in HARMLESS). -->
 <script src="lib.js"></script>
-<script>['game','arcade','daily','duel'].forEach(k=>localStorage.removeItem('ambient.'+k+'.fri'));</script>
-<iframe id="f" src="../index.html?gamekey=ambient.game.fri&arcadekey=ambient.arcade.fri&dailykey=ambient.daily.fri&duelkey=ambient.duel.fri" style="width:1200px;height:800px;border:0"></iframe>
+<script>localStorage.removeItem('ambient.game.fri');</script>
+<iframe id="f" src="../index.html?gamekey=ambient.game.fri" style="width:1200px;height:800px;border:0"></iframe>
 <script>
-// Keys the base app may write in free mode, none of them game state (UI preferences, user presets, scenes, "last visit" date):
-// Written because the cabinet (offered in free mode) was used: its own records/play counters, nothing else of the game.
-const CABINET = ['ambient.arcade.fri'];
-const HARMLESS = ['ambient.seenHelp', 'ambient.xyTip', 'ambient.mode', 'ambient.view', 'ambient.vizMode', 'ambient.visit.v1', 'ambient.userPresets.v1', 'ambient.scenes.v1', 'ambient.contracts.min'];
-const QS = 'gamekey=ambient.game.fri&arcadekey=ambient.arcade.fri&dailykey=ambient.daily.fri&duelkey=ambient.duel.fri';
+// Keys the base app may write in free mode, none of them game state (UI preferences, user presets, scenes):
+const HARMLESS = ['ambient.seenHelp', 'ambient.xyTip', 'ambient.mode', 'ambient.view', 'ambient.vizMode', 'ambient.userPresets.v1', 'ambient.scenes.v1', 'ambient.contracts.min'];
+const QS = 'gamekey=ambient.game.fri';
 const f = document.getElementById('f');
 f.addEventListener('load', async () => {
   try {
-    const w = f.contentWindow, d = f.contentDocument, A = w.AMB, AR = A.arcade, dlg = d.getElementById('arcadeDlg');
+    const w = f.contentWindow, d = f.contentDocument, A = w.AMB;
     w.addEventListener('error', e => log('ERROR ' + e.message + ' @' + e.filename + ':' + e.lineno));
     const until = async (fn, n = 60) => { for (let i = 0; i < n && !fn(); i++) await wait(50); return fn(); };
     const key = (k) => d.dispatchEvent(new w.KeyboardEvent('keydown', { key: k, code: k, bubbles: true }));
@@ -27,43 +25,20 @@ f.addEventListener('load', async () => {
       journal: JSON.stringify(A.journal ? A.journal.items.map(i => [i.label, i.state]) : []),
       history: A.history.past.length + '/' + A.history.future.length + '/' + JSON.stringify(A.history.past.slice(-3)),
       bodyClasses: [...d.body.classList].sort().join(' '),
-      visibleUI: [...d.querySelectorAll('[id]:not(#fx)')].filter(vis)  // #fx = transparent aria-hidden canvas of the juice, created on demand in the cabinet
-      .map(e => e.id).sort().join(','),
+      visibleUI: [...d.querySelectorAll('[id]')].filter(vis).map(e => e.id).sort().join(','),
       game: JSON.stringify(A.game.s), playing: String(A.seq.playing),
     });
     const before = shot(), shareBefore = share(), ls0 = LS();
     ok(A.game.s.mode === 'free' && !A.game.path && shareBefore.startsWith('#p='), 'départ : mode libre, lien de partage lu (' + shareBefore.length + ' car.)');
     const undoBefore = A.history.past.length;
 
-    // --- arcade: open, round, abandon (Échap), close
-    d.getElementById('arcadeBtn').click(); await wait(60);
-    ok(AR.open && !dlg.hidden, 'borne ouverte en libre');
-    d.querySelector('.arc-cart[data-game=hautbas]').click();
-    ok(await until(() => AR.active), 'manche lancée');
-    AR.answer(AR.round.ch.answer); await wait(30);
-    key('Escape'); await wait(60);
-    ok(!AR.active && !A.audition.active && !dlg.hidden, 'manche abandonnée (Échap) : retour au menu');
-    key('Escape'); await wait(60);
-    ok(dlg.hidden && !AR.open, 'borne fermée (Échap)');
-    d.getElementById('arcadeBtn').click(); await wait(40);
-    d.querySelector('.arc-cart[data-game=hautbas]').click(); await until(() => AR.active);
-    AR.end({ abort: true }); await wait(40); dlg.querySelector('[data-close]').click(); await wait(40);
-    ok(dlg.hidden && !AR.active && !AR.open, 'seconde manche abandonnée, borne fermée par ✕');
+    // --- playing the instrument from the keyboard: sound only, no game
+    const n0 = A.game.s.found.length; key('KeyA'); key('KeyZ'); await wait(60);
+    ok(A.game.s.found.length === n0 && A.game.s.shards === 0, 'notes et accords joués au clavier : rien du jeu ne bouge');
 
-    // --- #dj / #df: valid links only propose the Parcours; « Plus tard » stores nothing
-    const DY = A.daily, L = DY.link;
-    w.location.hash = '#dj=' + L.encode({ v: 1, day: DY.today(), n: 'Léo', s: 12400, p: 'm', z: 0, r: DY.rel(12400, 'm') }); await wait(150);
-    const cz = d.getElementById('cousinDlg');
-    ok(cz && !cz.hidden && cz.querySelector('[data-cz=path]') && A.game.s.mode === 'free', '#dj en libre : simple proposition, le mode ne change pas');
-    cz.querySelector('[data-cz=no]').click(); await wait(40);
-    ok(cz.hidden && !/dj=/.test(w.location.hash) && A.game.s.mode === 'free' && !Object.keys(DY.s.board).length && !Object.keys(DY.s.days).length, '#dj : « Plus tard » → rien stocké, lien effacé');
-    const duelUrl = A.duel.url({ k: 'r', sd: 1234, d: 0.5 }, { s: 3200, p: 'm' });
-    w.location.hash = duelUrl.slice(duelUrl.indexOf('#')); await wait(150);
-    ok(!cz.hidden && A.game.s.mode === 'free' && !A.duel.incoming, '#df en libre : simple proposition, aucun défi chargé (hidden=' + cz.hidden + ' mode=' + A.game.s.mode + ' incoming=' + JSON.stringify(A.duel.incoming) + ' hash=' + w.location.hash.slice(0, 20) + ')');
-    cz.querySelector('[data-cz=no]').click(); await wait(40);
-    ok(cz.hidden && !/df=/.test(w.location.hash) && !A.duel.incoming && AR.open === false, '#df : « Plus tard » → rien chargé, borne fermée');
-    for (const bad of ['#df=%%%~1', '#dj=abc~1', '#dj=', '#df=e30~0']) { w.location.hash = bad; await wait(100); }
-    ok(cz.hidden && A.game.s.mode === 'free' && !AR.open, 'liens abîmés : au plus un message, mode libre intact');
+    // --- old links of removed features (#dj score of the day, #df cousin challenge): ignored, no exception, nothing stored
+    for (const h of ['#dj=eyJ2IjoxfQ~1a2b', '#df=eyJ2IjoxLCJrIjoibSJ9~3c4d', '#dj=', '#df=%%%~1']) { w.location.hash = h; await wait(80); }
+    ok(A.game.s.mode === 'free' && !d.querySelector('.modal:not([hidden])'), 'anciens liens #dj / #df : ignorés, aucune boîte, mode libre intact');
     w.history.replaceState(null, '', w.location.pathname + w.location.search); await wait(40);
 
     // --- afterwards: identical to the snapshot
@@ -72,15 +47,11 @@ f.addEventListener('load', async () => {
     for (const k of Object.keys(before)) ok(before[k] === after[k], 'identique : ' + k + (before[k] === after[k] ? '' : '\n  avant ' + String(before[k]).slice(0, 300) + '\n  après ' + String(after[k]).slice(0, 300)));
     ok(shareAfter === shareBefore, 'lien de partage identique');
     ok(A.history.past.length === undoBefore, 'annulation : aucune entrée ajoutée');
-    const GAMEUI = ['treeBtn', 'lcdShards', 'contracts', 'saveBtn', 'cousinDlg', 'saveDlg', 'puzzle', 'treeDlg', 'welcomeDlg', 'endDlg', 'arcadeDlg', 'pathMenu', 'profileBtn', 'placeBtn'];
+    const GAMEUI = ['treeBtn', 'lcdShards', 'contracts', 'saveBtn', 'saveDlg', 'puzzle', 'treeDlg', 'welcomeDlg'];
     const showing = GAMEUI.filter(id => { const e = d.getElementById(id); return e && vis(e); });
-    ok(!showing.length && !d.querySelector('.fx-flash,.fx-float,.tree-badge:not([hidden])'), 'aucun élément de jeu visible (arbre, éclats, contrats, sauvegarde, énigme, défis, borne) ' + showing.join());
-    ok(vis(d.getElementById('arcadeBtn')), 'seul le bouton Arcade reste visible (la borne est offerte en libre)');
-
-    // --- v1.02 / v1.03: menu ⋯ « Mon Parcours » hidden, help without the Parcours levels, no « Jardin » visual
+    ok(!showing.length && !d.querySelector('.fx-flash,.fx-float,.tree-badge:not([hidden])'), 'aucun élément de jeu visible (arbre, éclats, contrats, sauvegarde, énigme) ' + showing.join());
     d.querySelector('.more').open = true; await wait(40);
-    const pm = d.getElementById('pathMenu');
-    ok(!pm || !vis(pm), 'menu ⋯ ouvert : sous-section « Mon Parcours » absente du mode libre');
+    ok(!vis(d.getElementById('saveBtn')) && vis(d.getElementById('gameMode')), 'menu ⋯ ouvert : pas de sauvegarde du Parcours, seulement la bascule vers le Parcours');
     d.querySelector('.more').open = false;
     d.getElementById('help').click(); await wait(40);
     const hd = d.getElementById('helpDlg'), hp = hd.querySelector('.help-path'), hf = hd.querySelector('.help-free');
@@ -92,14 +63,12 @@ f.addEventListener('load', async () => {
 
     // --- localStorage: no new game key
     const ls1 = LS(), added = Object.keys(ls1).filter(k => !(k in ls0)), changed = Object.keys(ls0).filter(k => ls1[k] !== ls0[k]);
-    const bad = added.concat(changed).filter(k => !HARMLESS.includes(k) && !CABINET.includes(k));
+    const bad = added.concat(changed).filter(k => !HARMLESS.includes(k));
     ok(!bad.length, 'localStorage : aucune clé de jeu nouvelle ni modifiée (nouvelles : ' + (added.join(', ') || 'aucune') + ' ; modifiées : ' + (changed.join(', ') || 'aucune') + ')');
-    log('info clé de la borne tolérée (records et parties, la borne est offerte en libre) : ' + CABINET.join(', '));
     log('info clés inoffensives tolérées : ' + HARMLESS.join(', '));
 
-    // --- #save=… at load, in free mode (v1.02): a VALID link only shows « 💾 Sauvegarde reçue »; « Plus tard » writes nothing
-    const other = JSON.parse(JSON.stringify(A.save.build())); other.game.mode = 'path'; other.game.shards = 321; other.game.nodes = ['racine', 't.son', 'h.pad'];
-    const code = await A.save.encode(other);
+    // --- #save=… at load, in free mode: the confirmation shows both progressions; « Annuler » writes nothing
+    const code = OLD_SAVE; // a v1.04 save link (path, 321 ✧), with the fields of removed features
     const load2 = async (hash) => {
       const g2 = document.createElement('iframe'); g2.style.cssText = 'width:1200px;height:800px;border:0';
       g2.src = '../index.html?' + QS + hash;
@@ -108,23 +77,22 @@ f.addEventListener('load', async () => {
     };
     const lsBefore2 = LS();
     let g2 = await load2('#save=' + code);
-    let w2 = g2.contentWindow, d2 = g2.contentDocument, A2 = w2.AMB, sd = d2.getElementById('saveDlg'), cz2 = d2.getElementById('cousinDlg');
-    ok(A2.game.s.mode === 'free' && !A2.game.path && cz2 && !cz2.hidden && /Sauvegarde reçue/.test(cz2.textContent) && (!sd || sd.hidden), '#save valide en libre : boîte « Sauvegarde reçue », mode libre gardé, aucune confirmation d\'import');
-    cz2.querySelector('[data-cz=no]').click(); await wait(100);
+    let w2 = g2.contentWindow, d2 = g2.contentDocument, A2 = w2.AMB, sd = d2.getElementById('saveDlg');
+    ok(A2.game.s.mode === 'free' && sd && !sd.hidden && sd.querySelector('[data-act=replace]') && /321/.test(sd.textContent), '#save valide en libre (ancienne sauvegarde avec champs retirés) : confirmation affichée, rien encore importé');
+    sd.querySelector('[data-act=cancel]').click(); sd.querySelector('.modal-x').click(); await wait(100);
     const lsAfter2 = LS(), touched = Object.keys(Object.assign({}, lsBefore2, lsAfter2)).filter(k => lsBefore2[k] !== lsAfter2[k] && !HARMLESS.includes(k));
-    ok(cz2.hidden && !/save=/.test(w2.location.hash) && A2.game.s.mode === 'free' && A2.game.s.shards !== 321 && !touched.length, '« Plus tard » : rien importé, aucune clé de jeu écrite (' + (touched.join(', ') || 'aucune') + '), lien effacé');
+    ok(sd.hidden && !/save=/.test(w2.location.hash) && A2.game.s.mode === 'free' && A2.game.s.shards !== 321 && !touched.length, '« Annuler » : rien importé, aucune clé de jeu écrite (' + (touched.join(', ') || 'aucune') + '), lien effacé');
     ok(JSON.stringify(A2.store.stableSnapshot()) === before.store && JSON.stringify(A2.game.s) === before.game, '#save valide en libre : réglages et état du jeu inchangés');
     g2.remove();
     // an unreadable link: at most an error message
     g2 = await load2('#save=bnVsbA');
-    w2 = g2.contentWindow; d2 = g2.contentDocument; A2 = w2.AMB; cz2 = d2.getElementById('cousinDlg');
-    if (cz2 && !cz2.hidden) { cz2.querySelector('[data-cz=no]').click(); await wait(60); }
+    w2 = g2.contentWindow; d2 = g2.contentDocument; A2 = w2.AMB;
     sd = d2.getElementById('saveDlg');
     ok(A2.game.s.mode === 'free' && !A2.game.path, '#save illisible au chargement : mode libre gardé');
     const sdOpen = !!(sd && !sd.hidden); if (sdOpen) sd.querySelector('.modal-x').click();
     ok(!(sd && !sd.hidden), '#save illisible : au plus un message d\'erreur, fermé ensuite (' + (sdOpen ? 'dialogue affiché' : 'rien') + ')');
     ok(JSON.stringify(A2.store.stableSnapshot()) === before.store && JSON.stringify(A2.game.s) === before.game, '#save illisible en libre : réglages et état du jeu inchangés');
-    ['game', 'arcade', 'daily', 'duel'].forEach(k => localStorage.removeItem('ambient.' + k + '.fri'));
+    localStorage.removeItem('ambient.game.fri');
     done();
   } catch (e) { fail(e); }
 });

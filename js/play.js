@@ -12,7 +12,7 @@
     if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
     const tag = e.target.tagName;
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
-    if (!AMB.engine.ctx) return; // audition works when stopped too, once audio has been started once
+    if (!AMB.engine.ctx) return; // notes sound when stopped too, once audio has been started once
     let i;
     // in the path, playing notes needs the Melody, forcing chords needs the Pad
     const g = AMB.game, can = (id) => !g || g.isUnlocked(id);
@@ -39,17 +39,6 @@
   function onMidi(msg) {
     const [st, d1, d2] = msg.data;
     const type = st & 0xf0;
-    // while the arcade cabinet is open (menu included) the app stays silent: during a round, note-on / note-off go
-    // to the mini-game (if it listens), everything else (CCs, notes in the menu) is ignored
-    const AR = AMB.arcade;
-    if (AR && (AR.open || AR.active)) {
-      // raw velocity, the input's name (several keyboards at once, each with its own latency) and the CCs (sustain)
-      const src = msg.currentTarget || msg.target, input = (src && (src.name || src.id)) || null;
-      if (type === 0x90 && d2 > 0) AR.midi({ midi: d1, vel: d2 / 127, time: msg.timeStamp, input });
-      else if (type === 0x80 || type === 0x90) AR.midiOff({ midi: d1, time: msg.timeStamp, input });
-      else if (type === 0xb0 && AR.cc) AR.cc({ cc: d1, value: d2 / 127, time: msg.timeStamp, input });
-      return;
-    }
     if (type === 0x90 && d2 > 0) {
       if (!AMB.seq.playing) return;
       // the heard velocity is remapped to 0.25–1 (soft notes stay audible); the raw one (0..1) rides along on 'live'

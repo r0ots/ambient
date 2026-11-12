@@ -9,7 +9,7 @@ const oe=console.error;console.error=(...a)=>{log('CONSOLE.ERROR '+a.join(' '));
 </script>
 <div id="scenes"></div><div id="layers"></div><div id="globals"></div>
 <button id="play"></button><button id="bigPlay"></button><div id="chordName"></div><div id="hudInfo"></div><select id="preset"></select><button id="dice"></button><button id="save"></button><button id="rec"></button><button id="share"></button><div id="toast"></div><select id="sleep"></select><span id="sleepLeft"></span><canvas id="viz" style="width:400px;height:200px"></canvas>
-<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script>window.AMB_ARCADE_KEY='ambient.arcade.test-play';</script><script src="../js/audition.js"></script><script src="../js/arcade.js"></script><script src="../js/presets.js"></script><script src="../js/generator.js"></script><script src="../js/visual.js"></script><script src="../js/scenes.js"></script><script src="../js/pianoroll.js"></script><script src="../js/pulses.js"></script><script src="../js/bass.js"></script><script src="../js/chords.js"></script><script src="../js/midi.js"></script><script src="../js/automation.js"></script><script src="../js/song.js"></script><script src="../js/widgets.js"></script><script src="../js/perform.js"></script><script src="../js/rec.js"></script><script src="../js/ui.js"></script><script src="../js/play.js"></script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/presets.js"></script><script src="../js/generator.js"></script><script src="../js/visual.js"></script><script src="../js/scenes.js"></script><script src="../js/pianoroll.js"></script><script src="../js/pulses.js"></script><script src="../js/bass.js"></script><script src="../js/chords.js"></script><script src="../js/midi.js"></script><script src="../js/automation.js"></script><script src="../js/song.js"></script><script src="../js/widgets.js"></script><script src="../js/perform.js"></script><script src="../js/rec.js"></script><script src="../js/ui.js"></script><script src="../js/play.js"></script>
 <script>
 const params=new URLSearchParams(location.search);
 async function measure(label, secs){
@@ -35,27 +35,6 @@ window.addEventListener('load', async ()=>{
   AMB.play.onMidi({data:[0x90,40,100]}); AMB.play.onMidi({data:[0x90,72,100]}); AMB.play.onMidi({data:[0xb0,1,127]});
   await new Promise(r=>setTimeout(r,300*S));
   log('midi chordDeg='+AMB.seq.chordDeg+' density='+AMB.store.get('bells.density').toFixed(2)+' padVoices='+AMB.layers.pad.active_.size);
-  // G9: during an arcade round, MIDI notes go to the mini-game, never to the app
-  { const got=[]; AMB.arcade.register({id:'t.midi', make:()=>({}), choices:()=>null, check:()=>({ok:false}), onMidi:(ch,n,api)=>got.push(n.midi+'/'+n.vel.toFixed(2)+'/'+(typeof n.time)+'/'+(typeof api.answer))});
-    let appCalls=0; const pm=AMB.seq.playMidi, fc=AMB.seq.forceChord; AMB.seq.playMidi=function(){ appCalls++; return pm.apply(this,arguments); }; AMB.seq.forceChord=function(){ appCalls++; return fc.apply(this,arguments); };
-    AMB.arcade.start('t.midi',{seed:1}); const dens=AMB.store.get('bells.density');
-    AMB.play.onMidi({data:[0x90,72,127], timeStamp:12}); AMB.play.onMidi({data:[0x90,40,100]}); AMB.play.onMidi({data:[0xb0,1,0]});
-    await new Promise(r=>setTimeout(r,200*S));
-    const ok=got.length===2 && got[0]==='72/1.00/number/function' && appCalls===0 && AMB.store.get('bells.density')===dens;
-    log((ok?'ok':'ERROR fail')+' arcade MIDI routed to plugin, app silent: '+got.join(',')+' appCalls='+appCalls);
-    AMB.arcade.end({abort:true});
-    AMB.arcade.register({id:'t.midi2', make:()=>({}), choices:()=>null, check:()=>({ok:false})});
-    AMB.arcade.start('t.midi2',{seed:1}); AMB.play.onMidi({data:[0x90,72,100]});
-    await new Promise(r=>setTimeout(r,200*S)); AMB.arcade.end({abort:true});
-    log((appCalls===0?'ok':'ERROR fail')+' arcade MIDI ignored without onMidi hook');
-    AMB.play.onMidi({data:[0x90,72,100]}); log((appCalls===1?'ok':'ERROR fail')+' after the round, MIDI plays in the app again');
-    // the cabinet open (menu, no round): the app stays silent too; note-off reach the mini-game during a round
-    AMB.arcade.open=true; AMB.play.onMidi({data:[0x90,74,100]}); AMB.play.onMidi({data:[0xb0,1,5]});
-    log((appCalls===1?'ok':'ERROR fail')+' cabinet open (menu): MIDI ignored by the app');
-    const offs=[]; AMB.arcade.register({id:'t.off', make:()=>({}), choices:()=>null, check:()=>({ok:false}), onMidi:()=>{}, onMidiOff:(ch,n)=>offs.push(n.midi+'@'+n.time)});
-    AMB.arcade.start('t.off',{seed:1}); AMB.play.onMidi({data:[0x80,60,0], timeStamp:5}); AMB.play.onMidi({data:[0x90,62,0], timeStamp:6}); AMB.arcade.end({abort:true}); AMB.arcade.open=false;
-    log((offs.join()==='60@5,62@6' && appCalls===1?'ok':'ERROR fail')+' note-off (0x80 and velocity 0) routed to onMidiOff: '+offs.join());
-    AMB.seq.playMidi=pm; AMB.seq.forceChord=fc; localStorage.removeItem('ambient.arcade.test-play'); }
   await measure('after',3*S);
   log('DONE');
   }catch(e){log('EXC '+e.stack)}

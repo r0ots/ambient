@@ -468,15 +468,10 @@ body.listen .puzzle-card { display: none; }
 #lcdTop.lcd-flash { animation: lcd-flash 1.2s ease-out; text-shadow: 0 0 10px var(--lcd-fg); }
 @keyframes lcd-flash { 0%, 30% { opacity: 1; } 10%, 20% { opacity: .35; } 100% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { #lcdTop.lcd-flash { animation: none; } }
-.end-card h3 { color: var(--lcd-fg); font: 30px var(--f-lcd); letter-spacing: .04em; text-shadow: 0 0 12px var(--lcd-glow); }
-.end-stats { margin: 12px 0; padding: 10px 14px; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; background: var(--lcd-bg); border-radius: 6px; box-shadow: var(--bevel-in, none); font: 18px var(--f-lcd); color: var(--lcd-fg); }
-.end-left { color: var(--muted); font-size: 13px; }
-.end-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
-@media (max-width: 560px) { .end-stats { grid-template-columns: 1fr; } }
 /* puzzle A/B: the target's values are heard, not shown */
 body.pz-veil .pz-veiled { filter: blur(4px) grayscale(.6); opacity: .55; }
 
-/* G7.4 juice : canvas #fx, floating numbers, flash, combo counter (path only, created on demand) */
+/* G7.4 juice : canvas #fx, floating numbers, flash (path only, created on demand) */
 :root { --fx-good: #ffc15a; --fx-bad: #ff5a3c; --fx-combo: #ffe9a8; }
 #fx { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 1000; }
 .fx-float { position: fixed; z-index: 1001; pointer-events: none; transform: translate(-50%, -50%); font: 22px var(--f-lcd); color: var(--fx-good); text-shadow: 0 0 8px var(--lcd-glow, #ffb34755), 0 1px 0 #000; animation: fx-rise 1.3s ease-out forwards; white-space: nowrap; }
@@ -486,13 +481,7 @@ body.pz-veil .pz-veiled { filter: blur(4px) grayscale(.6); opacity: .55; }
 @keyframes fx-fade { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
 .fx-flash { position: fixed; inset: 0; z-index: 1000; pointer-events: none; mix-blend-mode: screen; opacity: 0; animation: fx-flash 160ms ease-out forwards; }
 @keyframes fx-flash { 0% { opacity: 0; } 25% { opacity: var(--fx-peak, .28); } 100% { opacity: 0; } }
-.fx-combo { position: fixed; right: 20px; bottom: 20px; z-index: 1001; pointer-events: none; display: flex; align-items: baseline; gap: 8px; padding: 2px 12px; background: var(--lcd-bg); border: 1px solid #000; box-shadow: var(--bevel-in, none); border-radius: 4px; font: 30px var(--f-lcd); color: var(--lcd-fg); text-shadow: 0 0 6px var(--lcd-glow, transparent); }
-.fx-combo[hidden] { display: none; }
-.fx-combo[data-mult="3"], .fx-combo[data-mult="4"] { color: var(--fx-combo); }
-.fx-combo span { font-size: 18px; color: var(--lcd-dim); }
-.fx-combo.up { animation: fx-pop .3s ease-out; }
-@keyframes fx-pop { 40% { transform: scale(1.3); } }
-@media (prefers-reduced-motion: reduce) { .fx-float { animation: fx-fade .9s ease-out forwards; } .fx-combo.up { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .fx-float { animation: fx-fade .9s ease-out forwards; } }
 /* G8.1 « Mastermind » puzzles: one row of pegs per validation, live gauge only with help */
 .pz-gauge[hidden] { display: none; }
 .pz-board { display: grid; gap: 3px; max-height: 190px; overflow-y: auto; }

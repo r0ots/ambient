@@ -1,7 +1,8 @@
 // « Jardin sonore » G10.1 : secrets — surprises found by playing, never listed in the tree (shown as « ??? »).
 // Detection runs on bus events (live notes, forced chords, acts) and user changes of the store; only in the
 // path (free mode: nothing is detected nor shown). Rewards persist in game.s.secrets:
-//   found {id: time}, secs (play time), gifts {timbres [{sec,opt}], themes [], mirror, pacts []}, mirrorOn, theme.
+//   found {id: time}, secs (play time), gifts {timbres [{sec,opt}], themes [], mirror}, mirrorOn, theme.
+// Three secrets (Sur le battement, Mesure de silence, Funambule) are trophies: their ✧ only, no gift.
 // Gifts policy (decided, v0.99): found timbres stay in the Melody / Pad « Son » list whatever the mode; the
 // mirror keyboard and the gift LCD themes apply only in the path (off in free mode, back on return). Until a gift
 // is found the classic app is untouched, and free mode never detects nor shows anything.
@@ -20,9 +21,6 @@
     miroir: { type: 'mirror', label: 'clavier miroir' },
     aurore: { type: 'theme', id: 'aurore', label: 'écran « Aurore »' },
     neon: { type: 'theme', id: 'neon', label: 'écran « Néon »' },
-    metro: { type: 'pact', id: 'metronome', label: 'Pacte du Métronome' },
-    silence: { type: 'pact', id: 'silence', label: 'Pacte du Silence' },
-    funambule: { type: 'pact', id: 'funambule', label: 'Pacte du Funambule' },
   };
   const DEFS = [
     S('tons', 'Par tons', 'Cinq notes qui montent sans jamais se presser, un ton à chaque pas.',
@@ -38,16 +36,16 @@
       'Tempo à 36 bpm ou moins, Halo à 95 % ou plus, Rythme en Flottant, tout en même temps.', { n: 10, gift: GIFT.aurore },
       { param: (k) => ['global.tempo', 'fx.shimmer', 'global.time'].includes(k) && store.get('global.tempo') <= 36 && store.get('fx.shimmer') >= 0.95 && store.get('global.time') === 'Flottant' }, 'e.halo'),
     S('pulse', 'Sur le battement', 'Huit pas, et pas un de travers.',
-      'Joue 8 notes, une exactement sur chaque temps, pendant que la musique tourne.', { n: 10, gift: GIFT.metro },
+      'Joue 8 notes, une exactement sur chaque temps, pendant que la musique tourne.', { n: 10 },
       { live: (m, X) => X.onBeat(8) }, 'm.bells'),
     S('gele', 'Cloche gelée', 'Le carillon s\'est tu, mais son écho peut encore s\'attraper.',
       'Fige le son (❄ ou Entrée) dans les 3 secondes qui suivent un carillon du jeu.', { n: 10 },
       { act: (id, X) => id === 'freeze' && X.now() - X.lastChime < 3000 }, 'm.grains2'),
     S('silence', 'Mesure de silence', 'Écouter, c\'est aussi savoir tout éteindre, puis tout rallumer.',
-      'Coupe toutes les couches pendant une mesure entière (la lecture continue), puis rallume-en une.', { n: 10, gift: GIFT.silence },
+      'Coupe toutes les couches pendant une mesure entière (la lecture continue), puis rallume-en une.', { n: 10 },
       { param: (k, v, X) => X.silenceDone(k) }, 'm.bells'),
     S('velo', 'Funambule', 'Du plus fort au presque rien, puis encore tout en haut. Il faut des touches qui sentent la main.',
-      'Au clavier MIDI : une note très forte, une note très douce, puis une très forte, à la suite.', { n: 10, gift: GIFT.funambule },
+      'Au clavier MIDI : une note très forte, une note très douce, puis une très forte, à la suite.', { n: 10 },
       { live: (m, X) => !!X.tail(3) && X.w[X.w.length - 3].raw >= 0.9 && X.w[X.w.length - 2].raw <= 0.35 && m.raw >= 0.9 }, 'm.bells'), // raw MIDI velocity (null from the computer keyboard)
     S('chroma', 'Entre les touches', 'Il y a des notes entre les notes, et elles se laissent descendre ou monter.',
       'Au clavier MIDI : 6 notes de suite, une par demi-ton, en montant ou en descendant.', { n: 10, gift: GIFT.neon },
@@ -59,7 +57,6 @@
   const byId = Object.fromEntries(DEFS.map((d) => [d.id, d]));
   const HINT2 = { mins: 15, found: 3 }; // hint 2 opens after this many minutes of play, or this many secrets found
   const THEMES = { aurore: 'Aurore', neon: 'Néon' };
-  const PACTS = { metronome: 'Métronome', silence: 'Silence', funambule: 'Funambule' };
 
   const secrets = {
     DEFS, byId, GIFT, HINT2, THEMES,
@@ -73,15 +70,14 @@
       const q = s.secrets;
       q.found = q.found || {}; q.secs = q.secs || 0; q.mirrorOn = !!q.mirrorOn; q.theme = q.theme || '';
       q.gifts = q.gifts || {};
-      ['timbres', 'themes', 'pacts'].forEach((k) => { q.gifts[k] = q.gifts[k] || []; });
+      ['timbres', 'themes'].forEach((k) => { q.gifts[k] = q.gifts[k] || []; });
       q.gifts.mirror = !!q.gifts.mirror;
       return q;
     },
-    // detection runs only in the path, never during an arcade round nor while a puzzle's target is heard
+    // detection runs only in the path, never while a puzzle's target is heard
     active() { return !!AMB.game && AMB.game.freePlay(); },
     foundCount() { return Object.keys(this.state().found).length; },
     has(id) { return !!this.state().found[id]; },
-    hasPact(id) { return this.state().gifts.pacts.includes(id); }, // flag for the arcade (G9.8)
 
     // ---- list for the (future) tree: [{id, found, title|'???', hint, level, node, reward}] ----
     // level 0 = hidden (node not owned), 1 = cryptic hint, 2 = clear hint, 3 = found
@@ -205,7 +201,6 @@
       if (gift.type === 'timbre') { if (!gf.timbres.some((t) => t.opt === gift.opt)) gf.timbres.push({ sec: gift.sec, opt: gift.opt }); }
       else if (gift.type === 'theme') { if (!gf.themes.includes(gift.id)) gf.themes.push(gift.id); if (announce) q.theme = gift.id; }
       else if (gift.type === 'mirror') gf.mirror = true;
-      else if (gift.type === 'pact') { if (!gf.pacts.includes(gift.id)) gf.pacts.push(gift.id); }
       this.applyGifts();
     },
     // make the stored gifts real: extra timbre options in the schema (+ live selects), LCD theme on <html>
@@ -264,7 +259,6 @@
           s.textContent = it.found ? `${it.hint} → ${it.reward}` : it.hint || 'Débloque d\'abord le nœud lié.';
           p.append(b, s);
         }
-        if (gf.pacts.length) { const p = el('p', 'sc-item'); p.innerHTML = '<b>Pactes</b>'; const s = document.createElement('span'); s.textContent = gf.pacts.map((x) => PACTS[x] || x).join(', ') + ' (pour l\'arcade)'; p.append(s); }
       }
       if (gf.mirror) {
         const b = el('button', 'sc-btn' + (q.mirrorOn ? ' on' : ''), `Clavier miroir : ${q.mirrorOn ? 'oui' : 'non'}`);

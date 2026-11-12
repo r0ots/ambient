@@ -1,4 +1,4 @@
-/* G10.4 : sauvegarde exportable + encart « depuis ta dernière visite » (js/save.js) */
+/* G10.4 : sauvegarde exportable du Parcours (js/save.js) */
 .sv-card { max-width: 520px; }
 .sv-sub { margin: 0 0 12px; color: var(--muted); }
 .sv-body { display: flex; flex-direction: column; gap: 10px; }
@@ -11,20 +11,9 @@
 .sv-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .sv-row .btn, .sv-file { min-height: 40px; }
 .sv-file { display: inline-flex; align-items: center; align-self: flex-start; cursor: pointer; }
-.sv-link, .sv-paste input { flex: 1; min-width: 0; width: 100%; box-sizing: border-box; padding: 8px 10px; font: 12px var(--f-mono, monospace); color: var(--text); background: #0000004d; border: 1px solid var(--line); border-radius: 6px; }
 .sv-paste { display: flex; gap: 8px; }
 .sv-paste .btn { white-space: nowrap; min-height: 40px; }
 .sv-msg { margin: 10px 0 0; font-size: 13px; color: var(--accent); }
 .sv-msg.err { color: #ff9a8a; }
-.back-card { position: relative; display: flex; flex-direction: column; gap: 1px; padding: 5px 26px 5px 8px; margin-bottom: 2px; border: 1px dashed var(--line); border-radius: 8px; font-size: 11.5px; color: var(--text); max-width: 300px; }
-.back-card p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.back-card .back-note { display: none; }
-.back-card b { font-weight: 500; font-size: 12px; color: var(--accent); }
-.back-card small { color: var(--muted); font-size: 11px; }
-.back-card p { margin: 0; line-height: 1.35; }
-.back-card p span { color: var(--muted); }
-.back-x { position: absolute; top: 2px; right: 2px; width: 28px; height: 28px; background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 13px; }
-.more > summary.has-back { position: relative; }
-.more > summary.has-back::after { content: ''; position: absolute; top: 4px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 @media (max-width: 520px) { .sv-cmp { grid-template-columns: 1fr; } }
-.back-hd { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
