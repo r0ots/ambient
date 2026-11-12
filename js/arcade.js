@@ -35,6 +35,16 @@
 //   t0 = performance.now() ms at which the last stimulus really starts sounding (compare with MIDI / key times)
 //   note(ev) = immediate feedback sound on the audition bus ({midi|hz, dur?, vel?, cents?, voice?}), does not move t0
 // arcade.open = the cabinet is on screen (set by js/arcade-ui.js); arcade.active = a round is running.
+//
+// Pacts (G9.8, chosen difficulty à la Hades; definitions, multipliers and per-game choice in js/pacts.js):
+// start(id, {pacts: ['une-ecoute', …]}) — the engine applies their rules, the score is multiplied by
+// AMB.pacts.mult(pacts) (stars too: weighted score), records stay per exact combination.
+//   une-ecoute  replay() refused            transpose  every challenge shifted by ±1..6 semitones: playEvents
+//   proches     make(rng, d + 0.2)          shifts every `midi` / `hz` event, api.transpose = the shift (a plugin
+//   avant-fin   answer after the stimulus   whose answer depends on absolute pitch reads it, or declares
+//               ended = wrong (late)        `pacts: {transpose: false}`); the staircase level is never touched
+//   metronome   no answer 3 s after the stimulus ended = wrong (late)   funambule  first wrong answer ends the round
+//   silence     UI only (no verdict, no score until the end)
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const q = new URLSearchParams(location.search);
@@ -48,6 +58,8 @@
   const REVEAL = 450; // default pause (ms) after an answer, before the next challenge (plugin hook: reveal)
   // stars: score relative to what is expected at the level the round started at
   const STARS = [0.4, 0.8, 1.3];
+  // pact rules (G9.8): level offset of « Leurres proches », max transposition (semitones), « Métronome » window (ms)
+  const PACT = { near: 0.2, transpose: 6, metronome: 3000 };
 
   const fresh = () => ({ v: 1, profile: 'default', profiles: {} });
 
@@ -62,7 +74,7 @@
   const arcade = {
     key: KEY,
     DURATION: 75000,
-    STAIR, SCORE, STARS, REVEAL,
+    STAIR, SCORE, STARS, REVEAL, PACT,
     games: [], byId: {},
     clock: { now: () => (window.performance ? performance.now() : Date.now()) },
     s: fresh(),
@@ -119,8 +131,10 @@
       const seed = opts.seed != null ? opts.seed >>> 0 : (Math.floor(now * 1000) ^ 0x9e3779b9) >>> 0;
       const rng = AMB.audition ? AMB.audition.rng(seed) : null;
       if (!rng) return null;
+      const pacts = (opts.pacts || []).slice(), P = AMB.pacts;
       this.round = {
-        game: g, seed, rng, pacts: (opts.pacts || []).slice(), t0: now, dur: opts.duration || this.DURATION,
+        game: g, seed, rng, pacts, t0: now,
+        pmult: P && P.mult ? P.mult(pacts) : 1, trRng: pacts.includes('transpose') ? AMB.audition.rng((seed ^ 0x5bd1e995) >>> 0) : null, tr: 0, stimEnd: 0, dur: opts.duration || this.DURATION,
         d0: st.d, stair: { d: st.d, step: Math.max(st.step, STAIR.restart), run: 0, dir: 0 }, peak: st.d,
         score: 0, n: 0, good: 0, clean: 0, replays: 0, chReplays: 0, ch: null, history: [], over: false, t0Stim: 0,
       };
@@ -133,26 +147,40 @@
     },
     next() {
       const r = this.round; if (!r) return null;
-      r.ch = r.game.make(r.rng, r.stair.d);
-      r.chReplays = 0; r.n++;
+      // pacts: the transposition has its own rng (rounds without it are unchanged); « proches » serves harder challenges
+      r.tr = r.trRng ? (1 + r.trRng.int(PACT.transpose)) * (r.trRng() < 0.5 ? -1 : 1) : 0;
+      r.ch = r.game.make(r.rng, r.pacts.includes('proches') ? Math.min(1, r.stair.d + PACT.near) : r.stair.d);
+      r.chReplays = 0; r.n++; r.stimEnd = 0;
       emit('arcade:challenge', { id: r.game.id, n: r.n, d: r.stair.d });
       return r.ch;
     },
     timeLeft() { const r = this.round; return r ? Math.max(0, r.dur - (this.clock.now() - r.t0)) : 0; },
     // the UI calls this regularly: ends the round when the time is up
-    tick() { if (this.round && !this.round.over && this.timeLeft() <= 0) return this.end(); return null; },
+    tick() {
+      const r = this.round;
+      if (r && !r.over && this.timeLeft() <= 0) return this.end();
+      if (r && !r.over && r.stimEnd && r.pacts.includes('metronome') && this.clock.now() > r.stimEnd + PACT.metronome) this.answer(null, { late: true });
+      return null;
+    },
     api() {
       const r = this.round;
       return {
         answer: (x) => this.answer(x), replay: () => this.replay(), stop: () => AMB.audition && AMB.audition.stop(),
         play: (ev) => this.playEvents(ev), note: (ev) => this.note(ev),
         get t0() { return r ? r.t0Stim : 0; }, ch: r && r.ch, d: r && r.stair.d, rng: r && r.rng,
+        get transpose() { return r ? r.tr : 0; }, pacts: r ? r.pacts.slice() : [],
       };
     },
     // a stimulus: remembers when it really starts (api.t0)
     playEvents(ev) {
+      const r = this.round, tr = r ? r.tr : 0;
+      if (tr) ev = (ev || []).map((e) => (e.midi != null ? { ...e, midi: e.midi + tr } : e.hz != null ? { ...e, hz: e.hz * Math.pow(2, tr / 12) } : e));
       const res = AMB.audition ? AMB.audition.play(ev || []) : { dur: 0, at: 0, t0: 0 };
-      if (this.round) this.round.t0Stim = res.t0 || 0;
+      if (r) {
+        r.t0Stim = res.t0 || 0;
+        const lead = res.t0 && window.performance ? Math.max(0, res.t0 - performance.now()) : 0;
+        r.stimEnd = this.clock.now() + lead + (res.dur || 0) * 1000; // end of the stimulus (pacts « Avant la fin », « Métronome »)
+      }
       return res;
     },
     // immediate feedback when the player answers (same bus, starts now, stimulus timing untouched)
@@ -170,7 +198,7 @@
       return null;
     },
     replay() {
-      const r = this.round; if (!r || r.over) return null;
+      const r = this.round; if (!r || r.over || r.pacts.includes('une-ecoute')) return null;
       r.replays++; r.chReplays++;
       return this.listen();
     },
@@ -188,10 +216,11 @@
       return true;
     },
     choices() { const r = this.round; return r && r.ch && typeof r.game.choices === 'function' ? r.game.choices(r.ch) : null; },
-    answer(x) {
+    answer(x, opt) {
       const r = this.round; if (!r || r.over || !r.ch) return null;
       if (this.timeLeft() <= 0) { this.end(); return null; }
-      const res = r.game.check(r.ch, x) || {}, ok = !!res.ok, clean = r.chReplays === 0;
+      const late = !!(opt && opt.late) || (r.pacts.includes('avant-fin') && r.stimEnd > 0 && this.clock.now() > r.stimEnd);
+      const res = late ? { ok: false } : r.game.check(r.ch, x) || {}, ok = !!res.ok, clean = r.chReplays === 0;
       const C = this.combo();
       // the combo grows only on risky answers (no replay); a replayed right answer keeps it
       let mult = C.mult;
@@ -201,15 +230,16 @@
       if (part + bonus > 0) {
         pts = (SCORE.base + SCORE.levelBonus * r.stair.d) * (part + SCORE.bonus * bonus);
         if (clean) pts *= 1 + SCORE.noReplay;
-        pts = Math.round(pts * mult);
+        pts = Math.round(pts * mult * r.pmult);
       }
       r.score += pts; if (ok) { r.good++; if (clean) r.clean++; }
       const dWas = r.stair.d, d = this.stair(r.stair, ok);
       r.peak = Math.max(r.peak, d);
       r.history.push({ ok, pts, d: dWas, replays: r.chReplays });
       const reveal = typeof r.game.reveal === 'number' && r.game.reveal >= 0 ? Math.min(r.game.reveal, 5000) : REVEAL;
-      const out = { ok, partial: res.partial, bonus, reveal, pts, d, combo: C.n, mult, clean, score: r.score, ch: r.ch, answer: x };
+      const out = { ok, partial: res.partial, bonus, reveal, pts, d, combo: C.n, mult, clean, score: r.score, ch: r.ch, answer: x, late };
       emit('arcade:answer', out);
+      if (!ok && r.pacts.includes('funambule')) { this.end({ fall: true }); return out; } // one slip ends the round
       this.next();
       return out;
     },
@@ -231,7 +261,7 @@
         else if (prev && stars > prev.stars) prev.stars = stars;
       }
       this.save();
-      const out = { id: g.id, score: r.score, stars, record, abort, good: r.good, clean: r.clean, total: r.history.length, replays: r.replays, d: st.d, peak: st.peak, best: st.best[pk] || null, pacts: r.pacts };
+      const out = { id: g.id, score: r.score, stars, record, abort, good: r.good, clean: r.clean, total: r.history.length, replays: r.replays, d: st.d, peak: st.peak, best: st.best[pk] || null, pacts: r.pacts, pmult: r.pmult, fall: !!opts.fall };
       this.round = null; this.active = false; this.last = out;
       if (AMB.audition) AMB.audition.session(false);
       emit('arcade:end', out);

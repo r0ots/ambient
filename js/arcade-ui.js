@@ -8,6 +8,8 @@
 // and refuses to start while a recording runs (the round ducks the ambience).
 // A plugin's prepare(api) runs before arcade.start, off the clock (keys / MIDI routed to it, Échap cancels);
 // after an answer the next challenge waits the plugin's `reveal` ms (default arcade.REVEAL).
+// Pacts (G9.8, js/pacts.js): chips under each cartridge, the ticked ones are passed to arcade.start; « Une écoute »
+// hides Réécouter, « Silence » hides the verdicts and the score until the end screen.
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const $ = (s, r = document) => r.querySelector(s);
@@ -30,7 +32,11 @@
       this.el('.arc-replay').addEventListener('click', () => this.replay());
       this.el('.arc-again').addEventListener('click', () => this.start(this.gameId));
       this.el('.arc-menu-btn').addEventListener('click', () => this.menu());
-      this.el('.arc-carts').addEventListener('click', (e) => { const c = e.target.closest('[data-game]'); if (c) this.start(c.dataset.game); });
+      this.el('.arc-carts').addEventListener('click', (e) => {
+        const p = e.target.closest('[data-pact]');
+        if (p) { this.togglePact(p.closest('[data-for]').dataset.for, p.dataset.pact); return; }
+        const c = e.target.closest('[data-game]'); if (c) this.start(c.dataset.game);
+      });
       this.el('.arc-choices').addEventListener('click', (e) => { const b = e.target.closest('[data-i]'); if (b) this.pick(+b.dataset.i); });
       window.addEventListener('keydown', (e) => this.onKey(e), true); // capture: before every app shortcut
       const B = AMB.bus; if (!B) return;
@@ -86,15 +92,21 @@
       this.renderMenu(); this.show('menu');
       const first = this.el('.arc-cart'); if (first) first.focus();
     },
+    pacts(id) { return AMB.pacts ? AMB.pacts.chosen(id) : []; },
+    togglePact(id, pact) {
+      if (!AMB.pacts || !AMB.pacts.toggle(id, pact)) return;
+      this.renderMenu();
+      const b = this.el(`.arc-pacts[data-for="${id}"] [data-pact="${pact}"]`); if (b) b.focus();
+    },
     renderMenu() {
       const A = this.A;
       this.el('.arc-carts').innerHTML = A.games.map((g) => {
-        const st = A.stats(g.id), rec = A.record(g.id);
-        return `<button class="arc-cart" data-game="${esc(g.id)}">
+        const st = A.stats(g.id), rec = A.record(g.id, this.pacts(g.id));
+        return `<div class="arc-slot"><button class="arc-cart" data-game="${esc(g.id)}">
           <span class="arc-cart-top"><b>${esc(g.title)}</b>${g.kid ? '<i class="arc-kid">facile</i>' : ''}</span>
           <span class="arc-cart-blurb">${esc(g.blurb)}</span>
           <span class="arc-cart-meta"><span title="Niveau atteint">NIV ${Math.round((st.peak || 0) * 100)}%</span><span title="Record">REC ${pad6(rec ? rec.score : 0)}</span><span class="arc-cart-stars" title="Étoiles">${starStr(rec ? rec.stars : 0)}</span></span>
-        </button>`;
+        </button>${AMB.pacts ? AMB.pacts.chipsHTML(g.id) : ''}</div>`;
       }).join('') || '<p class="arc-empty">Aucune cartouche.</p>';
     },
 
@@ -125,8 +137,11 @@
         await this.prepare(A.byId[id], tok);
         if (tok !== this.startTok || !this.dlg || this.dlg.hidden) return; // left during the preparation
       }
-      const r = A.start(id, {});
+      const r = A.start(id, { pacts: this.pacts(id) });
       if (!r) { this.menu(); return; }
+      this.silent = r.pacts.includes('silence');
+      this.el('.arc-replay').hidden = r.pacts.includes('une-ecoute');
+      this.dlg.classList.toggle('arc-silent', this.silent);
       if (AMB.juice) { const c = AMB.juice.comboEl(); this.el('.arc-combo-slot').append(c); AMB.juice.showCombo(true); }
       this.renderHud();
       this.stopTimer();
@@ -163,8 +178,8 @@
       this.el('.arc-time').textContent = String(Math.ceil(left / 1000)).padStart(2, '0');
       this.el('.arc-time').classList.toggle('low', left < 10000);
       this.el('.arc-bar i').style.width = `${(left / r.dur) * 100}%`;
-      this.el('.arc-score').textContent = pad6(r.score);
-      this.el('.arc-level').textContent = `NIV ${Math.round(r.stair.d * 100)}%`;
+      this.el('.arc-score').textContent = this.silent ? '······' : pad6(r.score);
+      this.el('.arc-level').textContent = `NIV ${Math.round(r.stair.d * 100)}%` + (r.pacts.length && AMB.pacts ? ` · PACTES ${AMB.pacts.fmt(r.pmult)}` : '');
     },
     // a new challenge: draw its answers now (or after the feedback of the last answer), then play it
     onChallenge() {
@@ -191,13 +206,15 @@
     replay() { if (this.A.round && Date.now() >= this.lockUntil) this.A.replay(); },
     onAnswer(d) {
       if (this.screen !== 'play') return;
+      this.lockUntil = Date.now() + (d.reveal != null ? d.reveal : this.A.REVEAL);
+      if (this.silent) { this.lastPick = null; this.renderHud(); return; } // « Silence »: no verdict until the end
       const J = AMB.juice, A = this.A, g = A.round && A.round.game, btns = [...this.dlg.querySelectorAll('.arc-choice')];
       // the right answer(s), whatever the mini-game: ask its own check()
       btns.forEach((b, i) => { const c = this.choices[i]; if (c && g && g.check(d.ch, c.value).ok) b.classList.add('good'); });
       const mine = btns.find((b) => b.dataset.value === String(d.answer)) || (this.lastPick != null && btns[this.lastPick]);
       if (mine && !d.ok) mine.classList.add('bad');
-      this.lockUntil = Date.now() + (d.reveal != null ? d.reveal : this.A.REVEAL);
       const at = mine || this.el('.arc-stage');
+      if (d.late && J) J.floatText(at, 'TROP TARD');
       if (J) {
         if (d.ok) {
           J.burstAt(at, { n: 18 + d.mult * 6 });
@@ -214,6 +231,7 @@
     onEnd(d) {
       this.stopTimer();
       if (AMB.juice) AMB.juice.showCombo(false);
+      this.silent = false; if (this.dlg) this.dlg.classList.remove('arc-silent');
       if (this.screen !== 'play' || d.abort) return;
       this.token++;
       this.show('end');
@@ -222,7 +240,8 @@
       this.el('.arc-end-score').textContent = pad6(d.score);
       this.el('.arc-stars').innerHTML = [0, 1, 2].map((i) => `<i class="arc-star${i < d.stars ? ' on' : ''}" style="animation-delay:${0.25 + i * 0.45}s">★</i>`).join('');
       this.el('.arc-record').hidden = !d.record;
-      this.el('.arc-end-stats').textContent = `${d.good}/${d.total} justes · ${d.clean} sans réécouter · niveau ${Math.round(d.d * 100)}%`;
+      this.el('.arc-end-stats').textContent = `${d.good}/${d.total} justes · ${d.clean} sans réécouter · niveau ${Math.round(d.d * 100)}%`
+        + (d.pacts && d.pacts.length && AMB.pacts ? ` · pactes ${AMB.pacts.summary(d.pacts)}` : '') + (d.fall ? ' · chute du Funambule' : '');
       const again = this.el('.arc-again'); if (again) again.focus();
       if (d.record && AMB.juice) setTimeout(() => AMB.juice.burstAt(this.el('.arc-record'), { n: 60, color: 'var(--fx-combo)', kind: 'shard', speed: 280 }), 300);
     },

@@ -1,0 +1,122 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
+<!-- Pacts (G9.8): engine rules with an injected clock and a fake audition (no real audio), then the cartridge chips in the app. -->
+<script src="lib.js"></script>
+<script>window.AMB_ARCADE_KEY='ambient.arcade.test-pacts'; localStorage.removeItem(window.AMB_ARCADE_KEY); localStorage.removeItem('ambient.game.pacts'); localStorage.removeItem('ambient.arcade.pactsui'); testBus();</script>
+<script src="../js/audition.js"></script><script src="../js/arcade.js"></script><script src="../js/pacts.js"></script><script src="../js/arcade/hautbas.js"></script><script src="../js/arcade/reponds.js"></script>
+<script>
+const T00 = performance.now();
+window.addEventListener('load', async () => {
+  try {
+    const A = AMB.arcade, P = AMB.pacts; let T = 0; A.clock = { now: () => T };
+    const mr = Math.random; let rCalls = 0; Math.random = function () { rCalls++; return mr(); };
+    // fake audition player: records the events, a stimulus lasts STIM s
+    let played = [], STIM = 1.4; AMB.audition.play = (ev) => { played.push(ev); return { dur: STIM, at: 0, t0: 0 }; };
+    const run = (pacts, seed, n, answerFn) => { A.stats('hautbas').d = 0.3; A.stats('hautbas').step = 0.12; T = 0; A.start('hautbas', { seed, pacts }); const out = []; for (let i = 0; i < n && A.round; i++) { A.listen(); const ch = A.round.ch; out.push(A.answer(answerFn(ch, i))); } return out; };
+
+    // --- definitions, multipliers, applicability
+    ok(P.DEFS.length === 7 && P.mult([]) === 1 && P.mult(['une-ecoute', 'proches']) === 1.56 && P.fmt(1.56) === '×1,56', 'multiplicateurs : produit (×1,2 × ×1,3 = ' + P.fmt(P.mult(['une-ecoute', 'proches'])) + ')');
+    ok(P.available('hautbas').map((p) => p.id).join() === 'une-ecoute,transpose,proches,avant-fin', 'hautbas : 4 pactes génériques, secrets cachés tant qu\'ils ne sont pas trouvés');
+    ok(!P.available('reponds').some((p) => ['transpose', 'avant-fin'].includes(p.id)) && P.available('reponds').some((p) => p.id === 'une-ecoute'), 'Réponds : pas de Transposé ni Avant la fin (réponse jouée après l\'appel, dans sa tonalité)');
+    AMB.game = { s: {} }; AMB.secrets = { hasPact: (id) => id === 'funambule' };
+    ok(P.available('hautbas').some((p) => p.id === 'funambule' && p.secret) && !P.available('hautbas').some((p) => p.id === 'silence'), 'pacte secret proposé une fois trouvé (secrets.hasPact) : Funambule');
+    A.register({ id: 't.own', make: (rng, d) => ({ d }), check: () => ({ ok: true }), pacts: { transpose: false, metronome: true } });
+    ok(!P.applies('t.own', 'transpose') && P.applies('t.own', 'metronome'), 'un plugin peut déclarer pacts: {id: false|true}');
+
+    // --- choice remembered per mini-game (arcade storage), filtered by what is offered
+    P.set('hautbas', ['proches', 'une-ecoute', 'transpose', 'silence']);
+    ok(P.chosen('hautbas').join() === 'une-ecoute,transpose,proches' && P.chosen('reponds').length === 0, 'choix mémorisé par jeu (pacte non offert ignoré) : ' + P.chosen('hautbas').join(' + '));
+    P.toggle('hautbas', 'transpose'); A.load();
+    ok(P.chosen('hautbas').join() === 'une-ecoute,proches' && JSON.parse(localStorage.getItem(A.key)).profiles.default.games.hautbas.pacts.length === 2, 'bascule + persistance (localStorage de l\'arcade, jamais le store)');
+    P.set('hautbas', []);
+
+    // --- Une seule écoute
+    A.start('hautbas', { seed: 1, pacts: ['une-ecoute'] }); ok(A.replay() === null && A.round.replays === 0, 'Une écoute : Réécouter refusé'); A.end({ abort: true });
+    A.start('hautbas', { seed: 1 }); ok(A.replay() !== null, 'sans pacte : Réécouter possible'); A.end({ abort: true });
+
+    // --- score weighted by the multiplier, same challenges
+    const base = run([], 9, 6, (ch) => ch.answer), bs = A.end({ abort: true });
+    const w = run(['une-ecoute'], 9, 6, (ch) => ch.answer), ws = A.end({ abort: true });
+    ok(base.every((o, i) => Math.abs(w[i].pts - o.pts * 1.2) <= 1), 'score × multiplicateur à chaque réponse (' + base[0].pts + ' → ' + w[0].pts + ')');
+    ok(Math.abs(ws.score - bs.score * 1.2) <= 6 && ws.pmult === 1.2, 'fin : score pondéré ' + bs.score + ' → ' + ws.score + ' (×' + ws.pmult + ')');
+
+    // --- Transposé: every stimulus event shifted, the challenges are the same
+    played = []; run([], 21, 5, (ch) => ch.answer); const plain = played.slice(), chPlain = A.round.history.length; A.end({ abort: true });
+    played = []; const trs = []; A.stats('hautbas').d = 0.3; T = 0; A.start('hautbas', { seed: 21, pacts: ['transpose'] });
+    for (let i = 0; i < 5; i++) { trs.push(A.api().transpose); A.listen(); A.answer(A.round.ch.answer); } A.end({ abort: true });
+    ok(trs.every((t) => t !== 0 && Math.abs(t) <= 6) && new Set(trs).size > 1, 'Transposé : chaque défi décalé de ±1..6 demi-tons (' + trs.join(', ') + '), lisible par api.transpose');
+    ok(played.every((ev, i) => ev.every((e, j) => e.midi === plain[i][j].midi + trs[i] && e.cents === plain[i][j].cents)), 'Transposé : toutes les notes du stimulus décalées, mêmes défis que sans pacte');
+    A.register({ id: 't.hz', make: () => ({}), stimulus: () => [{ t: 0, hz: 440, dur: 0.5 }], choices: () => [{ value: 1, label: '1' }], check: () => ({ ok: true }) });
+    played = []; A.start('t.hz', { seed: 4, pacts: ['transpose'] }); A.listen(); const tr = A.api().transpose; A.end({ abort: true });
+    ok(Math.abs(played[0][0].hz - 440 * Math.pow(2, tr / 12)) < 1e-9, 'Transposé : les événements en hz aussi (' + played[0][0].hz.toFixed(1) + ' Hz)');
+
+    // --- Leurres proches: make() gets d + 0.2, the staircase is untouched
+    let seenD = []; A.register({ id: 't.d', make: (rng, d) => { seenD.push(d); return {}; }, choices: () => [], check: () => ({ ok: true }) });
+    A.stats('t.d').d = 0.3; A.start('t.d', { seed: 1, pacts: ['proches'] }); const st = A.round.stair.d; A.end({ abort: true });
+    A.stats('t.d').d = 0.9; A.start('t.d', { seed: 1, pacts: ['proches'] }); A.end({ abort: true });
+    ok(Math.abs(seenD[0] - 0.5) < 1e-9 && st === 0.3 && seenD[1] === 1, 'Leurres proches : défi servi à d + 0,2 (0,3 → ' + seenD[0].toFixed(2) + ', plafonné à 1), escalier inchangé');
+
+    // --- Avant la fin: an answer after the end of the stimulus is wrong
+    A.stats('hautbas').d = 0.3; T = 0; A.start('hautbas', { seed: 3, pacts: ['avant-fin'] }); A.listen();
+    T = 1000; const a1 = A.answer(A.round.ch.answer); A.listen(); T = 1000 + STIM * 1000 + 50; const a2 = A.answer(A.round.ch.answer);
+    ok(a1.ok && !a1.late && !a2.ok && a2.late && a2.pts === 0, 'Avant la fin : juste pendant le son, raté après (late)'); A.end({ abort: true });
+
+    // --- Métronome: nothing within 3 s after the stimulus = wrong
+    T = 0; A.start('hautbas', { seed: 3, pacts: ['metronome'] }); A.listen(); const late = []; AMB.bus.on('arcade:answer', (d) => late.push(d.late));
+    T = STIM * 1000 + 2900; A.tick(); const n1 = A.round.n; T = STIM * 1000 + 3100; A.tick();
+    ok(n1 === 1 && A.round.n === 2 && late[late.length - 1] === true && A.round.history[0].ok === false, 'Métronome : pas de réponse 3 s après le son → raté, défi suivant');
+    A.tick(); ok(A.round.n === 2, 'Métronome : le défi suivant attend son propre son'); A.end({ abort: true });
+
+    // --- Funambule: the first slip ends the round
+    T = 0; A.start('hautbas', { seed: 3, pacts: ['funambule'] }); A.answer(A.round.ch.answer); let endEv = null; AMB.bus.on('arcade:end', (d) => { endEv = d; });
+    const slip = A.answer('nope');
+    ok(slip && !slip.ok && !A.active && endEv && endEv.fall && !endEv.abort && endEv.total === 2, 'Funambule : première erreur → fin de manche (fall)');
+
+    // --- records per combination, stars on the weighted score
+    ok(A.record('hautbas', ['funambule']) && A.record('hautbas', ['funambule']).score === endEv.score && !A.record('hautbas', ['funambule', 'transpose']), 'record par combinaison de pactes');
+    ok(rCalls === 0, 'jamais Math.random (' + rCalls + ' appels)');
+    Math.random = mr;
+    localStorage.removeItem(window.AMB_ARCADE_KEY);
+  } catch (e) { fail(e); return; }
+  ui();
+});
+
+// ---- the cartridge chips in the real app ----
+function ui() {
+  const f = document.createElement('iframe'); f.style.cssText = 'width:1200px;height:800px;border:0';
+  f.src = '../index.html?gamekey=ambient.game.pacts&arcadekey=ambient.arcade.pactsui';
+  f.addEventListener('load', async () => {
+    try {
+      const w = f.contentWindow, d = f.contentDocument, A = w.AMB, AR = A.arcade, U = A.arcadeUI;
+      w.addEventListener('error', (e) => log('ERROR ' + e.message + ' @' + e.filename + ':' + e.lineno));
+      const writes = []; const ss = A.store.set; A.store.set = function (...a) { writes.push(a[0]); return ss.apply(this, a); };
+      A.game.setMode('free'); A.garden.welcome(false); writes.length = 0;
+      d.getElementById('arcadeBtn').click(); await wait(30);
+      const chip = (g, p) => d.querySelector(`.arc-pacts[data-for="${g}"] [data-pact="${p}"]`);
+      const tot = (g) => d.querySelector(`.arc-pacts[data-for="${g}"] .arc-pacts-total`).textContent;
+      ok(d.querySelectorAll('.arc-cart').length === AR.games.length && chip('hautbas', 'une-ecoute') && !chip('hautbas', 'silence') && !chip('reponds', 'transpose') && /×1,00/.test(tot('hautbas')), 'cartouches : pastilles de pactes, total ×1,00 (secrets absents, Réponds sans Transposé)');
+      chip('hautbas', 'une-ecoute').click(); chip('hautbas', 'proches').click(); await wait(20);
+      ok(chip('hautbas', 'une-ecoute').getAttribute('aria-pressed') === 'true' && /×1,56/.test(tot('hautbas')) && /×1,00/.test(tot('intrus')) && d.activeElement === chip('hautbas', 'proches'), 'pastilles cochées : total ' + tot('hautbas') + ' (cartouche seule), focus gardé');
+      U.close(); d.getElementById('arcadeBtn').click(); await wait(20);
+      ok(chip('hautbas', 'proches').getAttribute('aria-pressed') === 'true', 'choix retrouvé à la réouverture');
+      d.querySelector('.arc-cart[data-game=hautbas]').click(); for (let i = 0; i < 40 && !AR.active; i++) await wait(50);
+      ok(AR.active && AR.round.pacts.join() === 'une-ecoute,proches' && d.querySelector('.arc-replay').hidden && /PACTES ×1,56/.test(d.querySelector('.arc-level').textContent), 'manche : pactes passés au moteur, Réécouter masqué, HUD « ' + d.querySelector('.arc-level').textContent + ' »');
+      U.menu();
+      A.secrets.hasPact = (id) => id === 'silence'; U.renderMenu();
+      ok(chip('hautbas', 'silence') && chip('hautbas', 'silence').classList.contains('secret') && !chip('accordeur', 'silence'), 'pacte secret trouvé : pastille ✦ (pas sur l\'Accordeur, dont l\'aiguille montre le verdict)');
+      chip('hautbas', 'silence').click(); chip('hautbas', 'une-ecoute').click(); chip('hautbas', 'proches').click();
+      d.querySelector('.arc-cart[data-game=hautbas]').click(); for (let i = 0; i < 40 && !AR.active; i++) await wait(50);
+      await wait(700); const r = AR.round; U.pick([...d.querySelectorAll('.arc-choice')].findIndex((b) => b.dataset.value !== r.ch.answer));
+      await wait(20);
+      ok(!d.querySelector('.arc-replay').hidden && d.querySelector('.arc-score').textContent === '······' && !d.querySelector('.arc-choice.good,.arc-choice.bad') && d.getElementById('arcadeDlg').classList.contains('arc-silent'), 'Silence : ni verdict ni score pendant la manche');
+      AR.end(); await wait(20);
+      ok(U.screen === 'end' && /pactes Silence ×1,20/.test(d.querySelector('.arc-end-stats').textContent) && /^\d{6}$/.test(d.querySelector('.arc-end-score').textContent) && !d.getElementById('arcadeDlg').classList.contains('arc-silent'), 'fin : score révélé, pactes rappelés (« ' + d.querySelector('.arc-end-stats').textContent + ' »)');
+      ok(writes.length === 0, 'aucune écriture dans AMB.store (' + writes.join(',') + ')');
+      U.close();
+      localStorage.removeItem('ambient.game.pacts'); localStorage.removeItem('ambient.arcade.pactsui');
+      log('durée ' + ((performance.now() - T00) / 1000).toFixed(1) + ' s');
+      done();
+    } catch (e) { fail(e); }
+  });
+  document.body.append(f);
+}
+</script></body></html>
