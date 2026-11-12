@@ -313,7 +313,7 @@
         const stopAt = time + hold + 1 + decay * 0.4;
         nodes.forEach((n) => { n.start(time); n.stop(stopAt); });
         nodes[0].onended = () => { env.disconnect(); pan.disconnect(); };
-        AMB.bus.emit('note', { layer: this.name, midi, time, vel, dur: hold });
+        AMB.bus.emit('note', { layer: this.name, midi, time, vel, dur: hold, live: !!live });
         // a held live note (play.js) ends on release: same release curve, from the release time
         return { cutoff, release(t) {
           if (t >= time + hold) return;
@@ -335,7 +335,7 @@
       const stopAt = time + dur * 1.3 + 0.1;
       nodes.forEach((n) => { n.start(time); n.stop(stopAt); });
       nodes[0].onended = () => { env.disconnect(); pan.disconnect(); };
-      AMB.bus.emit('note', { layer: this.name, midi, time, vel, dur });
+      AMB.bus.emit('note', { layer: this.name, midi, time, vel, dur, live: !!live });
       return { cutoff };
     }
   }

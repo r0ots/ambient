@@ -101,11 +101,10 @@ window.addEventListener('load', async ()=>{
     ok(offs===1 && h1===h0+1 && AMB.play.held===h0, 'clavier : keydown = note tenue, keyup = fin de note');
     ['KeyA','KeyD','KeyG'].forEach(code=>document.dispatchEvent(new KeyboardEvent('keyup',{code}))); ok(AMB.play.held===0, 'clavier : plus aucune note tenue');
     rb.click(); }
-  // capture the generative melody into the roll
+  // « ⤓ Garder » with nothing played: the auto Melody's last bars (the old « Capturer la mélodie »)
   st.set('bells.on',true); st.set('bells.density',0.9);
-  const btn=document.querySelector('[data-act=capture]'); PR.roll.act('capture',btn);
-  await new Promise(r=>setTimeout(r,5000));
-  log('captured notes='+PR.parse(st.get('seq.pattern')).length+' bellNotes='+bellNotes);
+  await new Promise(r=>setTimeout(r,2500));
+  { const k=PR.keep('melody'); ok(!document.querySelector('[data-act=capture]') && k && k.notes.length>0 && PR.parse(st.get(PR.SLOTKEY[k.slot])).length===k.notes.length, 'Garder sans jouer : les notes de la Mélodie ('+(k&&k.notes.length)+' dans le motif '+(k&&k.slot)+', '+bellNotes+' entendues), plus de bouton Capturer'); }
   AMB.history && log('undoable='+(AMB.history.past.length>0));
   // ---- S4.6 chromatic notes: an old motif still opens, a sharp survives encoding and is played ----
   { st.set('global.key','C'); st.set('global.scale','Ionien (majeur)'); st.set('seq.octave','0'); st.set('seq.follow',false); st.set('seq.mutate',0);

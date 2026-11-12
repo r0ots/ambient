@@ -175,6 +175,7 @@
   });
 
   // ---------- retroactive capture (« ⤓ Garder »): the last notes played live are always kept in memory ----------
+  // Nothing played lately: Garder keeps the auto Melody's last bars instead (its own ring, `auto`, filled while playing).
   // A small ring of {midi, at, end, vel, abs, deg}: `at`/`end` = audio time played / released, `abs` = absolute
   // sequencer step (float) when the music was playing (null when stopped), `deg` = chord degree then.
   const KEEP_BARS = 4, BUF_BARS = 8, BUF_MAX = 256;
@@ -187,6 +188,13 @@
     if (ev.id) heardById.set(ev.id, e);
     while (heard.length > BUF_MAX || heard[0].at < at - bufSpan()) heardById.delete(heard.shift().id);
   });
+  const auto = [];
+  AMB.bus.on('note', (ev) => {
+    const seq = AMB.seq;
+    if (ev.layer !== 'bells' || ev.live || !seq.playing) return;
+    auto.push({ midi: ev.midi, at: ev.time, end: ev.time + Math.min(ev.dur, 4 * seq.stepDur()), vel: ev.vel, abs: seq.step + (ev.time - seq.nextTime) / seq.stepDur(), deg: seq.chordDeg || 0 });
+    while (auto.length > BUF_MAX || auto[0].at < ev.time - bufSpan()) auto.shift();
+  });
   AMB.bus.on('liveOff', (ev) => {
     const e = heardById.get(ev.id);
     if (!e) return;
@@ -194,13 +202,16 @@
     e.end = ev.played != null ? ev.played : ev.time;
   });
   const now = () => (AMB.engine.ctx ? AMB.engine.ctx.currentTime : 0);
-  const recent = () => heard.filter((e) => e.at > now() - bufSpan());
-  function canKeep() { return heard.length > 0 && heard[heard.length - 1].at > now() - bufSpan(); }
+  const recent = (ring) => ring.filter((e) => e.at > now() - bufSpan());
+  function canKeep() { return [heard, auto].some((r) => r.length > 0 && r[r.length - 1].at > now() - bufSpan()); }
   // the last 4 bars played (ending at the bar of the last note), snapped to the grid, into the edited motif if it is
   // empty, otherwise into the next empty one (switched to); all 4 full = the edited one is replaced. One undo step.
-  function keep() {
+  // src: 'melody' = the auto Melody even if notes were played (tests); default = what was played, else the Melody
+  function keep(src) {
     const seq = AMB.seq, sd = seq.stepDur(), t = now();
-    let ph = recent();
+    let ph = src === 'melody' ? [] : recent(heard);
+    const mel = !ph.length;
+    if (mel) ph = recent(auto).filter((e) => e.at <= t); // (notes scheduled ahead are not heard yet)
     if (!ph.length) { AMB.ui.toast('Rien à garder : joue d\'abord quelques notes'); return null; }
     // with the music: the sequencer's grid and bars; stopped: the first note of the phrase starts the motif
     const grid = ph[ph.length - 1].abs != null;
@@ -230,7 +241,7 @@
     if (slot !== cur) store.set('seq.slot', slot, 'user');
     if (!store.get('seq.on')) store.set('seq.on', true, 'user');
     if (store.get('seq.mode') !== 'Piano roll') store.set('seq.mode', 'Piano roll', 'user');
-    AMB.ui.toast(`${out.length} note(s) gardée(s) dans le motif ${slot}` + (free ? '' : ' (remplacé · ⌘Z pour annuler)'));
+    AMB.ui.toast(`${out.length} note(s)${mel ? ' de la Mélodie' : ''} gardée(s) dans le motif ${slot}` + (free ? '' : ' (remplacé · ⌘Z pour annuler)'));
     return { slot, notes: out, len };
   }
 
@@ -249,8 +260,7 @@
           <button class="btn small" data-act="random" title="Motif aléatoire dans la gamme">⚄ Motif</button>
           <label class="btn small" title="Clic doux sur les temps pendant l'enregistrement"><input type="checkbox" data-metro checked> Métronome</label>
           <button class="btn small rec-btn" data-act="liverec" title="Enregistre ce que tu joues au clavier (A–L, Q–P) ou en MIDI dans ce motif, quantifié, en boucle (overdub)">● Rec live</button>
-          <button class="btn small" data-act="keep" disabled title="Garde les 4 dernières mesures que tu as jouées (A–L, MIDI), même sans Rec, dans ce motif ou le suivant libre">⤓ Garder</button>
-          <button class="btn small" data-act="capture" title="Enregistre ce que joue la Mélodie pendant un tour de motif">● Capturer la mélodie</button>
+          <button class="btn small" data-act="keep" disabled title="Garde les 4 dernières mesures que tu as jouées (A–L, MIDI), même sans Rec, dans ce motif ou le suivant libre ; sans note jouée, celles de la Mélodie">⤓ Garder</button>
           <button class="btn small" data-act="shiftL" title="Décaler à gauche">◀</button>
           <button class="btn small" data-act="shiftR" title="Décaler à droite">▶</button>
           <button class="btn small" data-act="up" title="Monter d'un degré">▲</button>
@@ -462,7 +472,6 @@
       else if (a === 'random') notes = randomPattern(n);
       else if (a === 'shiftL' || a === 'shiftR') notes.forEach((x) => { x.s = (x.s + (a === 'shiftR' ? 1 : n - 1)) % n; });
       else if (a === 'up' || a === 'down') notes = notes.map((x) => ({ ...x, r: x.r + (a === 'up' ? 1 : -1) })).filter((x) => x.r >= 0 && x.r < ROWS);
-      else if (a === 'capture') return capture(btn);
       else if (a === 'keep') return keep();
       else if (a === 'liverec') {
         if (this.recording) return this.stopRecording();
@@ -601,32 +610,6 @@
       } else s++;
     }
     return notes;
-  }
-
-  // record the generative melody for one pattern cycle, quantised to steps
-  function capture(btn) {
-    if (!AMB.seq.playing) { AMB.ui.toast('Lance la lecture pour capturer la mélodie'); return; }
-    const n = steps(), sd = AMB.seq.stepDur();
-    const startStep = Math.ceil(AMB.seq.step / n) * n; // align to the next pattern start
-    const got = [];
-    const onNote = (ev) => {
-      if (ev.layer !== 'bells') return;
-      const rel = Math.round((ev.time - AMB.seq.nextTime) / sd) + AMB.seq.step - startStep;
-      if (rel < 0 || rel >= n) return;
-      const c = cellFor(ev.midi);
-      if (!got.some((x) => x.s === rel && x.r === c.r)) got.push(cellNote(rel, c, 2, 7));
-    };
-    AMB.bus.on('note', onNote);
-    btn.disabled = true; btn.textContent = '● Capture…';
-    const ms = ((startStep - AMB.seq.step) + n) * sd * 1000 + 400;
-    setTimeout(() => {
-      AMB.bus.fns.note = AMB.bus.fns.note.filter((f) => f !== onNote);
-      btn.disabled = false; btn.textContent = '● Capturer la mélodie';
-      if (!got.length) { AMB.ui.toast('Aucune note de Mélodie entendue (est-elle allumée ?)'); return; }
-      roll.save(got);
-      store.set('seq.on', true, 'user');
-      AMB.ui.toast(`${got.length} notes capturées dans le séquenceur`);
-    }, ms);
   }
 
   AMB.pianoRoll = { originals: () => ({ ...original }), roll, resetLatch, cellFor, canKeep, keep, parse, encode, onStep, arpStep, randomPattern, mutate, slotAt, chainList, SLOTKEY, ROWS };
