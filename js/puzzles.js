@@ -198,7 +198,8 @@
       if (!this.isEcho(id) || !AMB.game.path || !ctx || !L || !L.bells) return 0;
       if (!store.get('bells.on')) L.bells.ch.setLevel(Math.pow(store.get('bells.vol'), 1.6)); // as seq.playMidi does
       const ms = this.echoMidis(id), t0 = ctx.currentTime + 0.12;
-      ms.forEach((m, i) => L.bells.note(m, t0 + i * ECHO_GAP, 0.8, true));
+      const S = AMB.seq, live = S && !S.playing && S.liveDest ? { dest: S.liveDest(L.bells) } : null; // heard while stopped too
+      ms.forEach((m, i) => L.bells.note(m, t0 + i * ECHO_GAP, 0.8, true, 0, live));
       this.echoFrom = t0 - 0.05; this.echoUntil = t0 + (ms.length - 1) * ECHO_GAP + 0.1;
       return ms.length;
     },

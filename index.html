@@ -31,7 +31,10 @@
       </div>
       <div class="transport">
         <div class="tgrp"><small>Lecture</small>
-          <button id="play" class="btn primary">▶ Lecture</button>
+          <div class="tgrp-row">
+            <button id="play" class="btn primary">▶ Lecture</button>
+            <button id="midi" class="btn" hidden title="Clavier MIDI : notes graves = accords (tenus avec les touches ou la pédale), CC1 Densité, CC74 Lumière, CC91 Espace, CC93 Nostalgie, CC64 pédale">MIDI</button>
+          </div>
         </div>
         <div class="tgrp"><small>Son</small>
           <div class="tgrp-row">
@@ -77,7 +80,6 @@
             <label class="btn" title="Importer un fichier exporté">⬆ Importer des patchs<input id="importFile" type="file" accept="application/json,.json" hidden></label>
             <button id="exportMidi" class="btn" title="Progression, séquenceur et pulsations en fichier .mid">🎼 Exporter en MIDI</button>
             <button id="share" class="btn" title="Copier un lien vers ce patch">🔗 Partager (lien)</button>
-            <button id="midi" class="btn" title="Connecter un clavier MIDI (notes graves = accords, CC1 densité, CC74 brillance)">🎹 MIDI</button>
             <label class="sleep" title="Minuteur de sommeil : fondu puis arrêt">☾ Sommeil
               <select id="sleep">
                 <option value="0">off</option>
@@ -193,7 +195,7 @@
           <div><h4>Jouer</h4><ul>
             <li>Glisser sur l'écran : <b>pad XY</b> (gauche/droite = ombre/lumière, bas/haut = densité)</li>
             <li><kbd>A</kbd>…<kbd>L</kbd> notes · <kbd>Q</kbd>…<kbd>P</kbd> octave au-dessus · <kbd>Z</kbd>…<kbd>M</kbd> accords</li>
-            <li><b>MIDI</b> : notes graves = accords, CC1 densité, CC74 brillance</li></ul></div>
+            <li><b>MIDI</b> : notes graves = accords (tenus tant que les touches ou la pédale le sont), au-dessus = notes, même à l'arrêt ; vélocité = force et éclat · CC1 Densité, CC74 Lumière, CC91 Espace, CC93 Nostalgie, CC64 pédale</li></ul></div>
           <div><h4>Sculpter</h4><ul>
             <li><kbd>Entrée</kbd> / <b>❄ Figer</b> : capture 4 s du son → nuage de grains</li>
             <li><b>Mouvements lents</b> : 2 réglages qui bougent tout seuls, très lentement</li>

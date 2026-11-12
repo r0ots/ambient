@@ -48,11 +48,13 @@
     sustained.forEach((h) => AMB.seq.endLive(h));
     sustained.clear();
   }
-  // stop, MIDI unplugged, focus lost: every note ends, the pedal is considered up
+  // stop, MIDI unplugged, focus lost: every note ends, the pedal is considered up, a held chord is let go
   function panic() {
     held.forEach((h) => AMB.seq.endLive(h));
     held.clear();
     setPedal(false);
+    lowDown.clear(); lowNew = []; clearTimeout(lowTimer); lowTimer = null;
+    if (chordHeld) { chordHeld = false; AMB.seq.releaseChord(); }
   }
 
   // nearest scale degree (0..n-1) for a pitch class
@@ -64,31 +66,75 @@
     return best;
   }
 
+  // ---------- left hand: low notes (< 48) pressed within CHORD_MS make one chord, forced once ----------
+  const LOW = 48, CHORD_MS = 40;
+  const lowDown = new Set(); // low keys held now
+  let lowNew = [], lowTimer = null, chordHeld = false;
+  // the chord a set of notes spells in the current key: root and quality (any inversion) → scale degree 0..n-1;
+  // notes outside every chord of the key → the degree whose chord shares the most, then the bass note's nearest degree
+  function chordForNotes(midis) {
+    const sc = AMB.seq.scale, root = AMB.seq.root, n = sc.length;
+    const pc = (m) => (((m - root) % 12) + 12) % 12;
+    const pcs = [...new Set(midis.map(pc))], bass = pc(Math.min(...midis));
+    let best = null, bs = -99;
+    for (let d = 0; d < n; d++) {
+      const tones = [0, 2, 4].map((i) => sc[(d + i) % n]);
+      const hit = pcs.filter((p) => tones.includes(p)).length;
+      if (!hit) continue;
+      // every note in the chord counts, a foreign note costs, the root present and in the bass break the ties
+      const score = hit * 2 - (pcs.length - hit) * 1.5 + (pcs.includes(tones[0]) ? 1 : 0) + (bass === tones[0] ? 0.5 : 0);
+      if (score > bs) { bs = score; best = d; }
+    }
+    return best != null ? best : degreeForPitch(Math.min(...midis));
+  }
+  function lowOn(m) {
+    lowDown.add(m); lowNew.push(m);
+    if (!lowTimer) lowTimer = setTimeout(flushChord, CHORD_MS);
+  }
+  function flushChord() {
+    lowTimer = null;
+    const notes = [...new Set([...lowNew, ...lowDown])];
+    lowNew = [];
+    if (!notes.length || !AMB.seq.playing) return;
+    const deg = chordForNotes(notes), hold = lowDown.size > 0 || pedal;
+    if (chordHeld && hold && deg === AMB.seq.chordDeg) return; // more notes of the chord already held: no re-strike
+    AMB.seq.forceChord(deg, hold);
+    chordHeld = hold && AMB.seq.chordHold;
+  }
+  // keys and pedal up: the forced chord may end (at the next chord boundary)
+  function letChordGo() {
+    if (!chordHeld || lowDown.size || pedal) return;
+    chordHeld = false;
+    AMB.seq.releaseChord();
+  }
+
   let midiAccess = null;
   function onMidi(msg) {
     const [st, d1, d2] = msg.data;
     const type = st & 0xf0;
-    if (type === 0x80 || (type === 0x90 && d2 === 0)) lift('m' + d1); // note-off (or note-on at velocity 0)
-    else if (type === 0x90) {
-      // stopped: MIDI notes are ignored, except to play an Écho back (its phrase is heard while stopped, like A–L)
-      if (!AMB.seq.playing && !(AMB.puzzles && AMB.puzzles.isEcho())) return;
-      // in the path, like the computer keyboard: notes need the Melody, low notes (chords) the Pad
+    if (type === 0x80 || (type === 0x90 && d2 === 0)) { // note-off (or note-on at velocity 0)
+      if (lowDown.delete(d1)) letChordGo();
+      lift('m' + d1);
+    } else if (type === 0x90) {
+      // in the path, like the computer keyboard: notes need the Melody, low notes (chords) the Pad.
+      // Notes sound while stopped too (like A–L), chords need the playback.
       const g = AMB.game, can = (id) => !g || g.isUnlocked(id);
       // the heard velocity is remapped to 0.25–1 (soft notes stay audible); the raw one (0..1) rides along on 'live'
-      if (d1 < 48) { if (can('h.pad')) AMB.seq.forceChord(degreeForPitch(d1)); }
+      if (d1 < LOW) { if (can('h.pad') && AMB.seq.playing) lowOn(d1); }
       else if (can('m.bells')) press('m' + d1, AMB.seq.playMidi(d1, 0.25 + (d2 / 127) * 0.75, d2 / 127, true));
     } else if (type === 0xb0) {
       const v = d2 / 127;
-      if (d1 === 64) return setPedal(d2 >= 64); // sustain pedal
+      if (d1 === 64) { setPedal(d2 >= 64); return letChordGo(); } // sustain pedal (holds notes and the forced chord)
       if (d1 === 123 || d1 === 120) return panic(); // All Notes Off / All Sound Off
-      // CCs drive the same macros as the XY pad: mod wheel = Densité, CC74 = Lumière, CC91 = Espace, CC93 = Nostalgie
+      // CCs drive the same macros as the XY pad: CC1 (mod wheel) = Densité, CC74 = Lumière, CC91 = Espace, CC93 = Nostalgie
       const cc = { 1: 'macro.density', 74: 'macro.light', 91: 'macro.space', 93: 'macro.nostalgia' }[d1];
       if (cc) AMB.perform.setMacro(cc, v);
     }
   }
 
-  async function connectMidi(btn) {
-    if (!navigator.requestMIDIAccess) { AMB.ui.toast('Web MIDI non supporté par ce navigateur'); return; }
+  // quiet: automatic connection at load (MIDI already allowed), no toast
+  async function connectMidi(btn, quiet = false) {
+    if (!navigator.requestMIDIAccess) { if (!quiet) AMB.ui.toast('Web MIDI non supporté par ce navigateur'); return; }
     try {
       midiAccess = midiAccess || (await navigator.requestMIDIAccess());
       const bind = () => {
@@ -101,9 +147,9 @@
       };
       midiAccess.onstatechange = (e) => { if (e && e.port && e.port.state === 'disconnected') panic(); bind(); };
       const n = bind();
-      AMB.ui.toast(n ? `${n} entrée(s) MIDI connectée(s)` : 'Aucun appareil MIDI détecté');
+      if (!quiet) AMB.ui.toast(n ? `${n} entrée(s) MIDI connectée(s)` : 'Aucun appareil MIDI détecté');
     } catch (e) {
-      AMB.ui.toast('Accès MIDI refusé');
+      if (!quiet) AMB.ui.toast('Accès MIDI refusé');
     }
   }
 
@@ -114,8 +160,13 @@
     document.addEventListener('visibilitychange', () => { if (document.hidden) panic(); });
     AMB.bus.on('panic', panic);
     const btn = document.getElementById('midi');
-    if (btn) btn.addEventListener('click', () => connectMidi(btn));
+    if (btn && navigator.requestMIDIAccess) {
+      btn.hidden = false; // in the bar as soon as Web MIDI exists (in the path, the tree opens it with the Melody)
+      btn.addEventListener('click', () => connectMidi(btn));
+      // already allowed (an earlier visit): connect without a click
+      if (navigator.permissions) navigator.permissions.query({ name: 'midi' }).then((p) => { if (p.state === 'granted' && !midiAccess) connectMidi(btn, true); }).catch(() => {});
+    }
   });
 
-  AMB.play = { degreeForPitch, onMidi, panic, get held() { return held.size + sustained.size; } };
+  AMB.play = { degreeForPitch, chordForNotes, onMidi, panic, get held() { return held.size + sustained.size; } };
 })();
