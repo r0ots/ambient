@@ -1,10 +1,7 @@
 <!doctype html><html><head><!-- Dev captures (not in the suite): ?w=390&h=780 for phone width.
-  Modes: #free, #pz, #bar, #sel=<node>;
-  #save-open / #save-confirm (sauvegarde);
-  #help-path / #help-free (aide du Parcours ; libre),
-  #more (menu ⋯ en Parcours, panneau Contrats dessous),
-  #garden (Jardin visuel débutant : 3 couches), #garden-adv (tout l'arbre, secrets) — notes simulées sur le bus.
-  #save-*, #more, #garden* and #help-* cut particles and juice for clean captures --><meta charset="utf-8"><style>body{margin:0}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body>
+  Modes: #free, #pz (énigme ouverte, écran en Sculpter), #bar (barre + LCD avec le contrat), #task-help (aide du contrat sur le LCD),
+  #sel=<node>; #help-path / #help-free (aide du Parcours ; libre), #more (menu ⋯ en Parcours),
+  #garden (Jardin visuel débutant : 3 couches), #garden-adv (tout l'arbre, secrets) — notes simulées sur le bus. --><meta charset="utf-8"><style>body{margin:0}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body>
 <script>localStorage.removeItem('ambient.game.shot');</script>
 <iframe id="f" src="../index.html?gamekey=ambient.game.shot"></iframe>
 <script>{const q=new URLSearchParams(location.search),f=document.getElementById('f');if(q.get('w'))f.style.width=q.get('w')+'px';if(q.get('h'))f.style.height=q.get('h')+'px';}</script>
@@ -20,12 +17,8 @@ document.getElementById('f').addEventListener('load', () => {
   if (h.includes('#more')) {
     A.garden.showTree(false); A.garden.renderSwitch();
     doc.querySelector('.more').open = true;
-  } else if (h.includes('save-')) {
-    const S = A.save; A.garden.showTree(false);
-    if (h.includes('confirm')) {
-      const o = S.build(); o.game.shards = 7; o.game.earned = 420; o.game.nodes = o.game.nodes.slice(0, 2);
-      S.confirm(S.check(o));
-    } else S.open();
+  } else if (h.includes('task-help')) {
+    A.garden.showTree(false); doc.querySelector('#lcdTask .lcd-task-txt').click();
   } else if (h.includes('pz')) {
     A.store.setMany({ 'drone.wave': 'Orgue', 'pad.wave': 'Nappe' }, 'user');
     A.game.s.puzzles = A.game.s.puzzles.filter(x => x !== 'p.premier'); A.garden.openPuzzle('p.premier');
