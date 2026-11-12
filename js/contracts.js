@@ -131,8 +131,8 @@
     E('p.mouvement', ['m.evolve', 'm.bells'], 'Pluie de notes', 'Une longue phrase qui tombe : rejoue-la goutte à goutte.'),
   ];
   // S4.3 — THE table: which challenge opens which node, in the order of the path (the queue follows it). Secrets open
-  // their own nodes too (js/secrets.js OPENS). Every challenge plays only with nodes owned before its node can be
-  // reached, plus the Melody (opened by the first one): no order of play can block the path (tests/balance.html).
+  // their own nodes too (js/secrets.js OPENS). A node waits for its prerequisites and for what its challenge plays with
+  // (`need`); that graph has no cycle (tests/game.html), so no order of play can block the path (tests/balance.html).
   const OPENS = {
     'm.bells': 'k.xy', 'h.pad': 'm.notes', 't.son': 'k.couleur', 'e.reverb': 'm.monte', 't.viz': 'm.descend',
     'h.drone': 'h.forcer', 't.macros': 'p.premier', 'm.tempo': 'm.pas', 'm.phrase': 'p.suite', 'h.key': 'h.suivre',

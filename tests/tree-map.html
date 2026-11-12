@@ -1,5 +1,6 @@
 <!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
-<!-- Tree screen (v0.99 fixes): narrow-screen opening, refit on width only, legend / zoom buttons, node card, pointers. -->
+<!-- Tree screen (v0.99 fixes): narrow-screen opening, refit on width only, legend / zoom buttons, node card, pointers.
+     S4.3: a map to look at — touching a node shows what opens it (challenge, Écho, secret), never buys. -->
 <script src="lib.js"></script>
 <script>localStorage.removeItem('ambient.game.treemap');</script>
 <iframe id="f" src="../index.html?gamekey=ambient.game.treemap" style="width:390px;height:780px;border:0"></iframe>
@@ -9,7 +10,7 @@ f.addEventListener('load', async ()=>{
   try{
   const w=f.contentWindow, d=f.contentDocument, A=w.AMB, G=A.game, Gd=A.garden, T=A.tree;
   w.addEventListener('error',e=>log('ERROR '+e.message+' @'+e.filename+':'+e.lineno));
-  G.setMode('path'); Gd.welcome(false); G.earn(200,'test'); ['t.son','h.pad','e.reverb','m.bells'].forEach(i=>T.buy(i));
+  G.setMode('path'); Gd.welcome(false); ['m.bells','h.pad','t.son','e.reverb'].forEach(i=>G.unlock(i));
   const map=d.querySelector('#treeDlg .tree-map'), R=(e)=>e.getBoundingClientRect();
   Gd.showTree(true); await wait(60);
   // --- narrow screen: k ≈ 0.6, centred on the root
@@ -18,7 +19,7 @@ f.addEventListener('load', async ()=>{
   ok(Math.abs((rr.left+rr.width/2)-(mr.left+mr.width/2))<12 && rr.bottom<=mr.bottom && rr.top>mr.top, 'racine centrée et visible en bas de la carte');
   // --- legend on one line, zoom buttons clear of it
   const items=[...d.querySelectorAll('.tree-legend > span')], tops=new Set(items.map(e=>Math.round(R(e).top)));
-  ok(items.length===4 && tops.size===1, 'légende : 4 états sur une seule ligne');
+  ok(items.length===3 && tops.size===1, 'légende : 3 états sur une seule ligne');
   const lg=R(d.querySelector('.tree-legend')), zb=R(d.querySelector('.tree-zoom'));
   ok(zb.top>=lg.bottom, 'boutons + − ⤢ sous la légende (pas de recouvrement)');
   // --- ⤢ = whole map
@@ -48,6 +49,17 @@ f.addEventListener('load', async ()=>{
   ok(comp.join()==='c.seq,c.rythme,c.song' && cn.every(Boolean) && map.querySelector('.tree-link[data-from="c.seq"][data-to="c.rythme"]') && map.querySelector('.tree-link[data-from="c.rythme"][data-to="c.song"]') && map.querySelector('.tree-link[data-from="h.prog"][data-to="c.song"]'), 'Composer : 3 nœuds sur la carte ('+cn.map(e=>e&&e.textContent.trim()).join(' · ')+'), '+T.NODES.length+' nœuds en tout');
   Gd.select('c.rythme'); const ti=d.querySelector('.tree-info .ti-g').textContent;
   ok(/Basse/.test(ti) && /Pulsations/.test(ti) && /Swing/.test(ti), 'fiche Rythme : '+ti);
+  // --- S4.3 the card says what opens the node; a click (mouse or finger) selects, never opens
+  const card=()=>d.querySelector('.tree-info'), op=()=>(card().querySelector('.ti-o')||{}).textContent||'';
+  map.querySelector('.tree-node[data-id="h.drone"]').click(); await wait(20);
+  ok(!G.has('h.drone') && Gd.sel==='h.drone' && /Pour l'ouvrir : ◇ Force 3 accords/.test(op()) && !card().querySelector('.tree-buy'), 'clic sur Drone qui suit : sa fiche, « '+op()+' », rien d\'acheté');
+  Gd.select('t.macros');
+  ok(/Écho « Premier reflet »/.test(op()) && card().querySelector('.tree-buy') && /Jouer l'Écho/.test(card().querySelector('.tree-buy').textContent), 'Grands réglages : « '+op()+' » et ▶ Jouer l\'Écho');
+  Gd.select('m.phrase');
+  ok(/Écho « Suite connue »/.test(op()) && /ou ✦ Secret : \?\?\?/.test(op()), 'Phrases : un Écho ou un secret caché (« '+op()+' »)');
+  const spans=[...map.querySelectorAll('.tree-node')].map(b=>b.querySelector('span').textContent);
+  ok(!spans.some(t=>/✧|\d/.test(t)) && spans.includes('◈ Écho') && spans.includes('◇ défi') && spans.includes('✓'), 'nœuds : ✓, ◇ défi ou ◈ Écho, aucun coût');
+  ok(/^\d+\/32$/.test(d.querySelector('.tree-shards').textContent), 'en-tête : nœuds ouverts '+d.querySelector('.tree-shards').textContent);
   Gd.select(null); Gd.showTree(false);
   localStorage.removeItem('ambient.game.treemap');
   done();

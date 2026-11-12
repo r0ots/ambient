@@ -39,7 +39,7 @@ f.addEventListener('load', async () => {
     A.engine.liveInput = function () { liveUsed++; return li.apply(this, arguments); };
     const offK = A.bus.on('live', (x) => keyNotes.push(x.midi));
     key('KeyA'); key('KeyZ'); await wait(60); if (offK) offK(); A.engine.liveInput = li;
-    ok(JSON.stringify(A.game.s) === g0 && A.game.s.shards === 0, 'notes et accords joués au clavier : rien du jeu ne bouge');
+    ok(JSON.stringify(A.game.s) === g0, 'notes et accords joués au clavier : rien du jeu ne bouge');
     ok(!A.seq.playing && keyNotes.length === 1 && liveUsed === 1, 'A–L lecture arrêtée : la note sonne par engine.liveInput (' + keyNotes.length + ' note, ' + liveUsed + ' passage)');
     // --- S4.1 the only change allowed in free mode: MIDI (button in the bar, notes heard while stopped); still no game
     const kb = fakeMidi(w), notes = []; A.bus.on('live', (x) => notes.push(x.midi));
@@ -57,9 +57,9 @@ f.addEventListener('load', async () => {
     for (const k of Object.keys(before)) ok(before[k] === after[k], 'identique : ' + k + (before[k] === after[k] ? '' : '\n  avant ' + String(before[k]).slice(0, 300) + '\n  après ' + String(after[k]).slice(0, 300)));
     ok(shareAfter === shareBefore, 'lien de partage identique');
     ok(A.history.past.length === undoBefore, 'annulation : aucune entrée ajoutée');
-    const GAMEUI = ['treeBtn', 'pads', 'lcdShards', 'lcdTask', 'puzzle', 'treeDlg', 'welcomeDlg'];
+    const GAMEUI = ['treeBtn', 'pads', 'lcdTask', 'puzzle', 'treeDlg', 'welcomeDlg'];
     const showing = GAMEUI.filter(id => { const e = d.getElementById(id); return e && vis(e); });
-    ok(!showing.length && !d.querySelector('.gain-feed:not(:empty),.tree-badge:not([hidden])'), 'aucun élément de jeu visible (arbre, éclats, contrat, énigme) ' + showing.join());
+    ok(!showing.length && !d.querySelector('.gain-feed:not(:empty),.tree-badge:not([hidden])'), 'aucun élément de jeu visible (arbre, défi, Écho) ' + showing.join());
     d.querySelector('.more').open = true; await wait(40);
     ok(vis(d.getElementById('gameMode')), 'menu ⋯ ouvert : la bascule vers le Parcours');
     d.querySelector('.more').open = false;

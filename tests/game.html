@@ -9,197 +9,138 @@ const ok=(c,m)=>log((c?'ok ':'ERROR fail ')+m);
 window.addEventListener('load', async ()=>{
   try{
   const g=AMB.game, ev=[];
-  ['earn','spend','unlock','mode'].forEach(e=>AMB.bus.on('game:'+e,d=>ev.push(e)));
+  ['unlock','mode','contracts'].forEach(e=>AMB.bus.on('game:'+e,d=>ev.push(e+(d&&d.by?':'+d.by:''))));
   ok(g.s.mode===null && g.isUnlocked('x'), 'mode non choisi = tout ouvert');
   g.setMode('path');
   ok(!g.isUnlocked('x'), 'parcours : nœud fermé');
   ok(!g.discover && !('found' in g.s) && !('stars' in g.s), 'v1.06 : plus de découvertes ni d\'étoiles dans l\'état');
-  ok(!g.unlock('x',25) && !g.has('x'), 'achat refusé sans éclats');
-  g.earn(30,'test'); ok(g.unlock('x',25) && g.s.shards===5 && g.isUnlocked('x'), 'achat');
-  ok(!g.unlock('x',1), 'pas de double achat');
-  ok(g.complete('c1',3) && g.solve('p1',4) && g.s.shards===12 && g.s.earned===37, 'contrats + énigmes, total cumulé');
+  ok(!('shards' in g.s) && !('earned' in g.s) && !('puzzles' in g.s) && !g.earn && !g.spend && !g.canAfford && !g.solve, 'S4.3 : plus d\'éclats ✧ (ni solde, ni gain, ni dépense), plus d\'énigmes résolues dans l\'état');
+  ok(g.unlock('x','k.test') && g.isUnlocked('x') && !g.unlock('x'), 'un nœud s\'ouvre directement (une fois)');
+  ok(g.complete('c1') && !g.complete('c1') && g.s.contracts.join()==='c1', 'un défi réussi est noté une fois');
   const saved=JSON.parse(localStorage.getItem('ambient.game.test'));
-  ok(saved.nodes.includes('x') && saved.shards===12, 'persistant');
+  ok(saved.nodes.includes('x') && !('shards' in saved), 'persistant');
   g.setMode('free'); ok(g.isUnlocked('y'), 'mode libre = tout ouvert');
   log('events='+ev.join(','));
-  g.setMode('free'); g.reset(); ok(g.s.shards===0 && !g.s.nodes.length && g.s.mode==='free', 'reset (mode gardé)');
-  // --- tree (G1.2)
+  g.reset(); ok(!g.s.nodes.length && g.s.mode==='free', 'reset (mode gardé)');
+  // --- tree (G1.2; S4.3: no cost, no gate)
   const T=AMB.tree, ids=T.NODES.map(n=>n.id);
   ok(new Set(ids).size===ids.length, 'ids uniques ('+ids.length+' nœuds)');
-  ok(T.NODES.every(n=>n.req.every(r=>T.byId[r]) && T.BRANCHES[n.branch]), 'prérequis et branches valides');
-  // cycle check by DFS
+  ok(T.NODES.every(n=>n.req.every(r=>T.byId[r]) && T.BRANCHES[n.branch] && !('cost' in n) && !('gate' in n)), 'prérequis et branches valides, ni coût ni porte');
   const seen={}, cyc=(id,st)=>{ if(st.has(id)) return true; if(seen[id]) return false; seen[id]=1; st.add(id); const r=T.byId[id].req.some(x=>cyc(x,st)); st.delete(id); return r; };
   ok(!ids.some(id=>cyc(id,new Set())), 'pas de cycle');
   g.setMode('path'); ok(g.has('racine'), 'racine offerte au démarrage du parcours');
-  // buy everything, solving gates as they come, with unlimited shards
-  g.earn(1e6,'test'); let progress=true;
-  while(progress){ progress=false; for(const n of T.NODES){ const st=T.status(n.id); if(st==='gated'){ g.solve(n.gate); progress=true; } else if(st==='available'){ T.buy(n.id); progress=true; } } }
+  for(let more=true;more;){ more=false; for(const n of T.NODES) if(T.status(n.id)==='available'){ g.unlock(n.id); more=true; } }
   const missing=ids.filter(id=>!g.has(id)); ok(!missing.length, 'tout atteignable '+missing.join(','));
-  const total=T.NODES.reduce((a,n)=>a+n.cost,0); log('coût total='+total+' portes='+T.NODES.filter(n=>n.gate).map(n=>n.gate).join(','));
   const keys=[]; for(const [sec,o] of Object.entries(AMB.SCHEMA)) for(const k of Object.keys(o.params)) keys.push(sec+'.'+k);
   const orphan=keys.filter(k=>!T.nodeFor(k)); ok(!orphan.length, 'tout réglage a un nœud '+orphan.join(','));
   ok(T.nodeFor('pad.send')==='e.reverb' && T.nodeFor('seq.send')==='c.seq' && T.nodeFor('macro.light')==='t.macros', 'résolution exact > suffixe > section');
   g.reset(); ok(g.has('racine'), 'reset en parcours rend la racine'); ok(!T.paramUnlocked('fx.echo') && T.paramUnlocked('drone.vol') && T.status('h.pad')==='available' && T.status('h.scale')==='locked', 'statuts au départ');
-  const gr=T.grantsText('c.seq'); ok(/Mélodie écrite/.test(gr) && /Piano roll/.test(gr) && !/Motif( ·|$)/.test(gr), 'ce que débloque un nœud : '+gr);
+  ok(T.uiUnlocked('xy') && !T.paramUnlocked('macro.light'), 'S4.3 : glisser sur l\'écran ouvert dès la Graine, les grands réglages restent fermés');
+  const gr=T.grantsText('c.seq'); ok(/Mélodie écrite/.test(gr) && /Piano roll/.test(gr) && !/Motif( ·|$)/.test(gr), 'ce qu\'ouvre un nœud : '+gr);
   ok(/chaque couche/.test(T.grantsText('e.reverb')) && T.dependents('h.pad').includes('c.seq'), 'grantsText *.send, dépendants');
-  // --- contracts engine (G4.1; v1.06: one at a time, only musical ones)
-  { const K0=AMB.contracts, ids=K0.DEFS.map(d=>d.id);
-    ok(new Set(ids).size===ids.length && K0.DEFS.every(d=>d.title && d.hint && d.goal>0 && d.reward>0 && d.need.every(n=>T.byId[n])), 'contrats valides, chacun avec son aide ('+ids.length+')');
-    const gone=['c.dessin','c.chaine','c.courbe','c.basse','c.pulses','k.souffle','k.timbres','k.ecran','h.ombre','h.riches','h.gammes','e.extremes','e.envois','e.textures','e.salles','e.halo','e.vieux','m.densite','m.libre','m.derive','m.grains','m.lfo','c.arp','c.swing','c.export'];
-    ok(gone.every(id=>!K0.byId[id]), 'contrats-corvées retirés ('+gone.length+')');
-    const br={}; K0.DEFS.forEach(d=>{const b=T.byId[d.need[0]].branch; br[b]=(br[b]||0)+1}); log('contrats par branche '+JSON.stringify(br)); }
-  const K=AMB.contracts; g.reset(); g.setMode('path'); K.refill();
-  ok(g.s.active.join()==='k.couleur', 'un seul contrat actif, celui de la racine : '+g.s.active.join(','));
+  // --- S4.3 the one table: each node is opened by one challenge (contract or Écho); nothing can block the path
+  const K=AMB.contracts, Pz=AMB.puzzles;
+  { const anc=(id,set=new Set())=>{ T.byId[id].req.forEach(r=>{ if(!set.has(r)){ set.add(r); anc(r,set); } }); return set; };
+    const opened=Object.keys(K.OPENS), notOpened=ids.filter(id=>id!=='racine' && !K.OPENS[id]);
+    ok(!notOpened.length && opened.length===ids.length-1 && new Set(Object.values(K.OPENS)).size===opened.length, 'table OPENS : '+opened.length+' nœuds, un défi chacun, sans doublon '+notOpened.join(','));
+    ok(K.DEFS.every(d=>d.title && d.hint && d.goal>0 && d.need.every(n=>T.byId[n]) && !('reward' in d)) && K.DEFS.every(d=>d.node ? K.OPENS[d.node]===d.id : d.id==='c.morceau'), 'défis valides ('+K.DEFS.length+'), sans récompense en ✧ ; chacun ouvre son nœud, sauf le dernier');
+    // a node waits for its prerequisites and for what its challenge plays with: that graph has no cycle, so at any moment
+    // some node not yet open has all it waits for, and its challenge is proposed — whatever was played or passed before
+    const dep=(id)=>[...T.byId[id].req, ...(K.OPENS[id] ? K.byId[K.OPENS[id]].need : [])], st={};
+    const loop=(id)=>{ if(st[id]===1) return true; if(st[id]===2) return false; st[id]=1; const r=dep(id).some(loop); st[id]=2; return r; };
+    ok(!ids.some(loop) && K.byId[K.OPENS['m.bells']].need.join()==='racine', 'nœuds + ce dont leur défi a besoin : sans cycle, aucun ordre ne bloque (le 1er défi ne demande que la Graine)');
+    const gone=['k.paysages','h.ecrire','m.scenes','b.gamme','b.pad','b.salle','b.radio','b.grains','b.groove','c.dessin','k.souffle'];
+    ok(gone.every(id=>!K.byId[id]) && !Pz.DEFS && !Pz.keyScore && !Pz.listen && !Pz.ab, 'énigmes « régler des boutons sur une cible » et défis sans nœud retirés');
+    const ech=K.DEFS.filter(d=>d.kind==='echo'); log('Échos : '+ech.map(d=>d.title+' → '+T.byId[d.node].name+' ('+Pz.echoLen(d.d)+' notes)').join(' · '));
+    ok(ech.length===6 && ech.every(d=>d.need.includes('m.bells')) && Pz.echoLen(K.byId['p.premier'].d)===3 && Pz.echoLen(K.byId['p.mouvement'].d)===5, 'Échos : 6 portes, longueur selon la profondeur (3 notes près de la racine, 5 plus haut)'); }
+  // --- the queue (one at a time, in the order of the table)
+  g.reset(); g.setMode('path'); K.refill(); ev.length=0;
+  ok(g.s.active.join()==='k.xy', 'S4.3 : le premier défi = glisser sur l\'écran ('+g.s.active.join()+')');
+  for(let i=0;i<4;i++){ g.s.prog['k.xy'].t_xy=0; AMB.bus.emit('act','xy'); }
+  ok(g.has('m.bells') && g.s.contracts.includes('k.xy') && ev.includes('unlock:k.xy') && g.s.active.join()==='m.notes', '4 glissés → la Mélodie s\'ouvre directement, défi suivant : '+g.s.active.join());
+  K.skip('m.notes'); ok(g.s.active.join()==='k.couleur' && g.s.skipped.includes('m.notes'), 'passer → le suivant');
   AMB.seq.playing=true;
   AMB.store.set('drone.tone',0.2,'user'); AMB.store.set('drone.tone',0.25,'user'); ok(K.progress('k.couleur')===1, 'un geste = 1 (glisser ne compte qu\'une fois)');
   g.s.prog['k.couleur']['t_drone.tone']=0; AMB.store.set('drone.tone',0.5,'user');
-  ok(g.s.contracts.includes('k.couleur') && g.s.shards===K.byId['k.couleur'].reward && !g.s.active.length, 'contrat accompli (+'+g.s.shards+'), rien d\'autre d\'éligible à la racine');
-  T.buy('m.bells'); ok(g.s.active.join()==='m.notes', 'nouveau nœud → nouveau contrat : '+g.s.active.join());
-  T.buy('h.pad'); ok(g.s.active.join()==='m.notes', 'toujours un seul à la fois');
-  K.skip('m.notes'); ok(g.s.active.join()==='h.forcer' && g.s.skipped.includes('m.notes'), 'passer → le suivant');
-  K.skip('h.forcer'); ok(g.s.active.join()==='m.notes', 'tous passés : le premier passé revient');
-  for(let i=0;i<8;i++) AMB.bus.emit('live',{midi:60,time:0,vel:1}); ok(g.s.contracts.includes('m.notes') && g.s.active.join()==='h.forcer', '8 notes jouées → contrat rempli, le suivant arrive');
-  for(let i=0;i<3;i++){ g.s.prog['h.forcer'].t_chord=0; AMB.bus.emit('act','chord'); } ok(g.s.contracts.includes('h.forcer'), '3 accords forcés');
+  ok(g.has('t.son') && g.s.active.join()==='m.monte', 'Couleur du drone → Timbre du drone ouvert, puis : '+g.s.active.join());
+  K.skip('m.monte'); K.skip('m.descend'); ok(g.s.active.join()==='m.pas', 'passer encore : '+g.s.active.join());
+  K.skip('m.pas'); K.skip('p.suite'); K.skip('k.timbre'); ok(g.s.active.join()==='m.notes', 'tous passés : le premier passé revient');
+  const live=(m,t)=>AMB.bus.emit('live',{midi:m==null?60:m,time:t||0,vel:1}), lives=(n)=>()=>{ for(let i=0;i<n;i++) live(); };
+  lives(8)(); ok(g.has('h.pad') && g.s.active.join()==='h.forcer', '8 notes jouées → Pad ouvert, le suivant non passé arrive : '+g.s.active.join());
+  ok(!K.eligible(K.byId['m.notes']) && K.eligible(K.byId['h.forcer']) && !K.eligible(K.byId['h.suivre']), 'un défi n\'est proposé que si son nœud peut s\'ouvrir (Pad ouvert : Drone qui suit oui, Tonalité pas encore)');
+  // --- each kind of challenge is done by its gesture, not by anything else
   const force=(id)=>{ g.s.active=[id]; g.s.prog[id]={n:0}; };
-  g.earn(200,'test'); ['e.reverb','e.echo'].forEach(i=>T.buy(i));
-  force('e.echo'); AMB.store.set('fx.echo',0.2,'user'); for(let i=0;i<6;i++) AMB.bus.emit('live',{midi:60,time:0,vel:1}); ok(!g.s.contracts.includes('e.echo') && !K.progress('e.echo'), 'écho trop faible : les notes ne comptent pas');
-  AMB.store.set('fx.echo',0.6,'user'); for(let i=0;i<6;i++) AMB.bus.emit('live',{midi:60,time:0,vel:1}); ok(g.s.contracts.includes('e.echo'), '6 notes jouées dans l\'écho');
-  {
-    g.earn(5000,'test'); for(let more=true;more;){ more=false; for(const n of T.NODES){ const st=T.status(n.id); if(st==='gated'){ g.solve(n.gate); more=true; } else if(st==='available'){ T.buy(n.id); more=true; } } }
-    const run=(id,steps,wrong)=>{ force(id); const sh=()=>g.s.contracts.includes(id);
-      for(const f of wrong) f(); ok(!sh() && K.progress(id)<K.byId[id].goal, id+' : pas rempli sans le geste');
-      for(const f of steps) f(); ok(sh(), id+' : rempli par son geste'); };
-    const S=(k,v,src)=>()=>AMB.store.set(k,v,src||'user'), tick=(n)=>()=>{ for(let i=0;i<n;i++) K.dispatch('bar',i); };
-    run('k.xy',[1,2,3,4].map(i=>()=>{ K.state().prog['k.xy']['t_xy']=0; AMB.bus.emit('act','xy'); }),[tick(8),()=>AMB.bus.emit('act','dice')]);
-    // S3.5: the Composer contracts are played (Rec live, a groove that turns, the song recorded), never drawn
+  for(let more=true;more;){ more=false; for(const n of T.NODES) if(T.status(n.id)==='available' && !['e.tape','e.salle','t.journal','h.pad2','m.evolve','m.grains2','c.rythme','c.song','t.dice'].includes(n.id)){ g.unlock(n.id); more=true; } }
+  { const run=(id,steps,wrong)=>{ force(id); const sh=()=>g.s.contracts.includes(id);
+      for(const f of wrong) f(); ok(!sh() && K.progress(id)<K.byId[id].goal, id+' : pas réussi sans le geste');
+      for(const f of steps) f(); ok(sh() && (!K.byId[id].node || g.has(K.byId[id].node)), id+' : réussi par son geste'+(K.byId[id].node ? ', '+T.byId[K.byId[id].node].name+' ouvert' : '')); };
+    const S=(k,v,src)=>()=>AMB.store.set(k,v,src||'user'), notes=(ms,dt)=>()=>ms.forEach((m,i)=>live(m,100+i*dt)), tick=(n)=>()=>{ for(let i=0;i<n;i++) K.dispatch('bar',i); };
+    run('e.echo',[S('fx.echo',0.6),lives(6)],[S('fx.echo',0.2),lives(6)]);
+    run('m.monte',[notes([60,62,64,65,67],0.4)],[notes([60,62,61,64,65],0.4),notes([67,65,64],0.4)]);
+    run('m.descend',[notes([72,71,69,67,65],0.4)],[notes([60,62,64,65,67],0.4)]);
+    run('m.respire',[notes([60,62,64,65],2)],[notes([60,62,64,65],0.5)]);
+    run('m.pas',[notes([60,62,64,65],0.6)],[notes([60,62,64,65],0.1),()=>[0,0.4,1.4,1.6].forEach((t,i)=>live(60,200+t))]);
+    run('m.nuage',[S('grains.density',0.7),lives(4)],[lives(6),S('grains.density',0.65,'preset')]);
+    run('e.noyer',[S('pad.send',0.8),...[1,2].map(()=>()=>{ K.state().prog['e.noyer'].t_chord=0; AMB.bus.emit('act','chord'); })],[()=>AMB.bus.emit('act','chord'),S('pad.send',0.5)]);
+    run('k.timbre',[S('drone.wave',AMB.store.spec('drone.wave').options[1]),lives(4)],[lives(6)]);
+    // S3.5: the Composer challenges are played (Rec live, a groove that turns, the song recorded), never drawn
     AMB.pianoRoll=AMB.pianoRoll||{roll:{recording:false}}; // this page has no piano roll: its Rec live state is enough
-    const R=AMB.pianoRoll.roll, rec0=R.recording, live=(n)=>()=>{ for(let i=0;i<n;i++) AMB.bus.emit('live',{midi:60,time:0,vel:1}); };
-    run('c.reclive',[()=>{ R.recording=true; }, live(8), ()=>{ R.recording=rec0; }],[live(8), S('seq.pattern','0.0.1','user')]);
+    const R=AMB.pianoRoll.roll, rec0=R.recording;
+    run('c.reclive',[()=>{ R.recording=true; }, lives(8), ()=>{ R.recording=rec0; }],[lives(8), S('seq.pattern','0.0.1','user')]);
     const S0=AMB.seq, step0=S0.step, bassNote=(bar)=>()=>{ S0.step=(S0.origin||0)+bar*16+3; AMB.bus.emit('note',{layer:'bass',midi:36,time:0,vel:0.8,dur:0.2}); };
     run('c.groove',[S('bass.pattern','groove-test','user'),bassNote(0),bassNote(1),bassNote(1),bassNote(2),bassNote(3)],[bassNote(0),bassNote(1),bassNote(2),bassNote(3),bassNote(4),S('bass.pattern','preset-test','preset')]);
     S0.step=step0;
     run('c.morceau',[()=>AMB.bus.emit('act','songRec')],[()=>AMB.bus.emit('act','song'),()=>AMB.bus.emit('rec:done',40),()=>AMB.bus.emit('act','section')]);
-    ok(K.byId['c.morceau'].first && K.DEFS.filter(d=>d.first).length===1, 'le dernier contrat du Parcours : « '+K.byId['c.morceau'].title+' »');
-    // an Écho's notes are the puzzle's: they never count for a contract
-    force('m.notes'); AMB.puzzles.current='p.premier'; live(8)(); ok(!K.progress('m.notes'), 'pendant un Écho : les notes jouées ne comptent pas pour les contrats');
-    AMB.puzzles.current=null; delete g.s.runs['p.premier']; AMB.puzzles.echoRow=[]; live(8)(); ok(g.s.contracts.includes('m.notes'), 'hors Écho : elles comptent');
-    force('m.phrase'); ok(K.byId['m.phrase'].goal===2,'m.phrase objectif 2'); AMB.store.set('bells.mode','Aléatoire','user'); AMB.bus.emit('phrase',{}); ok(K.progress('m.phrase')===0,'phrase : tours non comptés hors mode Phrase'); AMB.store.set('bells.mode','Phrase','user'); AMB.bus.emit('phrase',{}); ok(K.progress('m.phrase')===1,'1 tour'); AMB.bus.emit('phrase',{}); ok(g.s.contracts.includes('m.phrase'),'2 tours → rempli');
-    // seeded draw, deterministic; older saves (3 active, removed ids, no seed) load
-    ok((()=>{ g.s.active=[]; g.s.skipped=[]; g.s.contracts=[]; K.refill(); return g.s.active.join(); })()==='c.morceau', 'Morceau acquis : « Enregistre ton morceau » passe avant les autres');
-    const draw=(seed)=>{ g.s.active=[]; g.s.skipped=[]; g.s.prog={}; g.s.contracts=['c.morceau']; K.seed(seed); K.refill(); return g.s.active.join(','); };
-    const a=draw(42), b=draw(42), c=draw(7), d=draw(99), e=draw(12345), f2=draw(3);
-    ok(a===b && g.s.active.length===1, 'tirage déterministe avec une graine : '+a);
-    ok(new Set([a,c,d,e,f2]).size>1, 'la graine change le tirage : '+[a,c,d,e,f2].join(' | '));
-    g.s.active=['k.souffle','e.extremes','m.notes','h.forcer']; delete g.s.rng; K.refill(); ok(typeof g.s.rng==='number' && g.s.active.join()==='m.notes', 'ancienne sauvegarde (3 actifs, contrats retirés, sans graine) : un seul contrat valide gardé');
-  }
+    ok(K.byId['c.morceau'].first && K.DEFS.filter(d=>d.first).length===1, 'le dernier défi du Parcours : « '+K.byId['c.morceau'].title+' »');
+    // an Écho's notes are the Écho's: they never count for a contract
+    force('m.notes'); Pz.current='p.premier'; lives(8)(); ok(!K.progress('m.notes'), 'pendant un Écho : les notes jouées ne comptent pas pour les défis');
+    Pz.current=null; delete g.s.runs['p.premier']; Pz.echoRow=[];
+    force('m.phrase'); AMB.store.set('bells.mode','Aléatoire','user'); AMB.bus.emit('phrase',{}); ok(K.progress('m.phrase')===0,'phrase : tours non comptés hors mode Phrase'); AMB.store.set('bells.mode','Phrase','user'); AMB.bus.emit('phrase',{}); AMB.bus.emit('phrase',{}); ok(g.s.contracts.includes('m.phrase'),'2 tours → réussi');
+    ok((()=>{ g.s.active=[]; g.s.skipped=[]; g.s.contracts=[]; K.refill(); return g.s.active.join(); })()==='c.morceau', 'Morceau ouvert : « Enregistre ton morceau » passe avant les autres'); }
   AMB.seq.playing=false; g.setMode('free'); AMB.store.set('drone.tone',0.1,'user'); ok(true,'libre : pas de suivi');
   g.reset();
-  // --- puzzles engine (G5.1; v1.06: one kind, named controls, a new target at each attempt, no stars)
-  const Pz=AMB.puzzles;
-  const MM=Pz.DEFS.filter(d=>d.kind!=='echo');
-  ok(Pz.DEFS.length===12 && MM.length===10 && Pz.ECHOS.length===2 && MM.every(d=>!('bonus' in d) && !d.target && Object.keys(d.keys).length>=2) && !Pz.stars && !Pz.best, '12 énigmes (10 à réglages nommés, 2 Échos), pas de cible fixe, pas d\'étoiles');
-  // S3.6: the first gates are Échos; an echo's `need` holds the Melody (A–L and MIDI play), and the gate node requires all of it
-  ok(['p.premier','p.suite'].every(id=>Pz.isEcho(id) && Pz.byId[id].need.includes('m.bells') && Pz.byId[id].need.every(n=>{ const anc=new Set(), add=(x)=>{ if(anc.has(x)) return; anc.add(x); T.byId[x].req.forEach(add); }; T.byId[Pz.byId[id].opens].req.forEach(add); return anc.has(n); })) && T.byId['t.macros'].gate==='p.premier' && T.byId['m.phrase'].gate==='p.suite', 'S3.6 : Premier reflet et Suite connue sont des Échos, jouables dès que leur porte est atteinte (Mélodie dans les prérequis)');
-  for (const d of MM) {
-    // owning `need` (and their ancestors) must unlock every key; list ranges must be real options
-    const anc=new Set(), add=(id)=>{ if(anc.has(id)) return; anc.add(id); T.byId[id].req.forEach(add); }; d.need.forEach(add);
-    const bad=Object.entries(d.keys).filter(([k,r])=>{ const sp=AMB.store.spec(k); if(!sp) return true; if(sp.type==='select' && r && !r.every(o=>sp.options.includes(o))) return true; const n=T.nodeFor(k); return n && !anc.has(n); });
-    ok(!bad.length && (!d.opens || T.byId[d.opens].gate===d.id), 'énigme '+d.id+' jouable avec ses prérequis '+bad.map(x=>x[0]).join(','));
-  }
-  ok(T.NODES.filter(n=>n.gate).every(n=>Pz.byId[n.gate] && Pz.byId[n.gate].opens===n.id), 'chaque porte a son énigme');
-  { const def=AMB.store.snapshot(); let fresh=0, same=0;
-    // seeded draws (mulberry32): the check no longer fails at random
-    const mrnd=Pz.rnd; let sd=987654321; Pz.rnd=()=>{ let t=(sd=(sd+0x6D2B79F5)>>>0); t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; };
-    for (const d of MM) for (let i=0;i<20;i++) { const t=Pz.draw(d.id, def), t2=Pz.draw(d.id, def);
-      const okv=Object.entries(t).every(([k,v])=>{ const sp=AMB.store.spec(k); return sp.type==='select' ? sp.options.includes(v) : sp.type==='toggle' ? typeof v==='boolean' : v>=sp.min && v<=sp.max; });
-      if (!okv || Object.keys(t).join()!==Object.keys(d.keys).join()) same+=100;
-      if (Pz.score(d.id, def, t).total<0.9 && Pz.score(d.id, {...def,...t}, t).total===1) fresh++;
-      if (JSON.stringify(t)===JSON.stringify(t2)) same++; }
-    Pz.rnd=mrnd;
-    ok(fresh===MM.length*20 && same<=2, 'tirages : valeurs valides, jamais résolus d\'avance, cible = 100 % ('+fresh+'), presque jamais deux fois la même ('+same+')'); }
-  g.reset(); g.setMode('path'); g.earn(100,'test'); T.buy('t.son'); T.buy('h.pad'); T.buy('m.bells');
-  ok(Pz.available().some(d=>d.id==='p.composer') && Pz.forNode('c.seq').id==='p.composer' && Pz.forNode('t.macros').id==='p.premier', 'énigme disponible et liée à sa porte');
-  const FIX={'bells.wave':'Verre','bells.range':0.75,'bells.tone':0.2,'drone.tone':0.8};
-  Pz.start('p.composer'); g.s.runs['p.composer'].target={...FIX}; let last=null; AMB.bus.on('game:puzzle',e=>last=e);
-  AMB.store.setMany({'bells.wave':'Cloche','bells.range':0.35,'bells.tone':0.4,'drone.tone':0.2},'user');
-  const s0=Pz.score('p.composer').total; const a0=Pz.attempt();
-  ok(s0<0.5 && a0 && !a0.ok && a0.tries===1 && a0.left===Pz.TRIES-1, 'loin de la cible : '+s0.toFixed(2)+', refus (1 essai sur 6)');
-  { const pg=Object.fromEntries(a0.row.pegs.map(p=>[p.key,p]));
-    ok(a0.row.pegs.length===4 && pg['bells.wave'].state==='far' && pg['bells.wave'].dir==='other' && pg['bells.range'].state==='far' && pg['bells.range'].dir==='up' && pg['bells.tone'].dir==='down', 'pions : loin + autre option / plus haut / plus bas');
-    const n=Pz.peg('drone.tone',0.6,0.75), j=Pz.peg('drone.tone',0.72,0.75), k=Pz.peg('global.key','D','F'), e=Pz.peg('fx.echoTime','1/2','1/8.');
-    ok(n.state==='near' && n.dir==='up' && j.state==='ok' && j.dir===null && k.dir==='up' && e.dir==='down', 'pions : proche, juste, tonalité/écho ⬆⬇'); }
-  AMB.store.setMany({'bells.wave':'Verre','bells.range':0.72,'bells.tone':0.24,'drone.tone':0.8},'user');
-  const s1=Pz.score('p.composer').total; ok(s1>0.9 && last && last.total===s1, 'proche : '+s1.toFixed(2)+', jauge en direct');
-  // A/B (G5.2)
-  AMB.store.setMany({'bells.wave':'Cloche','bells.range':0.35,'bells.tone':0.4,'drone.tone':0.2},'user');
-  Pz.listen('target'); ok(AMB.store.get('bells.wave')==='Verre' && Pz.side()==='target' && Pz.currentScore().total<0.5 && !Pz.attempt(), 'écouter la cible : son cible, score = le mien, pas de validation');
-  Pz.listen('mine'); ok(AMB.store.get('bells.wave')==='Cloche' && AMB.store.get('bells.range')===0.35, 'retour à mon son intact');
-  Pz.listen('target'); AMB.store.set('bells.range',0.6,'user'); ok(Pz.side()==='mine' && AMB.store.get('bells.wave')==='Cloche' && AMB.store.get('bells.range')===0.6, 'toucher pendant la cible : mon son revient + mon geste');
-  AMB.store.setMany({'bells.wave':'Verre','bells.range':0.72,'bells.tone':0.24,'drone.tone':0.8},'user');
-  const shP=g.s.shards; const aw=Pz.attempt();
-  ok(aw && aw.ok && aw.first && aw.tries===2 && g.s.puzzles.includes('p.composer') && g.s.shards===shP+25 && T.status('c.seq')==='available' && !g.s.runs['p.composer'] && Pz.current===null, 'résolue en 2 essais → porte ouverte, +25');
-  // replay: a NEW target for the same controls, no ✧ again
-  { Pz.start('p.composer'); const t2=Pz.target(); ok(t2 && Object.keys(t2).join()===Object.keys(FIX).join() && JSON.stringify(t2)!==JSON.stringify(FIX) && Pz.score('p.composer').total<0.9, 'rejouer : nouvelle cible tirée pour les mêmes réglages '+JSON.stringify(t2));
-    const sh=g.s.shards; AMB.store.setMany(t2,'user'); const r=Pz.attempt(); ok(r.ok && !r.first && g.s.shards===sh, 'rejouée et résolue : pas de ✧ en plus'); }
-  // 6 failures → the gate opens anyway, no ✧, replayable with a new target
-  { g.earn(200,'test'); T.buy('h.key'); const pe=[]; AMB.bus.on('game:earn',d=>{ if(d.reason==='énigme') pe.push(d.n); }); Pz.start('p.gamme'); const t1=Pz.target();
-    AMB.store.setMany(Object.fromEntries(Object.entries(t1).map(([k,v])=>[k, typeof v==='number' ? (v>0.5?0:1) : AMB.store.spec(k).options.find(o=>o!==v)])),'user');
-    let r; for(let i=0;i<6;i++) r=Pz.attempt();
-    ok(r.out && !r.ok && r.left===0 && !g.s.puzzles.includes('p.gamme') && Pz.given('p.gamme') && T.status('h.scale')==='available' && !pe.length && Pz.current===null, '6 échecs → porte ouverte, sans ✧');
-    T.buy('h.scale'); Pz.start('p.gamme'); ok(Pz.run().tries.length===0 && JSON.stringify(Pz.target())!==JSON.stringify(t1) && g.has('h.scale'), 'rejouable : essais remis à zéro, nouvelle cible');
-    AMB.store.setMany(Pz.target(),'user'); const r3=Pz.attempt(); ok(r3.ok && r3.first && pe.join()==='20', 'résolue plus tard : ✧ de la 1re résolution'); }
-  // help (live gauge) changes nothing to the rewards; attempts and target survive closing the card; old saves load
-  { Pz.start('b.gamme'); const tb=Pz.target(); AMB.store.setMany(Object.fromEntries(Object.entries(tb).map(([k,v])=>[k, AMB.store.spec(k).options.find(o=>o!==v)])),'user'); Pz.attempt(); Pz.stop(); Pz.start('b.gamme');
-    ok(Pz.run().tries.length===1 && JSON.stringify(Pz.target())===JSON.stringify(tb), 'fermer puis rouvrir : mêmes essais, même cible');
-    const sh=g.s.shards; Pz.setHelp(true); AMB.store.setMany(Pz.target(),'user'); const r=Pz.attempt(); ok(r.ok && g.s.puzzles.includes('b.gamme') && g.s.shards===sh+25, 'avec la jauge d\'aide : résolue, ✧ 25 quand même');
-    Pz.setHelp(false);
-    localStorage.setItem('ambient.game.test', JSON.stringify({v:1,mode:'path',shards:3,earned:3,nodes:['racine'],found:['p:drone.tone','a:play'],stars:{'p.premier':2},contracts:[],puzzles:['p.premier'],runs:{'p.gamme':{tries:[{total:0.2,pegs:[]}],listens:2,help:false}},active:['k.souffle','k.couleur','e.extremes'],prog:{},ended:false}));
-    g.load(); ok(g.s.puzzles.includes('p.premier') && !('found' in g.s) && !('stars' in g.s) && Array.isArray(g.s.opened) && g.s.shards===3, 'ancienne sauvegarde (découvertes, étoiles) : chargée, champs retirés ignorés');
-    // S3.5: a v1.07 save with the 8 old Composer nodes loads; each owned old node gives the new node holding it, no ✧ moved
-    { const old=['racine','h.pad','m.bells','c.seq','c.arp','c.motifs','c.bass','c.perc','c.auto'];
-      localStorage.setItem('ambient.game.test', JSON.stringify({v:1,mode:'path',shards:41,earned:400,nodes:old,contracts:['c.dessin','c.chaine'],puzzles:['p.composer'],active:['c.courbe'],prog:{'c.courbe':{n:0}},skipped:['c.basse'],ended:false}));
-      g.load(); const sh=g.s.shards, ev2=[]; ['earn','spend'].forEach(e=>AMB.bus.on('game:'+e,()=>ev2.push(e)));
-      ok(g.s.nodes.join()==='racine,h.pad,m.bells,c.seq,c.rythme,c.song' && sh===41 && g.s.earned===400, 'migration S3.5 : '+old.length+' anciens nœuds → '+g.s.nodes.join(',')+', ✧ '+sh+' (inchangé)');
-      ok(['c.seq','c.rythme','c.song'].every(id=>T.status(id)==='owned') && T.paramUnlocked('perc.vol') && T.paramUnlocked('seq.arpDir') && T.paramUnlocked('auto.curve') && T.uiUnlocked('reclive'), 'migration : réglages et panneaux des anciens nœuds ouverts');
-      K.refill(); ok(g.s.active.length===1 && K.byId[g.s.active[0]] && !g.s.active.includes('c.courbe') && g.s.shards===41 && !ev2.length, 'migration : contrats retirés écartés, aucun ✧ gagné ni perdu ('+g.s.active.join()+')');
-      localStorage.setItem('ambient.game.test', JSON.stringify({v:1,mode:'path',shards:5,earned:50,nodes:['racine','c.seq','c.groove']})); g.load();
-      ok(g.s.nodes.join()==='racine,c.seq,c.rythme' && g.s.shards===5, 'migration : Groove seul → Rythme');
-      localStorage.setItem('ambient.game.test', JSON.stringify({v:1,mode:'path',shards:3,earned:3,nodes:['racine'],found:['p:drone.tone','a:play'],stars:{'p.premier':2},contracts:[],puzzles:['p.premier'],runs:{'p.gamme':{tries:[{total:0.2,pegs:[]}],listens:2,help:false}},active:['k.souffle','k.couleur','e.extremes'],prog:{},ended:false}));
-      g.load(); }
-    ok(Pz.run('p.gamme').tries.length===1 && Pz.target('p.gamme') && Object.keys(Pz.target('p.gamme')).length===4, 'ancienne énigme en cours sans cible : une cible est tirée, l\'essai fait est gardé');
-    K.refill(); ok(g.s.active.join()==='k.couleur', 'ancienne sauvegarde : un seul contrat actif valide');
-    g.s.runs['p.premier']={tries:[],target:{'drone.wave':'Orgue','drone.tone':0.5,'pad.wave':'Verre','pad.tone':0.2}};
-    ok(Array.isArray(Pz.target('p.premier').degs) && Pz.target('p.premier').degs.length===3, 'ancienne énigme à réglages devenue Écho : une phrase est tirée'); delete g.s.runs['p.premier']; }
-  // --- Écho (S3.1): a phrase on the Melody voice, played back note by note through 'live'; seeded game rng
-  { const Ec='p.premier', S=AMB.seq, mid=(dg)=>AMB.theory.degreeToMidi(dg,S.root,S.scale,4), live=(m)=>AMB.bus.emit('live',{midi:m,time:0,vel:0.85,raw:null});
-    let res=null, n=0; const evs=[]; AMB.bus.on('game:puzzle',e=>{ if(e&&e.res) res=e.res; }); AMB.bus.on('game:opened',e=>evs.push('opened:'+e.id)); AMB.bus.on('game:earn',e=>{ if(e.id===Ec) evs.push('earn:'+e.n); });
-    ok(Pz.isEcho(Ec) && Pz.DEFS.includes(Pz.byId[Ec]) && Pz.echoLen(0)===3 && Pz.echoLen(Pz.byId['p.suite'].d)===4 && Pz.echoLen(1)===6, 'Écho : dans la liste des 12, 3 notes à d=0 (Premier reflet), 4 (Suite connue), 6 au plus');
+  // --- S4.3 old saves (✧, costs paid, puzzles solved, gates opened, knob targets): they load, the nodes stay, no error
+  { const old={v:1,mode:'path',shards:41,earned:400,nodes:['racine','m.bells','h.pad','t.son','h.key','c.seq','c.arp','c.bass'],found:['p:drone.tone'],stars:{'p.premier':2},
+      contracts:['k.couleur','m.notes','c.dessin'],puzzles:['p.premier','p.gamme','b.gamme'],opened:['p.espace'],pzHelp:true,
+      runs:{'p.composer':{tries:[{total:0.2,pegs:[]}],target:{'bells.wave':'Verre','bells.range':0.5}},'b.salle':{tries:[],target:{'fx.size':0.4}}},
+      active:['k.souffle','b.salle','e.extremes'],prog:{},skipped:['k.paysages'],ended:false};
+    localStorage.setItem('ambient.game.test', JSON.stringify(old)); g.load(); K.refill();
+    ok(g.s.nodes.join()==='racine,m.bells,h.pad,t.son,h.key,c.seq,c.rythme' && !('shards' in g.s) && !('puzzles' in g.s) && !('opened' in g.s) && !('pzHelp' in g.s) && !('found' in g.s), 'ancienne sauvegarde (✧, énigmes, portes, étoiles) : nœuds gardés ('+g.s.nodes.length+', S3.5 compris), champs retirés ignorés');
+    ok(g.s.active.length===1 && K.eligible(K.byId[g.s.active[0]]) && !g.has(K.byId[g.s.active[0]].node), 'ancienne sauvegarde : un seul défi actif, valide ('+g.s.active.join()+')');
+    ok(T.status('h.scale')==='available' && T.status('t.macros')==='available' && K.eligible(K.byId['h.tonalite']) && K.eligible(K.byId['p.premier']), 'ancienne porte (Gammes, Grands réglages) : son défi est proposé');
+    g.s.runs['p.premier']={tries:[],target:{'drone.wave':'Orgue','drone.tone':0.5}};
+    ok(Array.isArray(Pz.target('p.premier').degs) && Pz.target('p.premier').degs.length===3, 'ancienne cible à réglages : une phrase est tirée'); delete g.s.runs['p.premier'];
+    localStorage.setItem('ambient.game.test', JSON.stringify({v:1,mode:'path',shards:5,earned:50,nodes:['racine','c.seq','c.groove']})); g.load();
+    ok(g.s.nodes.join()==='racine,c.seq,c.rythme', 'migration S3.5 : Groove seul → Rythme'); }
+  // --- Écho (S3.1): a phrase on the Melody voice, played back note by note through 'live'; seeded game rng; S4.3: opens its node
+  g.reset(); g.setMode('path'); ['m.bells','h.pad','t.son'].forEach(i=>g.unlock(i));
+  { const Ec='p.premier', S=AMB.seq, mid=(dg)=>AMB.theory.degreeToMidi(dg,S.root,S.scale,4), lv=(m)=>AMB.bus.emit('live',{midi:m,time:0,vel:0.85,raw:null});
+    let res=null, n=0; ev.length=0; AMB.bus.on('game:puzzle',e=>{ if(e&&e.res) res=e.res; });
     const mr=Math.random; Math.random=()=>{ n++; return 0.5; };
     K.seed(1234); const a=Pz.draw(Ec).degs; K.seed(1234); const b=Pz.draw(Ec).degs; Math.random=mr;
     ok(a.join()===b.join() && !n && a.length===3 && a.every(x=>x>=0&&x<9) && a.every((x,i)=>!i||x!==a[i-1]), 'tirage à graine (rng du jeu, jamais Math.random) : '+a.join(' '));
-    g.setMode('path'); delete g.s.runs[Ec]; g.s.puzzles=g.s.puzzles.filter(x=>x!==Ec); K.seed(42); Pz.start(Ec); const t1=Pz.target().degs.slice(), snap=JSON.stringify(AMB.store.stableSnapshot()), sh0=g.s.shards;
-    live(mid(t1[0])); live(mid(t1[1])-1);
+    K.seed(42); Pz.start(Ec); const t1=Pz.target().degs.slice(), snap=JSON.stringify(AMB.store.stableSnapshot());
+    lv(mid(t1[0])); lv(mid(t1[1])-1);
     ok(Pz.echoRow.length===2 && Pz.echoRow[0].state==='ok' && Pz.echoRow[1].dir==='up' && !Pz.run(Ec).tries.length && res===null, 'pions après chaque note : ✓ puis ⬆');
-    live(mid(t1[2])+2); const t2=Pz.target().degs;
-    ok(res && !res.ok && res.row.pegs.map(p=>p.state+':'+p.dir).join()==='ok:null,far:up,far:down' && Pz.run(Ec).tries.length===1 && !Pz.echoRow.length, 'phrase finie : ✓ ⬆ ⬇, 1 essai sur 6');
+    lv(mid(t1[2])+2); const t2=Pz.target().degs;
+    ok(res && !res.ok && res.row.pegs.map(p=>p.state+':'+p.dir).join()==='ok:null,far:up,far:down' && Pz.run(Ec).tries.length===1 && !Pz.echoRow.length && !g.has('t.macros'), 'phrase finie : ✓ ⬆ ⬇, 1 essai sur 6, nœud encore fermé');
     ok(t2.length===3 && t2.join()!==t1.join(), 'nouvel essai : nouvelle phrase '+t1.join(' ')+' → '+t2.join(' '));
-    res=null; t2.forEach(dg=>live(mid(dg)));
-    ok(res && res.ok && res.first && res.tries===2 && g.s.puzzles.includes(Ec) && g.s.shards===sh0+15 && Pz.current===null && !g.s.runs[Ec], 'phrase entièrement juste : réussite en 2 essais, +15');
+    res=null; t2.forEach(dg=>lv(mid(dg)));
+    ok(res && res.ok && res.tries===2 && g.has('t.macros') && ev.includes('unlock:'+Ec) && g.s.contracts.includes(Ec) && Pz.current===null && !g.s.runs[Ec], 'phrase entièrement juste : réussie en 2 essais, Grands réglages s\'ouvre directement');
     ok(JSON.stringify(AMB.store.stableSnapshot())===snap, 'pendant l\'Écho : l\'ambiance n\'est pas touchée');
-    g.earn(50,'test'); T.buy('t.son'); T.buy('h.pad'); T.buy('m.bells'); ok(T.status('t.macros')==='available', 'Écho réussi → la porte Grands réglages s\'ouvre');
-    // MIDI: any octave is fine (the pitch class is judged); a wrong note an octave up still points the right way
-    { g.s.puzzles=g.s.puzzles.filter(x=>x!==Ec); Pz.start(Ec); const t=Pz.target().degs; res=null;
-      live(mid(t[0])+12); live(mid(t[1])-24); live(mid(t[2])+12+1);
-      ok(res && res.row.pegs.map(p=>p.state+':'+p.dir).join()==='ok:null,ok:null,far:down', 'MIDI : octave tolérée (✓ ✓ à +12 / −24), la fausse note dit ⬇ : '+res.row.pegs.map(p=>p.state+':'+p.dir).join());
-      res=null; Pz.target().degs.forEach(dg=>live(mid(dg)+12)); ok(res && res.ok, 'MIDI : phrase juste une octave plus haut → réussite'); }
-    // 6 failures → the gate opens anyway, without ✧; a new phrase at each attempt
-    g.s.puzzles=g.s.puzzles.filter(x=>x!==Ec); g.s.opened=(g.s.opened||[]).filter(x=>x!==Ec); evs.length=0; ok(T.status('t.macros')==='gated', 'Écho pas résolu : porte fermée'); Pz.start(Ec); const seen=[]; res=null;
-    for(let i=0;i<6;i++){ const t=Pz.target().degs; seen.push(t.join('')); t.forEach(dg=>live(mid(dg)+1)); }
-    ok(res && res.out && !res.ok && res.left===0 && Pz.given(Ec) && evs.join()==='opened:'+Ec && Pz.current===null && T.status('t.macros')==='available', '6 échecs → porte Grands réglages ouverte, sans ✧ ('+evs.join()+')');
+    // MIDI: any octave is fine (the pitch class is judged)
+    { g.s.nodes=g.s.nodes.filter(x=>x!=='t.macros'); Pz.start(Ec); const t=Pz.target().degs; res=null;
+      lv(mid(t[0])+12); lv(mid(t[1])-24); lv(mid(t[2])+12+1);
+      ok(res && res.row.pegs.map(p=>p.state+':'+p.dir).join()==='ok:null,ok:null,far:down', 'MIDI : octave tolérée (✓ ✓ à +12 / −24), la fausse note dit ⬇');
+      res=null; Pz.target().degs.forEach(dg=>lv(mid(dg)+12)); ok(res && res.ok && g.has('t.macros'), 'MIDI : phrase juste une octave plus haut → réussie'); }
+    // 6 failures → its node opens anyway; a new phrase at each attempt
+    g.s.nodes=g.s.nodes.filter(x=>x!=='t.macros'); Pz.start(Ec); const seen=[]; res=null;
+    for(let i=0;i<6;i++){ const t=Pz.target().degs; seen.push(t.join('')); t.forEach(dg=>lv(mid(dg)+1)); }
+    ok(res && res.out && !res.ok && res.left===0 && Pz.current===null && g.has('t.macros'), '6 échecs → Grands réglages s\'ouvre quand même');
     ok(seen.every((x,i)=>!i||x!==seen[i-1]), '6 essais, 6 phrases tirées : '+seen.join(' '));
     // free mode: nothing judged, nothing shown
-    g.setMode('free'); Pz.start(Ec); res=null; evs.length=0; const tf=Pz.target().degs; tf.forEach(dg=>live(mid(dg)));
-    ok(!Pz.echoRow.length && !Pz.run(Ec).tries.length && res===null && !evs.length && Pz.echoPlay()===0, 'mode libre : rien de détecté ni joué');
+    g.setMode('free'); Pz.start(Ec); res=null; const tf=Pz.target().degs; tf.forEach(dg=>lv(mid(dg)));
+    ok(!Pz.echoRow.length && !Pz.run(Ec).tries.length && res===null && Pz.echoPlay()===0, 'mode libre : rien de détecté ni joué');
     Pz.stop(); delete g.s.runs[Ec]; g.setMode('path'); }
   // while the instrument plays an Écho's phrase, the Melody's own notes keep quiet; they resume right after
   { const L0=AMB.layers, got=[]; AMB.layers={bells:{note:(m,t)=>got.push(t)}}; const f0=Pz.echoFrom, u0=Pz.echoUntil;
@@ -207,7 +148,6 @@ window.addEventListener('load', async ()=>{
     const srcOk=await fetch('../js/sequencer.js').then(r=>r.text()).then(t=>!/bells\.note\(/.test(t.replace(/melodyNote\(midi, time, vel\) \{[\s\S]*?\n    \}/,'')) );
     AMB.layers=L0; Pz.echoFrom=f0; Pz.echoUntil=u0;
     ok(got.join()==='9.5,12.2' && srcOk, 'Écho : la Mélodie auto se tait pendant la phrase (notes '+got.join(' ')+'), toutes ses notes passent par melodyNote'); }
-  ok(Pz.keyScore('drone.tone',0.5,0.5)===1 && Pz.keyScore('drone.tone',0,1)===0 && Pz.keyScore('pad.wave','Verre','Nappe')===0, 'score par réglage');
   g.reset();
   g.setMode('free'); ok(T.paramUnlocked('fx.echo') && T.uiUnlocked('song'), 'mode libre : tout ouvert');
   g.reset();

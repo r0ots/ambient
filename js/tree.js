@@ -89,7 +89,7 @@
   const UI_LABEL = {
     play: 'Lecture', viz: 'Visuels', listen: 'Plein écran', journal: 'Journal des moments', save: 'Sauver un patch',
     rec: 'Enregistrement', share: 'Lien de partage', patches: 'Export / import des patchs', dice: '✦ Nouveau paysage',
-    preset: 'Presets', xy: 'Pad XY', freeze: 'Échantillon, micro, Figer', scenes: 'Scènes A/B', automation: 'Automation',
+    preset: 'Presets', xy: 'Glisser sur l\'écran', freeze: 'Échantillon, micro, Figer', scenes: 'Scènes A/B', automation: 'Automation',
     chords: 'Panneau Progression', song: 'Morceau', pianoroll: 'Piano roll', motifs: 'Motifs A–D', reclive: 'Rec live',
     keys: 'Jouer au clavier (A–L)', midi: 'Clavier MIDI', midiFile: 'Import / export .mid', 'mode-sculpt': 'Mode Sculpter', 'mode-compose': 'Mode Composer',
   };

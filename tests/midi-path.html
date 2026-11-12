@@ -118,14 +118,14 @@ f.addEventListener('load', async () => {
     reset(); A.game.setMode('path'); A.game.reset(); await wait(20);
     kb.on(67, 64); kb.off(67); kb.on(40, 90);
     ok(!app.notes.length && !app.chords.length && d.getElementById('midi').closest('.is-locked'), 'Parcours, avant la Mélodie : le MIDI ne joue rien, bouton caché');
-    A.game.earn(20, 't'); A.tree.buy('m.bells'); await wait(20);
+    A.game.unlock('m.bells'); await wait(20);
     kb.on(67, 64); kb.off(67); kb.on(40, 90);
     ok(app.notes.length === 1 && app.notes[0][0] === 67 && app.live.length === 1 && !app.chords.length && !d.getElementById('midi').closest('.is-locked'), 'Parcours, Mélodie achetée : le clavier MIDI joue l\'instrument (accords avec le Pad)');
-    A.tree.buy('h.pad'); kb.on(40, 90); kb.off(40); await wait(60); ok(app.chords.length === 1, 'Pad acheté : notes graves → accords');
+    A.game.unlock('h.pad'); kb.on(40, 90); kb.off(40); await wait(60); ok(app.chords.length === 1, 'Pad ouvert : notes graves → accords');
     // S4.1: stopped, a MIDI note sounds in the path too; S3.8: an Écho opened while stopped is played back on MIDI
     A.ui.stop(); hush(); await wait(20); reset(); kb.on(67, 100); const pk = await peak(250); kb.off(67);
     const ignored = app.notes.length === 1 && pk > 0.02; reset();
-    A.game.earn(50, 't'); A.tree.buy('t.son'); A.garden.openPuzzle('p.premier'); A.puzzles.echoUntil = 0;
+    A.game.unlock('t.son'); A.garden.openPuzzle('p.premier'); A.puzzles.echoUntil = 0;
     kb.on(A.puzzles.echoMidis()[0] + 12, 90); kb.off(A.puzzles.echoMidis()[0] + 12);
     ok(ignored && !A.seq.playing && app.notes.length === 1 && A.puzzles.echoRow.length === 1 && A.puzzles.echoRow[0].state === 'ok', 'Parcours, à l\'arrêt : une note MIDI sonne (crête ' + pk.toFixed(3) + ') et un Écho ouvert se rejoue au MIDI (1re note juste, une octave au-dessus)');
     A.garden.closePuzzle();
