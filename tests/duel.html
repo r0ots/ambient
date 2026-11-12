@@ -11,7 +11,7 @@ f.addEventListener('load', async ()=>{
   const t0=performance.now();
   const w=f.contentWindow, d=f.contentDocument, A=w.AMB, AR=A.arcade, U=A.arcadeUI, DY=A.daily, DU=A.duel, L=DY.link, S=A.store;
   w.addEventListener('error',e=>log('ERROR '+e.message+' @'+e.filename+':'+e.lineno));
-  w.AMB_REPONDS_KEY='ambient.reponds.dut'; AR.byId.reponds.setLat('any',0); // already calibrated: no prepare step
+  w.AMB.latency.data={v:1, dev:{}, any:0}; // already calibrated (global latency, js/latency.js): no prepare step, nothing saved
   const until=async(fn,n=80)=>{ for(let i=0;i<n&&!fn();i++) await wait(50); return fn(); };
   const setHash=async(h)=>{ w.location.hash=h; await wait(80); };
   const q=(s)=>d.querySelector('.arc-duel '+s);
@@ -64,7 +64,9 @@ f.addEventListener('load', async ()=>{
   const prof0=A.game.s.profile; A.game.s.profile='decouverte'; // the cousin is the kid (raw profile, js/game.js)
   await setHash('#df='+lk[1]);
   ok(U.screen==='duel' && DU.view==='take' && /Max/.test(q('.arc-dj-line').textContent) && q('[data-du=take]'), 'lien ouvert en Parcours : écran du défi de Max, « Relever le défi »');
+  A.pacts.set('reponds',['une-ecoute','proches']);
   q('[data-du=take]').click(); await until(()=>AR.active);
+  ok(AR.round.pacts.length===0 && AR.round.ghost && A.pacts.chosen('reponds').length===2, 'duel : pactes cochés ignorés (manche fantôme, scores comparables)'); A.pacts.set('reponds',[]);
   ok(JSON.stringify(AR.round.ch.notes)===ch1 && /DÉFI DE MAX/.test(d.querySelector('.arc-game').textContent), 'le cousin reçoit exactement le même motif');
   const half=AR.round.ch.notes.map((n,i)=>({t:n.t+(i%2?60:0),pc:n.pc}));
   AR.answer({hits:half}); await wait(40);

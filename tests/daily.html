@@ -88,13 +88,19 @@ f.addEventListener('load', async ()=>{
   ok(!ta.hidden && /^J'ai fait .* au défi du \d\d\/\d\d/.test(ta.value) && back && back.n==='Max' && back.s===off.s, 'partage : « '+ta.value.split(' http')[0]+' » + lien lisible');
   // practice
   d.querySelector('[data-dj=home]').click(); await wait(20);
+  // wave 4: the profile (placement test, js/game.js) sets the start level; the pacts ticked on a cartridge never reach a daily round
+  A.game.setProfile('musicien'); A.pacts.set('t.a',['une-ecoute','proches']);
   d.querySelector('.arc-daily [data-dj=go]').click(); await until(()=>AR.active);
+  ok(A.pacts.chosen('t.a').length===2 && AR.round.pacts.length===0 && AR.round.pmult===1 && AR.round.d0===DY.LEVELS.m.d && DY.run.p==='m', 'profil musicien → départ '+DY.LEVELS.m.d+' (×'+DY.LEVELS.m.coef+') ; pactes cochés ignorés en défi du jour (scores comparables)');
   ok(AR.round.ch.v===firstSeeds[0] && AR.round.seed===plan[0].seed, 'rejouer : même tirage (même premier défi)');
   for(let i=0;i<3;i++){ await until(()=>AR.active); AR.answer(1-AR.round.ch.v); T+=31000; AR.tick(); await wait(30); if(i<2) d.querySelector('[data-dj=next]').click(); }
   ok(DY.view==='result' && !DY.last.official && DY.official(false).s===off.s && /ENTRAÎNEMENT/.test(d.querySelector('.arc-daily').textContent), '2e essai = entraînement : le score du jour ne change pas');
   
   // zen: no clock, 5 challenges per mini-game
+  A.game.setProfile('decouverte'); A.pacts.set('t.a',[]);
   DY.view='home'; DY.show(); d.querySelector('.arc-daily [data-dj=zen]').click(); await until(()=>AR.active);
+  ok(AR.round.d0===DY.LEVELS.k.d && DY.run.p==='k' && DY.rel(1000,DY.run.p)===1350, 'profil découverte → départ '+DY.LEVELS.k.d+', score relatif ×1,35');
+  A.game.s.profile=null; A.game.save();
   ok(!isFinite(AR.round.dur) && AR.round.count===5 && /^1\/5$/.test(d.querySelector('.arc-time').textContent), 'zen : pas de chrono, compteur 1/5 au lieu du temps');
   T+=500000; AR.tick(); await wait(20);
   ok(AR.active, 'zen : le temps qui passe ne termine pas la manche');
@@ -118,6 +124,8 @@ f.addEventListener('load', async ()=>{
   ok(d.querySelector('.arc-daily .arc-dj-board') && d.querySelectorAll('.arc-daily .arc-dj-board tbody tr').length>=2, 'tableau du classement affiché');
   DY.now=()=>new Date(2026,10,12,9); const bl=DY.backLine(); DY.now=()=>new Date();
   ok(/^★ Défi du jour 12\/11 : [\d\u202f]+ · \d+(er|e) sur \d+$/.test(bl), 'backLine() en Parcours : « '+bl+' »');
+  { const card=A.save.backCard(Date.now()-26*3600e3), line=card && card.lines.find(x=>x.k==='Défi du jour');
+    ok(line && line.v===DY.backLine() && /Défi du jour/.test(line.v), 'encart « depuis ta dernière visite » (js/save.js) : ligne du défi = daily.backLine()'); }
   // menu banner in path mode
   U.menu(); await wait(20);
   ok(!DY.bar.hidden && d.querySelector('.arc-dj-open[data-dj=open]') && d.querySelector('.arc-dj-open[data-du=open]'), 'Parcours : bannière « Défi du jour » et « Défie ton cousin » dans le menu de la borne');

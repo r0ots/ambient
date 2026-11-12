@@ -1,7 +1,9 @@
 // « Jardin sonore » G10.4 : exportable save (file + link, import with strict validation) and
 // « depuis ta dernière visite » (a sober reminder card — never any gain collected while away).
-// A save = the path's state (AMB.game.s, secrets included: game.s.secrets) + the arcade's (AMB.arcade.s: levels,
-// records per profile and Pacts). Not saved: latency calibration (per device), settings, patches.
+// A save = the path's state (AMB.game.s, secrets included: game.s.secrets; player profile, nodes opened by the
+// placement test) + the arcade's (AMB.arcade.s: levels, records per profile and Pacts, the pacts ticked per mini-game)
+// + the daily challenge's (AMB.daily.s: name, the day's tries, leaderboard; optional, an older save keeps the current one).
+// Not saved: latency calibration (per device, js/latency.js), duel tries, settings, patches.
 // Import never throws: validate() returns {ok, error, data}; unknown ids are refused, numbers are bounded,
 // unknown extra fields (added by later versions) are kept only if small and plain.
 (function () {
@@ -37,7 +39,7 @@
   };
 
   // ---- validation ----
-  const GAME_KEYS = ['v', 'mode', 'shards', 'earned', 'nodes', 'found', 'contracts', 'puzzles', 'stars', 'opened', 'runs', 'pzHelp', 'active', 'prog', 'skipped', 'ended', 'secrets'];
+  const GAME_KEYS = ['v', 'mode', 'shards', 'earned', 'nodes', 'found', 'contracts', 'puzzles', 'stars', 'opened', 'runs', 'pzHelp', 'active', 'prog', 'skipped', 'ended', 'secrets', 'profile', 'placed', 'placement'];
   const gameState = (s) => {
     if (!isObj(s)) bad('progression absente');
     if (s.v !== 1) bad('version de progression inconnue');
@@ -68,6 +70,15 @@
     o.skipped = ids(s.skipped || [], 'contrats passés', C && ((x) => !!C.byId[x]));
     o.ended = s.ended == null ? false : bool(s.ended, 'fin');
     if (s.secrets != null) o.secrets = secretsState(s.secrets, X);
+    // player profile and placement test (G8.4, js/game.js, js/placement.js)
+    const PROF = (AMB.game && AMB.game.PROFILES) || ['musicien', 'decouverte'];
+    if (s.profile != null) { if (!PROF.includes(s.profile)) bad('profil de joueur invalide'); o.profile = s.profile; } else o.profile = null;
+    o.placed = ids(s.placed || [], 'nœuds du placement', T && ((x) => !!T.byId[x]));
+    if (s.placement != null) {
+      const pl = s.placement;
+      if (!isObj(pl)) bad('test de placement invalide');
+      o.placement = { at: num(pl.at, 0, 1e14, 'date du placement'), passed: ids(pl.passed || [], 'branches du placement', T && T.BRANCHES && ((x) => !!T.BRANCHES[x]), 10) };
+    } else o.placement = null;
     extras(s, o, GAME_KEYS);
     return o;
   };
@@ -94,7 +105,7 @@
     return o;
   };
 
-  const STAT_KEYS = ['d', 'peak', 'step', 'plays', 'best'];
+  const STAT_KEYS = ['d', 'peak', 'step', 'plays', 'best', 'pacts'];
   const arcadeState = (a) => {
     if (!isObj(a)) bad('arcade absente');
     if (a.v !== 1) bad('version d\'arcade inconnue');
@@ -118,6 +129,8 @@
           extras(r, ro, ['score', 'stars', 'at']);
           so.best[pk] = ro;
         }
+        // the pacts ticked on this cartridge (G9.8, js/pacts.js)
+        if (st.pacts != null) so.pacts = ids(st.pacts, 'pactes', AMB.pacts && ((x) => !!AMB.pacts.byId[x]), 20);
         extras(st, so, STAT_KEYS);
         po.games[id] = so;
       }
@@ -126,6 +139,38 @@
     }
     if (!o.profiles[o.profile] && Object.keys(o.profiles).length) bad('profil actif absent');
     extras(a, o, ['v', 'profile', 'profiles']);
+    return o;
+  };
+
+  // the daily challenge (G10.2 / G10.5, js/daily.js): name, official tries per day, leaderboard per day
+  const DAY = /^\d{4}-\d{2}-\d{2}$/, LVL = ['m', 'n', 'k'];
+  const str = (v, max, what) => { if (typeof v !== 'string' || v.length > max || /[\u0000-\u001f<>]/.test(v)) bad(what + ' invalide'); return v; };
+  const lvl = (v) => { if (!LVL.includes(v)) bad('niveau du défi invalide'); return v; };
+  const dailyState = (d) => {
+    if (!isObj(d) || d.v !== 1) bad('défi du jour invalide');
+    const o = { v: 1, name: d.name == null ? '' : str(d.name, 16, 'nom'), days: {}, board: {} };
+    if (!isObj(d.days || {}) || !isObj(d.board || {}) || Object.keys(d.days || {}).length > 30 || Object.keys(d.board || {}).length > 30) bad('défi du jour invalide');
+    for (const [day, D] of Object.entries(d.days || {})) {
+      if (!DAY.test(day) || !isObj(D)) bad('essai du jour invalide');
+      const od = {};
+      for (const k of ['c', 'z']) {
+        if (D[k] == null) continue;
+        const t = D[k]; if (!isObj(t)) bad('essai du jour invalide');
+        od[k] = { s: int(t.s, 0, 1e7, 'score du jour'), r: int(t.r, 0, 1e7, 'score relatif'), p: lvl(t.p), at: num(t.at, 0, 1e14, 'date') };
+        if (t.partial != null) od[k].partial = bool(t.partial, 'essai');
+        if (t.left != null) od[k].left = t.left ? 1 : 0;
+      }
+      o.days[day] = od;
+    }
+    for (const [day, B] of Object.entries(d.board || {})) {
+      if (!DAY.test(day) || !Array.isArray(B) || B.length > 40) bad('classement invalide');
+      o.board[day] = B.map((e) => {
+        if (!isObj(e)) bad('classement invalide');
+        const oe = { n: str(e.n, 16, 'nom'), s: int(e.s, 0, 1e7, 'score'), r: int(e.r, 0, 1e7, 'score relatif'), p: lvl(e.p), z: e.z ? 1 : 0, at: num(e.at || 0, 0, 1e14, 'date') };
+        if (e.me) oe.me = 1;
+        return oe;
+      });
+    }
     return o;
   };
 
@@ -172,7 +217,9 @@
     // the current state as a save object
     build() {
       const g = AMB.game, a = AMB.arcade;
-      return { app: APP, kind: 'save', v: VERSION, at: this.now(), game: JSON.parse(JSON.stringify(g.s)), arcade: JSON.parse(JSON.stringify(a ? a.s : { v: 1, profile: 'default', profiles: {} })) };
+      const o = { app: APP, kind: 'save', v: VERSION, at: this.now(), game: JSON.parse(JSON.stringify(g.s)), arcade: JSON.parse(JSON.stringify(a ? a.s : { v: 1, profile: 'default', profiles: {} })) };
+      if (AMB.daily && AMB.daily.s) o.daily = JSON.parse(JSON.stringify(AMB.daily.s));
+      return o;
     },
     // never throws: {ok:true, data:{game, arcade, at}, summary} or {ok:false, error}
     check(o) {
@@ -181,6 +228,7 @@
         if (o.app !== APP || o.kind !== 'save') bad('ce n\'est pas une sauvegarde du Jardin sonore');
         if (o.v !== VERSION) bad('version ' + (typeof o.v === 'number' ? o.v : '?') + ' non prise en charge');
         const data = { game: gameState(o.game), arcade: arcadeState(o.arcade), at: typeof o.at === 'number' && Number.isFinite(o.at) ? o.at : 0 };
+        if (o.daily != null) data.daily = dailyState(o.daily);
         return { ok: true, data, summary: summarize(data.game, data.arcade) };
       } catch (e) { return { ok: false, error: e instanceof Bad ? e.message : 'fichier illisible' }; }
     },
@@ -198,6 +246,7 @@
       const g = AMB.game, a = AMB.arcade;
       g.s = JSON.parse(JSON.stringify(res.data.game)); g.save();
       if (a) { a.s = JSON.parse(JSON.stringify(res.data.arcade)); a.save(); }
+      const D = AMB.daily; if (D && res.data.daily) { D.s = JSON.parse(JSON.stringify(res.data.daily)); D.save(); }
       if (AMB.secrets) { try { AMB.secrets.reset(); } catch (e) {} }
       g.emit('reset'); g.emit('mode', g.s.mode);
       if (reload) this.reload();

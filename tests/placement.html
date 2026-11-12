@@ -62,10 +62,12 @@ f.addEventListener('load', async ()=>{
     if(G.id==='reponds') return AR.answer(good?{hits:ch.notes.map(n=>({pc:n.pc,t:n.t}))}:{hits:[]});
     const c=AR.choices().find(c=>G.check(ch,c.value).ok===good); return AR.answer(c?c.value:'zz'); };
   const seen=[];
+  ['accordeur','modes','intrus','bouge','reponds','hautbas'].forEach(id=>A.pacts.set(id,['une-ecoute'])); // ticked on the cartridges: never in a chained run
   ok(P.startPlacement(), 'test lancé');
   for(let k=0;k<5;k++){
     if(!await until(()=>AR.round && !seen.includes(AR.round.game.id),4000)){ log('ERROR fail manche '+(k+1)+' jamais lancée'); break; }
     const id=AR.round.game.id, st=P.cur.tally.step; seen.push(id);
+    if(k===0) ok(AR.round.pacts.length===0 && A.pacts.chosen(id).length===1, 'placement : aucun pacte (cochés sur la cartouche, ignorés)');
     if(k===0) ok(AR.round.practice && Math.abs(AR.round.d0-st.d)<1e-9 && /Placement 1\/5/.test(d.querySelector('.arc-game').textContent), 'manche de placement : niveau musicien ('+st.d+'), hors records, titre « '+d.querySelector('.arc-game').textContent+' »');
     const good=!!pass[st.branch];
     for(let i=0;i<(good?4:2);i++) answer(good);
@@ -101,11 +103,13 @@ f.addEventListener('load', async ()=>{
   const qp=d.getElementById('quickPlay');
   ok(!qp.hidden && d.getElementById('placeBtn').hidden && dlg().hidden, 'découverte : gros bouton « Jouer 2 min » à l\'accueil');
 P.QUICK.dur=400; // short rounds for the test
+  ['hautbas','bouge','modes','intrus'].forEach(id=>A.pacts.set(id,['une-ecoute'])); // kid's arcade profile: ticked, never used here
   qp.click();
   const qs=[];
   for(let k=0;k<4;k++){
     if(!await until(()=>AR.round && !qs.includes(AR.round.game.id),4000)){ log('ERROR fail manche rapide '+(k+1)); break; }
     const R=AR.round; qs.push(R.game.id);
+    if(k===0) ok(R.pacts.length===0 && A.pacts.chosen(R.game.id).length===1, '« Jouer 2 min » : aucun pacte');
     if(k===0) ok(R.d0===0 && R.stair.hi===P.QUICK.dMax && AR.api().kid && R.practice, 'manche facile : niveau 0, plafonné à '+P.QUICK.dMax+', profil enfant');
     for(let i=0;i<3;i++) answer(true);
   }
@@ -116,6 +120,7 @@ P.QUICK.dur=400; // short rounds for the test
   g.setMode('free'); await wait(10);
   ok(qp.hidden && !d.body.classList.contains('kid'), 'mode libre : bouton caché');
   log('durée '+((performance.now()-t0)/1000).toFixed(1)+' s');
+  ['accordeur','modes','intrus','bouge','reponds','hautbas'].forEach(id=>A.pacts.set(id,[]));
   localStorage.removeItem(GK); localStorage.removeItem(AK);
   done();
   }catch(e){ fail(e); }

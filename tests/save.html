@@ -6,7 +6,7 @@ window.AMB_GAME_KEY = 'ambient.game.savetest'; window.AMB_ARCADE_KEY = 'ambient.
 ['ambient.game.savetest', 'ambient.arcade.savetest', 'ambient.visit.savetest'].forEach((k) => localStorage.removeItem(k));
 localStorage.setItem('ambient.visit.savetest', JSON.stringify({ last: Date.now() - 26 * 3600e3 })); // came back after 26 h
 </script>
-<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/audition.js"></script><script src="../js/arcade.js"></script><script src="../js/arcade/hautbas.js"></script><script src="../js/game.js"></script><script src="../js/tree.js"></script><script src="../js/contracts.js"></script><script src="../js/puzzles.js"></script><script src="../js/secrets.js"></script><script src="../js/save.js"></script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/audition.js"></script><script src="../js/arcade.js"></script><script src="../js/pacts.js"></script><script src="../js/arcade/hautbas.js"></script><script src="../js/game.js"></script><script src="../js/tree.js"></script><script src="../js/contracts.js"></script><script src="../js/puzzles.js"></script><script src="../js/secrets.js"></script><script src="../js/save.js"></script>
 <script>
 window.addEventListener('load', async () => { try {
   const A = AMB, g = A.game, S = A.save, a = A.arcade;
@@ -58,6 +58,25 @@ window.addEventListener('load', async () => { try {
   for (const t of ['', '   ', 'pas du json', '{', '{"a":1}', 'null', '"x"', '[1,2]', 'x'.repeat(2.1e6)]) { const p = S.parse(t); if (p.ok || !p.error) { ok(false, 'texte invalide accepté : ' + t.slice(0, 12)); } }
   ok(true, 'textes invalides (vide, JSON cassé, trop gros…) : message, pas d\'exception');
   ok(S.parse(JSON.stringify(sv)).ok, 'parse d\'un fichier valide');
+
+  // ---- wave 4 integration: player profile + placement (G8.4), pacts ticked (G9.8), daily challenge (G10.2/G10.5); latency stays per device
+  g.setProfile('decouverte'); g.s.placed = ['h.pad']; g.s.placement = { at: 1700000000000, passed: ['harmonie'] }; g.save();
+  a.stats('hautbas').pacts = ['une-ecoute', 'proches']; a.save();
+  const fakeDaily = { s: { v: 1, name: 'Max', days: { '2026-11-12': { c: { s: 9800, r: 11270, p: 'n', at: 1 } } }, board: { '2026-11-12': [{ n: 'Léo', s: 12400, r: 12400, p: 'm', z: 0, at: 2 }, { n: 'Max', s: 9800, r: 11270, p: 'n', z: 0, at: 3, me: 1 }] } }, saved: 0, save() { this.saved++; } };
+  A.daily = fakeDaily;
+  const sv4 = S.build(), r4 = S.check(clone(sv4));
+  ok(r4.ok && r4.data.game.profile === 'decouverte' && r4.data.game.placed[0] === 'h.pad' && r4.data.game.placement.passed[0] === 'harmonie', 'profil joueur et test de placement exportés ' + (r4.error || ''));
+  ok(r4.ok && r4.data.arcade.profiles.default.games.hautbas.pacts.join() === 'une-ecoute,proches', 'pactes cochés exportés');
+  ok(r4.ok && r4.data.daily.name === 'Max' && r4.data.daily.board['2026-11-12'].length === 2 && r4.data.daily.days['2026-11-12'].c.s === 9800, 'défi du jour (nom, essai, classement) exporté');
+  ok(!JSON.stringify(sv4).includes('latency') && !('latency' in sv4), 'latence non exportée (par appareil)');
+  const bad4 = { 'profil inconnu': (c) => { c.game.profile = 'pro'; }, 'pacte inconnu': (c) => { c.arcade.profiles.default.games.hautbas.pacts = ['triche']; }, 'nœud placé inconnu': (c) => { c.game.placed = ['zzz']; },
+    'jour mal formé': (c) => { c.daily.days['12/11'] = {}; }, 'niveau du défi inconnu': (c) => { c.daily.board['2026-11-12'][0].p = 'x'; }, 'nom piégé': (c) => { c.daily.board['2026-11-12'][0].n = '<b>'; }, 'score du jour négatif': (c) => { c.daily.days['2026-11-12'].c.s = -1; } };
+  ok(Object.entries(bad4).every(([k, f]) => { const c = clone(sv4); f(c); const res = S.check(c); if (res.ok) log('ERROR accepté : ' + k); return !res.ok; }), 'validation : profil, pactes, placement et défi du jour (' + Object.keys(bad4).length + ' cas refusés)');
+  const old = clone(sv4); delete old.daily; delete old.game.profile; delete old.game.placed; delete old.game.placement;
+  const rOld = S.check(old); ok(rOld.ok && rOld.data.game.profile === null && !rOld.data.daily, 'ancienne sauvegarde (v1.00) : profil non choisi, défi du jour non touché');
+  g.setProfile('musicien'); a.stats('hautbas').pacts = []; fakeDaily.s = { v: 1, name: '', days: {}, board: {} };
+  ok(S.apply(r4, false) && g.s.profile === 'decouverte' && g.isKid() && a.stats('hautbas').pacts.join() === 'une-ecoute,proches' && fakeDaily.s.name === 'Max' && fakeDaily.saved === 1 && fakeDaily.s.board['2026-11-12'].length === 2, 'import : profil, pactes et défi du jour restaurés');
+  delete A.daily; g.s.profile = null; g.s.placed = []; g.s.placement = null; a.stats('hautbas').pacts = []; g.save(); a.save();
 
   // ---- link
   const code = await S.encode(); ok(/^[zb][A-Za-z0-9_-]+$/.test(code), 'lien : ' + code[0] + ' (' + code.length + ' car.)');
