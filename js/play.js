@@ -108,6 +108,18 @@
     AMB.seq.releaseChord();
   }
 
+  // MIDI notes sound before the first ▶ too: the audio starts silently (the landscape stays faded out until ▶) on the
+  // click on the MIDI button, or on a note once the page has had a gesture (browsers refuse sound before that)
+  function wakeAudio(clicked = false) {
+    const E = AMB.engine;
+    if (E.ctx) return true;
+    if (!(clicked || (navigator.userActivation && navigator.userActivation.hasBeenActive)) || !AMB.ui.ensureStarted) return false;
+    const p = AMB.ui.ensureStarted(); // its synchronous part builds the graph: silence it before any sound is rendered
+    E.out.gain.value = 0;
+    p.catch(() => {});
+    return true;
+  }
+
   let midiAccess = null;
   function onMidi(msg) {
     const [st, d1, d2] = msg.data;
@@ -121,7 +133,7 @@
       const g = AMB.game, can = (id) => !g || g.isUnlocked(id);
       // the heard velocity is remapped to 0.25–1 (soft notes stay audible); the raw one (0..1) rides along on 'live'
       if (d1 < LOW) { if (can('h.pad') && AMB.seq.playing) lowOn(d1); }
-      else if (can('m.bells')) press('m' + d1, AMB.seq.playMidi(d1, 0.25 + (d2 / 127) * 0.75, d2 / 127, true));
+      else if (can('m.bells') && wakeAudio()) press('m' + d1, AMB.seq.playMidi(d1, 0.25 + (d2 / 127) * 0.75, d2 / 127, true));
     } else if (type === 0xb0) {
       const v = d2 / 127;
       if (d1 === 64) { setPedal(d2 >= 64); return letChordGo(); } // sustain pedal (holds notes and the forced chord)
@@ -162,7 +174,7 @@
     const btn = document.getElementById('midi');
     if (btn && navigator.requestMIDIAccess) {
       btn.hidden = false; // in the bar as soon as Web MIDI exists (in the path, the tree opens it with the Melody)
-      btn.addEventListener('click', () => connectMidi(btn));
+      btn.addEventListener('click', () => { wakeAudio(true); connectMidi(btn); });
       // already allowed (an earlier visit): connect without a click
       if (navigator.permissions) navigator.permissions.query({ name: 'midi' }).then((p) => { if (p.state === 'granted' && !midiAccess) connectMidi(btn, true); }).catch(() => {});
     }
