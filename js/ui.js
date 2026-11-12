@@ -376,6 +376,7 @@
     }
     const recOpts = $('.rec-opts');
     if (recOpts) document.addEventListener('click', (e) => { if (recOpts.open && !recOpts.contains(e.target)) recOpts.open = false; });
+    bind('#helpDlg', 'click', (e) => { const t = e.target.closest && e.target.closest('[data-help-tab]'); if (t) helpTab($('#helpDlg'), t.dataset.helpTab); });
     bind('#helpDlg', 'click', (e) => { if (e.target.id === 'helpDlg' || e.target.hasAttribute('data-close')) showHelp(false); });
     try {
       if (!localStorage.getItem('ambient.seenHelp') && AMB.game && AMB.game.s.mode !== null) { localStorage.setItem('ambient.seenHelp', '1'); setTimeout(() => toast('Première visite ? Appuie sur ? pour l\'aide'), 1200); }
@@ -397,7 +398,20 @@
     if (q.get('autoplay')) play().catch(() => toast('Clique sur Lecture pour démarrer'));
   }
 
-  function showHelp(on) { const d = $('#helpDlg'); if (d) d.hidden = !on; }
+  // Help: free mode keeps the base help; the Parcours adds two levels (« Pour commencer » / « Pour aller loin ») + the base help as a third tab
+  function helpTab(d, tab) {
+    d.querySelectorAll('[data-help-lvl]').forEach((e) => { e.hidden = e.dataset.helpLvl !== tab; });
+    const fr = d.querySelector('.help-free'); if (fr) fr.hidden = tab !== 'basics';
+    d.querySelectorAll('[data-help-tab]').forEach((b) => b.classList.toggle('primary', b.dataset.helpTab === tab));
+  }
+  function showHelp(on) {
+    const d = $('#helpDlg'); if (!d) return;
+    d.hidden = !on;
+    if (!on) return;
+    const path = !!(AMB.game && AMB.game.path), hp = d.querySelector('.help-path'), fr = d.querySelector('.help-free');
+    if (hp) hp.hidden = !path;
+    if (path) helpTab(d, 'start'); else if (fr) fr.hidden = false;
+  }
 
   // ---------- listening mode ----------
   function setListen(on) {

@@ -2,6 +2,7 @@
   Modes: #free, #pz, #bar, #sel=<node>, #buy=<node>;
   #arcade (menu), #arcade-pacts (menu with pacts ticked, secret pacts shown), #arcade-play=<id> (round; &d=0.7 sets the level and skips the latency calibration, &mut=miroir|retro|transpose forces a Réponds mutator), #arcade-end (end screen), #arcade-daily (défi du jour + classement), #arcade-duel (lien de défi reçu);
   #pf-profile (who plays?), #pf-end (placement result), #pf-kid (« Jouer 2 min » button), #pf-joy (its end);
+  #help-start / #help-far / #help-basics / #help-free (aide du Parcours : onglets ; libre),
   #save-open / #save-confirm (sauvegarde), #save-back (encart « depuis ta dernière visite » dans le menu ⋯).
   #arcade*, #pf-* and #save-* cut particles and juice for clean captures --><meta charset="utf-8"><style>body{margin:0}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body>
 <script>localStorage.removeItem('ambient.game.shot');</script>
@@ -15,10 +16,12 @@ document.getElementById('f').addEventListener('load', () => {
     ['burst', 'floatText', 'flash', 'shake', 'hitstop', 'pulseCombo', 'chime'].forEach(k => { J[k] = () => 0; });
     const fx = doc.getElementById('fx'); if (fx) fx.style.display = 'none';
   }
+  if (h.includes('help-free')) { A.game.setMode('free'); A.garden.welcome(false); doc.getElementById('help').click(); return; }
   if (h.includes('free')) { A.game.setMode('free'); A.garden.welcome(false); return; }
   A.game.setMode('path'); A.game.earn(200, 'x');
   ['t.son', 'h.pad', 'e.reverb', 'm.bells', 't.viz'].forEach(i => A.tree.buy(i));
   A.game.solve('p.gamme'); A.garden.welcome(false);
+  if (h.includes('help-')) { doc.getElementById('help').click(); const t = h.slice(6); const b = doc.querySelector('[data-help-tab=' + t + ']'); if (b) b.click(); return; }
   if (h.includes('save-')) {
     const S = A.save; A.garden.showTree(false);
     A.arcade.stats('hautbas').best[''] = { score: 4200, stars: 2, at: 1700000000000 };
