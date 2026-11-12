@@ -33,7 +33,7 @@
   let pedal = false;
   function press(key, h) {
     lift(key, true); // same key struck again: the previous note ends
-    if (h) held.set(key, h);
+    if (h && typeof h === 'object') held.set(key, h); // (a stub or a silent engine returns no handle)
   }
   function lift(key, now = false) {
     const h = held.get(key);
