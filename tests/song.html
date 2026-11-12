@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset="utf-8"></head><body>
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../css/style.css"></head><body>
 <script src="lib.js"></script>
 <div id="scenes"></div><div id="journal"></div><div id="layers"></div><div id="seqrow"></div><div id="macros"></div><div id="globals"></div><button data-mode="listen"></button><button data-mode="sculpt"></button><button data-mode="compose"></button>
 <button id="play"></button><button id="bigPlay"></button><div id="chordName"></div><div id="hudInfo"></div><select id="preset"></select><button id="dice"></button><button id="save"></button><button id="rec"></button><select id="recFmt"><option value="wav">w</option></select><select id="recDur"><option value="0">0</option></select><button id="share"></button><div id="toast"></div><select id="sleep"></select><span id="sleepLeft"></span><canvas id="viz" style="width:400px;height:200px"></canvas>
@@ -17,6 +17,9 @@ window.addEventListener('load', async ()=>{
   localStorage.removeItem('ambient.song.v1');
   const st=AMB.store, SG=AMB.song;
   const secs=[]; AMB.bus.on('section',e=>secs.push(e.name));
+  // ● Rec of the song panel: disabled with a visible reason while the song has no section
+  const recB=document.querySelector('[data-s=rec]'), why=document.querySelector('.song-rec-why');
+  ok(recB.disabled && getComputedStyle(why).display!=='none', 'aucune section : ● Rec du morceau désactivé, explication visible');
   st.set('global.tempo',140); st.set('fx.space',0.2,'user'); st.set('pad.wave','Nappe','user');
   document.querySelector('[data-s=add]').click();
   st.set('fx.space',0.9,'user'); st.set('pad.wave','Verre','user');
@@ -31,6 +34,28 @@ window.addEventListener('load', async ()=>{
   // shared motifs: a motif edited after capture is used by every section
   st.set('seq.pattern','0.7.2','user'); log('section snaps have pattern='+SG.sections.some(s=>'seq.pattern' in s.snap)+' origin='+AMB.seq.origin);
   document.dispatchEvent(new KeyboardEvent('keydown',{key:'1',bubbles:true})); log('pending='+SG.pending);
+  ok(!recB.disabled && getComputedStyle(why).display==='none', 'avec des sections : ● Rec actif, explication cachée');
+  // one-gesture recording: plays the song once from the top, stops by itself, offers a WAV
+  const ctx=AMB.engine.ctx, untilAudio=async(sec,cond)=>{const t=ctx.currentTime+sec; while(ctx.currentTime<t&&!(cond&&cond())) await wait(50);};
+  const files=[], done=[]; AMB.rec.download=(b,ext)=>files.push({b,ext}); AMB.bus.on('rec:done',x=>done.push(x));
+  SG.pending=null; SG.stop(); SG.sections.forEach(s=>s.bars=1); SG.render();
+  const bar=16*AMB.seq.stepDur(), want=SG.sections.length*bar+AMB.rec.SONG_TAIL;
+  recB.click(); await untilAudio(0.3);
+  ok(SG.playing && SG.idx===0 && AMB.rec.songRecording() && recB.classList.contains('rec'), 'clic : le morceau part de la 1re section et s\'enregistre ('+recB.textContent+')');
+  await untilAudio(want+3, ()=>files.length);
+  ok(files.length===1 && files[0].ext==='wav' && !SG.playing && !AMB.rec.songRecording() && recB.textContent==='● Rec', 'arrêt automatique à la fin du morceau, WAV proposé');
+  if(files.length){
+    const dec=await ctx.decodeAudioData(await files[0].b.arrayBuffer());
+    ok(Math.abs(dec.duration-want)<=bar, `WAV ${dec.duration.toFixed(2)} s ≈ sections + queue ${want.toFixed(2)} s (± 1 mesure ${bar.toFixed(2)} s)`);
+    ok(done.length===1 && Math.abs(done[0]-dec.duration)<0.1, 'rec:done = durée du WAV ('+(done[0]||0).toFixed(2)+' s)');
+  }
+  await untilAudio(2.2); ok(AMB.engine.out.gain.value>0.9 && AMB.seq.playing, 'après la queue, le son revient (gain '+AMB.engine.out.gain.value.toFixed(2)+')');
+  // second click = cancel: no file, no rec:done, normal sound
+  recB.click(); await untilAudio(0.6); recB.click(); await untilAudio(0.3);
+  ok(files.length===1 && done.length===1 && !SG.playing && !AMB.rec.songRecording() && !AMB.engine.capturing && recB.textContent==='● Rec' && AMB.seq.playing, 'second clic : annulé, aucun fichier, le son continue');
+  // the song stopped another way (■ Arrêter le morceau) cancels too
+  recB.click(); await untilAudio(0.4); document.querySelector('[data-s=play]').click(); await untilAudio(0.4);
+  ok(files.length===1 && !AMB.rec.songRecording(), 'arrêter le morceau pendant l\'enregistrement l\'annule');
   log('DONE');
   }catch(e){log('EXC '+e.stack)}
 });

@@ -71,7 +71,9 @@
         for (const [k, a, b] of f.cont) if (!AMB.isAutomated(k)) store.set(k, a + (b - a) * e, 'morph');
         if (t >= 1) this.fade = null;
       }
-      if (step % 16 !== 0 || step === 0) return;
+      // bar lines count from the section start (seq.origin), like the sequencer's bars: a section lasts its full bars
+      const rel = step - (AMB.seq.origin || 0);
+      if (rel <= 0 || rel % 16 !== 0) return;
       // queued jump (keys 1–8): switch on the next bar line
       if (this.pending != null && this.sections[this.pending]) {
         this.idx = this.pending; this.pending = null; this.barInSection = 0;
