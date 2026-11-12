@@ -10,9 +10,9 @@ Règle de produit (v1.05) : le jeu se joue SUR l'instrument (ses commandes, son 
 - Nouveau module = sa page `tests/<module>.html` (≤ 10 s) avec l'en-tête `tests/lib.js` (log, ok, wait, done, fail, testBus, OLD_SAVE). Une CSS par module (`css/<module>.css`). `tests/game.html` vérifie que `sw.js` précache tout `index.html`, dans l'ordre (ASSETS + CACHE à mettre à jour).
 
 ## Bus (événements)
-- `live` {midi, time, vel (entendue), raw (vélocité MIDI brute 0..1, null au clavier)} · `chord` {time, deg, midis} · `phrase` {i, len, time} · `section` {index, name}
+- `live` {midi, time, vel (entendue), raw (vélocité MIDI brute 0..1, null au clavier)} · `chord` {time, deg, midis, forced (accord joué par le joueur)} · `phrase` {i, len, time} · `section` {index, name}
 - `note` {layer, midi, time, vel, dur} · `perc` {track, time, vel} · `grain` {layer, midi, time, vel} · `freeze` {}
-- `act` 'id' (action réussie : save, share, keep, restore, rec, reclive, chord, note, freeze, xy, midiConnect, midiExport, preset, sceneStore…) · `rec:done` secondes · `secret` {id}
+- `act` 'id' (action réussie : save, share, keep, restore, rec, reclive, chord, note, freeze, xy, midiConnect, midiExport, preset, sceneStore…) · `rec:done` secondes
 - `game:*` earn {n, reason, id, total}, spend, unlock {id}, found / contracts / puzzles {id}, mode, reset, contract, puzzle, stars, opened, secret, chime {kind}
 
 ## Store (sources de `store.set(k, v, source)`)

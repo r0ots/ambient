@@ -142,7 +142,7 @@
       const midis = this.applyHarmony(t);
       AMB.layers.pad.releaseAll(t);
       AMB.layers.pad.playChord(midis, t, this.stepDur() * 16 * barLen + 0.5);
-      AMB.bus.emit('chord', { time: t, deg, midis });
+      AMB.bus.emit('chord', { time: t, deg, midis, forced: true });
       // hold until the next natural chord boundary after a full chord length
       const span = 16 * barLen;
       this.lockUntil = Math.ceil((this.step + span * 0.5) / span) * span;
@@ -217,7 +217,7 @@
         const dur = sd * stepsPerBar * bars + 0.5;
         // floating time: chords arrive late and loosely, never exactly on the bar
         L.pad.playChord(midis, time + (this.floating ? rand(0, sd * 6) : 0), dur);
-        AMB.bus.emit('chord', { time, deg: this.chordDeg, midis });
+        AMB.bus.emit('chord', { time, deg: this.chordDeg, midis, forced: false });
       }
 
       // ---- counter-melody: slow sustained inner voice moving by step between chord tones ----

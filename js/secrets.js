@@ -60,7 +60,7 @@
 
   const secrets = {
     DEFS, byId, GIFT, HINT2, THEMES,
-    w: [], chords: [], lastChime: 0, mem: {}, pendingForce: false, BASE: {},
+    w: [], chords: [], lastChime: 0, mem: {}, BASE: {},
     now: () => Date.now(), // overridable by tests
 
     // ---- persistent state (inside the game state; older saves get it lazily) ----
@@ -96,7 +96,7 @@
     },
 
     // ---- pattern detector helpers (relative intervals: independent of the key) ----
-    reset() { this.w = []; this.chords = []; this.mem = {}; this.pendingForce = false; },
+    reset() { this.w = []; this.chords = []; this.mem = {}; },
     tail(n) { return this.w.length >= n ? this.w.slice(-n) : null; },
     ivs(n) { const t = this.w.slice(-n); return t.slice(1).map((x, i) => x.midi - t[i].midi); },
     gapsOk(n, maxGap) { const t = this.w.slice(-n); return t.slice(1).every((x, i) => x.time - t[i].time <= maxGap); },
@@ -164,8 +164,7 @@
       this.run('live', n);
     },
     onChord(c) {
-      if (!this.active() || !this.pendingForce) return; // only chords the player forces, not the natural progression
-      this.pendingForce = false;
+      if (!this.active() || !c.forced) return; // only chords the player forces, not the natural progression
       this.chords.push({ deg: c.deg, at: this.now() });
       if (this.chords.length > 6) this.chords.shift();
       this.run('chord', c);
@@ -178,7 +177,7 @@
       this.giveGift(d.reward.gift, true);
       g.save();
       g.earn(d.reward.n, 'secret', id);
-      if (AMB.bus) { AMB.bus.emit('secret', { id }); g.emit('secret', { id }); }
+      g.emit('secret', { id });
       this.celebrate(d);
       return true;
     },
@@ -286,7 +285,7 @@
   // ---- sources ----
   if (AMB.bus) {
     AMB.bus.on('live', (n) => secrets.onLive(n));
-    AMB.bus.on('act', (id) => { if (id === 'chord') secrets.pendingForce = true; secrets.run('act', id); });
+    AMB.bus.on('act', (id) => secrets.run('act', id));
     AMB.bus.on('chord', (c) => secrets.onChord(c));
     ['reset', 'mode'].forEach((e) => AMB.bus.on('game:' + e, () => { secrets.reset(); secrets.applyGifts(); secrets.render(); }));
     ['unlock', 'earn'].forEach((e) => AMB.bus.on('game:' + e, () => secrets.render()));
