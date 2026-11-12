@@ -109,6 +109,7 @@
       const at = run ? this.strongBeat(0.45) : null, now = run ? ctx.currentTime : 0;
       const ls = this.layersOf(id);
       this.lastBeat = { id, at, deg: ls.length ? this.LAYER_DEG[ls[0]] || 0 : 0 };
+      this.beats[id] = this.lastBeat; // several openings at once (a secret during a map sequence) keep their own beat
       if (AMB.gardenVisual) AMB.gardenVisual.growAt(at != null ? at : null);
       if (!run) return this.lastBeat;
       for (const l of ls) { // tree.onUnlock already switched it on (level glides up): hold it at 0 until the beat
@@ -119,7 +120,8 @@
       }
       return this.lastBeat;
     },
-    beatOf(id) { const b = this.lastBeat; return b && b.id === id ? b : {}; },
+    beats: {}, // node id -> {id, at, deg}
+    beatOf(id) { return this.beats[id] || {}; },
     lcd(text, ms = 3500) { AMB.lcdMsg = { text, until: Date.now() + ms }; },
     // ---- the instrument handed over (G6.3, S3.7) ----
     complete() { const T = AMB.tree; return T.NODES.every((n) => AMB.game.has(n.id)); },

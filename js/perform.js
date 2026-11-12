@@ -80,7 +80,7 @@
         starting = true;
         Promise.resolve(AMB.ui.play()).finally(() => { starting = false; });
       }
-      down = true; canvas.setPointerCapture(e.pointerId); applyXY(e);
+      down = true; try { canvas.setPointerCapture(e.pointerId); } catch (err) {} applyXY(e);
     });
     canvas.addEventListener('pointermove', (e) => { if (down) applyXY(e); });
     const up = () => { down = false; };
