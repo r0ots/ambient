@@ -1,0 +1,18 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body>
+<!-- 390 px (a phone): in free mode (everything open), no screen mode makes the page wider than the screen
+     (the transport bar, the Pulsations grid and the Morceau panel used to push it to ~520 px). -->
+<script src="lib.js"></script>
+<script>localStorage.removeItem('ambient.game.narrow');</script>
+<iframe id="f" src="../index.html?gamekey=ambient.game.narrow" style="width:390px;height:780px"></iframe>
+<script>
+const f=document.getElementById('f');
+f.addEventListener('load', async ()=>{ try{
+  const w=f.contentWindow, d=f.contentDocument, A=w.AMB, de=d.documentElement;
+  A.game.setMode('free'); A.garden.welcome(false); A.song.add(); A.song.add(); A.song.add(); await wait(300);
+  for (const m of ['listen','sculpt','compose']) { A.perform.setMode(m); await wait(200);
+    // elements past the right edge, outside a container that scrolls on its own
+    const past=[...d.querySelectorAll('body *')].filter(e=>{ const r=e.getBoundingClientRect(); if(!r.width || r.right<=de.clientWidth+1 || !e.getClientRects().length) return false;
+      for(let p=e.parentElement;p&&p!==d.body;p=p.parentElement){ const ox=w.getComputedStyle(p).overflowX; if(ox==='auto'||ox==='scroll'||ox==='hidden') return false; } return true; });
+    ok(de.scrollWidth<=de.clientWidth+1 && !past.length, '390 px, '+m+' : largeur '+de.scrollWidth+' ≤ '+de.clientWidth+(past.length?' — dépassent : '+past.slice(0,6).map(e=>e.tagName+'.'+String(e.className).split(' ')[0]).join(' '):'')); }
+  done(); }catch(e){fail(e);} });
+</script></body></html>

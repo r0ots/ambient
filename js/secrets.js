@@ -75,8 +75,9 @@
       q.gifts = q.gifts || {}; q.gifts.timbres = q.gifts.timbres || []; // older saves: themes / mirror ignored
       return q;
     },
-    // detection runs only in the path, never while a puzzle's target is heard
-    active() { return !!AMB.game && AMB.game.counts(); },
+    // detection runs only in the path, never while a puzzle's target is heard nor during an Écho (its phrase and the
+    // notes played back are the puzzle's, not a gesture of the player's own)
+    active() { return !!AMB.game && AMB.game.counts() && !(AMB.puzzles && AMB.puzzles.isEcho()); },
     foundCount() { return Object.keys(this.state().found).length; },
     has(id) { return !!this.state().found[id]; },
 

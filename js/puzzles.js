@@ -1,7 +1,7 @@
 // « Jardin sonore » : target puzzles — "make your sound match this one". A puzzle names a few controls;
 // each attempt draws a target for them, the score compares the player's values to it (knobs by distance,
-// lists and switches by equality). Judged on reaching the target, never on taste. One kind of puzzle:
-// some guard a node of the tree (gate), all pay their ✧ once and stay replayable with a new target.
+// lists and switches by equality). Judged on reaching the target, never on taste. Plus the Écho (S3.1): a phrase
+// to play back. Some guard a node of the tree (gate), all pay their ✧ once and stay replayable with a new target.
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const store = AMB.store;
@@ -20,14 +20,20 @@
     return Math.max(0, 1 - (d / TOL) ** 2);
   }
 
-  // puzzle: { id, title, intro, need: [node ids to attempt], keys: {key: range}, reward, opens (gate node) }
+  // puzzle: { id, title, intro, need: [node ids to attempt], keys: {key: range}, reward, opens (gate node) }; an Écho
+  // (kind 'echo', below) has a difficulty `d` instead of `keys`
   // range: null = the whole control; [lo, hi] for a knob; a list of options for a list. Every new attempt draws
   // a fresh target for the same controls: nothing to learn by heart, always replayable.
   const P = (id, need, title, intro, keys, reward, opens) => ({ id, need, title, intro, keys, reward, opens: opens || null });
   const TONE = [0.05, 0.95];
+  // S3.1 « Écho » : the instrument plays a short phrase on the Melody voice, in the current key and scale; the player
+  // plays it back (A–L keys, the card's pads or MIDI, the 'live' path) and gets one peg per note: ✓ right, ⬆ play
+  // higher, ⬇ play lower (any octave on MIDI). A whole phrase right = solved; each new attempt draws a new phrase
+  // (seeded game rng). d = difficulty 0..1: 3 notes at 0, up to 6. `need` holds the Melody (it is what plays them).
+  const E = (id, need, title, intro, d, reward, opens) => ({ id, kind: 'echo', need, title, intro, d, reward, opens: opens || null });
   const DEFS = [
-    P('p.premier', ['t.son', 'h.pad'], 'Premier reflet', 'Le son et la couleur du drone, le son et la brillance du Pad.',
-      { 'drone.wave': null, 'drone.tone': TONE, 'pad.wave': null, 'pad.tone': TONE }, 15, 't.macros'),
+    // S3.6: the first gates are Échos (play a phrase back), not knobs to match: the son's first steps are with his hands and ears
+    E('p.premier', ['t.son', 'h.pad', 'm.bells'], 'Premier reflet', 'Écoute la petite phrase, puis rejoue-la note à note.', 0, 15, 't.macros'),
     P('p.gamme', ['h.key'], 'Autre lumière', 'Le même paysage ailleurs : la tonalité, le son et la brillance du Pad, la couleur du drone.',
       { 'global.key': null, 'pad.wave': null, 'pad.tone': TONE, 'drone.tone': TONE }, 20, 'h.scale'),
     P('p.espace', ['e.echo', 'h.pad'], 'La grotte', 'La taille de l\'espace, la part du Pad qui s\'y noie, l\'écho : quantité, vitesse, répétitions.',
@@ -38,8 +44,7 @@
       { 'bells.wave': null, 'bells.range': [0.1, 0.9], 'bells.tone': TONE, 'drone.tone': TONE }, 25, 'c.seq'),
     P('b.gamme', ['h.scale'], 'Quelle couleur ?', 'La tonalité et la gamme de ce paysage, à l\'oreille.',
       { 'global.key': null, 'global.scale': null }, 25),
-    P('b.progression', ['h.prog'], 'Suite connue', 'Une suite d\'accords connue, et combien de mesures dure chaque accord.',
-      { 'pad.prog': ['Plane (I)', 'Pendule I–IV', 'I–V–vi–IV', 'i–VI–III–VII', 'Montée I–ii–iii–IV'], 'pad.length': [1, 4] }, 25),
+    E('p.suite', ['m.bells'], 'Suite connue', 'Une phrase un peu plus longue : écoute-la, puis rejoue-la note à note.', 0.34, 25, 'm.phrase'),
     P('b.pad', ['h.pad2'], 'Cordes lentes', 'Le Pad en détail : son, attaque, accords riches, voix intérieure, brillance.',
       { 'pad.wave': null, 'pad.attack': TONE, 'pad.voicing': TONE, 'pad.counter': [0, 0.9], 'pad.tone': TONE }, 25),
     P('b.salle', ['e.halo'], 'Cathédrale de verre', 'La salle : son caractère, sa taille, le halo, le silence avant la réverbération, la quantité.',
@@ -51,16 +56,9 @@
     P('b.groove', ['c.groove', 'm.tempo'], 'Chaloupé', 'Le rythme : le kit des pulsations, le tempo, le swing et l\'imprécision.',
       { 'perc.kit': null, 'global.tempo': [50, 120], 'global.swing': [0, 0.8], 'global.humanize': [0, 0.8] }, 25),
   ];
-  // S3.1 « Écho » : the instrument plays a short phrase on the Melody voice, in the current key and scale; the player
-  // plays it back (A–L keys or MIDI, the 'live' path) and gets one peg per note: ✓ right, ⬆ play higher, ⬇ play lower.
-  // A whole phrase right = solved; each new attempt draws a new phrase (seeded game rng). d = difficulty 0..1:
-  // 3 notes at 0, up to 6. Not in DEFS (the tree's list) until S3.6 hangs them on gates (`opens`).
-  const E = (id, need, title, intro, d, reward, opens) => ({ id, kind: 'echo', need, title, intro, d, reward, opens: opens || null });
-  const ECHOS = [
-    E('e.premier', ['m.bells'], 'Écho', 'Écoute la phrase, puis rejoue-la note à note.', 0, 15),
-  ];
   const ECHO_DEGS = 9, ECHO_GAP = 0.55; // A–L = degrees 0..8 of octave 4; seconds between the phrase's notes
-  const byId = Object.fromEntries([...DEFS, ...ECHOS].map((d) => [d.id, d]));
+  const ECHOS = DEFS.filter((d) => d.kind === 'echo');
+  const byId = Object.fromEntries(DEFS.map((d) => [d.id, d]));
   const echoLen = (d) => Math.max(3, Math.min(6, 3 + Math.round((d || 0) * 3)));
   // a singable phrase: a walk of steps (seconds, thirds; a fourth from d ≥ 0.5) inside A–L, never twice the same note in a row
   function echoPhrase(d, rnd) {
@@ -123,7 +121,7 @@
     // puzzles that can be attempted now (prerequisite nodes owned), solved or not: they are always replayable
     available(g = AMB.game) { return DEFS.filter((d) => d.need.every((n) => g.has(n))); },
     // the puzzle guarding a node (tree gate)
-    forNode(nodeId) { return DEFS.find((d) => d.opens === nodeId) || ECHOS.find((d) => d.opens === nodeId) || null; },
+    forNode(nodeId) { return DEFS.find((d) => d.opens === nodeId) || null; },
     current: null,
     // the attempt in progress (kept in the game state until solved or out of validations: closing the card and
     // coming back gives neither the 6 validations nor a new target); a new attempt draws a new target
@@ -131,7 +129,8 @@
       if (!id || !byId[id]) return null;
       const runs = g.s.runs || (g.s.runs = {});
       const r = runs[id] || (runs[id] = { tries: [] });
-      if (!r.target) { r.target = this.draw(id, this.values()); g.save(); } // older saves: no target yet
+      // older saves: no target yet, or one of the other kind (a gate that became an Écho)
+      if (!r.target || !!r.target.degs !== (byId[id].kind === 'echo')) { r.target = this.draw(id, this.values()); g.save(); }
       return r;
     },
     // a gate opened after 6 failed validations (no ✧; the puzzle stays playable)
@@ -207,7 +206,10 @@
       if (!this.isEcho(id) || !AMB.game.path || this.current !== id) return null;
       const ctx = AMB.engine && AMB.engine.ctx; if (ctx && ctx.currentTime < this.echoUntil) return null;
       const ms = this.echoMidis(id), i = this.echoRow.length, t = ms[i]; if (t === undefined) return null;
-      this.echoRow.push({ key: 'n' + (i + 1), state: midi === t ? 'ok' : 'far', dir: midi === t ? null : midi < t ? 'up' : 'down', echo: true });
+      // any octave (a MIDI keyboard): the note is brought to the octave nearest the target, then compared (same pitch
+      // class = right; otherwise the arrow says which way, within that octave)
+      const m = midi + 12 * Math.round((t - midi) / 12);
+      this.echoRow.push({ key: 'n' + (i + 1), state: m === t ? 'ok' : 'far', dir: m === t ? null : m < t ? 'up' : 'down', echo: true });
       if (this.echoRow.length < ms.length) { AMB.game.emit('puzzle', { id, side: 'mine', total: 0, keys: [], note: i + 1 }); return { row: this.echoRow }; }
       const res = this.attempt(id);
       AMB.game.emit('puzzle', { id, side: 'mine', total: 0, keys: [], res });

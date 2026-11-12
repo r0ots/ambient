@@ -85,8 +85,11 @@ window.addEventListener('load', ()=>{
   g.reset();
   // --- puzzles engine (G5.1; v1.06: one kind, named controls, a new target at each attempt, no stars)
   const Pz=AMB.puzzles;
-  ok(Pz.DEFS.length===12 && Pz.DEFS.every(d=>!('bonus' in d) && !d.target && Object.keys(d.keys).length>=2) && !Pz.stars && !Pz.best, 'une seule sorte d\'énigme : réglages nommés, pas de cible fixe, pas d\'étoiles');
-  for (const d of Pz.DEFS) {
+  const MM=Pz.DEFS.filter(d=>d.kind!=='echo');
+  ok(Pz.DEFS.length===12 && MM.length===10 && Pz.ECHOS.length===2 && MM.every(d=>!('bonus' in d) && !d.target && Object.keys(d.keys).length>=2) && !Pz.stars && !Pz.best, '12 énigmes (10 à réglages nommés, 2 Échos), pas de cible fixe, pas d\'étoiles');
+  // S3.6: the first gates are Échos; an echo's `need` holds the Melody (A–L and MIDI play), and the gate node requires all of it
+  ok(['p.premier','p.suite'].every(id=>Pz.isEcho(id) && Pz.byId[id].need.includes('m.bells') && Pz.byId[id].need.every(n=>{ const anc=new Set(), add=(x)=>{ if(anc.has(x)) return; anc.add(x); T.byId[x].req.forEach(add); }; T.byId[Pz.byId[id].opens].req.forEach(add); return anc.has(n); })) && T.byId['t.macros'].gate==='p.premier' && T.byId['m.phrase'].gate==='p.suite', 'S3.6 : Premier reflet et Suite connue sont des Échos, jouables dès que leur porte est atteinte (Mélodie dans les prérequis)');
+  for (const d of MM) {
     // owning `need` (and their ancestors) must unlock every key; list ranges must be real options
     const anc=new Set(), add=(id)=>{ if(anc.has(id)) return; anc.add(id); T.byId[id].req.forEach(add); }; d.need.forEach(add);
     const bad=Object.entries(d.keys).filter(([k,r])=>{ const sp=AMB.store.spec(k); if(!sp) return true; if(sp.type==='select' && r && !r.every(o=>sp.options.includes(o))) return true; const n=T.nodeFor(k); return n && !anc.has(n); });
@@ -94,35 +97,38 @@ window.addEventListener('load', ()=>{
   }
   ok(T.NODES.filter(n=>n.gate).every(n=>Pz.byId[n.gate] && Pz.byId[n.gate].opens===n.id), 'chaque porte a son énigme');
   { const def=AMB.store.snapshot(); let fresh=0, same=0;
-    for (const d of Pz.DEFS) for (let i=0;i<20;i++) { const t=Pz.draw(d.id, def), t2=Pz.draw(d.id, def);
+    // seeded draws (mulberry32): the check no longer fails at random
+    const mrnd=Pz.rnd; let sd=987654321; Pz.rnd=()=>{ let t=(sd=(sd+0x6D2B79F5)>>>0); t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; };
+    for (const d of MM) for (let i=0;i<20;i++) { const t=Pz.draw(d.id, def), t2=Pz.draw(d.id, def);
       const okv=Object.entries(t).every(([k,v])=>{ const sp=AMB.store.spec(k); return sp.type==='select' ? sp.options.includes(v) : sp.type==='toggle' ? typeof v==='boolean' : v>=sp.min && v<=sp.max; });
       if (!okv || Object.keys(t).join()!==Object.keys(d.keys).join()) same+=100;
       if (Pz.score(d.id, def, t).total<0.9 && Pz.score(d.id, {...def,...t}, t).total===1) fresh++;
       if (JSON.stringify(t)===JSON.stringify(t2)) same++; }
-    ok(fresh===Pz.DEFS.length*20 && same<=2, 'tirages : valeurs valides, jamais résolus d\'avance, cible = 100 % ('+fresh+'), presque jamais deux fois la même ('+same+')'); }
-  g.reset(); g.setMode('path'); g.earn(100,'test'); T.buy('t.son'); T.buy('h.pad');
-  ok(Pz.available().some(d=>d.id==='p.premier') && Pz.forNode('t.macros').id==='p.premier', 'énigme disponible et liée à sa porte');
-  const FIX={'drone.wave':'Orgue','drone.tone':0.75,'pad.wave':'Verre','pad.tone':0.2};
-  Pz.start('p.premier'); g.s.runs['p.premier'].target={...FIX}; let last=null; AMB.bus.on('game:puzzle',e=>last=e);
-  AMB.store.setMany({'drone.wave':'Chaud','drone.tone':0.35,'pad.wave':'Nappe','pad.tone':0.4},'user');
-  const s0=Pz.score('p.premier').total; const a0=Pz.attempt();
+    Pz.rnd=mrnd;
+    ok(fresh===MM.length*20 && same<=2, 'tirages : valeurs valides, jamais résolus d\'avance, cible = 100 % ('+fresh+'), presque jamais deux fois la même ('+same+')'); }
+  g.reset(); g.setMode('path'); g.earn(100,'test'); T.buy('t.son'); T.buy('h.pad'); T.buy('m.bells');
+  ok(Pz.available().some(d=>d.id==='p.composer') && Pz.forNode('c.seq').id==='p.composer' && Pz.forNode('t.macros').id==='p.premier', 'énigme disponible et liée à sa porte');
+  const FIX={'bells.wave':'Verre','bells.range':0.75,'bells.tone':0.2,'drone.tone':0.8};
+  Pz.start('p.composer'); g.s.runs['p.composer'].target={...FIX}; let last=null; AMB.bus.on('game:puzzle',e=>last=e);
+  AMB.store.setMany({'bells.wave':'Cloche','bells.range':0.35,'bells.tone':0.4,'drone.tone':0.2},'user');
+  const s0=Pz.score('p.composer').total; const a0=Pz.attempt();
   ok(s0<0.5 && a0 && !a0.ok && a0.tries===1 && a0.left===Pz.TRIES-1, 'loin de la cible : '+s0.toFixed(2)+', refus (1 essai sur 6)');
   { const pg=Object.fromEntries(a0.row.pegs.map(p=>[p.key,p]));
-    ok(a0.row.pegs.length===4 && pg['drone.wave'].state==='far' && pg['drone.wave'].dir==='other' && pg['drone.tone'].state==='far' && pg['drone.tone'].dir==='up' && pg['pad.tone'].dir==='down', 'pions : loin + autre option / plus haut / plus bas');
+    ok(a0.row.pegs.length===4 && pg['bells.wave'].state==='far' && pg['bells.wave'].dir==='other' && pg['bells.range'].state==='far' && pg['bells.range'].dir==='up' && pg['bells.tone'].dir==='down', 'pions : loin + autre option / plus haut / plus bas');
     const n=Pz.peg('drone.tone',0.6,0.75), j=Pz.peg('drone.tone',0.72,0.75), k=Pz.peg('global.key','D','F'), e=Pz.peg('fx.echoTime','1/2','1/8.');
     ok(n.state==='near' && n.dir==='up' && j.state==='ok' && j.dir===null && k.dir==='up' && e.dir==='down', 'pions : proche, juste, tonalité/écho ⬆⬇'); }
-  AMB.store.setMany({'drone.wave':'Orgue','pad.wave':'Verre','drone.tone':0.72,'pad.tone':0.24},'user');
-  const s1=Pz.score('p.premier').total; ok(s1>0.9 && last && last.total===s1, 'proche : '+s1.toFixed(2)+', jauge en direct');
+  AMB.store.setMany({'bells.wave':'Verre','bells.range':0.72,'bells.tone':0.24,'drone.tone':0.8},'user');
+  const s1=Pz.score('p.composer').total; ok(s1>0.9 && last && last.total===s1, 'proche : '+s1.toFixed(2)+', jauge en direct');
   // A/B (G5.2)
-  AMB.store.setMany({'drone.wave':'Chaud','drone.tone':0.35,'pad.wave':'Nappe','pad.tone':0.4},'user');
-  Pz.listen('target'); ok(AMB.store.get('pad.wave')==='Verre' && Pz.side()==='target' && Pz.currentScore().total<0.5 && !Pz.attempt(), 'écouter la cible : son cible, score = le mien, pas de validation');
-  Pz.listen('mine'); ok(AMB.store.get('pad.wave')==='Nappe' && AMB.store.get('drone.tone')===0.35, 'retour à mon son intact');
-  Pz.listen('target'); AMB.store.set('drone.tone',0.6,'user'); ok(Pz.side()==='mine' && AMB.store.get('pad.wave')==='Nappe' && AMB.store.get('drone.tone')===0.6, 'toucher pendant la cible : mon son revient + mon geste');
-  AMB.store.setMany({'drone.wave':'Orgue','pad.wave':'Verre','drone.tone':0.72,'pad.tone':0.24},'user');
+  AMB.store.setMany({'bells.wave':'Cloche','bells.range':0.35,'bells.tone':0.4,'drone.tone':0.2},'user');
+  Pz.listen('target'); ok(AMB.store.get('bells.wave')==='Verre' && Pz.side()==='target' && Pz.currentScore().total<0.5 && !Pz.attempt(), 'écouter la cible : son cible, score = le mien, pas de validation');
+  Pz.listen('mine'); ok(AMB.store.get('bells.wave')==='Cloche' && AMB.store.get('bells.range')===0.35, 'retour à mon son intact');
+  Pz.listen('target'); AMB.store.set('bells.range',0.6,'user'); ok(Pz.side()==='mine' && AMB.store.get('bells.wave')==='Cloche' && AMB.store.get('bells.range')===0.6, 'toucher pendant la cible : mon son revient + mon geste');
+  AMB.store.setMany({'bells.wave':'Verre','bells.range':0.72,'bells.tone':0.24,'drone.tone':0.8},'user');
   const shP=g.s.shards; const aw=Pz.attempt();
-  ok(aw && aw.ok && aw.first && aw.tries===2 && g.s.puzzles.includes('p.premier') && g.s.shards===shP+15 && T.status('t.macros')==='available' && !g.s.runs['p.premier'] && Pz.current===null, 'résolue en 2 essais → porte ouverte, +15');
+  ok(aw && aw.ok && aw.first && aw.tries===2 && g.s.puzzles.includes('p.composer') && g.s.shards===shP+25 && T.status('c.seq')==='available' && !g.s.runs['p.composer'] && Pz.current===null, 'résolue en 2 essais → porte ouverte, +25');
   // replay: a NEW target for the same controls, no ✧ again
-  { Pz.start('p.premier'); const t2=Pz.target(); ok(t2 && Object.keys(t2).join()===Object.keys(FIX).join() && JSON.stringify(t2)!==JSON.stringify(FIX) && Pz.score('p.premier').total<0.9, 'rejouer : nouvelle cible tirée pour les mêmes réglages '+JSON.stringify(t2));
+  { Pz.start('p.composer'); const t2=Pz.target(); ok(t2 && Object.keys(t2).join()===Object.keys(FIX).join() && JSON.stringify(t2)!==JSON.stringify(FIX) && Pz.score('p.composer').total<0.9, 'rejouer : nouvelle cible tirée pour les mêmes réglages '+JSON.stringify(t2));
     const sh=g.s.shards; AMB.store.setMany(t2,'user'); const r=Pz.attempt(); ok(r.ok && !r.first && g.s.shards===sh, 'rejouée et résolue : pas de ✧ en plus'); }
   // 6 failures → the gate opens anyway, no ✧, replayable with a new target
   { g.earn(200,'test'); T.buy('h.key'); const pe=[]; AMB.bus.on('game:earn',d=>{ if(d.reason==='énigme') pe.push(d.n); }); Pz.start('p.gamme'); const t1=Pz.target();
@@ -139,11 +145,13 @@ window.addEventListener('load', ()=>{
     localStorage.setItem('ambient.game.test', JSON.stringify({v:1,mode:'path',shards:3,earned:3,nodes:['racine'],found:['p:drone.tone','a:play'],stars:{'p.premier':2},contracts:[],puzzles:['p.premier'],runs:{'p.gamme':{tries:[{total:0.2,pegs:[]}],listens:2,help:false}},active:['k.souffle','k.couleur','e.extremes'],prog:{},ended:false}));
     g.load(); ok(g.s.puzzles.includes('p.premier') && !('found' in g.s) && !('stars' in g.s) && Array.isArray(g.s.opened) && g.s.shards===3, 'ancienne sauvegarde (découvertes, étoiles) : chargée, champs retirés ignorés');
     ok(Pz.run('p.gamme').tries.length===1 && Pz.target('p.gamme') && Object.keys(Pz.target('p.gamme')).length===4, 'ancienne énigme en cours sans cible : une cible est tirée, l\'essai fait est gardé');
-    K.refill(); ok(g.s.active.join()==='k.couleur', 'ancienne sauvegarde : un seul contrat actif valide'); }
+    K.refill(); ok(g.s.active.join()==='k.couleur', 'ancienne sauvegarde : un seul contrat actif valide');
+    g.s.runs['p.premier']={tries:[],target:{'drone.wave':'Orgue','drone.tone':0.5,'pad.wave':'Verre','pad.tone':0.2}};
+    ok(Array.isArray(Pz.target('p.premier').degs) && Pz.target('p.premier').degs.length===3, 'ancienne énigme à réglages devenue Écho : une phrase est tirée'); delete g.s.runs['p.premier']; }
   // --- Écho (S3.1): a phrase on the Melody voice, played back note by note through 'live'; seeded game rng
-  { const Ec='e.premier', S=AMB.seq, mid=(dg)=>AMB.theory.degreeToMidi(dg,S.root,S.scale,4), live=(m)=>AMB.bus.emit('live',{midi:m,time:0,vel:0.85,raw:null});
+  { const Ec='p.premier', S=AMB.seq, mid=(dg)=>AMB.theory.degreeToMidi(dg,S.root,S.scale,4), live=(m)=>AMB.bus.emit('live',{midi:m,time:0,vel:0.85,raw:null});
     let res=null, n=0; const evs=[]; AMB.bus.on('game:puzzle',e=>{ if(e&&e.res) res=e.res; }); AMB.bus.on('game:opened',e=>evs.push('opened:'+e.id)); AMB.bus.on('game:earn',e=>{ if(e.id===Ec) evs.push('earn:'+e.n); });
-    ok(Pz.isEcho(Ec) && !Pz.DEFS.includes(Pz.byId[Ec]) && Pz.echoLen(0)===3 && Pz.echoLen(1)===6, 'Écho : hors de la liste des 12, 3 notes à d=0, 6 au plus');
+    ok(Pz.isEcho(Ec) && Pz.DEFS.includes(Pz.byId[Ec]) && Pz.echoLen(0)===3 && Pz.echoLen(Pz.byId['p.suite'].d)===4 && Pz.echoLen(1)===6, 'Écho : dans la liste des 12, 3 notes à d=0 (Premier reflet), 4 (Suite connue), 6 au plus');
     const mr=Math.random; Math.random=()=>{ n++; return 0.5; };
     K.seed(1234); const a=Pz.draw(Ec).degs; K.seed(1234); const b=Pz.draw(Ec).degs; Math.random=mr;
     ok(a.join()===b.join() && !n && a.length===3 && a.every(x=>x>=0&&x<9) && a.every((x,i)=>!i||x!==a[i-1]), 'tirage à graine (rng du jeu, jamais Math.random) : '+a.join(' '));
@@ -156,10 +164,16 @@ window.addEventListener('load', ()=>{
     res=null; t2.forEach(dg=>live(mid(dg)));
     ok(res && res.ok && res.first && res.tries===2 && g.s.puzzles.includes(Ec) && g.s.shards===sh0+15 && Pz.current===null && !g.s.runs[Ec], 'phrase entièrement juste : réussite en 2 essais, +15');
     ok(JSON.stringify(AMB.store.stableSnapshot())===snap, 'pendant l\'Écho : l\'ambiance n\'est pas touchée');
+    g.earn(50,'test'); T.buy('t.son'); T.buy('h.pad'); T.buy('m.bells'); ok(T.status('t.macros')==='available', 'Écho réussi → la porte Grands réglages s\'ouvre');
+    // MIDI: any octave is fine (the pitch class is judged); a wrong note an octave up still points the right way
+    { g.s.puzzles=g.s.puzzles.filter(x=>x!==Ec); Pz.start(Ec); const t=Pz.target().degs; res=null;
+      live(mid(t[0])+12); live(mid(t[1])-24); live(mid(t[2])+12+1);
+      ok(res && res.row.pegs.map(p=>p.state+':'+p.dir).join()==='ok:null,ok:null,far:down', 'MIDI : octave tolérée (✓ ✓ à +12 / −24), la fausse note dit ⬇ : '+res.row.pegs.map(p=>p.state+':'+p.dir).join());
+      res=null; Pz.target().degs.forEach(dg=>live(mid(dg)+12)); ok(res && res.ok, 'MIDI : phrase juste une octave plus haut → réussite'); }
     // 6 failures → the gate opens anyway, without ✧; a new phrase at each attempt
-    g.s.puzzles=g.s.puzzles.filter(x=>x!==Ec); evs.length=0; Pz.start(Ec); const seen=[]; res=null;
+    g.s.puzzles=g.s.puzzles.filter(x=>x!==Ec); g.s.opened=(g.s.opened||[]).filter(x=>x!==Ec); evs.length=0; ok(T.status('t.macros')==='gated', 'Écho pas résolu : porte fermée'); Pz.start(Ec); const seen=[]; res=null;
     for(let i=0;i<6;i++){ const t=Pz.target().degs; seen.push(t.join('')); t.forEach(dg=>live(mid(dg)+1)); }
-    ok(res && res.out && !res.ok && res.left===0 && Pz.given(Ec) && evs.join()==='opened:'+Ec && Pz.current===null, '6 échecs → porte ouverte, sans ✧ ('+evs.join()+')');
+    ok(res && res.out && !res.ok && res.left===0 && Pz.given(Ec) && evs.join()==='opened:'+Ec && Pz.current===null && T.status('t.macros')==='available', '6 échecs → porte Grands réglages ouverte, sans ✧ ('+evs.join()+')');
     ok(seen.every((x,i)=>!i||x!==seen[i-1]), '6 essais, 6 phrases tirées : '+seen.join(' '));
     // free mode: nothing judged, nothing shown
     g.setMode('free'); Pz.start(Ec); res=null; evs.length=0; const tf=Pz.target().degs; tf.forEach(dg=>live(mid(dg)));

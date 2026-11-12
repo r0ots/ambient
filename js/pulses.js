@@ -92,7 +92,7 @@
     buildCells() {
       const n = nSteps(), names = TRACK_NAMES[store.get('perc.kit')] || TRACKS;
       this.grid.innerHTML = '';
-      this.grid.style.gridTemplateColumns = `86px repeat(${n}, minmax(${n > 16 ? 8 : 14}px, 1fr))`;
+      this.grid.style.gridTemplateColumns = `var(--pl, 86px) repeat(${n}, minmax(${n > 16 ? '8px' : 'var(--pc, 14px)'}, 1fr))`; // --pl / --pc: narrower on phones
       const setLevel = (t, s, f) => {
         const g = parse(store.get('perc.pattern'), n);
         const old = g[t][s]; g[t][s] = f(old);

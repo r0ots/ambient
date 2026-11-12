@@ -22,7 +22,7 @@
     N('t.viz', 'tronc', 'Écran', 3, ['racine'], [], ['viz', 'listen'], 'Changer de visuel, passer en plein écran.'),
     N('t.journal', 'tronc', 'Journal', 3, ['t.son'], [], ['journal', 'save'], 'Revenir à un moment passé, garder un son comme patch.'),
     N('t.rec', 'tronc', 'Enregistreur', 7, ['t.son'], [], ['rec'], 'Enregistrer ce que tu entends.'),
-    N('t.macros', 'tronc', 'Grands réglages', 8, ['t.son', 'h.pad'], ['macro.*'], ['xy'], 'Les 5 macros et le pad XY : beaucoup de réglages d\'un geste.', 'p.premier'),
+    N('t.macros', 'tronc', 'Grands réglages', 8, ['t.son', 'h.pad', 'm.bells'], ['macro.*'], ['xy'], 'Les 5 macros et le pad XY : beaucoup de réglages d\'un geste.', 'p.premier'),
     N('t.share', 'tronc', 'Partage', 7, ['t.journal'], [], ['share', 'patches'], 'Partager un lien, exporter et importer ses patchs.'),
     N('t.dice', 'tronc', 'Paysages', 10, ['t.macros'], [], ['dice', 'preset'], '✦ Nouveau paysage et presets par humeur.'),
 
@@ -46,7 +46,7 @@
     // Mouvement — melody, time, drift, grains, slow movements, scenes
     N('m.bells', 'mouvement', 'Mélodie auto', 3, ['racine'], ['bells.on', 'bells.vol', 'bells.wave', 'bells.density', 'bells.tone', 'bells.decay', 'bells.range'], ['keys', 'midi'], 'Des notes qui improvisent sur les accords ; les jouer toi-même au clavier (A–L) ou au clavier MIDI.'),
     N('m.tempo', 'mouvement', 'Tempo', 7, ['m.bells'], ['global.tempo', 'global.time'], [], 'Vitesse, et rythme pulsé ou flottant.'),
-    N('m.phrase', 'mouvement', 'Phrases', 14, ['m.bells'], ['bells.mode', 'bells.phraseLen', 'bells.mutate'], [], 'Un motif qui se répète et varie lentement.'),
+    N('m.phrase', 'mouvement', 'Phrases', 14, ['m.bells'], ['bells.mode', 'bells.phraseLen', 'bells.mutate'], [], 'Un motif qui se répète et varie lentement.', 'p.suite'),
     N('m.evolve', 'mouvement', 'Dérive', 10, ['m.tempo'], ['global.evolve'], [], 'Tes réglages dérivent tout seuls autour de leur valeur.'),
     N('m.grains', 'mouvement', 'Grains', 10, ['m.bells'], ['grains.on', 'grains.vol', 'grains.density', 'grains.size', 'grains.scan', 'grains.spray', 'grains.pitch'], [], 'Un nuage de minuscules fragments de son.'),
     N('m.grains2', 'mouvement', 'Matières', 18, ['m.grains'], ['grains.source', 'grains.reverse', 'grains.glide'], ['freeze'], 'Ton fichier, le micro, Figer le mix ; à l\'envers, glissando.'),

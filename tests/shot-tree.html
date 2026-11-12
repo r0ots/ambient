@@ -26,13 +26,13 @@ document.getElementById('f').addEventListener('load', () => {
   } else if (h.includes('task-help')) {
     A.garden.showTree(false); doc.querySelector('#lcdTask .lcd-task-txt').click();
   } else if (h.includes('echo')) {
-    A.garden.openPuzzle('e.premier');
+    A.garden.openPuzzle('p.premier');
     setTimeout(() => { const P = A.puzzles, m = (dg) => A.theory.degreeToMidi(dg, A.seq.root, A.seq.scale, 4), play = (x) => { P.echoUntil = 0; A.bus.emit('live', { midi: x, time: 0, vel: 0.85, raw: null }); };
       const t = P.target().degs; play(m(t[0])); play(m(t[1]) + 2); play(m(t[2]) - 1);
       setTimeout(() => { const u = P.target().degs; play(m(u[0])); play(m(u[1]) - 1); }, 100); }, 600);
   } else if (h.includes('pz')) {
-    A.store.setMany({ 'drone.wave': 'Orgue', 'pad.wave': 'Nappe' }, 'user');
-    A.game.s.puzzles = A.game.s.puzzles.filter(x => x !== 'p.premier'); A.garden.openPuzzle('p.premier');
+    A.store.setMany({ 'bells.wave': 'Verre', 'drone.wave': 'Orgue' }, 'user');
+    A.game.s.puzzles = A.game.s.puzzles.filter(x => x !== 'p.composer'); A.garden.openPuzzle('p.composer');
   } else if (h.includes('garden')) {
     if (h.includes('garden-adv')) {
       A.game.s.nodes = A.tree.NODES.map((n) => n.id).filter((id, i) => i % 5);

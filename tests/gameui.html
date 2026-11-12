@@ -119,7 +119,7 @@ f.addEventListener('load', async ()=>{
     A.game.reset(); A.garden.renderTree && A.garden.renderTree(); }
   // --- review fixes (G6.5): mode switch while hearing a target, sends, neutral effects
   { A.game.reset(); A.game.earn(300,'test'); ['t.son','h.pad'].forEach(i=>A.tree.buy(i));
-    A.store.set('pad.wave','Nappe','user'); A.garden.openPuzzle('p.premier'); A.puzzles.listen('target');
+    A.store.set('pad.wave','Nappe','user'); A.garden.openPuzzle('p.gamme'); A.puzzles.listen('target');
     A.game.setMode('free'); await wait(30); ok(!A.puzzles.ab && d.getElementById('puzzle').hidden, 'passage en libre pendant la cible : écoute arrêtée');
     A.game.setMode('path'); await wait(30); ok(A.store.get('pad.wave')==='Nappe', 'retour au parcours : mon son, pas la cible');
     ok(!A.tree.paramUnlocked('bells.send') && A.game.has('h.pad') , 'pré-achat');
@@ -129,16 +129,26 @@ f.addEventListener('load', async ()=>{
   // --- Écho card (S3.1): Réécouter, no Valider nor gauge, pegs ✓ ⬆ ⬇ after each note, the screen stays where it is
   { A.game.reset(); A.game.earn(300,'test'); ['h.pad','m.bells'].forEach(i=>A.tree.buy(i)); A.perform.setMode('listen');
     const pzc=d.getElementById('puzzle'), P=A.puzzles, mid=(dg)=>A.theory.degreeToMidi(dg,A.seq.root,A.seq.scale,4), live=(m)=>{ P.echoUntil=0; A.bus.emit('live',{midi:m,time:0,vel:0.85,raw:null}); };
-    A.garden.openPuzzle('e.premier'); await wait(20); const t=P.target().degs;
-    ok(!pzc.hidden && /Écho/.test(pzc.querySelector('.pz-title').textContent) && /Réécouter/.test(pzc.querySelector('.pz-ab').textContent) && !shown('#puzzle .pz-ok') && !shown('#puzzle .pz-help') && !shown('#puzzle .pz-gauge') && A.mode==='listen' && /3 notes/.test(pzc.querySelector('.pz-hint').textContent), 'carte Écho : Réécouter, ni Valider ni jauge, écran inchangé');
+    A.garden.openPuzzle('p.premier'); await wait(20); const t=P.target().degs;
+    ok(!pzc.hidden && /Premier reflet/.test(pzc.querySelector('.pz-title').textContent) && /Réécouter/.test(pzc.querySelector('.pz-ab').textContent) && !shown('#puzzle .pz-ok') && !shown('#puzzle .pz-help') && !shown('#puzzle .pz-gauge') && A.mode==='listen' && /3 notes/.test(pzc.querySelector('.pz-hint').textContent), 'carte Écho : Réécouter, ni Valider ni jauge, écran inchangé');
     live(mid(t[0])); live(mid(t[1])+1); await wait(20);
     const pegs=[...pzc.querySelectorAll('.pz-row:not(.pz-head) .pz-peg')].map(e=>e.textContent).join(' ');
     ok(pegs==='✓ ⬇ ·' && /Note 3 sur 3/.test(pzc.querySelector('.pz-hint').textContent), 'pions affichés après chaque note : '+pegs);
     live(mid(t[2])-1); await wait(20);
     ok(pzc.querySelectorAll('.pz-row:not(.pz-head)').length===2 && /1 note juste sur 3\. Nouvelle phrase\. 5 essais/.test(pzc.querySelector('.pz-hint').textContent), 'phrase finie : la ligne reste, nouvelle phrase ('+pzc.querySelector('.pz-hint').textContent+')');
     P.target().degs.forEach(dg=>live(mid(dg))); await wait(20);
-    ok(pzc.hidden && A.game.s.puzzles.includes('e.premier') && /Écho/.test(d.getElementById('toast').textContent), 'phrase juste : carte fermée, réussite');
-    A.garden.openPuzzle('e.premier'); A.game.setMode('free'); await wait(20); ok(pzc.hidden && !P.current, 'passage en libre : carte Écho fermée');
+    ok(pzc.hidden && A.game.s.puzzles.includes('p.premier') && /Premier reflet/.test(d.getElementById('toast').textContent), 'phrase juste : carte fermée, réussite');
+    // S3.6: the card's 9 pads play A–L (a phone has no keys); at 390 px the pegs show note by note, nothing overflows
+    { f.style.width='390px'; f.style.height='780px'; await wait(250); A.garden.openPuzzle('p.premier'); await wait(20);
+      const pads=[...pzc.querySelectorAll('.pz-pads .pz-pad')], pd=A.seq.playDegree, got=[]; A.seq.playDegree=(dg)=>got.push(dg);
+      pads[4].dispatchEvent(new w.PointerEvent('pointerdown',{bubbles:true})); A.seq.playDegree=pd;
+      const de=d.documentElement, inside=(e)=>e.getBoundingClientRect().right<=de.clientWidth+1 && e.getBoundingClientRect().left>=-1;
+      ok(shown('#puzzle .pz-pads') && pads.length===9 && pads.map(b=>b.textContent).join('')==='ASDFGHJKL' && got.join()==='4' && pads.every(inside), 'carte Écho : 9 pastilles A–L, jouables au doigt, dans l\'écran à 390 px');
+      const u=P.target().degs; live(mid(u[0])); live(mid(u[1])+2); await wait(20);
+      const row=pzc.querySelector('.pz-row:not(.pz-head)'), pg=[...row.querySelectorAll('.pz-peg')];
+      ok(pg.map(e=>e.textContent).join(' ')==='✓ ⬇ ·' && pg.every(inside) && de.scrollWidth<=de.clientWidth+1, '390 px : pions note par note ('+pg.map(e=>e.textContent).join(' ')+'), pas de débordement');
+      A.garden.closePuzzle(); f.style.width='1300px'; f.style.height='900px'; await wait(200); }
+    A.garden.openPuzzle('p.premier'); A.game.setMode('free'); await wait(20); ok(pzc.hidden && !P.current, 'passage en libre : carte Écho fermée');
     A.game.setMode('path'); A.game.reset(); }
   // --- actions on success (G7.2): a cancelled save emits nothing, a real one does (contracts count it)
   { A.game.reset(); A.game.earn(300,'test'); ['t.son','t.journal'].forEach(i=>A.tree.buy(i)); const acts=[]; A.bus.on('act',id=>acts.push(id));
@@ -159,34 +169,34 @@ f.addEventListener('load', async ()=>{
   A.game.setMode('free'); ok(A.garden.chime('unlock')===0, 'pas de carillon en mode libre'); A.game.setMode('path');
   A.ui.stop && A.ui.stop();
   // --- puzzle card (G5.3; v1.06: one kind, named controls, a new target per attempt, no stars; the screen goes to Sculpter)
-  A.game.reset(); A.game.earn(100,'test'); A.tree.buy('t.son'); A.tree.buy('h.pad'); A.perform.setMode('listen');
-  A.store.setMany({'drone.wave':'Chaud','drone.tone':0.35,'pad.wave':'Nappe','pad.tone':0.4},'user');
-  const FIX={'drone.wave':'Orgue','drone.tone':0.75,'pad.wave':'Verre','pad.tone':0.2};
-  A.game.s.runs={'p.premier':{tries:[],target:{...FIX}}}; // a known target for the checks below (a real attempt draws its own)
-  A.garden.showTree(true); await wait(30); tn('t.macros').click(); await wait(30);
+  A.game.reset(); A.game.earn(100,'test'); A.tree.buy('h.pad'); A.tree.buy('m.bells'); A.perform.setMode('listen');
+  A.store.setMany({'bells.wave':'Cloche','bells.range':0.35,'bells.tone':0.4,'drone.tone':0.2},'user');
+  const FIX={'bells.wave':'Verre','bells.range':0.75,'bells.tone':0.2,'drone.tone':0.8};
+  A.game.s.runs={'p.composer':{tries:[],target:{...FIX}}}; // a known target for the checks below (a real attempt draws its own)
+  A.garden.showTree(true); await wait(30); tn('c.seq').click(); await wait(30);
   const pzc=d.getElementById('puzzle');
-  ok(!pzc.hidden && /Premier reflet/.test(pzc.textContent) && d.getElementById('treeDlg').hidden, 'nœud-porte → carte d\'énigme ouverte');
-  ok(A.mode==='sculpt' && shown('[data-key="pad.tone"]') && shown('[data-key="drone.wave"]'), 'énigme ouverte : l\'écran passe en Sculpter, les réglages en jeu sont visibles');
-  ok(/Joue sur : Drone · Son/.test(pzc.querySelector('.pz-keys').textContent) && !/record|★/.test(pzc.textContent) && pzc.querySelector('.pz-gauge').hidden && !pzc.querySelector('.pz-row') && /1\/6/.test(pzc.querySelector('.pz-ok').textContent), 'réglages nommés, pas d\'étoiles, pas de jauge en direct, Valider (1/6)');
-  pzc.querySelector('.pz-ab').click(); await wait(20); ok(/Revenir/.test(pzc.querySelector('.pz-ab').textContent) && pzc.querySelector('.pz-ok').disabled && A.store.get('pad.wave')==='Verre', 'écoute de la cible');
-  ok(d.body.classList.contains('pz-veil') && d.querySelector('[data-key="pad.wave"]').classList.contains('pz-veiled'), 'cible : valeurs masquées sur les réglages');
-  ok(A.store.stableSnapshot()['pad.wave']==='Nappe', 'instantanés (journal, annuler, partage) = mon son, pas la cible');
-  pzc.querySelector('.pz-ab').click(); await wait(20); ok(A.store.get('pad.wave')==='Nappe' && !d.querySelector('.pz-veiled'), 'retour à mon son');
+  ok(!pzc.hidden && /Boîte à musique/.test(pzc.textContent) && d.getElementById('treeDlg').hidden, 'nœud-porte → carte d\'énigme ouverte');
+  ok(A.mode==='sculpt' && shown('[data-key="bells.tone"]') && shown('[data-key="bells.wave"]'), 'énigme ouverte : l\'écran passe en Sculpter, les réglages en jeu sont visibles');
+  ok(/Joue sur : Mélodie/.test(pzc.querySelector('.pz-keys').textContent) && !/record|★/.test(pzc.textContent) && pzc.querySelector('.pz-gauge').hidden && !pzc.querySelector('.pz-row') && /1\/6/.test(pzc.querySelector('.pz-ok').textContent), 'réglages nommés, pas d\'étoiles, pas de jauge en direct, Valider (1/6)');
+  pzc.querySelector('.pz-ab').click(); await wait(20); ok(/Revenir/.test(pzc.querySelector('.pz-ab').textContent) && pzc.querySelector('.pz-ok').disabled && A.store.get('bells.wave')==='Verre', 'écoute de la cible');
+  ok(d.body.classList.contains('pz-veil') && d.querySelector('[data-key="bells.wave"]').classList.contains('pz-veiled'), 'cible : valeurs masquées sur les réglages');
+  ok(A.store.stableSnapshot()['bells.wave']==='Cloche', 'instantanés (journal, annuler, partage) = mon son, pas la cible');
+  pzc.querySelector('.pz-ab').click(); await wait(20); ok(A.store.get('bells.wave')==='Cloche' && !d.querySelector('.pz-veiled'), 'retour à mon son');
   const pzEarn=[]; A.bus.on('game:earn',e=>{ if(e.reason==='énigme') pzEarn.push(e.id+':'+e.n); });
   pzc.querySelector('.pz-ok').click(); await wait(20);
   { const rows=pzc.querySelectorAll('.pz-row:not(.pz-head)'), pegs=[...rows[0].querySelectorAll('.pz-peg')], tip=(k)=>pegs.find(p=>p.dataset.k===k);
-    ok(!A.game.s.puzzles.includes('p.premier') && rows.length===1 && pegs.length===4 && pzc.querySelectorAll('.pz-head span').length===5, 'échec → 1 ligne d\'essai, 4 pions nommés');
-    ok(tip('pad.wave').classList.contains('far') && /autre option/.test(tip('pad.wave').title) && /autre/.test(tip('pad.wave').textContent)
-      && /loin, plus haut/.test(tip('drone.tone').title) && /⬆/.test(tip('drone.tone').textContent)
-      && tip('pad.tone').classList.contains('near') && /⬇/.test(tip('pad.tone').textContent), 'pions : '+pegs.map(p=>p.title).join(' | '));
+    ok(!A.game.s.puzzles.includes('p.composer') && rows.length===1 && pegs.length===4 && pzc.querySelectorAll('.pz-head span').length===5, 'échec → 1 ligne d\'essai, 4 pions nommés');
+    ok(tip('bells.wave').classList.contains('far') && /autre option/.test(tip('bells.wave').title) && /autre/.test(tip('bells.wave').textContent)
+      && /loin, plus haut/.test(tip('bells.range').title) && /⬆/.test(tip('bells.range').textContent)
+      && tip('bells.tone').classList.contains('near') && /⬇/.test(tip('bells.tone').textContent), 'pions : '+pegs.map(p=>p.title).join(' | '));
     ok(/Pas encore : 0 juste, 1 proche\. 5 essais restants/.test(pzc.querySelector('.pz-hint').textContent) && /2\/6/.test(pzc.querySelector('.pz-ok').textContent), 'état : '+pzc.querySelector('.pz-hint').textContent); }
-  A.store.setMany({'drone.wave':'Orgue','pad.wave':'Verre','drone.tone':0.73,'pad.tone':0.22},'user'); await wait(20);
+  A.store.setMany({'bells.wave':'Verre','bells.range':0.73,'bells.tone':0.22,'drone.tone':0.8},'user'); await wait(20);
   ok(!pzc.querySelector('.pz-ok').classList.contains('ready') && pzc.querySelector('.pz-gauge').hidden, 'à la cible : rien ne s\'allume sans aide (il faut valider)');
   pzc.querySelector('.pz-ok').click(); await wait(40);
-  ok(A.game.s.puzzles.includes('p.premier') && pzc.hidden && !d.getElementById('treeDlg').hidden && tn('t.macros').classList.contains('st-available') && A.mode==='listen', 'résolue → arbre rouvert, nœud achetable, écran revenu en Écouter');
-  ok(/2 essais/.test(d.getElementById('toast').textContent) && !/★/.test(d.getElementById('toast').textContent) && pzEarn.join()==='p.premier:15', 'résolue en 2 essais, ✧ 15, sans étoiles : '+d.getElementById('toast').textContent);
+  ok(A.game.s.puzzles.includes('p.composer') && pzc.hidden && !d.getElementById('treeDlg').hidden && tn('c.seq').classList.contains('st-available') && A.mode==='listen', 'résolue → arbre rouvert, nœud achetable, écran revenu en Écouter');
+  ok(/2 essais/.test(d.getElementById('toast').textContent) && !/★/.test(d.getElementById('toast').textContent) && pzEarn.join()==='p.composer:25', 'résolue en 2 essais, ✧ 25, sans étoiles : '+d.getElementById('toast').textContent);
   // replay from the tree's puzzle list: a new target for the same controls, no ✧ again
-  { const rb=d.querySelector('.tree-puzzles [data-pz="p.premier"]'); ok(rb && /◈ Premier reflet ✓/.test(rb.textContent) && /Énigmes 1\/12/.test(d.querySelector('.tree-puzzles').textContent), 'liste des énigmes dans l\'arbre : '+(rb&&rb.textContent));
+  { const rb=d.querySelector('.tree-puzzles [data-pz="p.composer"]'); ok(rb && /◈ Boîte à musique ✓/.test(rb.textContent) && /Énigmes 1\/12/.test(d.querySelector('.tree-puzzles').textContent), 'liste des énigmes dans l\'arbre : '+(rb&&rb.textContent));
     rb.click(); await wait(30); const t2=A.puzzles.target();
     ok(!pzc.hidden && A.mode==='sculpt' && JSON.stringify(t2)!==JSON.stringify(FIX) && Object.keys(t2).join()===Object.keys(FIX).join(), 'rejouer : nouvelle cible pour les mêmes réglages');
     pzc.querySelector('.pz-x').click(); await wait(20); ok(pzc.hidden && A.mode==='listen', 'fermer : l\'écran revient au mode d\'avant');

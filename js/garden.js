@@ -109,7 +109,7 @@
     // ---- puzzle card (G5.3, « Mastermind » G8.1) ----
     pz: null, // { id, mode: the screen mode to come back to }
     pzKeys() {
-      if (AMB.puzzles.isEcho(this.pz.id)) return 'Rejoue-la avec les touches A à L ou ton clavier MIDI, une note après l\'autre.';
+      if (AMB.puzzles.isEcho(this.pz.id)) return 'Rejoue-la sur les pastilles, aux touches A à L ou au clavier MIDI, une note après l\'autre.';
       return `Joue sur : ${Object.keys(AMB.puzzles.byId[this.pz.id].keys).map((k) => this.paramLabel(k)).join(', ')}`; },
     // the controls of a puzzle live in Sculpter, except the progression and the pulses (Composer)
     pzMode(id) { if (AMB.puzzles.isEcho(id)) return null; return Object.keys(AMB.puzzles.byId[id].keys).some((k) => /^(pad\.prog|perc\.)/.test(k)) ? 'compose' : 'sculpt'; },
@@ -142,6 +142,7 @@
       if (back && AMB.perform && AMB.mode !== back && AMB.game.path && (back === 'listen' || AMB.tree.uiUnlocked('mode-' + back))) AMB.perform.setMode(back);
     },
     // one validation = one row of pegs: ✓ right, ≈ close, ✗ far, plus ⬆ / ⬇ or « autre » (another option)
+    PADS: ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
     PEG: { ok: ['✓', 'juste'], near: ['≈', 'proche'], far: ['✗', 'loin'] },
     DIR: { up: ['⬆', 'plus haut'], down: ['⬇', 'plus bas'], other: [' autre', 'autre option'] },
     pegHTML(p) {
@@ -205,6 +206,12 @@
       const okb = card.querySelector('.pz-ok'); okb.classList.toggle('ready', ready && !target); okb.disabled = target;
       okb.textContent = `Valider (${r.tries.length + 1}/${P.TRIES})`;
       okb.hidden = echo; // an echo is judged at its last note
+      // an echo: the 9 notes of A–L as pads on the card (a phone has no keys); they play the Melody like the keys do
+      const pads = card.querySelector('.pz-pads');
+      if (pads) {
+        pads.hidden = !echo;
+        if (echo && !pads.children.length) pads.innerHTML = this.PADS.map((k, i) => `<button type="button" class="pz-pad" data-deg="${i}" title="Touche ${k}">${k}</button>`).join('');
+      }
       card.querySelector('.pz-keys').textContent = this.pzKeys();
       this.renderBoard();
       card.querySelector('.pz-hint').textContent = target ? 'Tu entends la cible. Touche un réglage ou reviens à ton son pour continuer.' : this.statusText(r);
@@ -253,6 +260,11 @@
           P.listen(P.side() === 'target' ? 'mine' : 'target');
         });
         pzc.querySelector('.pz-ok').addEventListener('click', () => this.validatePuzzle());
+        const pads = pzc.querySelector('.pz-pads');
+        if (pads) pads.addEventListener('pointerdown', (e) => {
+          const b = e.target.closest('.pz-pad'); if (!b || !AMB.puzzles.isEcho() || !AMB.seq) return;
+          e.preventDefault(); AMB.seq.playDegree(+b.dataset.deg);
+        });
         const hb = pzc.querySelector('.pz-help input'); if (hb) hb.addEventListener('change', () => AMB.puzzles.setHelp(hb.checked));
       }
       if (AMB.bus) {
