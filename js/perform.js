@@ -63,7 +63,7 @@
     applyMacro(key, T && !T.paramUnlocked(key) ? v : store.get(key), 'xy');
   }
   function setupXY(canvas) {
-    let down = false;
+    let down = false, starting = false;
     const applyXY = (e) => {
       const r = canvas.getBoundingClientRect();
       const x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
@@ -74,8 +74,13 @@
       AMB.perform.xyUsed = true;
     };
     canvas.addEventListener('pointerdown', (e) => {
-      if (!AMB.seq.playing) return;
-      down = true; canvas.setPointerCapture(e.pointerId); applyXY(e);
+      if (!AMB.seq.playing) {
+        // S4.5w: in the path, the first glide also starts the sound (the first challenge is « Glisse sur l'écran »)
+        if (!(AMB.game && AMB.game.path) || !AMB.ui || starting) return;
+        starting = true;
+        Promise.resolve(AMB.ui.play()).finally(() => { starting = false; });
+      }
+      down = true; try { canvas.setPointerCapture(e.pointerId); } catch (err) {} applyXY(e);
     });
     canvas.addEventListener('pointermove', (e) => { if (down) applyXY(e); });
     const up = () => { down = false; };

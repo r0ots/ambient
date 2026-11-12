@@ -87,12 +87,58 @@ window.addEventListener('load', async () => {
     ok(GV.parts.length === 0 && GV.energy.bells > 0, 'mouvement réduit : lumière seulement, pas de particules ni de balancement');
     GV.reduced = false;
 
+    // --- S4.5w growth: an opening (growAt = its strong beat) makes the new plant grow in ~1.2 s from its root
+    G.s.nodes = ['racine', 'h.pad', 'm.bells']; GV.sig = null; frame(); // settled, nothing grows
+    ok(!Object.keys(GV.grow).length, 'S4.5w : sans ouverture, aucune croissance (premier dessin, retour d\'état)');
+    { const t0 = GV.clock() + 0.3; GV.growAt(t0); G.s.nodes.push('m.grains'); GV.sig = null; frame();
+      const e = GV.grow.grains;
+      ok(e && e.from === 0 && Math.abs(e.start - t0) < 1e-6 && !GV.grow.bells, 'nouvelle couche : sa plante pousse depuis 0, sur le temps fort annoncé, les autres ne bougent pas');
+      const a = GV.growth('grains', t0 - 0.1), b = GV.growth('grains', t0 + 0.3), c = GV.growth('grains', t0 + 0.6), dd = GV.growth('grains', t0 + 1.0);
+      ok(a === 0 && b > 0.05 && b < c && c < 0.8 && dd > 0.85 && dd < 1.1, 'croissance animée : 0 avant le temps fort, puis ' + [b, c, dd].map((x) => x.toFixed(2)).join(' → '));
+      GV.retime(t0 + 2); ok(GV.grow.grains.start === t0 + 2, 'la carte fermée plus tard : la croissance attend (retime)');
+      // mid-growth frame: the sprite is drawn scaled (no new sprite in the cache)
+      const m0 = GV.cacheMisses; GV.grow.grains.start = GV.clock() - 0.5; frame();
+      ok(GV.cacheMisses === m0, 'mi-croissance : le sprite en cache est mis à l\'échelle (aucun re-rendu)');
+      ok(GV.growth('grains', GV.clock() + 5) === 1 && !GV.grow.grains, 'fin de croissance : taille normale');
+      // a taller plant (one more node of its layer) grows from its old height
+      GV.growAt(null); G.s.nodes.push('m.phrase'); GV.sig = null; frame();
+      const t = GV.grow.bells; ok(t && t.from > 0.2 && t.from < 1, 'plante plus haute : pousse depuis son ancienne taille (' + (t && t.from.toFixed(2)) + ')');
+      GV.reduced = true; GV.growAt(null); G.s.nodes.push('c.seq'); GV.sig = null; frame();
+      ok(!GV.grow.seq, 'mouvement réduit : la plante apparaît sans croître'); GV.reduced = false; GV.grow = {}; }
+
+    // --- S4.5w sky: follows the chord (2 cached skies, cross-faded), the scale; the ground pulses on the beat
+    { const px = (x, y) => [...cv.getContext('2d').getImageData(x, y, 1, 1).data.slice(0, 3)];
+      AMB.bus.emit('chord', { time: 0, deg: 0, midis: [] }); frame(); GV.skyT = -99; frame();
+      const k0 = GV.skyKey, c0 = px(20, GV.ground - 4);
+      AMB.bus.emit('chord', { time: 0, deg: 4, midis: [] }); frame();
+      ok(k0 === '0|0' && GV.skyKey === '4|0' && GV.skyPrevKey === '0|0', 'accord I puis V : le ciel passe de ' + k0 + ' à ' + GV.skyKey + ' (fondu depuis le précédent)');
+      GV.skyT = -99; frame(); const c4 = px(20, GV.ground - 4);
+      ok(c0.join() !== c4.join(), 'teinte du ciel différente selon l\'accord (' + c0 + ' / ' + c4 + ')');
+      const m = GV.cacheMisses; for (let i = 0; i < 4; i++) { AMB.bus.emit('chord', { time: 0, deg: i % 2 ? 0 : 4 }); frame(); }
+      ok(GV.cacheMisses === m && GV.skies.size <= 16, 'ciels en cache : changer d\'accord ne redessine aucun dégradé');
+      const sm = AMB.store, th = AMB.theory; AMB.store = { get: () => 'Éolien (mineur)', set: sm.set, setMany: sm.setMany }; AMB.theory = { SCALES: { 'Éolien (mineur)': [0, 2, 3, 5, 7, 8, 10] } };
+      ok(GV.chordKey(4) === '4|1', 'gamme mineure : un autre ciel pour le même degré'); AMB.store = sm; AMB.theory = th;
+      AMB.bus.emit('chord', { time: 1e9, deg: 2 }); frame(); ok(GV.skyKey !== '2|0' && GV.skyQ.length === 1, 'un accord à venir attend son heure audio'); GV.skyQ.length = 0;
+      AMB.seq = { playing: true, step: 64, nextTime: GV.clock() - 0.02, origin: 0, stepDur: () => 0.25 }; GV.pulse = 0; frame();
+      ok(GV.pulse > 0.2, 'le sol pulse sur le temps fort (' + GV.pulse.toFixed(2) + ')');
+      GV.reduced = true; GV.pulse = 0; frame(); ok(GV.pulse === 0, 'mouvement réduit : le sol ne pulse pas'); GV.reduced = false;
+      delete AMB.seq; }
+
+    // --- S4.5w finale: the recorded song lights each plant when its layer plays; night → dawn; live events ignored
+    { const now = GV.clock();
+      GV.replayStart({ t0: now - 0.5, from: 0, len: 2, ev: [{ layer: 'pad', t: 0.2, vel: 0.8 }, { layer: 'chord', t: 0.3, deg: 5 }, { layer: 'bass', t: 1.8, vel: 0.8 }] });
+      AMB.bus.emit('note', { layer: 'seq', time: 0, vel: 1 }); frame();
+      ok(GV.lit.pad > 0.9 && !GV.lit.bass && !GV.pending.length && GV.skyKey === '5|0', 'fin : la plante s\'allume quand sa couche joue dans le morceau (Pad oui, Basse pas encore), le ciel suit ses accords, le jeu en direct est ignoré ' + JSON.stringify([GV.lit, GV.pending.length, GV.skyKey]));
+      const d1 = GV.dawnLevel(GV.clock()); await wait(400); frame(); const d2 = GV.dawnLevel(GV.clock());
+      ok(d1 > 0 && d2 > d1 && d2 < 1, 'nuit → aube pendant la lecture (' + d1.toFixed(2) + ' → ' + d2.toFixed(2) + ')');
+      GV.replayStop(); ok(!GV.replay && GV.dawnLevel(GV.clock()) === 0, 'après la lecture : retour au jeu en direct (aube gardée seulement une fois l\'instrument remis)'); }
+
     // --- pause: off screen (real IntersectionObserver), hidden tab
     const fr = GV.frames;
     cv.style.position = 'absolute'; cv.style.top = '-5000px';
     await wait(300);
-    frame(); AMB.bus.emit('note', { layer: 'bells', time: 0, vel: 1 });
-    ok(!GV.visible && GV.frames === fr && GV.pending.length === 0, 'hors écran : aucune image dessinée, événements ignorés');
+    frame(); AMB.bus.emit('note', { layer: 'bells', time: 0, vel: 1 }); AMB.bus.emit('chord', { time: 0, deg: 3 });
+    ok(!GV.visible && GV.frames === fr && GV.pending.length === 0 && GV.skyQ.length === 0, 'hors écran : aucune image dessinée, événements (notes, accords) ignorés');
     cv.style.position = ''; cv.style.top = '';
     await wait(300); frame();
     ok(GV.visible && GV.frames === fr + 1, 'de retour à l\'écran : le dessin reprend');
@@ -110,9 +156,14 @@ window.addEventListener('load', async () => {
     // --- cost per frame at 1280×800 (advanced garden, notes every frame), real rAF
     G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.rythme', 'e.texture'];
     G.s.secrets = { found: { jazz: 1, tons: 1, dim: 1, lent: 1 } };
-    GV.sig = null; GV.times.length = 0;
+    GV.sig = null; frame(); GV.times.length = 0;
+    // S4.5w worst case: every plant growing, the sky always cross-fading (a chord every 20 frames), the ground pulsing
+    AMB.seq = { playing: true, step: 64, nextTime: GV.clock(), origin: 0, stepDur: () => 0.25 };
+    GV.prevH = {}; GV.growAt(null); GV.stSig = null; GV.sig = null;
     const layers = ['pad', 'bells', 'seq', 'bass'];
-    await new Promise((res) => { let n = 0; const step = () => { AMB.bus.emit('note', { layer: layers[n % 4], time: 0, vel: 0.8 }); if (n % 3 === 0) AMB.bus.emit('perc', { time: 0, vel: 0.7 }); frame(); if (++n < 60) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); });
+    await new Promise((res) => { let n = 0; const step = () => { AMB.bus.emit('note', { layer: layers[n % 4], time: 0, vel: 0.8 }); if (n % 3 === 0) AMB.bus.emit('perc', { time: 0, vel: 0.7 }); if (n % 20 === 0) AMB.bus.emit('chord', { time: 0, deg: n / 20 }); frame(); if (++n < 60) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); });
+    log('S4.5w : ' + Object.keys(GV.grow).length + ' plantes en croissance au départ, ciel ' + GV.skyKey + ', pulsation ' + (GV.pulse || 0).toFixed(2));
+    delete AMB.seq;
     const s = GV.stats();
     log('PERF 1280×800 : moyenne ' + s.avg.toFixed(2) + ' ms, p95 ' + s.p95.toFixed(2) + ' ms, max ' + s.max.toFixed(2) + ' ms (' + s.frames + ' images, ' + s.sprites + ' sprites en cache)');
     ok(s.p95 < 4, 'coût par image raisonnable (p95 ' + s.p95.toFixed(2) + ' ms, cible < 2 ms)');

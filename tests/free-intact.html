@@ -45,6 +45,10 @@ f.addEventListener('load', async () => {
     const kb = fakeMidi(w), notes = []; A.bus.on('live', (x) => notes.push(x.midi));
     const midiOk = await kb.connect(); kb.on(72, 100); kb.off(72); kb.on(36, 90); kb.on(40, 90); kb.off(36); kb.off(40); await wait(80);
     ok(midiOk && !A.seq.playing && notes.includes(72) && JSON.stringify(A.game.s) === g0, 'MIDI en libre : bouton de la barre, note jouée lecture arrêtée, rien du jeu ne bouge' + (midiOk && notes.includes(72) ? '' : ' (branché ' + midiOk + ', notes ' + notes + ', audio ' + !!A.engine.ctx + ')'));
+    // S4.5w: in the path the first glide starts the sound; in free mode a glide while stopped still does nothing
+    { const v = d.getElementById('viz'), r = v.getBoundingClientRect(), PE = (t) => new w.PointerEvent(t, { bubbles: true, pointerId: 9, clientX: r.left + r.width * 0.7, clientY: r.top + r.height * 0.5 });
+      v.dispatchEvent(PE('pointerdown')); v.dispatchEvent(PE('pointerup')); await wait(120);
+      ok(!A.seq.playing && JSON.stringify(A.game.s) === g0, 'S4.5w : en libre, glisser sur l\'écran lecture arrêtée ne lance rien (comme avant)'); }
 
     ok(A.puzzles.onStep(0, A.engine.ctx.currentTime + 0.1, 0.25) === false && !A.puzzles.cur && A.puzzles.view() === null && JSON.stringify(A.game.s) === g0, 'S4.2 : aucune Réponse en libre (pas de phrase marquée sur une mesure)');
     // --- old links of removed features (#dj score of the day, #df cousin challenge): ignored, no exception, nothing stored
