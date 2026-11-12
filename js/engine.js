@@ -63,6 +63,25 @@
     return buf;
   }
 
+  // Fixed, reproducible short room (seeded noise, no early reflections): same IR every session.
+  function makeCleanRoom(ctx, seconds) {
+    const rate = ctx.sampleRate, len = Math.floor(rate * seconds);
+    const buf = ctx.createBuffer(2, len, rate);
+    for (let c = 0; c < 2; c++) {
+      let a = 0x9e3779b9 + c * 7919; // mulberry32, local
+      const rnd = () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+      const d = buf.getChannelData(c);
+      let lp = 0;
+      for (let i = 0; i < len; i++) {
+        const t = i / len;
+        lp += (rnd() * 2 - 1 - lp) * (0.75 - 0.5 * t);
+        d[i] = lp * Math.pow(1 - t, 3) * Math.min(1, i / (rate * 0.005));
+      }
+    }
+    return buf;
+  }
+  AMB.makeCleanRoom = makeCleanRoom;
+
   function satCurve(drive) {
     const n = 2048, curve = new Float32Array(n);
     // unity small-signal gain: only peaks get squashed, so loudness stays stable as drive rises
@@ -178,7 +197,10 @@
       // gentle "air" shelf: the synth layers are filtered/dark by design, this restores some sheen
       this.air = ctx.createBiquadFilter(); this.air.type = 'highshelf'; this.air.frequency.value = 7000; this.air.gain.value = 4;
       this.lofiLp.connect(this.air);
-      this.air.connect(this.master);
+      // mixDuck: game-only attenuation of the ambience during an ear-training round (G7.3)
+      this.mixDuck = g(1);
+      this.air.connect(this.mixDuck);
+      this.mixDuck.connect(this.master);
       this.master.connect(this.comp);
       this.comp.connect(this.limiter);
       this.limiter.connect(this.out);
@@ -193,9 +215,39 @@
       this.recDest = ctx.createMediaStreamDestination();
       this.out.connect(this.recDest);
 
+      this._buildAudition();
+
       this._revSize = -1;
       this.applyAll();
       store.on((key) => this.apply(key));
+    }
+
+    // Audition bus (G7.3): clean fixed short room for ear-training stimuli. Bypasses the user's
+    // tape/echo/lo-fi/master and the out tap, so it is never recorded, frozen or visualised.
+    _buildAudition() {
+      const ctx = this.ctx, g = this.g;
+      this.audIn = g(1);
+      const dry = g(0.85), wet = g(0.22);
+      this.audConv = ctx.createConvolver();
+      this.audConv.buffer = makeCleanRoom(ctx, 1);
+      this.audOut = g(1);
+      this.audLim = ctx.createDynamicsCompressor();
+      this.audLim.threshold.value = -6; this.audLim.ratio.value = 12; this.audLim.knee.value = 3;
+      this.audLim.attack.value = 0.003; this.audLim.release.value = 0.2;
+      this.audIn.connect(dry); dry.connect(this.audOut);
+      this.audIn.connect(this.audConv); this.audConv.connect(wet); wet.connect(this.audOut);
+      this.audOut.connect(this.audLim);
+      this.audLim.connect(ctx.destination);
+    }
+
+    // Duck the ambience (-21 dB) while a round is playing; smooth ramps both ways.
+    duck(on) {
+      if (!this.ctx) return;
+      const p = this.mixDuck.gain, t = this.ctx.currentTime;
+      p.cancelScheduledValues(t);
+      p.setValueAtTime(p.value, t);
+      p.setTargetAtTime(on ? Math.pow(10, -21 / 20) : 1, t, on ? 0.15 : 0.4);
+      this.ducked = !!on;
     }
 
     _buildShimmer() {

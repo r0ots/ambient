@@ -15,6 +15,7 @@
   class Sequencer {
     constructor() {
       this.playing = false;
+      this.frozen = false; // set by AMB.audition.session: no Dérive / LFO during a round
       this.step = 0; // 16th steps
       this.nextTime = 0;
       this.lookahead = 0.25;
@@ -356,6 +357,7 @@
 
     // Slow LFOs (control rate, ~10 Hz) modulating around the user's value
     runLfos() {
+      if (this.frozen) return; // ear-training round in progress (AMB.audition.session)
       const t = performance.now() / 1000;
       this.lfoState = this.lfoState || {};
       for (const n of [1, 2]) {
@@ -386,6 +388,7 @@
     }
 
     evolve() {
+      if (this.frozen) return;
       const amt = store.get('global.evolve');
       if (amt <= 0) return;
       for (const [sec, s] of Object.entries(AMB.SCHEMA)) {
