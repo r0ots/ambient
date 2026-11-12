@@ -27,6 +27,7 @@
   const SKIP = {
     reponds: ['transpose', 'avant-fin', 'metronome', 'silence'], // the answer is played after the call, in its key, and judged on screen
     modes: ['transpose'], accordeur: ['transpose', 'silence'], // tonic already drawn per challenge; the needle shows the verdict
+    dictee: ['transpose'], // root drawn per challenge; a chord played on MIDI is compared with the notes heard
   };
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 

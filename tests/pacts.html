@@ -18,6 +18,7 @@ window.addEventListener('load', async () => {
     ok(P.available('hautbas').map((p) => p.id).join() === 'une-ecoute,transpose,proches,avant-fin', 'hautbas : 4 pactes génériques, secrets cachés tant qu\'ils ne sont pas trouvés');
     ok(!P.available('reponds').some((p) => ['transpose', 'avant-fin'].includes(p.id)) && P.available('reponds').some((p) => p.id === 'une-ecoute'), 'Réponds : pas de Transposé ni Avant la fin (réponse jouée après l\'appel, dans sa tonalité)');
     AMB.game = { s: {} }; AMB.secrets = { hasPact: (id) => id === 'funambule' };
+    ok(!P.applies('dictee', 'transpose') && P.applies('dictee', 'une-ecoute') && P.applies('dictee', 'proches'), 'Dictée : pas de Transposé (fondamentale tirée à chaque défi, accord joué au MIDI comparé aux notes entendues)');
     ok(P.available('hautbas').some((p) => p.id === 'funambule' && p.secret) && !P.available('hautbas').some((p) => p.id === 'silence'), 'pacte secret proposé une fois trouvé (secrets.hasPact) : Funambule');
     A.register({ id: 't.own', make: (rng, d) => ({ d }), check: () => ({ ok: true }), pacts: { transpose: false, metronome: true } });
     ok(!P.applies('t.own', 'transpose') && P.applies('t.own', 'metronome'), 'un plugin peut déclarer pacts: {id: false|true}');

@@ -55,7 +55,7 @@ f.addEventListener('load', async ()=>{
   ok(pHC.nodes.includes('c.song'), 'plan Harmonie + Composer : Morceau aussi');
 
   // --- 4. the chained run: harmonie (modes) and composer (reponds) pass, the others fail
-  AR.byId.reponds.setLat('any',0);
+  A.latency.data={v:1, dev:{}, any:0}; // already calibrated (global latency, js/latency.js), nothing saved
   P.BETWEEN=60; P.REVEAL_CAP=20;
   const pass={harmonie:1, composer:1}, shards0=g.s.shards, earned0=g.s.earned;
   const answer=(good)=>{ const R=AR.round, ch=R.ch, G=R.game;

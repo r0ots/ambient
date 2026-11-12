@@ -38,7 +38,7 @@ f.addEventListener('load', async () => {
 
     // --- a « Réponds » round: note-on / note-off go to the plugin, the notes are graded
     const g = AR.byId.reponds;
-    g.lat = { v: 1, any: 0, midi: 0 }; // already calibrated (no first-launch calibration, nothing saved)
+    A.latency.data = { v: 1, dev: {}, any: 0, midi: 0 }; // already calibrated (global latency, js/latency.js: no calibration, nothing saved)
     const ons = [], offs = [], answers = [];
     const om = g.onMidi; g.onMidi = function (...a) { ons.push(a[1]); return om.apply(this, a); };
     g.onMidiOff = function (ch, m) { offs.push(m); };
@@ -59,7 +59,7 @@ f.addEventListener('load', async () => {
     off += ch.bar + ch.win.match + 600; // past the response bar: judged, then sent
     await until(() => answers.length > 0, 40);
     ok(answers.length === 1 && answers[0].ok && answers[0].bonus === 1 && answers[0].pts > 0, 'réponse jouée au faux clavier : juste, tout « parfait » (+' + (answers[0] && answers[0].pts) + ')');
-    AR.clock = { now: clock }; delete g.onMidiOff; g.onMidi = om; g.lat = null;
+    AR.clock = { now: clock }; delete g.onMidiOff; g.onMidi = om; A.latency.reset();
 
     // --- cabinet closed: the app plays MIDI again
     U.close(); await wait(20); reset();
