@@ -1,5 +1,5 @@
 <!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
-<!-- Mode libre intact (G11.4, v1.05): in free mode, play notes, open old #dj / #df links (removed features: ignored) and #save;
+<!-- Mode libre intact (G11.4, v1.06): in free mode, play notes, open old #dj / #df / #save links (removed features: ignored);
      afterwards the store (all settings), journal, undo history, share link, body classes and visible UI are identical to the
      snapshot taken before, no game element is visible, and localStorage got no new game key (only the harmless ones listed in HARMLESS). -->
 <script src="lib.js"></script>
@@ -33,8 +33,8 @@ f.addEventListener('load', async () => {
     const undoBefore = A.history.past.length;
 
     // --- playing the instrument from the keyboard: sound only, no game
-    const n0 = A.game.s.found.length; key('KeyA'); key('KeyZ'); await wait(60);
-    ok(A.game.s.found.length === n0 && A.game.s.shards === 0, 'notes et accords joués au clavier : rien du jeu ne bouge');
+    const g0 = JSON.stringify(A.game.s); key('KeyA'); key('KeyZ'); await wait(60);
+    ok(JSON.stringify(A.game.s) === g0 && A.game.s.shards === 0, 'notes et accords joués au clavier : rien du jeu ne bouge');
 
     // --- old links of removed features (#dj score of the day, #df cousin challenge): ignored, no exception, nothing stored
     for (const h of ['#dj=eyJ2IjoxfQ~1a2b', '#df=eyJ2IjoxLCJrIjoibSJ9~3c4d', '#dj=', '#df=%%%~1']) { w.location.hash = h; await wait(80); }
@@ -42,16 +42,16 @@ f.addEventListener('load', async () => {
     w.history.replaceState(null, '', w.location.pathname + w.location.search); await wait(40);
 
     // --- afterwards: identical to the snapshot
-    d.querySelectorAll('.fx-flash,.fx-float').forEach(e => e.remove()); await wait(300);
+    await wait(300);
     const after = shot(), shareAfter = share();
     for (const k of Object.keys(before)) ok(before[k] === after[k], 'identique : ' + k + (before[k] === after[k] ? '' : '\n  avant ' + String(before[k]).slice(0, 300) + '\n  après ' + String(after[k]).slice(0, 300)));
     ok(shareAfter === shareBefore, 'lien de partage identique');
     ok(A.history.past.length === undoBefore, 'annulation : aucune entrée ajoutée');
-    const GAMEUI = ['treeBtn', 'lcdShards', 'contracts', 'saveBtn', 'saveDlg', 'puzzle', 'treeDlg', 'welcomeDlg'];
+    const GAMEUI = ['treeBtn', 'lcdShards', 'lcdTask', 'puzzle', 'treeDlg', 'welcomeDlg'];
     const showing = GAMEUI.filter(id => { const e = d.getElementById(id); return e && vis(e); });
-    ok(!showing.length && !d.querySelector('.fx-flash,.fx-float,.tree-badge:not([hidden])'), 'aucun élément de jeu visible (arbre, éclats, contrats, sauvegarde, énigme) ' + showing.join());
+    ok(!showing.length && !d.querySelector('.gain-feed:not(:empty),.tree-badge:not([hidden])'), 'aucun élément de jeu visible (arbre, éclats, contrat, énigme) ' + showing.join());
     d.querySelector('.more').open = true; await wait(40);
-    ok(!vis(d.getElementById('saveBtn')) && vis(d.getElementById('gameMode')), 'menu ⋯ ouvert : pas de sauvegarde du Parcours, seulement la bascule vers le Parcours');
+    ok(vis(d.getElementById('gameMode')), 'menu ⋯ ouvert : la bascule vers le Parcours');
     d.querySelector('.more').open = false;
     d.getElementById('help').click(); await wait(40);
     const hd = d.getElementById('helpDlg'), hp = hd.querySelector('.help-path'), hf = hd.querySelector('.help-free');
@@ -67,31 +67,23 @@ f.addEventListener('load', async () => {
     ok(!bad.length, 'localStorage : aucune clé de jeu nouvelle ni modifiée (nouvelles : ' + (added.join(', ') || 'aucune') + ' ; modifiées : ' + (changed.join(', ') || 'aucune') + ')');
     log('info clés inoffensives tolérées : ' + HARMLESS.join(', '));
 
-    // --- #save=… at load, in free mode: the confirmation shows both progressions; « Annuler » writes nothing
-    const code = OLD_SAVE; // a v1.04 save link (path, 321 ✧), with the fields of removed features
+    // --- #save=… (exportable save removed in v1.06): an old link at load is ignored, no exception, no dialog, nothing written
     const load2 = async (hash) => {
       const g2 = document.createElement('iframe'); g2.style.cssText = 'width:1200px;height:800px;border:0';
       g2.src = '../index.html?' + QS + hash;
       const loaded = new Promise(r => g2.addEventListener('load', r)); document.body.append(g2); await loaded; await wait(350);
       return g2;
     };
-    const lsBefore2 = LS();
-    let g2 = await load2('#save=' + code);
-    let w2 = g2.contentWindow, d2 = g2.contentDocument, A2 = w2.AMB, sd = d2.getElementById('saveDlg');
-    ok(A2.game.s.mode === 'free' && sd && !sd.hidden && sd.querySelector('[data-act=replace]') && /321/.test(sd.textContent), '#save valide en libre (ancienne sauvegarde avec champs retirés) : confirmation affichée, rien encore importé');
-    sd.querySelector('[data-act=cancel]').click(); sd.querySelector('.modal-x').click(); await wait(100);
-    const lsAfter2 = LS(), touched = Object.keys(Object.assign({}, lsBefore2, lsAfter2)).filter(k => lsBefore2[k] !== lsAfter2[k] && !HARMLESS.includes(k));
-    ok(sd.hidden && !/save=/.test(w2.location.hash) && A2.game.s.mode === 'free' && A2.game.s.shards !== 321 && !touched.length, '« Annuler » : rien importé, aucune clé de jeu écrite (' + (touched.join(', ') || 'aucune') + '), lien effacé');
-    ok(JSON.stringify(A2.store.stableSnapshot()) === before.store && JSON.stringify(A2.game.s) === before.game, '#save valide en libre : réglages et état du jeu inchangés');
-    g2.remove();
-    // an unreadable link: at most an error message
-    g2 = await load2('#save=bnVsbA');
-    w2 = g2.contentWindow; d2 = g2.contentDocument; A2 = w2.AMB;
-    sd = d2.getElementById('saveDlg');
-    ok(A2.game.s.mode === 'free' && !A2.game.path, '#save illisible au chargement : mode libre gardé');
-    const sdOpen = !!(sd && !sd.hidden); if (sdOpen) sd.querySelector('.modal-x').click();
-    ok(!(sd && !sd.hidden), '#save illisible : au plus un message d\'erreur, fermé ensuite (' + (sdOpen ? 'dialogue affiché' : 'rien') + ')');
-    ok(JSON.stringify(A2.store.stableSnapshot()) === before.store && JSON.stringify(A2.game.s) === before.game, '#save illisible en libre : réglages et état du jeu inchangés');
+    for (const code of [OLD_SAVE, 'bnVsbA']) {
+      const lsBefore2 = LS(), errs = [];
+      const g2 = await load2('#save=' + code), w2 = g2.contentWindow, d2 = g2.contentDocument, A2 = w2.AMB;
+      w2.addEventListener('error', e => errs.push(e.message));
+      await wait(100);
+      const lsAfter2 = LS(), touched = Object.keys(Object.assign({}, lsBefore2, lsAfter2)).filter(k => lsBefore2[k] !== lsAfter2[k] && !HARMLESS.includes(k));
+      ok(A2.game.s.mode === 'free' && !d2.querySelector('.modal:not([hidden])') && !errs.length && !touched.length && A2.game.s.shards !== 321, 'ancien lien #save (' + code.slice(0, 6) + '…) : ignoré, aucune boîte, aucune clé de jeu écrite (' + (touched.join(', ') || 'aucune') + ')');
+      ok(JSON.stringify(A2.store.stableSnapshot()) === before.store && JSON.stringify(A2.game.s) === before.game, 'ancien lien #save : réglages et état du jeu inchangés');
+      g2.remove();
+    }
     localStorage.removeItem('ambient.game.fri');
     done();
   } catch (e) { fail(e); }
