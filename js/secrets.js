@@ -75,7 +75,7 @@
       return q;
     },
     // detection runs only in the path, never while a puzzle's target is heard
-    active() { return !!AMB.game && AMB.game.freePlay(); },
+    active() { return !!AMB.game && AMB.game.counts(); },
     foundCount() { return Object.keys(this.state().found).length; },
     has(id) { return !!this.state().found[id]; },
 

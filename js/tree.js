@@ -220,7 +220,6 @@
   tree.onMode = function () {
     const g = AMB.game, nowPath = g.path;
     if (AMB.puzzles && AMB.puzzles.ab) AMB.puzzles.listen('mine'); // never save / carry the target sound
-    AMB.store.giveBackAll(); // nor any other borrowed sound (store.borrow, js/params.js)
     if (nowPath && !g.has('racine')) g.unlock('racine'); // the root is free
     if (nowPath !== wasPath) {
       saveSnap(wasPath ? 'path' : 'free');

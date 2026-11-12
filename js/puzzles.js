@@ -121,13 +121,14 @@
       const d = byId[this.current]; if (!d) return false;
       if (side === 'target' && !this.ab) {
         const r = this.run(); if (r) { r.listens++; AMB.game.save(); }
-        // the target borrows the sound (store.borrow, js/params.js): ab.mine = the player's own values
-        this.applying = true; store.borrow('puzzle', d.target); this.applying = false;
-        this.ab = { mine: store.loans.puzzle || {} };
+        // the target is played on the real ambience (source 'game'); ab.mine = the player's own values of those keys
+        const mine = {}; for (const k of Object.keys(d.target)) if (store.spec(k)) mine[k] = store.get(k);
+        store.setMany(d.target, 'game');
+        this.ab = { mine };
         this.veil(true);
       } else if (side === 'mine' && this.ab) {
-        this.ab = null;
-        this.applying = true; store.giveBack('puzzle'); this.applying = false;
+        const mine = this.ab.mine; this.ab = null;
+        store.setMany(mine, 'game');
         this.veil(false);
       }
       AMB.game.emit('puzzle', { id: this.current, side: this.side(), ...this.currentScore() });
@@ -184,16 +185,16 @@
   // own sound back first (your values, plus the change you just made) — no copying the target
   store.on((k, v, src) => {
     if (!puzzles.current || src === 'lfo' || src === 'evolve') return;
-    if (puzzles.ab && src === 'user' && !puzzles.applying) {
+    if (puzzles.ab && src === 'user') {
+      const mine = { ...puzzles.ab.mine }; delete mine[k]; // the change just made stays
       puzzles.ab = null;
-      puzzles.applying = true; store.giveBack('puzzle', k); puzzles.applying = false;
+      store.setMany(mine, 'game');
       puzzles.veil(false);
     }
     AMB.game.emit('puzzle', { id: puzzles.current, side: puzzles.side(), ...puzzles.currentScore() });
   });
 
-  // never leave the target sound behind when the page goes away or the mode changes
-  if (AMB.bus) AMB.bus.on('game:mode', () => { if (puzzles.ab) puzzles.listen('mine'); });
+  // never leave the target sound behind when the page goes away (a mode change is handled by tree.onMode)
   window.addEventListener('pagehide', () => { if (puzzles.ab) puzzles.listen('mine'); });
 
   AMB.puzzles = puzzles;

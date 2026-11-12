@@ -18,10 +18,10 @@ Règle de produit (v1.05) : le jeu se joue SUR l'instrument (ses commandes, son 
 ## Store (sources de `store.set(k, v, source)`)
 - `user` = la seule qui paie ou compte (découvertes, contrats, secrets) ; l'annulation enregistre `user`, `preset`, `macro`.
 - `preset`, `macro`, `undo`, `sync` (position des macros recalculée, muette), `xy` (pad XY et CC MIDI), `morph` (scènes, morceau), `evolve` (Dérive), `lfo`, `game` (verrous de l'arbre, cible d'énigme, cadeaux).
-- Emprunt du son : `store.borrow(owner, vals)` / `giveBack(owner)` / `giveBackAll()` / `lending()` / `borrowed()`. La cible d'une énigme (`puzzles.ab`) s'entend sur l'ambiance réelle ; pendant l'emprunt `stableSnapshot()` voit les valeurs du joueur et `game.freePlay()` est faux ; un changement de mode rend tout.
+- Cible d'énigme : `puzzles.listen('target')` joue la cible sur l'ambiance réelle (source `game`) ; `puzzles.ab.mine` garde les valeurs du joueur, que `stableSnapshot()` rend à la place ; `game.counts()` est faux pendant l'écoute ; un changement de mode (`tree.onMode`) ou toucher un réglage rend le son du joueur.
 
 ## Mode libre intact
-- En libre : aucun verrou, aucune interface de jeu, aucun gain ni détection, pas de juice ni de carillon. Son, journal, annulation et liens partagés sans trace du jeu. `AMB.game.freePlay()` = Parcours et pas de cible d'énigme en écoute.
+- En libre : aucun verrou, aucune interface de jeu, aucun gain ni détection, pas de juice ni de carillon. Son, journal, annulation et liens partagés sans trace du jeu. `AMB.game.counts()` = Parcours et pas de cible d'énigme en écoute.
 - Cadeaux des secrets : timbres trouvés disponibles partout ; clavier miroir et thèmes LCD seulement en Parcours.
 - `tests/free-intact.html` vérifie store, journal, annulation, lien de partage, UI visible, aide de base seule, pas de Jardin, anciens liens `#dj` / `#df` ignorés, `#save` (confirmation, « Annuler » n'écrit rien).
 
