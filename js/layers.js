@@ -305,7 +305,13 @@
         nodes.forEach((n) => { n.start(time); n.stop(stopAt); });
         nodes[0].onended = () => { env.disconnect(); pan.disconnect(); };
         AMB.bus.emit('note', { layer: this.name, midi, time, vel, dur: hold });
-        return;
+        // a held live note (play.js) ends on release: same release curve, from the release time
+        return { release(t) {
+          if (t >= time + hold) return;
+          const at = Math.max(t, time + 0.07), tau = 0.15 + decay * 0.08;
+          env.gain.cancelScheduledValues(at); env.gain.setValueAtTime(amp * 0.7, at); env.gain.setTargetAtTime(0, at, tau);
+          nodes.forEach((n) => { try { n.stop(at + 1 + decay * 0.4); } catch (e) {} });
+        } };
       } else { // Pluck: filtered saw with fast filter env
         const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
         const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 3;

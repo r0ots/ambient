@@ -49,6 +49,7 @@
     }
     stop() {
       this.playing = false;
+      AMB.bus.emit('panic'); // no live note stays stuck (play.js releases them)
       clearInterval(this.timer);
       clearInterval(this.lfoTimer);
     }
@@ -149,22 +150,35 @@
       this.nextChordAt = this.lockUntil;
     }
     // Player note: scale degree (quantized) or raw midi
-    playDegree(deg, vel = 0.85) {
+    playDegree(deg, vel = 0.85, held = false) {
       const midi = T.degreeToMidi(deg, this.root, this.scale, 4);
-      this.playMidi(midi, vel);
+      return this.playMidi(midi, vel, null, held);
     }
-    // raw = MIDI velocity 0..1 as played (null from the computer keyboard), carried by the 'live' event
-    playMidi(midi, vel = 0.85, raw = null) {
-      if (!AMB.engine.ctx) return;
+    // raw = MIDI velocity 0..1 as played (null from the computer keyboard), carried by the 'live' event.
+    // held: the note lasts until endLive(handle) (key/pedal released); a voice that can hold (« Doux ») sustains,
+    // struck voices keep their own ring-out. Returns the handle {id, midi, release}.
+    playMidi(midi, vel = 0.85, raw = null, held = false) {
+      if (!AMB.engine.ctx) return null;
       const L = AMB.layers;
       const wasOn = store.get('bells.on');
       // the melody voice is used as the instrument even if its generative part is muted
       if (!wasOn) { L.bells.ch.setLevel(Math.pow(store.get('bells.vol'), 1.6)); }
       const t = AMB.engine.ctx.currentTime + 0.01;
       // while the piano roll records, live notes are heard on the sequencer voice (what gets recorded)
-      if (AMB.pianoRoll && AMB.pianoRoll.roll.recording) L.seq.note(midi, t, vel, true, this.stepDur() * 2);
-      else L.bells.note(midi, t, vel, true);
-      AMB.bus.emit('live', { midi, time: t, vel, raw });
+      const rec = AMB.pianoRoll && AMB.pianoRoll.roll.recording;
+      const len = held ? 30 : rec ? this.stepDur() * 2 : 0; // 30 s: safety cap if a release never comes
+      const v = (rec ? L.seq : L.bells).note(midi, t, vel, true, len);
+      const id = (this.liveId = (this.liveId || 0) + 1);
+      AMB.bus.emit('live', { midi, time: t, vel, raw, id });
+      return { id, midi, release: v && v.release };
+    }
+    // end of a held live note: the voice releases, the piano roll gets the real length ('liveOff')
+    endLive(h) {
+      if (!h || h.ended || !AMB.engine.ctx) return;
+      h.ended = true;
+      const t = AMB.engine.ctx.currentTime + 0.01;
+      if (h.release) h.release(t);
+      AMB.bus.emit('liveOff', { id: h.id, midi: h.midi, time: t });
     }
 
     applyHarmony(time) {
