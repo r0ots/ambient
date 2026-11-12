@@ -20,6 +20,7 @@
     // ---- game feedback (G6.2): a chime tuned to the current key, and LCD messages ----
     // kind: 'unlock' (rising arpeggio), 'solve' (two chords), 'small' (one soft note)
     chime(kind = 'unlock') {
+      AMB.game.emit('chime', { kind }); // listened to by secrets.js (« Cloche gelée »)
       const E = AMB.engine, ctx = E && E.ctx;
       if (!ctx || ctx.state !== 'running' || !AMB.game.path) return 0;
       const Th = AMB.theory, root = Th.NOTE_NAMES.indexOf(AMB.store.get('global.key'));

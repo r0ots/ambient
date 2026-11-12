@@ -39,15 +39,19 @@
   function onMidi(msg) {
     const [st, d1, d2] = msg.data;
     const type = st & 0xf0;
-    // during an arcade round the app stays silent: notes go to the mini-game (if it listens), the rest is ignored
-    if (AMB.arcade && AMB.arcade.active) {
-      if (type === 0x90 && d2 > 0) AMB.arcade.midi({ midi: d1, vel: d2 / 127, time: msg.timeStamp });
+    // while the arcade cabinet is open (menu included) the app stays silent: during a round, note-on / note-off go
+    // to the mini-game (if it listens), everything else (CCs, notes in the menu) is ignored
+    const AR = AMB.arcade;
+    if (AR && (AR.open || AR.active)) {
+      if (type === 0x90 && d2 > 0) AR.midi({ midi: d1, vel: d2 / 127, time: msg.timeStamp });
+      else if (type === 0x80 || type === 0x90) AR.midiOff({ midi: d1, time: msg.timeStamp });
       return;
     }
     if (type === 0x90 && d2 > 0) {
       if (!AMB.seq.playing) return;
+      // the heard velocity is remapped to 0.25–1 (soft notes stay audible); the raw one (0..1) rides along on 'live'
       if (d1 < 48) AMB.seq.forceChord(degreeForPitch(d1));
-      else AMB.seq.playMidi(AMB.secrets && AMB.secrets.mirrorOn() ? AMB.secrets.mirrorMidi(d1) : d1, 0.25 + (d2 / 127) * 0.75);
+      else AMB.seq.playMidi(AMB.secrets && AMB.secrets.mirrorOn() ? AMB.secrets.mirrorMidi(d1) : d1, 0.25 + (d2 / 127) * 0.75, d2 / 127);
     } else if (type === 0xb0) {
       const v = d2 / 127;
       // CCs drive the same macros as the XY pad: mod wheel = Densité, CC74 = Lumière, CC91 = Espace, CC93 = Nostalgie

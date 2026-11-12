@@ -65,7 +65,7 @@
       const d = $('#treeDlg'); if (!d) return;
       if (!on && this.seq) { this.seqFinish(); return; } // closing during the unlock sequence = finish it now
       d.hidden = !on;
-      if (on) { this.select(null); this.renderTree(); this.fitTree(); }
+      if (on) { this.select(null); this.renderTree(); this.fitTree(); if (AMB.secrets) AMB.secrets.render(); }
     },
     // ---- the screen: header (shards, puzzles, branches) + the map, built once and repainted ----
     renderTree() {

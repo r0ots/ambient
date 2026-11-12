@@ -49,6 +49,12 @@ window.addEventListener('load', async ()=>{
     await new Promise(r=>setTimeout(r,200*S)); AMB.arcade.end({abort:true});
     log((appCalls===0?'ok':'ERROR fail')+' arcade MIDI ignored without onMidi hook');
     AMB.play.onMidi({data:[0x90,72,100]}); log((appCalls===1?'ok':'ERROR fail')+' after the round, MIDI plays in the app again');
+    // the cabinet open (menu, no round): the app stays silent too; note-off reach the mini-game during a round
+    AMB.arcade.open=true; AMB.play.onMidi({data:[0x90,74,100]}); AMB.play.onMidi({data:[0xb0,1,5]});
+    log((appCalls===1?'ok':'ERROR fail')+' cabinet open (menu): MIDI ignored by the app');
+    const offs=[]; AMB.arcade.register({id:'t.off', make:()=>({}), choices:()=>null, check:()=>({ok:false}), onMidi:()=>{}, onMidiOff:(ch,n)=>offs.push(n.midi+'@'+n.time)});
+    AMB.arcade.start('t.off',{seed:1}); AMB.play.onMidi({data:[0x80,60,0], timeStamp:5}); AMB.play.onMidi({data:[0x90,62,0], timeStamp:6}); AMB.arcade.end({abort:true}); AMB.arcade.open=false;
+    log((offs.join()==='60@5,62@6' && appCalls===1?'ok':'ERROR fail')+' note-off (0x80 and velocity 0) routed to onMidiOff: '+offs.join());
     AMB.seq.playMidi=pm; AMB.seq.forceChord=fc; localStorage.removeItem('ambient.arcade.test-play'); }
   await measure('after',3*S);
   log('DONE');

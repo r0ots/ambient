@@ -154,7 +154,8 @@
       const midi = T.degreeToMidi(deg, this.root, this.scale, 4);
       this.playMidi(midi, vel);
     }
-    playMidi(midi, vel = 0.85) {
+    // raw = MIDI velocity 0..1 as played (null from the computer keyboard), carried by the 'live' event
+    playMidi(midi, vel = 0.85, raw = null) {
       if (!AMB.engine.ctx) return;
       if (AMB.bus) AMB.bus.emit('act', 'note');
       const L = AMB.layers;
@@ -165,7 +166,7 @@
       // while the piano roll records, live notes are heard on the sequencer voice (what gets recorded)
       if (AMB.pianoRoll && AMB.pianoRoll.roll.recording) L.seq.note(midi, t, vel, true, this.stepDur() * 2);
       else L.bells.note(midi, t, vel, true);
-      AMB.bus.emit('live', { midi, time: t, vel });
+      AMB.bus.emit('live', { midi, time: t, vel, raw });
     }
 
     applyHarmony(time) {

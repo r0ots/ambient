@@ -2,9 +2,10 @@
 // Detection runs on bus events (live notes, forced chords, acts) and user changes of the store; only in the
 // path (free mode: nothing is detected nor shown). Rewards persist in game.s.secrets:
 //   found {id: time}, secs (play time), gifts {timbres [{sec,opt}], themes [], mirror, pacts []}, mirrorOn, theme.
-// Gifts policy (decided): once found they exist whatever the mode — a hidden timbre is appended to the
-// Melody / Pad « Son » list, the mirror keyboard and LCD themes keep working in free mode — but until a gift
-// is found the classic app is untouched, and free mode never detects nor shows hints.
+// Gifts policy (decided, v0.99): found timbres stay in the Melody / Pad « Son » list whatever the mode; the
+// mirror keyboard and the gift LCD themes apply only in the path (off in free mode, back on return). Until a gift
+// is found the classic app is untouched, and free mode never detects nor shows anything.
+// The panel lives inside the tree screen (#treeDlg), folded by default; free mode: hidden.
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const store = AMB.store, T = AMB.theory;
@@ -47,7 +48,7 @@
       { param: (k, v, X) => X.silenceDone(k) }, 'm.bells'),
     S('velo', 'Funambule', 'Du plus fort au presque rien, puis encore tout en haut. Il faut des touches qui sentent la main.',
       'Au clavier MIDI : une note très forte, une note très douce, puis une très forte, à la suite.', { n: 15, gift: GIFT.funambule },
-      { live: (m, X) => !!X.tail(3) && X.w[X.w.length - 3].vel >= 0.99 && X.w[X.w.length - 2].vel <= 0.27 && m.vel >= 0.99 }, 'm.bells'),
+      { live: (m, X) => !!X.tail(3) && X.w[X.w.length - 3].raw >= 0.9 && X.w[X.w.length - 2].raw <= 0.35 && m.raw >= 0.9 }, 'm.bells'), // raw MIDI velocity (null from the computer keyboard)
     S('chroma', 'Entre les touches', 'Il y a des notes entre les notes, et elles se laissent descendre ou monter.',
       'Au clavier MIDI : 6 notes de suite, une par demi-ton, en montant ou en descendant.', { n: 15, gift: GIFT.neon },
       { live: (m, X) => !!X.tail(6) && (X.ivs(6).every((i) => i === 1) || X.ivs(6).every((i) => i === -1)) && X.out(6) >= 2 }, 'm.bells'),
@@ -77,10 +78,7 @@
       return q;
     },
     // detection runs only in the path, never during an arcade round nor while a puzzle's target is heard
-    active() {
-      const g = AMB.game;
-      return !!g && g.path === true && !(AMB.arcade && AMB.arcade.active) && !(AMB.puzzles && AMB.puzzles.ab);
-    },
+    active() { return !!AMB.game && AMB.game.freePlay(); },
     foundCount() { return Object.keys(this.state().found).length; },
     has(id) { return !!this.state().found[id]; },
     hasPact(id) { return this.state().gifts.pacts.includes(id); }, // flag for the arcade (G9.8)
@@ -165,7 +163,7 @@
       if (!this.active()) return;
       const last = this.w[this.w.length - 1];
       if (last && n.time - last.time > 3) this.w = []; // a phrase: a long pause starts a new one
-      this.w.push({ midi: n.midi, time: n.time, vel: n.vel });
+      this.w.push({ midi: n.midi, time: n.time, vel: n.vel, raw: n.raw == null ? null : n.raw });
       if (this.w.length > 16) this.w.shift();
       this.run('live', n);
     },
@@ -231,10 +229,11 @@
         }
       }
       const th = this.state().theme;
-      if (th && gf.themes.includes(th)) document.documentElement.dataset.lcd = th; else delete document.documentElement.dataset.lcd;
+      if (th && gf.themes.includes(th) && AMB.game.path) document.documentElement.dataset.lcd = th; // path only
+      else delete document.documentElement.dataset.lcd;
     },
     // mirror keyboard (reward): intervals reversed around the tonic (axis = the tonic an octave above the first key)
-    mirrorOn() { const q = this.state(); return q.gifts.mirror && q.mirrorOn; },
+    mirrorOn() { const q = this.state(); return !!(q.gifts.mirror && q.mirrorOn && AMB.game.path); }, // path only
     mirrorDeg(d) { return 2 * ((AMB.seq && AMB.seq.scale) || [0]).length - d; },
     mirrorMidi(m) {
       const q = AMB.seq, axis = T.degreeToMidi(q.scale.length, q.root, q.scale, 4);
@@ -246,13 +245,15 @@
       q.theme = id || ''; AMB.game.save(); this.applyGifts(); this.render(); return true;
     },
 
-    // ---- small panel: « Secrets n/N » (path) + gift switches (any mode, once a switch exists) ----
+    // ---- panel in the tree screen: « Secrets n/N » + gift switches (path only), folded by default ----
     render() {
       const box = this.box; if (!box) return;
       const g = AMB.game, q = this.state(), gf = q.gifts;
-      box.hidden = !(g.path || gf.mirror || gf.themes.length);
+      box.hidden = !g.path;
       if (box.hidden) return;
-      box.querySelector('.sc-head').textContent = g.path ? `✦ Secrets ${this.foundCount()}/${DEFS.length}` : '✦ Cadeaux';
+      const head = box.querySelector('.sc-head');
+      head.textContent = `✦ Secrets ${this.foundCount()}/${DEFS.length}`;
+      head.setAttribute('aria-expanded', String(!box.classList.contains('min')));
       const body = box.querySelector('.sc-body'); body.innerHTML = '';
       const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; body.append(e); return e; };
       if (g.path) {
@@ -276,11 +277,13 @@
     },
     build() {
       if (this.box || !document.body) return;
-      const box = (this.box = document.createElement('aside'));
+      const box = (this.box = document.createElement('section'));
       box.id = 'secrets'; box.className = 'secrets min'; box.hidden = true; box.setAttribute('aria-label', 'Secrets');
-      box.innerHTML = '<button class="sc-head"></button><div class="sc-body"></div>';
-      box.querySelector('.sc-head').addEventListener('click', () => box.classList.toggle('min'));
-      document.body.append(box);
+      box.innerHTML = '<button type="button" class="sc-head" aria-controls="secretsBody"></button><div class="sc-body" id="secretsBody"></div>';
+      box.querySelector('.sc-head').addEventListener('click', () => { box.classList.toggle('min'); this.render(); });
+      // inside the tree screen, under the puzzles line (never floating over the app on mobile)
+      const at = document.querySelector('#treeDlg .tree-puzzles');
+      if (at) at.after(box); else document.body.append(box);
       this.render();
     },
   };
@@ -293,6 +296,7 @@
     AMB.bus.on('chord', (c) => secrets.onChord(c));
     ['reset', 'mode'].forEach((e) => AMB.bus.on('game:' + e, () => { secrets.reset(); secrets.applyGifts(); secrets.render(); }));
     ['unlock', 'earn'].forEach((e) => AMB.bus.on('game:' + e, () => secrets.render()));
+    AMB.bus.on('game:chime', () => secrets.chimed()); // « figer le carillon » needs to know when the game chimed
   }
   store.on((k, v, src) => { if (src === 'user') secrets.run('param', k, v); });
   // play time (hint 2): counted only while the music plays in the path
@@ -307,11 +311,5 @@
   document.addEventListener('DOMContentLoaded', () => {
     secrets.build();
     secrets.applyGifts(); // the « Son » selects exist now
-    const G = AMB.garden;
-    if (G && G.chime && !G.chime._sec) { // « figer le carillon » needs to know when the game chimed
-      const orig = G.chime;
-      G.chime = function (...a) { secrets.chimed(); return orig.apply(this, a); };
-      G.chime._sec = true;
-    }
   });
 })();

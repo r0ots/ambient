@@ -216,9 +216,7 @@
     progress(id, g = AMB.game) { const st = this.state(g).prog[id]; return Math.min(byId[id].goal, (st && st.n) || 0); },
     // route an event to every active contract; complete those that reach their goal
     dispatch(ev, ...args) {
-      const g = AMB.game; if (!g.path) return;
-      if (AMB.puzzles && AMB.puzzles.ab) return; // hearing a puzzle's target is not doing it
-      if (AMB.arcade && AMB.arcade.active) return; // an arcade round is not free play
+      const g = AMB.game; if (!g.freePlay()) return; // free mode, an arcade round or a puzzle's target: nothing counts
       if (ev === 'param' && args[2] === 'game') return;
       const s = this.state(g); let changed = false;
       for (const id of s.active.slice()) {
