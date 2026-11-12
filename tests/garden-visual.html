@@ -1,0 +1,126 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
+<!-- Jardin visuel (G11.2): placement from the state (deterministic), reaction to the bus events, no gain, pause off
+     screen / hidden tab, Parcours-only mode (free mode intact), reduced motion, cost per frame at 1280×800. No audio. -->
+<script src="lib.js"></script>
+<script>
+window.AMB_GAME_KEY = 'ambient.game.test-gv'; window.AMB_ARCADE_KEY = 'ambient.arcade.test-gv';
+[window.AMB_GAME_KEY, window.AMB_ARCADE_KEY, 'ambient.vizMode', 'ambient.vizMode.path'].forEach((k) => localStorage.removeItem(k));
+testBus(); AMB.engine = {}; // no audio: the visual's classic modes draw without an analyser
+</script>
+<script src="../js/arcade.js"></script><script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script>
+<canvas id="c" width="1280" height="800" style="width:640px;height:400px;display:block"></canvas>
+<script>
+window.addEventListener('load', async () => {
+  try {
+    const G = AMB.game, A = AMB.arcade, V = AMB.visual, GV = AMB.gardenVisual, cv = document.getElementById('c');
+    V.c = cv; V.g = cv.getContext('2d'); V.dpr = 1;
+    const frame = () => V.draw();
+
+    // --- mode policy: Parcours only, default there; free mode untouched
+    ok(V.mode === 'Orbes' && !V.MODES.includes('Jardin'), 'mode non choisi = libre : Orbes, Jardin absent de la liste classique');
+    const seen = new Set(); for (let i = 0; i < 6; i++) seen.add(V.cycleMode());
+    ok(!seen.has('Jardin') && localStorage.getItem('ambient.vizMode.path') === null, 'libre : le cycle ne propose jamais Jardin (' + [...seen].join(', ') + ')');
+    while (V.mode !== 'Horizon') V.cycleMode();
+    G.setMode('path');
+    ok(V.mode === 'Jardin', 'Parcours : Jardin par défaut');
+    const L = []; for (let i = 0; i < 4; i++) L.push(V.cycleMode());
+    ok(L.join() === 'Orbes,Horizon,Spectre,Jardin' && localStorage.getItem('ambient.vizMode') === 'Horizon', 'Parcours : Jardin dans le cycle, préférence à part (le choix du libre reste Horizon)');
+    G.setMode('free');
+    ok(V.mode === 'Horizon', 'retour au libre : son visuel d\'avant (Horizon)');
+    V.mode = 'Jardin'; frame();
+    ok(V.mode === 'Horizon' && !GV.active, 'libre : un Jardin forcé retombe sur le choix du libre, rien n\'est dessiné');
+    G.setMode('path'); ok(V.mode === 'Jardin', 'Parcours : le Jardin revient');
+
+    // --- state read-only, deterministic placement
+    G.s.nodes = ['racine', 'h.pad', 'm.bells'];
+    const before = { g: JSON.stringify(G.s), a: JSON.stringify(A.s), lg: localStorage.getItem(G.key), la: localStorage.getItem(A.key) };
+    let st = GV.readState();
+    ok(st.layers.join() === 'drone,pad,bells' && st.secrets.length === 0, 'une plante par couche débloquée : ' + st.layers.join(', '));
+    ok(JSON.stringify(A.s) === before.a, 'lecture de l\'arcade sans créer d\'entrée (pas de arcade.stats)');
+    const l1 = GV.layout(st, 1280, 800), l2 = GV.layout({ ...st, layers: st.layers.slice().reverse() }, 1280, 800);
+    ok(JSON.stringify(l1) === JSON.stringify(l2) && JSON.stringify(l1) === JSON.stringify(GV.layout(GV.readState(), 1280, 800)), 'placement déterministe (même état → mêmes positions, ordre des données indifférent)');
+    ok(l1.plants.every((p) => p.x > 0 && p.x < 1280) && l1.plants[0].x < l1.plants[1].x && l1.plants[1].x < l1.plants[2].x, 'plantes réparties dans l\'écran, ordre fixe des couches : ' + l1.plants.map((p) => p.x).join(' / '));
+    // advanced: more layers, arcade levels, pact records, secrets
+    G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.bass', 'c.perc', 'e.texture'];
+    A.s.profiles.default = { games: { modes: { d: 0.7, peak: 0.85, best: { '': { score: 1 }, 'une-ecoute': { score: 2 }, 'proches+une-ecoute': { score: 3 } } }, accordeur: { d: 0.1, peak: 0.15, best: {} } } };
+    G.s.secrets = { found: { jazz: 1, tons: 2 } };
+    st = GV.readState();
+    ok(st.layers.length === 8 && st.levels.bells === 0.85 && st.levels.drone === 0.15 && st.levels.pad === 0 && st.flowers.bells === 2 && st.flowers.drone === 0, 'taille = niveau atteint en arcade (Mélodie ↔ Chasseur de modes 85 %), fleurs = pactes distincts des records (2)');
+    const a1 = GV.layout(st, 1280, 800), a2 = GV.layout({ ...st, secrets: ['tons'] }, 1280, 800);
+    ok(a1.rares.length === 2 && JSON.stringify(a1.plants) === JSON.stringify(a2.plants) && a1.rares.find((r) => r.id === 'secret:tons').x === a2.rares[0].x, 'plantes rares = secrets (2), un secret de plus ne déplace rien d\'autre');
+    const sB = GV.sprite(a1.plants.find((p) => p.id === 'bells'), 4), sD = GV.sprite(a1.plants.find((p) => p.id === 'drone'), 4);
+    ok(sB.hC > sD.hC + 20, 'plante plus haute quand le niveau est plus haut (' + sB.hC + ' vs ' + sD.hC + ' cellules)');
+    const misses = GV.cacheMisses; GV.sprite(a1.plants.find((p) => p.id === 'bells'), 4);
+    ok(GV.cacheMisses === misses, 'sprites en cache (pas de re-rendu)');
+
+    // --- reactions to the bus (spies: no gain, no store, no game write)
+    const emitted = []; const be = AMB.bus.emit.bind(AMB.bus);
+    AMB.bus.emit = (e, d) => { emitted.push(e); return be(e, d); };
+    let earns = 0; const ge = G.earn; G.earn = (...x) => { earns++; return ge.apply(G, x); };
+    AMB.store = { set: () => { earns += 100; }, setMany: () => { earns += 100; } };
+    GV.sig = null; frame(); frame();
+    ok(GV.active && GV.plants.length === 8, 'Jardin actif, 8 plantes dessinées');
+    const p0 = GV.parts.length;
+    AMB.bus.emit('note', { layer: 'bells', midi: 72, time: 0, vel: 0.9, dur: 0.5 });
+    AMB.bus.emit('perc', { track: 0, time: 0, vel: 0.8 });
+    AMB.bus.emit('grain', { layer: 'grains', midi: 60, time: 0, vel: 0.5 });
+    AMB.bus.emit('chord', { time: 0, deg: 0, midis: [60, 64, 67] });
+    AMB.bus.emit('note', { layer: 'bells', midi: 72, time: 1e9, vel: 0.9 }); // far in the future: waits for its time
+    frame();
+    ok(GV.energy.bells > 0.5 && GV.energy.perc > 0.5 && GV.energy.grains > 0.3 && GV.energy.drone > 0.3 && GV.parts.length >= p0 + 4, 'note / perc / grain / chord : la plante pulse et lâche une feuille (' + GV.parts.length + ' particules)');
+    ok(GV.pending.length === 1, 'un événement à venir attend son heure audio');
+    GV.pending.length = 0;
+    for (let i = 0; i < 6; i++) { await wait(120); frame(); }
+    ok(GV.energy.bells < 0.5, 'la pulsation retombe (dt réel)');
+    G.s.nodes = ['racine']; GV.sig = null; frame();
+    const pp = GV.parts.length; AMB.bus.emit('note', { layer: 'seq', midi: 60, time: 0, vel: 1 }); frame();
+    ok(!GV.energy.seq && GV.parts.length <= pp, 'couche non débloquée : aucune réaction');
+    G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.bass', 'c.perc', 'e.texture']; GV.sig = null;
+    // reduced motion: pulse, but no particles
+    GV.reduced = true; GV.parts.length = 0; AMB.bus.emit('note', { layer: 'bells', time: 0, vel: 1 }); frame();
+    ok(GV.parts.length === 0 && GV.energy.bells > 0, 'mouvement réduit : lumière seulement, pas de particules ni de balancement');
+    GV.reduced = false;
+
+    // --- pause: off screen (real IntersectionObserver), hidden tab
+    const fr = GV.frames;
+    cv.style.position = 'absolute'; cv.style.top = '-5000px';
+    await wait(300);
+    frame(); AMB.bus.emit('note', { layer: 'bells', time: 0, vel: 1 });
+    ok(!GV.visible && GV.frames === fr && GV.pending.length === 0, 'hors écran : aucune image dessinée, événements ignorés');
+    cv.style.position = ''; cv.style.top = '';
+    await wait(300); frame();
+    ok(GV.visible && GV.frames === fr + 1, 'de retour à l\'écran : le dessin reprend');
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+    frame(); ok(GV.frames === fr + 1, 'onglet caché : pause');
+    delete document.hidden;
+
+    // --- no gain at all
+    G.earn = ge; AMB.bus.emit = be;
+    const foreign = emitted.filter((e) => !['note', 'perc', 'grain', 'chord'].includes(e));
+    ok(earns === 0 && foreign.length === 0, 'aucun gain : ni earn, ni store, ni événement émis par le jardin');
+    G.s.nodes = ['racine', 'h.pad', 'm.bells']; delete G.s.secrets; A.s.profiles = JSON.parse(before.a).profiles;
+    ok(localStorage.getItem(G.key) === before.lg && localStorage.getItem(A.key) === before.la, 'aucune sauvegarde du jeu ou de l\'arcade écrite par le jardin');
+
+    // --- cost per frame at 1280×800 (advanced garden, notes every frame), real rAF
+    G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.bass', 'c.perc', 'e.texture'];
+    A.s.profiles.default = { games: { modes: { peak: 0.85, best: { 'une-ecoute': 1, 'proches+transpose': 1 } }, dictee: { peak: 0.6, best: { proches: 1 } }, accordeur: { peak: 0.4, best: {} }, hautbas: { peak: 1, best: { 'avant-fin+une-ecoute': 1 } }, reponds: { peak: 0.5, best: {} }, intrus: { peak: 0.7, best: {} }, bouge: { peak: 0.3, best: {} } } };
+    G.s.secrets = { found: { jazz: 1, tons: 1, dim: 1, lent: 1 } };
+    GV.sig = null; GV.times.length = 0;
+    const layers = ['pad', 'bells', 'seq', 'bass'];
+    await new Promise((res) => { let n = 0; const step = () => { AMB.bus.emit('note', { layer: layers[n % 4], time: 0, vel: 0.8 }); if (n % 3 === 0) AMB.bus.emit('perc', { time: 0, vel: 0.7 }); frame(); if (++n < 150) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); });
+    const s = GV.stats();
+    // the same with the raster forced (1-pixel readback flushes the canvas): CPU recording + software drawing
+    GV.times.length = 0; const flush = [];
+    await new Promise((res) => { let n = 0; const step = () => { AMB.bus.emit('note', { layer: layers[n % 4], time: 0, vel: 0.8 }); const t = performance.now(); frame(); V.g.getImageData(0, 0, 1, 1); flush.push(performance.now() - t); if (++n < 120) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); });
+    flush.sort((x, y) => x - y);
+    log('PERF 1280×800 avec rendu forcé : moyenne ' + (flush.reduce((a, b) => a + b, 0) / flush.length).toFixed(2) + ' ms, médiane ' + flush[60].toFixed(2) + ' ms, p95 ' + flush[113].toFixed(2) + ' ms');
+    log('PERF 1280×800 : moyenne ' + s.avg.toFixed(2) + ' ms, p95 ' + s.p95.toFixed(2) + ' ms, max ' + s.max.toFixed(2) + ' ms (' + s.frames + ' images, ' + s.sprites + ' sprites en cache)');
+    ok(s.p95 < 4, 'coût par image raisonnable (p95 ' + s.p95.toFixed(2) + ' ms, cible < 2 ms)');
+    cv.width = 2560; cv.height = 1600; GV.times.length = 0;
+    await new Promise((res) => { let n = 0; const step = () => { AMB.bus.emit('note', { layer: layers[n % 4], time: 0, vel: 0.8 }); frame(); if (++n < 90) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); });
+    const s2 = GV.stats();
+    log('PERF 2560×1600 (dpr 2) : moyenne ' + s2.avg.toFixed(2) + ' ms, p95 ' + s2.p95.toFixed(2) + ' ms');
+    done();
+  } catch (e) { fail(e); }
+});
+</script></body></html>
