@@ -542,3 +542,57 @@ body.pz-veil .pz-veiled { filter: blur(4px) grayscale(.6); opacity: .55; }
 @media (max-width: 560px) { .secrets { right: 8px; bottom: 56px; } }
 html[data-lcd="aurore"] { --lcd-bg: #07161a; --lcd-fg: #6ff0d0; --lcd-dim: #1f5a55; --lcd-glow: #6ff0d055; }
 html[data-lcd="neon"] { --lcd-bg: #150a1c; --lcd-fg: #ff6fd8; --lcd-dim: #5a2160; --lcd-glow: #ff6fd855; }
+
+/* G9.1–G9.2 Arcade de l'oreille : full-screen amber LCD cabinet (#arcadeDlg) */
+.arcade-btn { color: var(--lcd-fg); }
+.modal.arcade { z-index: 60; padding: 0; background: #000d; place-items: stretch; }
+.arc-cab { position: relative; width: 100%; height: 100%; max-height: 100vh; overflow: auto; display: grid; padding: 28px clamp(16px, 4vw, 48px); background: radial-gradient(ellipse at 50% 40%, #2a1c08 0%, var(--lcd-bg) 60%, #0d0903 100%); box-shadow: inset 0 0 80px #000, inset 0 0 0 3px #000, 0 0 0 1px var(--lcd-dim); color: var(--lcd-fg); font: 22px/1.15 var(--f-lcd); text-shadow: 0 0 6px var(--lcd-glow); }
+.arc-cab::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, #0000 0 2px, #0003 2px 3px); }
+.arc-cab section { align-self: center; justify-self: center; width: min(100%, 1040px); display: grid; gap: 16px; }
+.arc-cab section[hidden] { display: none; }
+.arc-x { position: absolute; top: 12px; right: 14px; z-index: 2; background: none; border: 1px solid var(--lcd-dim); color: var(--lcd-fg); font: 20px var(--f-lcd); padding: 0 10px; border-radius: var(--radius-btn); cursor: pointer; }
+.arc-title { margin: 0; font: clamp(34px, 6vw, 56px)/1 var(--f-lcd); letter-spacing: .08em; text-align: center; color: var(--lcd-fg); text-shadow: 0 0 14px var(--lcd-glow); }
+.arc-sub { margin: 0; text-align: center; color: var(--lcd-dim); font-size: 20px; }
+.arc-carts { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.arc-cart { display: grid; gap: 8px; text-align: left; padding: 14px 16px; background: #120c04; border: 1px solid var(--lcd-dim); border-radius: 4px; box-shadow: var(--bevel-in); color: var(--lcd-fg); font: inherit; cursor: pointer; text-shadow: inherit; }
+.arc-cart:hover, .arc-cart:focus-visible { border-color: var(--lcd-fg); box-shadow: var(--bevel-in), 0 0 16px var(--lcd-glow); outline: none; }
+.arc-cart-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 26px; }
+.arc-kid { font: 15px var(--f-lcd); font-style: normal; padding: 0 6px; border-radius: 3px; background: var(--lcd-fg); color: #1a1408; text-shadow: none; }
+.arc-cart-blurb { font: 13px/1.35 var(--f-ui); color: var(--text); text-shadow: none; }
+.arc-cart-meta { display: flex; justify-content: space-between; gap: 8px; font-size: 19px; color: var(--lcd-dim); }
+.arc-cart-stars { color: var(--lcd-fg); letter-spacing: .1em; }
+.arc-hud { display: grid; grid-template-columns: auto 1fr auto auto; gap: 18px; align-items: center; font-size: 30px; }
+.arc-time { font-size: 48px; min-width: 2ch; }
+.arc-time.low { color: var(--fx-bad); animation: arc-blink .5s steps(1) infinite; }
+.arc-game { font-weight: normal; text-align: center; color: var(--lcd-dim); }
+.arc-score { font-size: 48px; letter-spacing: .08em; }
+.arc-hud .fx-combo { position: static; box-shadow: none; border-color: var(--lcd-dim); }
+.arc-bar { height: 6px; background: #0008; border-radius: 3px; overflow: hidden; }
+.arc-bar i { display: block; height: 100%; background: var(--lcd-fg); box-shadow: 0 0 8px var(--lcd-glow); transition: width .1s linear; }
+.arc-stage { min-height: 80px; display: grid; place-items: center; }
+.arc-stage:empty { min-height: 40px; }
+.arc-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.arc-choice { position: relative; min-height: 110px; padding: 16px; background: #120c04; border: 2px solid var(--lcd-dim); border-radius: 6px; color: var(--lcd-fg); font: 34px var(--f-lcd); text-shadow: inherit; cursor: pointer; box-shadow: var(--bevel-in); }
+.arc-choice:hover, .arc-choice:focus-visible { border-color: var(--lcd-fg); outline: none; }
+.arc-choice:active { transform: translateY(2px); }
+.arc-choice kbd { position: absolute; top: 6px; left: 10px; font: 18px var(--f-lcd); color: var(--lcd-dim); }
+.arc-choice.good { border-color: var(--fx-good); background: #2a1d06; box-shadow: 0 0 20px var(--lcd-glow); }
+.arc-choice.bad { border-color: var(--fx-bad); color: var(--fx-bad); }
+.arc-tools { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.arc-replay { font: 22px var(--f-lcd); color: var(--lcd-fg); }
+.arc-replay kbd { font: inherit; color: var(--lcd-dim); }
+.arc-level { color: var(--lcd-dim); }
+.arc-end { text-align: center; justify-items: center; }
+.arc-end-game { margin: 0; color: var(--lcd-dim); font-size: 26px; }
+.arc-end-score { font-size: clamp(64px, 12vw, 110px); line-height: 1; letter-spacing: .08em; text-shadow: 0 0 18px var(--lcd-glow); }
+.arc-stars { display: flex; gap: 18px; font-size: 72px; line-height: 1; }
+.arc-star { font-style: normal; color: #3a2a10; text-shadow: none; }
+.arc-star.on { color: var(--fx-combo); text-shadow: 0 0 16px var(--lcd-glow); animation: arc-fall .5s cubic-bezier(.3, 1.6, .5, 1) both; }
+.arc-record { margin: 0; font-size: 44px; color: var(--fx-combo); animation: arc-blink .6s steps(1) infinite; }
+.arc-end-stats { margin: 0; color: var(--lcd-dim); }
+.arc-end-btns { display: flex; gap: 14px; }
+.arc-end-btns .btn { font: 24px var(--f-lcd); padding: 6px 18px; color: var(--lcd-fg); }
+@keyframes arc-fall { 0% { opacity: 0; transform: translateY(-120px) rotate(-40deg) scale(1.6); } 100% { opacity: 1; transform: none; } }
+@keyframes arc-blink { 50% { opacity: .15; } }
+@media (prefers-reduced-motion: reduce) { .arc-star.on, .arc-record, .arc-time.low { animation: none; } }
+@media (max-width: 560px) { .arc-hud { grid-template-columns: auto 1fr auto; font-size: 24px; } .arc-game { display: none; } .arc-time, .arc-score { font-size: 36px; } .arc-choice { min-height: 80px; font-size: 28px; } .arc-choices { grid-template-columns: 1fr 1fr; } }

@@ -65,6 +65,9 @@
         <div class="tgrp tree-grp"><small>Jardin</small>
           <div class="tgrp-row"><button id="treeBtn" class="btn tree-btn" title="L'arbre du jardin : ce que tu as débloqué et ce qui t'attend">🌱 Arbre<i class="tree-badge" hidden></i></button></div>
         </div>
+        <div class="tgrp arcade-grp"><small>Arcade</small>
+          <div class="tgrp-row"><button id="arcadeBtn" class="btn arcade-btn" title="Arcade de l'oreille : manches courtes pour entraîner ton oreille (sans effet sur ton son)">🕹 Arcade</button></div>
+        </div>
         <span id="sleepLeft" class="sleep-left" title="Minuteur de sommeil"></span>
         <details class="more">
           <summary class="btn" title="Plus d'options">⋯</summary>
@@ -172,6 +175,32 @@
       </div>
     </div>
 
+    <div id="arcadeDlg" class="modal arcade" hidden>
+      <div class="arc-cab" role="dialog" aria-label="Arcade de l'oreille">
+        <button class="arc-x" data-close title="Quitter l'arcade (Échap)">✕</button>
+        <section class="arc-menu">
+          <h3 class="arc-title">ARCADE DE L'OREILLE</h3>
+          <p class="arc-sub">Choisis une cartouche · manches de 75 s · Échap pour sortir</p>
+          <div class="arc-carts"></div>
+        </section>
+        <section class="arc-play" hidden>
+          <div class="arc-hud"><span class="arc-time">75</span><b class="arc-game"></b><span class="arc-score">000000</span><span class="arc-combo-slot"></span></div>
+          <div class="arc-bar"><i></i></div>
+          <div class="arc-stage"></div>
+          <div class="arc-choices"></div>
+          <div class="arc-tools"><button class="btn arc-replay" title="Réécouter (R) : la bonne réponse rapporte moins et ne fait pas monter le combo">↻ Réécouter <kbd>R</kbd></button><span class="arc-level"></span></div>
+        </section>
+        <section class="arc-end" hidden>
+          <p class="arc-end-game"></p>
+          <div class="arc-end-score">000000</div>
+          <div class="arc-stars"></div>
+          <p class="arc-record" hidden>RECORD !</p>
+          <p class="arc-end-stats"></p>
+          <div class="arc-end-btns"><button class="btn arc-again">↻ Rejouer</button><button class="btn arc-menu-btn">Menu</button></div>
+        </section>
+      </div>
+    </div>
+
     <div id="helpDlg" class="modal" hidden>
       <div class="modal-card" role="dialog" aria-label="Aide">
         <button class="modal-x" data-close>✕</button>
@@ -218,6 +247,8 @@
   <script src="js/layers.js"></script>
   <script src="js/sequencer.js"></script>
   <script src="js/audition.js"></script>
+  <script src="js/arcade.js"></script>
+  <script src="js/arcade-demo.js"></script>
   <script src="js/game.js"></script>
   <script src="js/tree.js"></script>
   <script src="js/presets.js"></script>
@@ -245,5 +276,6 @@
   <script src="js/juice.js"></script>
   <script src="js/garden-tree.js"></script>
   <script src="js/garden-actions.js"></script>
+  <script src="js/arcade-ui.js"></script>
 </body>
 </html>
