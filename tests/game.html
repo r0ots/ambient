@@ -9,13 +9,13 @@ const ok=(c,m)=>log((c?'ok ':'ERROR fail ')+m);
 window.addEventListener('load', ()=>{
   try{
   const g=AMB.game, ev=[];
-  ['earn','spend','unlock','found','mode'].forEach(e=>AMB.bus.on('game:'+e,d=>ev.push(e)));
+  ['earn','spend','unlock','mode'].forEach(e=>AMB.bus.on('game:'+e,d=>ev.push(e)));
   ok(g.s.mode===null && g.isUnlocked('x'), 'mode non choisi = tout ouvert');
   g.setMode('path');
   ok(!g.isUnlocked('x'), 'parcours : nœud fermé');
-  ok(g.discover('k1',10) && !g.discover('k1',10) && g.s.shards===10, 'découverte comptée une fois');
+  ok(!g.discover && !('found' in g.s) && !('stars' in g.s), 'v1.06 : plus de découvertes ni d\'étoiles dans l\'état');
   ok(!g.unlock('x',25) && !g.has('x'), 'achat refusé sans éclats');
-  g.earn(20,'test'); ok(g.unlock('x',25) && g.s.shards===5 && g.isUnlocked('x'), 'achat');
+  g.earn(30,'test'); ok(g.unlock('x',25) && g.s.shards===5 && g.isUnlocked('x'), 'achat');
   ok(!g.unlock('x',1), 'pas de double achat');
   ok(g.complete('c1',3) && g.solve('p1',4) && g.s.shards===12 && g.s.earned===37, 'contrats + énigmes, total cumulé');
   const saved=JSON.parse(localStorage.getItem('ambient.game.test'));
@@ -42,72 +42,71 @@ window.addEventListener('load', ()=>{
   g.reset(); ok(g.has('racine'), 'reset en parcours rend la racine'); ok(!T.paramUnlocked('fx.echo') && T.paramUnlocked('drone.vol') && T.status('h.pad')==='available' && T.status('h.scale')==='locked', 'statuts au départ');
   const gr=T.grantsText('c.seq'); ok(/Mélodie écrite/.test(gr) && /Piano roll/.test(gr) && !/Motif( ·|$)/.test(gr), 'ce que débloque un nœud : '+gr);
   ok(/chaque couche/.test(T.grantsText('e.reverb')) && T.dependents('h.pad').includes('c.seq'), 'grantsText *.send, dépendants');
-  // --- contracts engine (G4.1)
+  // --- contracts engine (G4.1; v1.06: one at a time, only musical ones)
   { const K0=AMB.contracts, ids=K0.DEFS.map(d=>d.id);
-    ok(new Set(ids).size===ids.length && K0.DEFS.every(d=>d.title && d.goal>0 && d.reward>0 && d.need.every(n=>T.byId[n])), 'contrats valides ('+ids.length+')');
-    const br={}; K0.DEFS.forEach(d=>{const b=T.byId[d.need[d.need.length-1]].branch; br[b]=(br[b]||0)+1}); log('contrats par branche '+JSON.stringify(br)); }
+    ok(new Set(ids).size===ids.length && K0.DEFS.every(d=>d.title && d.hint && d.goal>0 && d.reward>0 && d.need.every(n=>T.byId[n])), 'contrats valides, chacun avec son aide ('+ids.length+')');
+    const gone=['k.souffle','k.timbres','k.ecran','h.ombre','h.riches','h.gammes','e.extremes','e.envois','e.textures','e.salles','e.halo','e.vieux','m.densite','m.libre','m.derive','m.grains','m.lfo','c.arp','c.swing','c.export'];
+    ok(gone.every(id=>!K0.byId[id]), 'contrats-corvées retirés ('+gone.length+')');
+    const br={}; K0.DEFS.forEach(d=>{const b=T.byId[d.need[0]].branch; br[b]=(br[b]||0)+1}); log('contrats par branche '+JSON.stringify(br)); }
   const K=AMB.contracts; g.reset(); g.setMode('path'); K.refill();
-  ok(g.s.active.length===2 && g.s.active.includes('k.couleur') && g.s.active.includes('k.souffle'), 'contrats actifs = ceux dont les nœuds sont acquis : '+g.s.active.join(','));
+  ok(g.s.active.join()==='k.couleur', 'un seul contrat actif, celui de la racine : '+g.s.active.join(','));
   AMB.seq.playing=true;
   AMB.store.set('drone.tone',0.2,'user'); AMB.store.set('drone.tone',0.25,'user'); ok(K.progress('k.couleur')===1, 'un geste = 1 (glisser ne compte qu\'une fois)');
-  const kc=g.s.prog['k.couleur']; kc.t_drone_tone=0; kc['t_drone.tone']=0; AMB.store.set('drone.tone',0.5,'user'); kc['t_drone.tone']=0; AMB.store.set('drone.tone',0.6,'user');
-  const sh=g.s.shards; ok(g.s.contracts.includes('k.couleur') && g.s.shards===sh, 'contrat accompli (la récompense est déjà comptée)');
-  ok(!g.s.active.includes('k.couleur') && g.s.active.length===1, 'remplacé par le suivant éligible : '+g.s.active.join(','));
-  g.earn(10,'test'); T.buy('t.son'); ok(g.s.active.includes('k.timbres'), 'nouveau nœud → nouveau contrat');
-  ['Creux','Orgue','Sub','Chaud'].forEach(w=>AMB.store.set('drone.wave',w,'user')); ok(g.s.contracts.includes('k.timbres'), 'contrat « valeurs distinctes »');
-  K.skip('k.souffle'); ok(g.s.skipped.includes('k.souffle') && g.s.active.includes('k.souffle'), 'passer : remis en fin de file (seul éligible ici)');
-  AMB.store.set('drone.on',false,'user'); AMB.store.set('drone.on',true,'user'); ok(g.s.contracts.includes('k.souffle'), 'contrat en deux temps');
-  g.earn(200,'test'); ['h.pad','e.reverb','e.salle','h.pad2'].forEach(i=>T.buy(i)); K.refill();
-  const force=(id)=>{ if(!g.s.active.includes(id)){ g.s.active=[id].concat(g.s.active).slice(0,3); g.s.prog[id]={n:0}; } };
-  force('e.extremes'); AMB.store.set('fx.space',0.95,'user'); AMB.store.set('fx.space',0.05,'user'); AMB.store.set('fx.space',0.95,'user'); ok(g.s.contracts.includes('e.extremes'), 'min puis max');
-  force('e.salles'); ['Plate','Cloud','Hall'].forEach(v=>AMB.store.set('fx.revType',v,'user')); ok(g.s.contracts.includes('e.salles'), '3 salles');
-  force('h.riches'); AMB.store.set('pad.voicing',1,'user'); AMB.bus.emit('chord',{time:0,deg:0,midis:[60]}); AMB.bus.emit('chord',{time:0,deg:1,midis:[62]}); ok(!g.s.contracts.includes('h.riches') && K.progress('h.riches')===1, 'accords riches : attendre ne suffit pas, il faut le retour');
-  AMB.store.set('pad.voicing',0.05,'user'); ok(g.s.contracts.includes('h.riches'), 'accords riches : max puis min');
-  ['m.bells','m.tempo','c.seq','c.motifs'].forEach(i=>{ g.solve('p.composer'); T.buy(i); });
-  force('m.libre'); AMB.store.set('global.time','Flottant','user'); AMB.store.set('global.time','Pulsé','user'); ok(g.s.contracts.includes('m.libre'), 'libre puis régulier');
-  force('c.chaine'); AMB.store.set('seq.chain','A A B','user'); ok(g.s.contracts.includes('c.chaine'), 'chaîne de 2 motifs');
-  force('m.notes'); for(let i=0;i<8;i++) AMB.bus.emit('live',{midi:60,time:0,vel:1}); ok(g.s.contracts.includes('m.notes'), '8 notes jouées');
-  // G8.3 : gestes aller-retour (chaque contrat ne se remplit que par son geste)
+  g.s.prog['k.couleur']['t_drone.tone']=0; AMB.store.set('drone.tone',0.5,'user');
+  ok(g.s.contracts.includes('k.couleur') && g.s.shards===K.byId['k.couleur'].reward && !g.s.active.length, 'contrat accompli (+'+g.s.shards+'), rien d\'autre d\'éligible à la racine');
+  T.buy('m.bells'); ok(g.s.active.join()==='m.notes', 'nouveau nœud → nouveau contrat : '+g.s.active.join());
+  T.buy('h.pad'); ok(g.s.active.join()==='m.notes', 'toujours un seul à la fois');
+  K.skip('m.notes'); ok(g.s.active.join()==='h.forcer' && g.s.skipped.includes('m.notes'), 'passer → le suivant');
+  K.skip('h.forcer'); ok(g.s.active.join()==='m.notes', 'tous passés : le premier passé revient');
+  for(let i=0;i<8;i++) AMB.bus.emit('live',{midi:60,time:0,vel:1}); ok(g.s.contracts.includes('m.notes') && g.s.active.join()==='h.forcer', '8 notes jouées → contrat rempli, le suivant arrive');
+  for(let i=0;i<3;i++){ g.s.prog['h.forcer'].t_chord=0; AMB.bus.emit('act','chord'); } ok(g.s.contracts.includes('h.forcer'), '3 accords forcés');
+  const force=(id)=>{ g.s.active=[id]; g.s.prog[id]={n:0}; };
+  g.earn(200,'test'); ['e.reverb','e.echo'].forEach(i=>T.buy(i));
+  force('e.echo'); AMB.store.set('fx.echo',0.2,'user'); for(let i=0;i<6;i++) AMB.bus.emit('live',{midi:60,time:0,vel:1}); ok(!g.s.contracts.includes('e.echo') && !K.progress('e.echo'), 'écho trop faible : les notes ne comptent pas');
+  AMB.store.set('fx.echo',0.6,'user'); for(let i=0;i<6;i++) AMB.bus.emit('live',{midi:60,time:0,vel:1}); ok(g.s.contracts.includes('e.echo'), '6 notes jouées dans l\'écho');
   {
     g.earn(5000,'test'); for(let more=true;more;){ more=false; for(const n of T.NODES){ const st=T.status(n.id); if(st==='gated'){ g.solve(n.gate); more=true; } else if(st==='available'){ T.buy(n.id); more=true; } } }
     const run=(id,steps,wrong)=>{ force(id); const sh=()=>g.s.contracts.includes(id);
       for(const f of wrong) f(); ok(!sh() && K.progress(id)<K.byId[id].goal, id+' : pas rempli sans le geste');
       for(const f of steps) f(); ok(sh(), id+' : rempli par son geste'); };
     const S=(k,v,src)=>()=>AMB.store.set(k,v,src||'user'), tick=(n)=>()=>{ for(let i=0;i<n;i++) K.dispatch('bar',i); };
-    run('e.halo',[S('fx.shimmer',0.6),S('fx.shimmer',0.9),S('fx.shimmer',0.1)],[tick(4),S('fx.shimmer',0.9),S('fx.shimmer',0.5),S('fx.shimmer',0.1,'preset')]);
-    run('m.derive',[S('global.evolve',0.5),S('global.evolve',0.9),S('global.evolve',0.1)],[tick(6),S('global.evolve',0.1),S('global.evolve',0.9,'preset')]);
-    run('c.swing',[S('global.swing',0.5),S('global.swing',0.8),S('global.swing',0.02)],[tick(4),S('global.swing',0.02),S('global.swing',0.8,'macro')]);
     run('k.xy',[1,2,3,4].map(i=>()=>{ K.state().prog['k.xy']['t_xy']=0; AMB.bus.emit('act','xy'); }),[tick(8),()=>AMB.bus.emit('act','dice')]);
     run('c.courbe',[S('auto.curve','i'.repeat(32)),S('auto.curve','0'.repeat(16)+'z'.repeat(16))],[S('auto.curve','i'.repeat(32)),S('auto.curve','0'.repeat(16)+'z'.repeat(16),'preset'),S('auto.on',true)]);
-    // phrase : objectif 2 tours
-    force('m.phrase'); ok(K.byId['m.phrase'].goal===2,'m.phrase objectif 2'); AMB.store.set('bells.mode','Aléatoire','user'); AMB.bus.emit('phrase',{}); ok(K.progress('m.phrase')===0,'phrase : tours non comptés hors mode Phrase'); AMB.store.set('bells.mode','Phrase','user'); AMB.bus.emit('phrase',{}); ok(K.progress('m.phrase')===1,'1 tour'); AMB.bus.emit('phrase',{}); ok(g.s.contracts.includes('m.phrase'),'2 tours');
-    // tirage mélangé, déterministe avec une graine, compatible anciennes sauvegardes
-    const draw=(seed)=>{ g.s.active=[]; g.s.skipped=[]; g.s.prog={}; K.seed(seed); K.refill(); return g.s.active.join(','); };
-    const a=draw(42), b=draw(42), c=draw(7), d=draw(99), e=draw(12345);
-    ok(a===b && g.s.active.length===3, 'tirage déterministe avec une graine : '+a);
-    ok(new Set([a,c,d,e]).size>1, 'la graine change le tirage : '+[a,c,d,e].join(' | '));
-    ok(g.s.active.every(id=>K.eligible(K.byId[id])), 'tirage : seulement des contrats éligibles');
-    delete g.s.rng; g.s.active=[]; K.refill(); ok(typeof g.s.rng==='number' && g.s.active.length===3, 'ancienne sauvegarde (sans graine) : graine créée');
+    run('c.chaine',[S('seq.chain','A A B')],[S('seq.chain','A A A'),S('seq.chain','A B','preset')]);
+    force('m.phrase'); ok(K.byId['m.phrase'].goal===2,'m.phrase objectif 2'); AMB.store.set('bells.mode','Aléatoire','user'); AMB.bus.emit('phrase',{}); ok(K.progress('m.phrase')===0,'phrase : tours non comptés hors mode Phrase'); AMB.store.set('bells.mode','Phrase','user'); AMB.bus.emit('phrase',{}); ok(K.progress('m.phrase')===1,'1 tour'); AMB.bus.emit('phrase',{}); ok(g.s.contracts.includes('m.phrase'),'2 tours → rempli');
+    // seeded draw, deterministic; older saves (3 active, removed ids, no seed) load
+    const draw=(seed)=>{ g.s.active=[]; g.s.skipped=[]; g.s.prog={}; g.s.contracts=[]; K.seed(seed); K.refill(); return g.s.active.join(','); };
+    const a=draw(42), b=draw(42), c=draw(7), d=draw(99), e=draw(12345), f2=draw(3);
+    ok(a===b && g.s.active.length===1, 'tirage déterministe avec une graine : '+a);
+    ok(new Set([a,c,d,e,f2]).size>1, 'la graine change le tirage : '+[a,c,d,e,f2].join(' | '));
+    g.s.active=['k.souffle','e.extremes','m.notes','h.forcer']; delete g.s.rng; K.refill(); ok(typeof g.s.rng==='number' && g.s.active.join()==='m.notes', 'ancienne sauvegarde (3 actifs, contrats retirés, sans graine) : un seul contrat valide gardé');
   }
   AMB.seq.playing=false; g.setMode('free'); AMB.store.set('drone.tone',0.1,'user'); ok(true,'libre : pas de suivi');
   g.reset();
-  // --- puzzles engine (G5.1)
+  // --- puzzles engine (G5.1; v1.06: one kind, named controls, a new target at each attempt, no stars)
   const Pz=AMB.puzzles;
+  ok(Pz.DEFS.length===12 && Pz.DEFS.every(d=>!('bonus' in d) && !d.target && Object.keys(d.keys).length>=2) && !Pz.stars && !Pz.best, 'une seule sorte d\'énigme : réglages nommés, pas de cible fixe, pas d\'étoiles');
   for (const d of Pz.DEFS) {
-    // owning `need` (and their ancestors) must unlock every target key; target values must be valid
+    // owning `need` (and their ancestors) must unlock every key; list ranges must be real options
     const anc=new Set(), add=(id)=>{ if(anc.has(id)) return; anc.add(id); T.byId[id].req.forEach(add); }; d.need.forEach(add);
-    const bad=Object.entries(d.target).filter(([k,v])=>{ const sp=AMB.store.spec(k); if(!sp) return true; if(sp.type==='select'&&!sp.options.includes(v)) return true; const n=T.nodeFor(k); return n && !anc.has(n); });
+    const bad=Object.entries(d.keys).filter(([k,r])=>{ const sp=AMB.store.spec(k); if(!sp) return true; if(sp.type==='select' && r && !r.every(o=>sp.options.includes(o))) return true; const n=T.nodeFor(k); return n && !anc.has(n); });
     ok(!bad.length && (!d.opens || T.byId[d.opens].gate===d.id), 'énigme '+d.id+' jouable avec ses prérequis '+bad.map(x=>x[0]).join(','));
   }
   ok(T.NODES.filter(n=>n.gate).every(n=>Pz.byId[n.gate] && Pz.byId[n.gate].opens===n.id), 'chaque porte a son énigme');
-  { const def=AMB.store.snapshot(); for (const d of Pz.DEFS) { const sd=Pz.score(d.id, def).total, st=Pz.score(d.id, {...def, ...d.target}).total; ok(sd<0.9 && st===1, d.id+' pas résolue d\'avance ('+sd.toFixed(2)+'), cible = 100 %'); } }
+  { const def=AMB.store.snapshot(); let fresh=0, same=0;
+    for (const d of Pz.DEFS) for (let i=0;i<20;i++) { const t=Pz.draw(d.id, def), t2=Pz.draw(d.id, def);
+      const okv=Object.entries(t).every(([k,v])=>{ const sp=AMB.store.spec(k); return sp.type==='select' ? sp.options.includes(v) : sp.type==='toggle' ? typeof v==='boolean' : v>=sp.min && v<=sp.max; });
+      if (!okv || Object.keys(t).join()!==Object.keys(d.keys).join()) same+=100;
+      if (Pz.score(d.id, def, t).total<0.9 && Pz.score(d.id, {...def,...t}, t).total===1) fresh++;
+      if (JSON.stringify(t)===JSON.stringify(t2)) same++; }
+    ok(fresh===Pz.DEFS.length*20 && same<=2, 'tirages : valeurs valides, jamais résolus d\'avance, cible = 100 % ('+fresh+'), presque jamais deux fois la même ('+same+')'); }
   g.reset(); g.setMode('path'); g.earn(100,'test'); T.buy('t.son'); T.buy('h.pad');
   ok(Pz.available().some(d=>d.id==='p.premier') && Pz.forNode('t.macros').id==='p.premier', 'énigme disponible et liée à sa porte');
-  Pz.start('p.premier'); let last=null; AMB.bus.on('game:puzzle',e=>last=e);
+  const FIX={'drone.wave':'Orgue','drone.tone':0.75,'pad.wave':'Verre','pad.tone':0.2};
+  Pz.start('p.premier'); g.s.runs['p.premier'].target={...FIX}; let last=null; AMB.bus.on('game:puzzle',e=>last=e);
   AMB.store.setMany({'drone.wave':'Chaud','drone.tone':0.35,'pad.wave':'Nappe','pad.tone':0.4},'user');
   const s0=Pz.score('p.premier').total; const a0=Pz.attempt();
   ok(s0<0.5 && a0 && !a0.ok && a0.tries===1 && a0.left===Pz.TRIES-1, 'loin de la cible : '+s0.toFixed(2)+', refus (1 essai sur 6)');
-  // pegs (G8.1): one per key, right/near/far + which way
   { const pg=Object.fromEntries(a0.row.pegs.map(p=>[p.key,p]));
     ok(a0.row.pegs.length===4 && pg['drone.wave'].state==='far' && pg['drone.wave'].dir==='other' && pg['drone.tone'].state==='far' && pg['drone.tone'].dir==='up' && pg['pad.tone'].dir==='down', 'pions : loin + autre option / plus haut / plus bas');
     const n=Pz.peg('drone.tone',0.6,0.75), j=Pz.peg('drone.tone',0.72,0.75), k=Pz.peg('global.key','D','F'), e=Pz.peg('fx.echoTime','1/2','1/8.');
@@ -119,27 +118,28 @@ window.addEventListener('load', ()=>{
   Pz.listen('target'); ok(AMB.store.get('pad.wave')==='Verre' && Pz.side()==='target' && Pz.currentScore().total<0.5 && !Pz.attempt(), 'écouter la cible : son cible, score = le mien, pas de validation');
   Pz.listen('mine'); ok(AMB.store.get('pad.wave')==='Nappe' && AMB.store.get('drone.tone')===0.35, 'retour à mon son intact');
   Pz.listen('target'); AMB.store.set('drone.tone',0.6,'user'); ok(Pz.side()==='mine' && AMB.store.get('pad.wave')==='Nappe' && AMB.store.get('drone.tone')===0.6, 'toucher pendant la cible : mon son revient + mon geste');
-  ok(!g.s.found.includes('p:pad.wave') || true, '');
   AMB.store.setMany({'drone.wave':'Orgue','pad.wave':'Verre','drone.tone':0.72,'pad.tone':0.24},'user');
   const shP=g.s.shards; const aw=Pz.attempt();
-  ok(aw && aw.ok && aw.first && g.s.puzzles.includes('p.premier') && g.s.shards===shP+15 && T.status('t.macros')==='available', 'résolue → porte ouverte, +15');
-  ok(aw.tries===2 && aw.listens===2 && aw.stars===2 && g.s.stars['p.premier']===2 && !g.s.runs['p.premier'], 'étoiles : 2 essais, 2 écoutes → ★★ mémorisées');
-  // replay: 1 try, no listen → 3 stars, no ✧ again
-  { const sh=g.s.shards; Pz.start('p.premier'); const r=Pz.attempt(); ok(r.ok && r.stars===3 && !r.first && g.s.shards===sh && Pz.best('p.premier')===3, 'rejouée en 1 essai sans écoute → ★★★, pas de ✧ en plus');
-    Pz.start('p.premier'); Pz.listen('target'); Pz.listen('mine'); const r2=Pz.attempt(); ok(r2.stars===3 && r2.record===false && Pz.best('p.premier')===3, 'meilleur score gardé');
-    ok(Pz.stars(1,0,false)===3 && Pz.stars(1,5,false)===2 && Pz.stars(5,8,false)===1 && Pz.stars(1,0,true)===0, 'barème des étoiles'); }
-  // 6 failures → the gate opens anyway, no ✧, no star, replayable
-  { g.earn(200,'test'); T.buy('h.key'); const pe=[]; AMB.bus.on('game:earn',d=>{ if(d.reason==='énigme') pe.push(d.n); }); Pz.start('p.gamme'); AMB.store.set('global.key','D','user');
+  ok(aw && aw.ok && aw.first && aw.tries===2 && g.s.puzzles.includes('p.premier') && g.s.shards===shP+15 && T.status('t.macros')==='available' && !g.s.runs['p.premier'] && Pz.current===null, 'résolue en 2 essais → porte ouverte, +15');
+  // replay: a NEW target for the same controls, no ✧ again
+  { Pz.start('p.premier'); const t2=Pz.target(); ok(t2 && Object.keys(t2).join()===Object.keys(FIX).join() && JSON.stringify(t2)!==JSON.stringify(FIX) && Pz.score('p.premier').total<0.9, 'rejouer : nouvelle cible tirée pour les mêmes réglages '+JSON.stringify(t2));
+    const sh=g.s.shards; AMB.store.setMany(t2,'user'); const r=Pz.attempt(); ok(r.ok && !r.first && g.s.shards===sh, 'rejouée et résolue : pas de ✧ en plus'); }
+  // 6 failures → the gate opens anyway, no ✧, replayable with a new target
+  { g.earn(200,'test'); T.buy('h.key'); const pe=[]; AMB.bus.on('game:earn',d=>{ if(d.reason==='énigme') pe.push(d.n); }); Pz.start('p.gamme'); const t1=Pz.target();
+    AMB.store.setMany(Object.fromEntries(Object.entries(t1).map(([k,v])=>[k, typeof v==='number' ? (v>0.5?0:1) : AMB.store.spec(k).options.find(o=>o!==v)])),'user');
     let r; for(let i=0;i<6;i++) r=Pz.attempt();
-    ok(r.out && !r.ok && r.left===0 && !g.s.puzzles.includes('p.gamme') && Pz.given('p.gamme') && T.status('h.scale')==='available' && !pe.length && !Pz.best('p.gamme') && Pz.current===null, '6 échecs → porte ouverte, sans ✧ ni étoile');
-    T.buy('h.scale'); Pz.start('p.gamme'); ok(Pz.run().tries.length===0 && g.has('h.scale'), 'rejouable (essais remis à zéro), nœud acheté');
-    AMB.store.setMany(Pz.byId['p.gamme'].target,'user'); const r3=Pz.attempt(); ok(r3.ok && r3.first && pe.join()==='20', 'résolue plus tard : ✧ de la 1re résolution'); }
-  // help (live gauge) → no star; attempts survive closing the card; old saves load
-  { Pz.start('b.gamme'); Pz.attempt(); Pz.stop(); Pz.start('b.gamme'); ok(Pz.run().tries.length===1, 'fermer puis rouvrir ne rend pas les essais');
-    Pz.setHelp(true); AMB.store.setMany(Pz.byId['b.gamme'].target,'user'); const r=Pz.attempt(); ok(r.ok && r.stars===0 && !Pz.best('b.gamme') && g.s.puzzles.includes('b.gamme'), 'aide → résolue sans étoile');
+    ok(r.out && !r.ok && r.left===0 && !g.s.puzzles.includes('p.gamme') && Pz.given('p.gamme') && T.status('h.scale')==='available' && !pe.length && Pz.current===null, '6 échecs → porte ouverte, sans ✧');
+    T.buy('h.scale'); Pz.start('p.gamme'); ok(Pz.run().tries.length===0 && JSON.stringify(Pz.target())!==JSON.stringify(t1) && g.has('h.scale'), 'rejouable : essais remis à zéro, nouvelle cible');
+    AMB.store.setMany(Pz.target(),'user'); const r3=Pz.attempt(); ok(r3.ok && r3.first && pe.join()==='20', 'résolue plus tard : ✧ de la 1re résolution'); }
+  // help (live gauge) changes nothing to the rewards; attempts and target survive closing the card; old saves load
+  { Pz.start('b.gamme'); const tb=Pz.target(); AMB.store.setMany(Object.fromEntries(Object.entries(tb).map(([k,v])=>[k, AMB.store.spec(k).options.find(o=>o!==v)])),'user'); Pz.attempt(); Pz.stop(); Pz.start('b.gamme');
+    ok(Pz.run().tries.length===1 && JSON.stringify(Pz.target())===JSON.stringify(tb), 'fermer puis rouvrir : mêmes essais, même cible');
+    const sh=g.s.shards; Pz.setHelp(true); AMB.store.setMany(Pz.target(),'user'); const r=Pz.attempt(); ok(r.ok && g.s.puzzles.includes('b.gamme') && g.s.shards===sh+25, 'avec la jauge d\'aide : résolue, ✧ 25 quand même');
     Pz.setHelp(false);
-    localStorage.setItem('ambient.game.test', JSON.stringify({v:1,mode:'path',shards:3,earned:3,nodes:['racine'],found:[],contracts:[],puzzles:['p.premier'],active:[],prog:{},ended:false}));
-    g.load(); ok(g.s.puzzles.includes('p.premier') && !Pz.best('p.premier') && Array.isArray(g.s.opened) && Pz.run('p.premier').tries.length===0, 'ancienne sauvegarde : chargée sans étoiles'); }
+    localStorage.setItem('ambient.game.test', JSON.stringify({v:1,mode:'path',shards:3,earned:3,nodes:['racine'],found:['p:drone.tone','a:play'],stars:{'p.premier':2},contracts:[],puzzles:['p.premier'],runs:{'p.gamme':{tries:[{total:0.2,pegs:[]}],listens:2,help:false}},active:['k.souffle','k.couleur','e.extremes'],prog:{},ended:false}));
+    g.load(); ok(g.s.puzzles.includes('p.premier') && !('found' in g.s) && !('stars' in g.s) && Array.isArray(g.s.opened) && g.s.shards===3, 'ancienne sauvegarde (découvertes, étoiles) : chargée, champs retirés ignorés');
+    ok(Pz.run('p.gamme').tries.length===1 && Pz.target('p.gamme') && Object.keys(Pz.target('p.gamme')).length===4, 'ancienne énigme en cours sans cible : une cible est tirée, l\'essai fait est gardé');
+    K.refill(); ok(g.s.active.join()==='k.couleur', 'ancienne sauvegarde : un seul contrat actif valide'); }
   ok(Pz.keyScore('drone.tone',0.5,0.5)===1 && Pz.keyScore('drone.tone',0,1)===0 && Pz.keyScore('pad.wave','Verre','Nappe')===0, 'score par réglage');
   g.reset();
   g.setMode('free'); ok(T.paramUnlocked('fx.echo') && T.uiUnlocked('song'), 'mode libre : tout ouvert');

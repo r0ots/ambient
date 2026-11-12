@@ -123,10 +123,11 @@
       s.active = s.active.filter((id) => byId[id] && !g.s.contracts.includes(id)).slice(0, ACTIVE); // older saves: 3 active
       // random draw (seeded PRNG kept in the game state) among the eligible ones; skipped ones come last
       const skipped = s.skipped || [], rnd = this.rng(g);
-      for (const pool of [DEFS.filter((d) => !skipped.includes(d.id)), skipped.map((id) => byId[id]).filter(Boolean)]) {
+      // skipped ones come back in the order they were passed (↷ always shows another one when there is one)
+      for (const [pool, drawn] of [[DEFS.filter((d) => !skipped.includes(d.id)), true], [skipped.map((id) => byId[id]).filter(Boolean), false]]) {
         const cand = pool.filter((d) => !s.active.includes(d.id) && this.eligible(d, g));
         while (s.active.length < ACTIVE && cand.length) {
-          const d = cand.splice(Math.floor(rnd() * cand.length), 1)[0];
+          const d = cand.splice(drawn ? Math.floor(rnd() * cand.length) : 0, 1)[0];
           s.active.push(d.id); s.prog[d.id] = s.prog[d.id] || { n: 0 };
         }
       }
