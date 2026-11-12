@@ -126,6 +126,20 @@ f.addEventListener('load', async ()=>{
     A.tree.buy('e.reverb'); ok(A.tree.paramUnlocked('pad.send') && !A.tree.paramUnlocked('bells.send'), 'Espace d\'une couche seulement si la couche est là');
     A.tree.buy('e.echo'); ok(A.store.get('fx.echo')===A.store.spec('fx.echo').def, 'écho acheté = on l\'entend (valeur par défaut)');
     A.game.reset(); }
+  // --- Écho card (S3.1): Réécouter, no Valider nor gauge, pegs ✓ ⬆ ⬇ after each note, the screen stays where it is
+  { A.game.reset(); A.game.earn(300,'test'); ['h.pad','m.bells'].forEach(i=>A.tree.buy(i)); A.perform.setMode('listen');
+    const pzc=d.getElementById('puzzle'), P=A.puzzles, mid=(dg)=>A.theory.degreeToMidi(dg,A.seq.root,A.seq.scale,4), live=(m)=>{ P.echoUntil=0; A.bus.emit('live',{midi:m,time:0,vel:0.85,raw:null}); };
+    A.garden.openPuzzle('e.premier'); await wait(20); const t=P.target().degs;
+    ok(!pzc.hidden && /Écho/.test(pzc.querySelector('.pz-title').textContent) && /Réécouter/.test(pzc.querySelector('.pz-ab').textContent) && !shown('#puzzle .pz-ok') && !shown('#puzzle .pz-help') && !shown('#puzzle .pz-gauge') && A.mode==='listen' && /3 notes/.test(pzc.querySelector('.pz-hint').textContent), 'carte Écho : Réécouter, ni Valider ni jauge, écran inchangé');
+    live(mid(t[0])); live(mid(t[1])+1); await wait(20);
+    const pegs=[...pzc.querySelectorAll('.pz-row:not(.pz-head) .pz-peg')].map(e=>e.textContent).join(' ');
+    ok(pegs==='✓ ⬇ ·' && /Note 3 sur 3/.test(pzc.querySelector('.pz-hint').textContent), 'pions affichés après chaque note : '+pegs);
+    live(mid(t[2])-1); await wait(20);
+    ok(pzc.querySelectorAll('.pz-row:not(.pz-head)').length===2 && /1 note juste sur 3\. Nouvelle phrase\. 5 essais/.test(pzc.querySelector('.pz-hint').textContent), 'phrase finie : la ligne reste, nouvelle phrase ('+pzc.querySelector('.pz-hint').textContent+')');
+    P.target().degs.forEach(dg=>live(mid(dg))); await wait(20);
+    ok(pzc.hidden && A.game.s.puzzles.includes('e.premier') && /Écho/.test(d.getElementById('toast').textContent), 'phrase juste : carte fermée, réussite');
+    A.garden.openPuzzle('e.premier'); A.game.setMode('free'); await wait(20); ok(pzc.hidden && !P.current, 'passage en libre : carte Écho fermée');
+    A.game.setMode('path'); A.game.reset(); }
   // --- actions on success (G7.2): a cancelled save emits nothing, a real one does (contracts count it)
   { A.game.reset(); A.game.earn(300,'test'); ['t.son','t.journal'].forEach(i=>A.tree.buy(i)); const acts=[]; A.bus.on('act',id=>acts.push(id));
     const op=w.prompt; w.prompt=()=>null; d.getElementById('save').click(); await wait(20);
