@@ -1,7 +1,7 @@
 <!doctype html><html><head><meta charset="utf-8"></head><body>
 <!-- Economy of the Parcours: scripted players run through the path on the REAL data (tree costs and gates, contracts drawn
      one at a time like contracts.refill, puzzles, key secrets) with a time model per activity. Contracts and puzzles are the
-     only sources of ✧ (a secret opens its node instead; the garden visual pays nothing: checked below).
+     only sources of ✧ (a secret opens its node instead: tests/secrets.html; the garden visual pays nothing: tests/garden-visual.html).
      Targets (S3.8): typical full path 40–60 min without any secret, never more than 4.5 min without a purchase (5 min is the
      limit), margin between the ✧ that can be earned and the tree cost 50–80 %, a slow player: first purchase in under 2 min;
      the musician who finds the key secrets: ≤ 40 min. -->
@@ -21,19 +21,14 @@ const mulberry = (a) => () => { a = (a + 0x6d2b79f5) >>> 0; let t = Math.imul(a 
 
 document.getElementById('f').addEventListener('load', async () => {
   try {
-    const w = document.getElementById('f').contentWindow, A = w.AMB, T = A.tree, G = A.garden;
+    const w = document.getElementById('f').contentWindow, A = w.AMB, T = A.tree;
     const nodes = T.NODES, cost = nodes.reduce((a, n) => a + n.cost, 0);
-    // --- the sources that pay: only contracts, puzzles, secrets call game.earn / complete / solve; no discovery any more
-    const src = async (f) => (await (await fetch('../js/' + f)).text()).replace(/\/\/.*$/gm, '');
-    ok(!/\.(earn|complete|solve)\(/.test(await src('garden-visual.js')), 'jardin visuel : aucun ✧ versé');
-    ok(!/\.earn\(/.test(await src('garden.js')), 'l\'interface du jeu ne verse rien');
 
     // --- every income, with its prerequisites
     const inc = [];
     for (const d of A.contracts.DEFS) inc.push({ id: d.id, need: d.need, n: d.reward, t: TIME.contract(d), kind: 'contrat' });
     for (const d of A.puzzles.DEFS) inc.push({ id: d.id, need: d.need, n: d.reward, t: d.kind === 'echo' ? TIME.echo : TIME.puzzle, kind: d.opens ? 'porte' : 'énigme', solves: d.id, gate: d.opens });
     // S3.2: a secret opens a node for 0 ✧ and pays no ✧ of its own: not an income. The economy is sized for a player who finds none.
-    ok(A.secrets.DEFS.every((d) => !d.reward.n), 'secrets : aucun ✧ versé (ils ouvrent un nœud), l\'économie suppose zéro secret trouvé');
     const total = inc.reduce((a, x) => a + x.n, 0), by = {}; inc.filter((x) => x.n).forEach((x) => { by[x.kind] = (by[x.kind] || 0) + x.n; });
     const margin = Math.round(100 * (total / cost - 1));
     log(`économie : coût de l'arbre ${cost} ✧, gagnables ${total} ✧ (${JSON.stringify(by)}), marge ${margin} %`);
