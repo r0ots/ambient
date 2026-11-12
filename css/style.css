@@ -439,7 +439,7 @@ body.listen .puzzle-card { display: none; }
 .pz-btns .btn { flex: 1; }
 .pz-ok.ready { border-color: #8fe3a0; color: #8fe3a0; box-shadow: 0 0 10px #8fe3a066; }
 .pz-hint { font: 12px var(--f-mono, monospace) !important; color: var(--lcd-fg) !important; }
-@media (max-width: 560px) { .puzzle-card { left: 8px; right: 8px; width: auto; bottom: 8px; } }
+@media (max-width: 560px) { .puzzle-card { left: 8px; right: 8px; width: auto; bottom: 8px; max-height: 46vh; overflow-y: auto; } body.pz-open { padding-bottom: 48vh; } }
 .tree-puzzles { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 6px; font: 12px var(--f-mono, monospace); color: var(--muted); }
 .tree-puzzles .btn { color: var(--lcd-fg); }
 /* v1.06: the contract on the LCD's 2nd line (path only): tap = how to do it, ↷ = the next one */

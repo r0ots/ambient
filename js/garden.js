@@ -121,7 +121,11 @@
       const want = this.pzMode(id);
       if (AMB.perform && AMB.mode !== want && AMB.tree.uiUnlocked('mode-' + want)) AMB.perform.setMode(want);
       const card = $('#puzzle'); card.hidden = false;
+      document.body.classList.add('pz-open');
       const d = P.byId[id];
+      // phone: the card covers the bottom of the screen, so bring the first control in play to the top
+      const first = Object.keys(d.keys).map((k) => document.querySelector(`[data-key="${k}"]`)).find((e) => e && e.getClientRects().length);
+      if (first && window.innerWidth <= 560) try { (first.closest('.panel') || first).scrollIntoView({ block: 'start' }); } catch (e) {}
       card.querySelector('.pz-title').textContent = `Énigme · ${d.title}`;
       card.querySelector('.pz-intro').textContent = d.intro;
       this.renderPuzzle();
@@ -130,6 +134,7 @@
       if (AMB.puzzles) AMB.puzzles.stop();
       const back = this.pz && this.pz.mode; this.pz = null;
       const c = $('#puzzle'); if (c) c.hidden = true;
+      document.body.classList.remove('pz-open');
       if (back && AMB.perform && AMB.mode !== back && AMB.game.path && (back === 'listen' || AMB.tree.uiUnlocked('mode-' + back))) AMB.perform.setMode(back);
     },
     // one validation = one row of pegs: ✓ right, ≈ close, ✗ far, plus ⬆ / ⬇ or « autre » (another option)
