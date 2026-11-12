@@ -1,6 +1,6 @@
 <!doctype html><html><head><!-- Dev captures (not in the suite): ?w=390&h=780 for phone width.
   Modes: #free, #pz (énigme ouverte, écran en Sculpter), #bar (barre + LCD avec le contrat), #task-help (aide du contrat sur le LCD),
-  #sel=<node>; #help-path / #help-free (aide du Parcours ; libre), #more (menu ⋯ en Parcours),
+  #echo (énigme Écho en cours, quelques pions), #sel=<node>; #help-path / #help-free (aide du Parcours ; libre), #more (menu ⋯ en Parcours),
   #garden (Jardin visuel débutant : 3 couches), #garden-adv (tout l'arbre, secrets) — notes simulées sur le bus. --><meta charset="utf-8"><style>body{margin:0}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body>
 <script>localStorage.removeItem('ambient.game.shot');</script>
 <iframe id="f" src="../index.html?gamekey=ambient.game.shot"></iframe>
@@ -19,6 +19,11 @@ document.getElementById('f').addEventListener('load', () => {
     doc.querySelector('.more').open = true;
   } else if (h.includes('task-help')) {
     A.garden.showTree(false); doc.querySelector('#lcdTask .lcd-task-txt').click();
+  } else if (h.includes('echo')) {
+    A.garden.openPuzzle('e.premier');
+    setTimeout(() => { const P = A.puzzles, m = (dg) => A.theory.degreeToMidi(dg, A.seq.root, A.seq.scale, 4), play = (x) => { P.echoUntil = 0; A.bus.emit('live', { midi: x, time: 0, vel: 0.85, raw: null }); };
+      const t = P.target().degs; play(m(t[0])); play(m(t[1]) + 2); play(m(t[2]) - 1);
+      setTimeout(() => { const u = P.target().degs; play(m(u[0])); play(m(u[1]) - 1); }, 100); }, 600);
   } else if (h.includes('pz')) {
     A.store.setMany({ 'drone.wave': 'Orgue', 'pad.wave': 'Nappe' }, 'user');
     A.game.s.puzzles = A.game.s.puzzles.filter(x => x !== 'p.premier'); A.garden.openPuzzle('p.premier');

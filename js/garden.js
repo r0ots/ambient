@@ -108,9 +108,11 @@
 
     // ---- puzzle card (G5.3, « Mastermind » G8.1) ----
     pz: null, // { id, mode: the screen mode to come back to }
-    pzKeys() { return `Joue sur : ${Object.keys(AMB.puzzles.byId[this.pz.id].keys).map((k) => this.paramLabel(k)).join(', ')}`; },
+    pzKeys() {
+      if (AMB.puzzles.isEcho(this.pz.id)) return 'Rejoue-la avec les touches A à L ou ton clavier MIDI, une note après l\'autre.';
+      return `Joue sur : ${Object.keys(AMB.puzzles.byId[this.pz.id].keys).map((k) => this.paramLabel(k)).join(', ')}`; },
     // the controls of a puzzle live in Sculpter, except the progression and the pulses (Composer)
-    pzMode(id) { return Object.keys(AMB.puzzles.byId[id].keys).some((k) => /^(pad\.prog|perc\.)/.test(k)) ? 'compose' : 'sculpt'; },
+    pzMode(id) { if (AMB.puzzles.isEcho(id)) return null; return Object.keys(AMB.puzzles.byId[id].keys).some((k) => /^(pad\.prog|perc\.)/.test(k)) ? 'compose' : 'sculpt'; },
     openPuzzle(id) {
       const P = AMB.puzzles; if (!P || !P.byId[id]) return;
       this.showTree(false);
@@ -119,16 +121,18 @@
       P.start(id);
       // show the controls in play (the screen goes back to its mode when the card closes)
       const want = this.pzMode(id);
-      if (AMB.perform && AMB.mode !== want && AMB.tree.uiUnlocked('mode-' + want)) AMB.perform.setMode(want);
+      if (want && AMB.perform && AMB.mode !== want && AMB.tree.uiUnlocked('mode-' + want)) AMB.perform.setMode(want);
       const card = $('#puzzle'); card.hidden = false;
       document.body.classList.add('pz-open');
       const d = P.byId[id];
       // phone: the card covers the bottom of the screen, so bring the first control in play to the top
-      const first = Object.keys(d.keys).map((k) => document.querySelector(`[data-key="${k}"]`)).find((e) => e && e.getClientRects().length);
+      const first = Object.keys(d.keys || {}).map((k) => document.querySelector(`[data-key="${k}"]`)).find((e) => e && e.getClientRects().length);
       if (first && window.innerWidth <= 560) try { (first.closest('.panel') || first).scrollIntoView({ block: 'start' }); } catch (e) {}
       card.querySelector('.pz-title').textContent = `Énigme · ${d.title}`;
       card.querySelector('.pz-intro').textContent = d.intro;
       this.renderPuzzle();
+      clearTimeout(this._echoT);
+      if (P.isEcho(id)) this._echoT = setTimeout(() => P.echoPlay(id), 400); // an echo starts by being heard
     },
     closePuzzle() {
       if (AMB.puzzles) AMB.puzzles.stop();
@@ -141,12 +145,26 @@
     PEG: { ok: ['✓', 'juste'], near: ['≈', 'proche'], far: ['✗', 'loin'] },
     DIR: { up: ['⬆', 'plus haut'], down: ['⬇', 'plus bas'], other: [' autre', 'autre option'] },
     pegHTML(p) {
+      if (p.echo) { // Écho: ✓ right, ⬆ / ⬇ which way the note should go
+        const dir = p.dir && this.DIR[p.dir];
+        return `<span class="pz-peg ${p.state}" data-k="${p.key}" title="Note ${p.key.slice(1)} : ${dir ? dir[1] : 'juste'}">${dir ? dir[0] : '✓'}</span>`;
+      }
       const [sym, word] = this.PEG[p.state], dir = p.dir ? this.DIR[p.dir] : null;
       return `<span class="pz-peg ${p.state}" data-k="${p.key}" title="${this.paramLabel(p.key)} : ${word}${dir ? `, ${dir[1]}` : ''}">${sym}${dir ? dir[0] : ''}</span>`;
     },
     renderBoard() {
       const card = $('#puzzle'), P = AMB.puzzles, d = P.byId[this.pz.id], r = P.run(d.id);
-      const board = card.querySelector('.pz-board'), keys = Object.keys(d.keys);
+      const board = card.querySelector('.pz-board');
+      if (P.isEcho(d.id)) { // one row per phrase played back, the one in progress last (its notes to come as « · »)
+        const n = P.echoMidis(d.id).length, cur = P.echoRow;
+        board.style.setProperty('--n', n);
+        const rows = r.tries.map((t, i) => [i + 1, t.pegs]);
+        if (cur.length || r.tries.length) rows.push([r.tries.length + 1, cur]);
+        board.innerHTML = !rows.length ? '' : `<div class="pz-row pz-head"><span></span>${Array.from({ length: n }, (_, i) => `<span>${i + 1}</span>`).join('')}</div>`
+          + rows.map(([k, pegs]) => `<div class="pz-row"><span class="pz-n">${k}</span>${pegs.map((p) => this.pegHTML(p)).join('')}${'<span class="pz-peg wait">·</span>'.repeat(Math.max(0, n - pegs.length))}</div>`).join('');
+        return;
+      }
+      const keys = Object.keys(d.keys);
       board.style.setProperty('--n', keys.length);
       if (!r.tries.length) { board.innerHTML = ''; return; }
       const short = (k) => { const l = this.paramLabel(k); return l.includes(' · ') ? l.split(' · ').pop() : l; };
@@ -156,13 +174,20 @@
     statusText(r) {
       const P = AMB.puzzles, left = P.TRIES - r.tries.length, last = r.tries[r.tries.length - 1];
       const leftTxt = `${left} essai${left > 1 ? 's' : ''} restant${left > 1 ? 's' : ''} sur ${P.TRIES}`;
+      if (P.isEcho(this.pz.id)) {
+        const n = P.echoMidis(this.pz.id).length, at = P.echoRow.length;
+        if (at) return `Note ${at + 1} sur ${n}. ${leftTxt}.`;
+        if (!last) return `${n} notes à rejouer. ${leftTxt}.`;
+        const k = last.pegs.filter((p) => p.state === 'ok').length;
+        return `Pas encore : ${k} note${k > 1 ? 's' : ''} juste${k > 1 ? 's' : ''} sur ${n}. Nouvelle phrase. ${leftTxt}.`;
+      }
       if (!last) return `Écoute la cible, reviens à ton son, règle, valide. ${leftTxt}.`;
       const n = (s) => last.pegs.filter((p) => p.state === s).length;
       return `Pas encore : ${n('ok')} juste${n('ok') > 1 ? 's' : ''}, ${n('near')} proche${n('near') > 1 ? 's' : ''}. ${leftTxt}.`;
     },
     renderPuzzle() {
       const card = $('#puzzle'), P = AMB.puzzles; if (!card || !this.pz || !P) return;
-      const r = P.run(this.pz.id), help = !!AMB.game.s.pzHelp;
+      const r = P.run(this.pz.id), echo = P.isEcho(this.pz.id), help = !echo && !!AMB.game.s.pzHelp;
       const sc = P.currentScore(), pct = Math.round(sc.total * 100), ready = help && sc.total >= P.PASS;
       const gauge = card.querySelector('.pz-gauge');
       gauge.hidden = !help;
@@ -172,20 +197,25 @@
         card.querySelector('.pz-pct').textContent = `${pct} %`;
       }
       const cb = card.querySelector('.pz-help input'); if (cb) cb.checked = help;
+      if (cb) cb.closest('.pz-help').hidden = echo;
       const target = P.side() === 'target';
       const ab = card.querySelector('.pz-ab');
-      ab.textContent = target ? '◀ Revenir à mon son' : '▶ Écouter la cible';
+      ab.textContent = echo ? '↻ Réécouter' : target ? '◀ Revenir à mon son' : '▶ Écouter la cible';
       ab.classList.toggle('on', target);
       const okb = card.querySelector('.pz-ok'); okb.classList.toggle('ready', ready && !target); okb.disabled = target;
       okb.textContent = `Valider (${r.tries.length + 1}/${P.TRIES})`;
+      okb.hidden = echo; // an echo is judged at its last note
       card.querySelector('.pz-keys').textContent = this.pzKeys();
       this.renderBoard();
       card.querySelector('.pz-hint').textContent = target ? 'Tu entends la cible. Touche un réglage ou reviens à ton son pour continuer.' : this.statusText(r);
     },
     validatePuzzle() {
       const P = AMB.puzzles; if (!this.pz || !P) return;
-      const id = this.pz.id, d = P.byId[id];
-      const res = P.attempt(id); if (!res) return;
+      const res = P.attempt(this.pz.id); if (res) this.puzzleResult(this.pz.id, res);
+    },
+    // after an attempt (Valider, or the last note of an echo): solved, out of attempts, or the next row
+    puzzleResult(id, res) {
+      const P = AMB.puzzles, d = P.byId[id];
       if (res.ok) {
         this.closePuzzle();
         AMB.ui.toast(`✓ Énigme résolue en ${res.tries} essai${res.tries > 1 ? 's' : ''} : ${d.title}${res.first && d.opens ? ` · « ${AMB.tree.byId[d.opens].name} » peut s'acheter` : ''}`);
@@ -199,7 +229,12 @@
           : 'Pas cette fois : elle était dure. Rejoue-la depuis l\'arbre, avec une nouvelle cible.');
         if (AMB.game.path) this.lcd(gate ? '◈ porte ouverte' : '◈ à rejouer', 3000);
         if (gate) this.showTree(true);
-      } else this.renderPuzzle();
+      } else {
+        this.renderPuzzle();
+        // an echo: the new phrase is heard right away (never idle)
+        clearTimeout(this._echoT);
+        if (P.isEcho(id)) this._echoT = setTimeout(() => { if (this.pz && this.pz.id === id) P.echoPlay(id); }, 1200);
+      }
     },
 
     build() {
@@ -213,7 +248,10 @@
       const pzc = $('#puzzle');
       if (pzc) {
         pzc.querySelector('.pz-x').addEventListener('click', () => this.closePuzzle());
-        pzc.querySelector('.pz-ab').addEventListener('click', () => AMB.puzzles.listen(AMB.puzzles.side() === 'target' ? 'mine' : 'target'));
+        pzc.querySelector('.pz-ab').addEventListener('click', () => {
+          const P = AMB.puzzles; if (P.isEcho()) return P.echoPlay();
+          P.listen(P.side() === 'target' ? 'mine' : 'target');
+        });
         pzc.querySelector('.pz-ok').addEventListener('click', () => this.validatePuzzle());
         const hb = pzc.querySelector('.pz-help input'); if (hb) hb.addEventListener('change', () => AMB.puzzles.setHelp(hb.checked));
       }
@@ -225,7 +263,7 @@
         });
         AMB.bus.on('game:puzzles', (d) => { if (!AMB.game.path) return; this.chime('solve'); this.lcd('◈ énigme résolue'); });
         AMB.bus.on('game:contracts', () => { if (!AMB.game.path) return; this.chime('small'); this.lcd('✓ contrat rempli', 2500); });
-        AMB.bus.on('game:puzzle', () => this.renderPuzzle());
+        AMB.bus.on('game:puzzle', (e) => { if (e && e.res && this.pz && this.pz.id === e.id) this.puzzleResult(e.id, e.res); else this.renderPuzzle(); });
         AMB.bus.on('game:mode', () => { if (!AMB.game.path) this.closePuzzle(); });
         AMB.bus.on('game:reset', () => this.closePuzzle());
       }
