@@ -65,6 +65,7 @@
       const d = $('#treeDlg'); if (!d) return;
       if (!on && this.seq) { this.seqFinish(); return; } // closing during the unlock sequence = finish it now
       d.hidden = !on;
+      if (this.resetPointers) this.resetPointers(); // no finger left over from the last visit
       if (on) { this.select(null); this.renderTree(); this.fitTree(); if (AMB.secrets) AMB.secrets.render(); }
     },
     // ---- the screen: header (shards, puzzles, branches) + the map, built once and repainted ----
@@ -158,7 +159,7 @@
         if (!n.req.length) b.classList.add('root');
         b.style.left = p.x + 'px'; b.style.top = p.y + 'px'; b.style.setProperty('--c', T.BRANCHES[n.branch].color);
         b.innerHTML = `<i class="led" aria-hidden="true"></i><b>${n.name}</b><span></span>`;
-        b.title = `${n.desc}\n\nDébloque : ${T.grants(n.id).join(', ') || '—'}`
+        b.title = `${n.desc}\n\nDébloque : ${T.grantsText(n.id) || '—'}`
           + (n.req.length ? `\nDemande : ${n.req.map((r) => T.byId[r].name).join(', ')}` : '')
           + (n.gate ? `\nPorte : une énigme d'écoute à résoudre` : '');
         stage.append(b);
@@ -205,11 +206,13 @@
       stage.style.transform = `translate(${v.tx}px, ${v.ty}px) scale(${v.k})`;
       map.classList.toggle('zoomed', w > vw + 1 || h > vh + 1);
     },
-    // always opens on the whole map ("see all", mobile included): the player zooms in afterwards
-    fitTree() {
+    // opens on the whole map; on a narrow screen (< 560 px) at k ≈ 0.6 centred on the root so labels stay
+    // readable (⤢ = whole map, all = true). Remembers the width it was fitted for (resize: refit only if it changes).
+    fitTree(all) {
       const map = $('#treeDlg .tree-map'); if (!map || !map.clientWidth) return;
       const lay = this.treeLayout(), lim = this.kLimits(), v = this.view;
-      v.k = Math.min(lim.fit, 1.15);
+      this.fitW = map.clientWidth;
+      v.k = !all && map.clientWidth < 560 ? clamp(0.6, lim.min, lim.max) : Math.min(lim.fit, 1.15);
       const root = lay.pos.racine || { x: lay.W / 2, y: lay.H };
       v.tx = map.clientWidth / 2 - root.x * v.k;
       v.ty = map.clientHeight - (lay.H - L.BOT / 3) * v.k; // root (bottom) in view
@@ -260,7 +263,7 @@
       box.dataset.id = id; box.className = `tree-info st-${st}`;
       box.innerHTML = `<p class="ti-h"><b>${n.name}</b> <small>${br.name} · ${STATE_TXT[st]}${st !== 'owned' && n.cost ? ` · ✧ ${n.cost}` : ''}</small></p>`
         + `<p class="ti-d">${n.desc}</p>`
-        + `<p class="ti-g">Débloque : ${T.grants(id).join(', ') || '—'}</p>`
+        + `<p class="ti-g">Débloque : ${T.grantsText(id) || '—'}</p>`
         + (n.req.length ? `<p class="ti-r">Demande : ${req}</p>` : '')
         + (n.gate && st !== 'owned' ? '<p class="ti-r">Porte : une énigme d\'écoute à résoudre</p>' : '')
         + (act ? `<button type="button" class="btn small tree-buy">${act}</button>` : '');
@@ -307,6 +310,9 @@
         else { const [a] = [...pts.values()]; drag = { x0: a.x, y0: a.y, tx: this.view.tx, ty: this.view.ty, moved: true }; }
       };
       map.addEventListener('pointerup', up); map.addEventListener('pointercancel', up);
+      map.addEventListener('lostpointercapture', up); map.addEventListener('pointerleave', up); // never a stale finger
+      this.resetPointers = () => { pts.clear(); drag = null; pinch = null; suppress = false; map.classList.remove('panning'); };
+      this.pointers = () => pts.size; // (tests)
       map.addEventListener('click', (e) => { if (suppress) { e.stopPropagation(); e.preventDefault(); suppress = false; } }, true);
       map.addEventListener('wheel', (e) => { e.preventDefault(); this.zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015))); }, { passive: false });
       // a focused button off-screen must not scroll the clipped map: pan instead
@@ -333,11 +339,12 @@
       if (zm) zm.addEventListener('click', (e) => {
         const b = e.target.closest('[data-zoom]'); if (!b) return;
         const r = map.getBoundingClientRect();
-        if (b.dataset.zoom === 'fit') this.fitTree(); else this.zoomAt(r.left + r.width / 2, r.top + r.height / 2, b.dataset.zoom === 'in' ? 1.3 : 1 / 1.3);
+        if (b.dataset.zoom === 'fit') this.fitTree(true); else this.zoomAt(r.left + r.width / 2, r.top + r.height / 2, b.dataset.zoom === 'in' ? 1.3 : 1 / 1.3);
       });
       // any click during the unlock sequence fast-forwards it
       if (dlg) dlg.addEventListener('click', (e) => { if (this.seq) { e.stopPropagation(); e.preventDefault(); this.seqFinish(); } }, true);
-      window.addEventListener('resize', () => { if (dlg && !dlg.hidden) this.fitTree(); });
+      // refit only when the width changes (a mobile address bar showing / hiding changes the height only)
+      window.addEventListener('resize', () => { if (!dlg || dlg.hidden) return; if (map.clientWidth !== this.fitW) this.fitTree(); else this.applyView(); });
     },
 
     // ---- buying (G2.2) + unlock sequence (G8.5) ----

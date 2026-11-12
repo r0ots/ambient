@@ -538,7 +538,10 @@ html[data-lcd="neon"] { --lcd-bg: #150a1c; --lcd-fg: #ff6fd8; --lcd-dim: #5a2160
 .tree-nb em { font-style: normal; color: var(--lcd-fg); }
 .tree-legend { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 2px 14px; align-items: center; margin: 0; }
 .modal-card .tree-legend { font-size: 12px; }
-.tree-legend i { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: -9px; vertical-align: -1px; background: #121110; box-shadow: 0 0 0 1px #4a4844; }
+.tree-legend > span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.tree-legend em { font-style: normal; }
+.tree-legend .lg-short { display: none; }
+.tree-legend i { display: inline-block; flex: none; width: 11px; height: 11px; border-radius: 50%; background: #121110; box-shadow: 0 0 0 1px #4a4844; }
 .tree-legend i.st-owned { background: #8fe3a0; box-shadow: 0 0 6px #8fe3a0; }
 .tree-legend i.st-available { background: var(--lcd-fg); box-shadow: 0 0 6px var(--lcd-fg); }
 .tree-legend i.st-gated { box-shadow: 0 0 0 1px #c4c9e0; outline: 1px dashed #c4c9e0; outline-offset: 1px; }
@@ -627,6 +630,15 @@ html[data-lcd="neon"] { --lcd-bg: #150a1c; --lcd-fg: #ff6fd8; --lcd-dim: #5a2160
   .tree-view { min-height: 300px; }
   .tree-info, .tree-info.right { left: 6px; right: 6px; bottom: 6px; width: auto; }
   .tree-zoom { flex-direction: row; top: 6px; bottom: auto; right: 6px; }
+}
+/* narrow phones: the legend keeps one line (short labels), the hint folds under it; the zoom buttons sit
+   inside the map's top-right corner, clear of the legend and of the node card at the bottom */
+@media (max-width: 560px) {
+  .modal-card .tree-legend { font-size: 11px; gap: 2px 10px; flex-wrap: wrap; }
+  .tree-legend .lg-long { display: none; }
+  .tree-legend .lg-short { display: inline; }
+  .tree-legend::after { font-size: 10.5px; }
+  .tree-zoom .btn { min-width: 28px; padding: 3px 7px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .tree-node .led, .tree-node.st-available .led, .tree-node.is-buying .led, .tree-node.is-born .led, .tree-node.is-blink .led, .tree-link.available, .tree-glow.lit, .tree-glow.hint { animation: none; transition: none; }

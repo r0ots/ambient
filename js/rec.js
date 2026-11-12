@@ -80,5 +80,5 @@
     tick();
   }
 
-  AMB.rec = { toggleRec, setSleep, download };
+  AMB.rec = { toggleRec, setSleep, download, recording: () => !!recState };
 })();

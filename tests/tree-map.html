@@ -1,0 +1,51 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
+<!-- Tree screen (v0.99 fixes): narrow-screen opening, refit on width only, legend / zoom buttons, node card, pointers. -->
+<script src="lib.js"></script>
+<script>localStorage.removeItem('ambient.game.treemap');</script>
+<iframe id="f" src="../index.html?gamekey=ambient.game.treemap" style="width:390px;height:780px;border:0"></iframe>
+<script>
+const f=document.getElementById('f');
+f.addEventListener('load', async ()=>{
+  try{
+  const w=f.contentWindow, d=f.contentDocument, A=w.AMB, G=A.game, Gd=A.garden, T=A.tree;
+  w.addEventListener('error',e=>log('ERROR '+e.message+' @'+e.filename+':'+e.lineno));
+  G.setMode('path'); Gd.welcome(false); G.earn(200,'test'); ['t.son','h.pad','e.reverb','m.bells'].forEach(i=>T.buy(i));
+  const map=d.querySelector('#treeDlg .tree-map'), R=(e)=>e.getBoundingClientRect();
+  Gd.showTree(true); await wait(60);
+  // --- narrow screen: k ≈ 0.6, centred on the root
+  const root=map.querySelector('.tree-node[data-id=racine] .led'), mr=R(map), rr=R(root);
+  ok(Math.abs(Gd.view.k-0.6)<0.01, 'écran étroit ('+map.clientWidth+' px) : ouverture à k='+Gd.view.k.toFixed(2));
+  ok(Math.abs((rr.left+rr.width/2)-(mr.left+mr.width/2))<12 && rr.bottom<=mr.bottom && rr.top>mr.top, 'racine centrée et visible en bas de la carte');
+  // --- legend on one line, zoom buttons clear of it
+  const items=[...d.querySelectorAll('.tree-legend > span')], tops=new Set(items.map(e=>Math.round(R(e).top)));
+  ok(items.length===4 && tops.size===1, 'légende : 4 états sur une seule ligne');
+  const lg=R(d.querySelector('.tree-legend')), zb=R(d.querySelector('.tree-zoom'));
+  ok(zb.top>=lg.bottom, 'boutons + − ⤢ sous la légende (pas de recouvrement)');
+  // --- ⤢ = whole map
+  d.querySelector('[data-zoom=fit]').click(); await wait(20);
+  ok(Gd.view.k<0.5, '⤢ : toute la carte (k='+Gd.view.k.toFixed(2)+')');
+  // --- resize: refit only when the width changes
+  Gd.fitTree(); Gd.zoomAt(200,400,1.5); const k1=Gd.view.k;
+  f.style.height='700px'; await wait(120);
+  ok(Math.abs(Gd.view.k-k1)<1e-9, 'redimensionnement en hauteur seule : zoom gardé (k='+Gd.view.k.toFixed(2)+')');
+  f.style.width='360px'; await wait(120);
+  ok(Math.abs(Gd.view.k-0.6)<0.01, 'largeur changée : recadrage (k='+Gd.view.k.toFixed(2)+')');
+  // --- pointers: never a stale finger
+  const pe=(t,id)=>map.dispatchEvent(new w.PointerEvent(t,{bubbles:true,pointerId:id,pointerType:'touch',isPrimary:id===1,clientX:150,clientY:300}));
+  pe('pointerdown',1); pe('pointerdown',2); ok(Gd.pointers()===2, 'deux doigts suivis');
+  Gd.showTree(false); ok(Gd.pointers()===0, 'fermeture : pointeurs vidés');
+  Gd.showTree(true); await wait(30); pe('pointerdown',3); Gd.showTree(false); Gd.showTree(true); ok(Gd.pointers()===0, 'ouverture : pointeurs vidés');
+  pe('pointerdown',4); pe('lostpointercapture',4); ok(Gd.pointers()===0, 'lostpointercapture : pointeur oublié');
+  pe('pointerdown',5); map.dispatchEvent(new w.PointerEvent('pointerleave',{pointerId:5,pointerType:'mouse'})); ok(Gd.pointers()===0, 'pointerleave : pointeur oublié');
+  // --- node card: « Débloque » grouped by layer, deduplicated
+  const multi=T.NODES.find(n=>{ const secs=n.params.filter(p=>!p.startsWith('*.')&&!p.endsWith('.*')).map(p=>p.split('.')[0]); return secs.length>=3 && new Set(secs).size<secs.length; });
+  Gd.select(multi.id); const txt=d.querySelector('.tree-info .ti-g').textContent;
+  const labels=T.grantGroups(multi.id).map(g=>g.label), dupes=labels.filter(l=>txt.split(l).length-1>1);
+  ok(!dupes.length && txt.includes(' : '), 'fiche « '+multi.name+' » : '+txt);
+  ok(T.NODES.every(n=>{ const g=T.grantGroups(n.id); return new Set(g.map(x=>x.label)).size===g.length && g.every(x=>new Set(x.items).size===x.items.length); }), 'Débloque : un groupe par couche, sans doublon, pour les '+T.NODES.length+' nœuds');
+  Gd.select(null); Gd.showTree(false);
+  localStorage.removeItem('ambient.game.treemap');
+  done();
+  }catch(e){ fail(e); }
+});
+</script></body></html>

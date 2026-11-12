@@ -3,6 +3,9 @@
 // replay, big answer buttons with 1–4 shortcuts), end screen (falling stars, blinking RECORD).
 // While the cabinet is open, the app's keyboard shortcuts are muted (window capture listener);
 // only the keys a mini-game asks for (passKeys) reach the app. Échap quits cleanly.
+// The rest of the app is `inert` while the cabinet is open (focus goes back to #arcadeBtn on close); the
+// app's MIDI is muted too (js/play.js reads arcade.open). A round starts the audio if needed (never muted)
+// and refuses to start while a recording runs (the round ducks the ambience).
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const $ = (s, r = document) => r.querySelector(s);
@@ -11,7 +14,7 @@
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   const ui = {
-    dlg: null, screen: 'closed', gameId: null, timer: 0, token: 0, lockUntil: 0, lastPick: null,
+    dlg: null, screen: 'closed', gameId: null, timer: 0, token: 0, lockUntil: 0, lastPick: null, startTok: 0, inerted: [],
 
     get A() { return AMB.arcade; },
     el(sel) { return $(sel, this.dlg); },
@@ -43,15 +46,35 @@
       if (!this.dlg) return;
       this.dlg.hidden = false; this.A.open = true;
       document.body.classList.add('arcade-on');
+      this.setInert(true);
+      this.say('');
       this.menu();
     },
     close() {
       if (!this.dlg) return;
+      this.startTok++;
       if (this.A.round) this.A.end({ abort: true });
       this.stopTimer();
       if (AMB.juice) AMB.juice.showCombo(false);
       this.dlg.hidden = true; this.A.open = false; this.screen = 'closed';
       document.body.classList.remove('arcade-on');
+      this.setInert(false);
+      const btn = $('#arcadeBtn'); if (btn) btn.focus();
+    },
+    // everything but the cabinet (and its ancestors) becomes inert: no focus, no click, hidden from screen readers
+    setInert(on) {
+      this.inerted.forEach((e) => { e.inert = false; }); this.inerted = [];
+      if (!on || !this.dlg) return;
+      for (let el = this.dlg; el.parentElement && el !== document.body; el = el.parentElement) {
+        for (const sib of el.parentElement.children) {
+          if (sib === el || sib.inert || /^(SCRIPT|STYLE|LINK)$/.test(sib.tagName) || sib.id === 'fx') continue;
+          sib.inert = true; this.inerted.push(sib);
+        }
+      }
+    },
+    say(text) { const m = this.el('.arc-msg'); if (!m) return; m.textContent = text || ''; m.hidden = !text; },
+    recording() {
+      return !!((AMB.rec && AMB.rec.recording && AMB.rec.recording()) || (AMB.pianoRoll && AMB.pianoRoll.roll && AMB.pianoRoll.roll.recording));
     },
     menu() {
       if (this.A.round) this.A.end({ abort: true });
@@ -73,9 +96,23 @@
     },
 
     // ---- round ----
-    start(id) {
+    async start(id) {
       const A = this.A;
       if (!id || !A.byId[id]) return;
+      if (this.recording()) {
+        if (this.screen !== 'menu') this.menu();
+        this.say('● Enregistrement en cours : arrête-le avant de lancer une manche (elle baisserait le son enregistré).');
+        return;
+      }
+      const tok = ++this.startTok;
+      // the round must be heard: start / resume the audio first (a click on a cartridge is a user gesture)
+      try {
+        if (AMB.ui && AMB.ui.ensureStarted) await AMB.ui.ensureStarted();
+        const ctx = AMB.engine && AMB.engine.ctx;
+        if (ctx && ctx.state === 'suspended') await ctx.resume();
+      } catch (e) { /* no audio: the round still runs (silent) */ }
+      if (tok !== this.startTok || !this.dlg || this.dlg.hidden) return; // closed (or another start) meanwhile
+      this.say('');
       this.gameId = id; this.lastPick = null; this.lockUntil = 0;
       this.show('play');
       this.el('.arc-game').textContent = A.byId[id].title;

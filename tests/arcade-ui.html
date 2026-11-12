@@ -1,0 +1,43 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
+<!-- Arcade cabinet (v0.99 fixes): the round starts the audio, refuses to start while recording, inert app, focus back, MIDI muted. -->
+<script src="lib.js"></script>
+<script>localStorage.removeItem('ambient.game.arcui'); localStorage.removeItem('ambient.arcade.arcui');</script>
+<iframe id="f" src="../index.html?gamekey=ambient.game.arcui&arcadekey=ambient.arcade.arcui" style="width:1200px;height:800px;border:0"></iframe>
+<script>
+const f=document.getElementById('f');
+f.addEventListener('load', async ()=>{
+  try{
+  const w=f.contentWindow, d=f.contentDocument, A=w.AMB, AR=A.arcade, U=A.arcadeUI, dlg=d.getElementById('arcadeDlg');
+  w.addEventListener('error',e=>log('ERROR '+e.message+' @'+e.filename+':'+e.lineno));
+  A.game.setMode('free'); A.garden.welcome(false);
+  const cart=()=>d.querySelector('.arc-cart[data-game=hautbas]');
+  // --- opening: the rest of the app is inert, the cabinet is not
+  d.getElementById('arcadeBtn').focus(); d.getElementById('arcadeBtn').click(); await wait(30);
+  ok(AR.open && !dlg.hidden && d.getElementById('play').closest('[inert]') && d.getElementById('arcadeBtn').closest('[inert]') && !dlg.closest('[inert]'), 'borne ouverte : reste de l\'appli inert, borne active');
+  // --- MIDI muted for the app as soon as the cabinet is open (no round yet)
+  { let calls=0; const pm=A.seq.playMidi, pl=A.seq.playing; A.seq.playMidi=()=>calls++; A.seq.playing=true;
+    A.play.onMidi({data:[0x90,72,100]}); A.seq.playMidi=pm; A.seq.playing=pl; ok(calls===0 && !AR.active, 'borne ouverte (menu) : le MIDI ne joue pas dans l\'appli'); }
+  // --- a round never starts while recording
+  const rec0=A.rec.recording; A.rec.recording=()=>true;
+  cart().click(); await wait(60);
+  const msg=d.querySelector('.arc-msg');
+  ok(!AR.active && !msg.hidden && /Enregistrement en cours/.test(msg.textContent) && !dlg.querySelector('.arc-menu').hidden, 'enregistrement en cours : pas de manche, message clair (« '+msg.textContent.slice(0,40)+'… »)');
+  A.rec.recording=rec0;
+  // --- the round starts the audio (never a silent round)
+  ok(!A.engine.ctx || A.engine.ctx.state!=='running', 'audio pas encore démarré ('+(A.engine.ctx?A.engine.ctx.state:'aucun contexte')+')');
+  cart().click(); await wait(250);
+  ok(AR.active && A.engine.ctx && A.engine.ctx.state==='running' && msg.hidden, 'cartouche : audio démarré avant la manche ('+(A.engine.ctx&&A.engine.ctx.state)+'), message effacé');
+  AR.end({abort:true}); U.menu(); await A.engine.ctx.suspend();
+  cart().click(); await wait(250);
+  ok(AR.active && A.engine.ctx.state==='running', 'contexte suspendu : repris au lancement de la manche');
+  // --- closing: nothing inert left, focus back on the Arcade button
+  U.close(); await wait(20);
+  ok(!AR.active && dlg.hidden && !AR.open && !d.querySelector('[inert]') && d.activeElement===d.getElementById('arcadeBtn'), 'fermeture : plus rien d\'inert, focus rendu au bouton Arcade');
+  // closing while the audio starts: no round behind a closed cabinet
+  d.getElementById('arcadeBtn').click(); await wait(20); await A.engine.ctx.suspend(); cart().click(); U.close(); await wait(250);
+  ok(!AR.active && !AR.round, 'fermée pendant le démarrage audio : aucune manche ne démarre derrière');
+  localStorage.removeItem('ambient.game.arcui'); localStorage.removeItem('ambient.arcade.arcui');
+  done();
+  }catch(e){ fail(e); }
+});
+</script></body></html>

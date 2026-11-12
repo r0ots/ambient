@@ -9,6 +9,8 @@
 .arc-x { position: absolute; top: 12px; right: 14px; z-index: 2; background: none; border: 1px solid var(--lcd-dim); color: var(--lcd-fg); font: 20px var(--f-lcd); padding: 0 10px; border-radius: var(--radius-btn); cursor: pointer; }
 .arc-title { margin: 0; font: clamp(34px, 6vw, 56px)/1 var(--f-lcd); letter-spacing: .08em; text-align: center; color: var(--lcd-fg); text-shadow: 0 0 14px var(--lcd-glow); }
 .arc-sub { margin: 0; text-align: center; color: var(--lcd-dim); font-size: 20px; }
+.arc-msg { margin: 0; justify-self: center; padding: 4px 12px; border: 1px solid var(--fx-bad); border-radius: 4px; color: var(--fx-bad); font-size: 20px; text-align: center; }
+.arc-msg[hidden] { display: none; }
 .arc-carts { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
 .arc-cart { display: grid; gap: 8px; text-align: left; padding: 14px 16px; background: #120c04; border: 1px solid var(--lcd-dim); border-radius: 4px; box-shadow: var(--bevel-in); color: var(--lcd-fg); font: inherit; cursor: pointer; text-shadow: inherit; }
 .arc-cart:hover, .arc-cart:focus-visible { border-color: var(--lcd-fg); box-shadow: var(--bevel-in), 0 0 16px var(--lcd-glow); outline: none; }
