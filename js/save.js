@@ -4,6 +4,9 @@
 // placement test) + the arcade's (AMB.arcade.s: levels, records per profile and Pacts, the pacts ticked per mini-game)
 // + the daily challenge's (AMB.daily.s: name, the day's tries, leaderboard; optional, an older save keeps the current one).
 // Not saved: latency calibration (per device, js/latency.js), duel tries, settings, patches.
+// Import MERGES the daily challenge's tries (anti-cheat: re-importing an older save never erases a try already made):
+// a day's try (and its frozen level) present here wins over the imported one, and so do my leaderboard lines; duel
+// tries are never in a save, so an import leaves them alone.
 // Import never throws: validate() returns {ok, error, data}; unknown ids are refused, numbers are bounded,
 // unknown extra fields (added by later versions) are kept only if small and plain.
 (function () {
@@ -153,6 +156,7 @@
     for (const [day, D] of Object.entries(d.days || {})) {
       if (!DAY.test(day) || !isObj(D)) bad('essai du jour invalide');
       const od = {};
+      if (D.p != null) od.p = lvl(D.p); // the level frozen at the first opening of that day's challenge
       for (const k of ['c', 'z']) {
         if (D[k] == null) continue;
         const t = D[k]; if (!isObj(t)) bad('essai du jour invalide');
@@ -172,6 +176,26 @@
       });
     }
     return o;
+  };
+
+  // import of the daily challenge: the imported state, except that every try already made here stays (per day and mode,
+  // with the day's frozen level) and so do my own leaderboard lines — a save can't be used to replay the day
+  const mergeDaily = (cur, imp) => {
+    const out = imp;
+    for (const [day, C] of Object.entries((cur && cur.days) || {})) {
+      if (!isObj(C)) continue;
+      const I = (out.days[day] = out.days[day] || {});
+      if (C.p != null) I.p = C.p;
+      for (const k of ['c', 'z']) if (C[k]) I[k] = C[k];
+    }
+    for (const [day, B] of Object.entries((cur && cur.board) || {})) {
+      if (!Array.isArray(B)) continue;
+      const mine = B.filter((e) => e && e.me);
+      if (!mine.length) continue;
+      const kept = (out.board[day] || []).filter((e) => !(e.me && mine.some((m) => !!m.z === !!e.z)));
+      out.board[day] = kept.concat(mine);
+    }
+    return out;
   };
 
   // summary of a validated (or current) save: what the confirmation shows
@@ -246,7 +270,7 @@
       const g = AMB.game, a = AMB.arcade;
       g.s = JSON.parse(JSON.stringify(res.data.game)); g.save();
       if (a) { a.s = JSON.parse(JSON.stringify(res.data.arcade)); a.save(); }
-      const D = AMB.daily; if (D && res.data.daily) { D.s = JSON.parse(JSON.stringify(res.data.daily)); D.save(); }
+      const D = AMB.daily; if (D && res.data.daily) { D.s = mergeDaily(D.s, JSON.parse(JSON.stringify(res.data.daily))); if (D.prune) D.prune(); D.save(); }
       if (AMB.secrets) { try { AMB.secrets.reset(); } catch (e) {} }
       g.emit('reset'); g.emit('mode', g.s.mode);
       if (reload) this.reload();
@@ -421,7 +445,8 @@
     if (!c) { c = el('aside', 'back-card'); c.id = 'backCard'; menu.prepend(c); }
     c.replaceChildren();
     const x = el('button', 'back-x', '✕'); x.setAttribute('aria-label', 'Masquer'); x.addEventListener('click', () => { save.card = null; save.renderCard(); });
-    c.append(x, el('b', '', 'Depuis ta dernière visite'), el('small', '', save.dateText(c0.since)));
+    const hd = el('span', 'back-hd'); hd.append(el('b', '', 'Depuis ta dernière visite'), el('small', '', ' · ' + save.dateText(c0.since)));
+    c.append(x, hd); // compact: one header line, one line per item (the menu stays reachable on a phone)
     for (const l of c0.lines) { const p = el('p', ''); p.append(el('span', '', l.k + ' : '), document.createTextNode(l.v)); c.append(p); }
     c.append(el('small', 'back-note', 'Rien n\'a bougé pendant ton absence : le jardin t\'attendait.'));
     if (sum) sum.classList.add('has-back');
@@ -444,10 +469,13 @@
     });
     window.addEventListener('pagehide', () => save.touch());
     // a link to import (#save=…): ask before anything is replaced
+    // in free mode it first offers to switch to the path, like the #dj / #df links (js/daily.js offerPath)
     const m = /(?:^|[#&])save=([A-Za-z0-9_\-]+)/.exec(location.hash);
     if (m) {
+      const ask = () => save.decode(m[1]).then((res) => confirm(res));
+      if (!AMB.game.path && AMB.daily && AMB.daily.offerPath) AMB.daily.offerPath('Quelqu\'un t\'envoie une sauvegarde du Parcours (progression, records, défi du jour).', ask, '💾 Sauvegarde reçue');
+      else ask();
       try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
-      save.decode(m[1]).then((res) => confirm(res));
     }
   };
   document.addEventListener('DOMContentLoaded', () => setTimeout(wire, 0));

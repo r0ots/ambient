@@ -142,6 +142,31 @@ window.addEventListener('load', async () => { try {
   // short absence = no card
   S.touch(Date.now() - 600e3); S.init(); ok(!S.away, 'retour après 10 min : pas d\'encart');
   S.touch(Date.now() - 2 * 3600e3); S.init(); ok(S.away > 0, 'retour après 2 h : encart');
+  // ---- v1.02 anti-cheat: importing a save never erases a daily try already made (nor the day's frozen level)
+  { const day = '2026-11-12', mineTry = { s: 5000, r: 5750, p: 'n', at: 1 };
+    let saved = 0;
+    A.daily = { s: { v: 1, name: 'Max', days: { [day]: { p: 'n', c: mineTry } }, board: { [day]: [{ n: 'Max', s: 5000, r: 5750, p: 'n', z: 0, at: 1, me: 1 }] } }, save() { saved++; }, prune() {} };
+    const old = S.build(); old.daily = { v: 1, name: 'Max', days: {}, board: { [day]: [{ n: 'Léo', s: 900, r: 900, p: 'm', z: 0, at: 1 }] } };
+    const res = S.check(old); S.apply(res, false);
+    const D = A.daily.s;
+    ok(res.ok && D.days[day] && D.days[day].c.s === 5000 && D.days[day].p === 'n' && D.board[day].some((e) => e.me && e.s === 5000) && D.board[day].some((e) => e.n === 'Léo') && saved === 1, 'import d\'une ancienne sauvegarde : l\'essai du jour déjà fait reste (score 5000, niveau figé), classement fusionné');
+    const withTry = S.build(); withTry.daily.days[day].c = { s: 1, r: 1, p: 'n', at: 2 };
+    S.apply(S.check(withTry), false);
+    ok(A.daily.s.days[day].c.s === 5000, 'import d\'une sauvegarde au score différent : l\'essai déjà présent gagne');
+    ok(S.check({ ...S.build(), daily: { v: 1, name: '', days: { [day]: { p: 'x' } }, board: {} } }).ok === false, 'niveau figé du jour invalide → refusé');
+    delete A.daily; }
+  // ---- v1.02: a #save link opened in free mode first offers to switch to the path (like #dj / #df)
+  { const code = await S.encode(); localStorage.setItem('ambient.game.svfree', JSON.stringify({ v: 1, mode: 'free' }));
+    const f = document.createElement('iframe'); f.style.cssText = 'width:900px;height:600px;border:0';
+    document.body.append(f);
+    f.src = '../index.html?gamekey=ambient.game.svfree&arcadekey=ambient.arcade.svfree&dailykey=ambient.daily.svfree#save=' + code;
+    await new Promise((r) => f.addEventListener('load', r, { once: true })); await wait(400);
+    const fd = f.contentDocument, cz = fd.getElementById('cousinDlg'), sd = fd.getElementById('saveDlg');
+    ok(cz && !cz.hidden && /Sauvegarde reçue/.test(cz.textContent) && (!sd || sd.hidden) && f.contentWindow.AMB.game.s.mode === 'free', 'lien #save en mode libre : propose d\'abord le Parcours, rien remplacé');
+    cz.querySelector('[data-cz=path]').click(); await wait(300);
+    const sd2 = fd.getElementById('saveDlg');
+    ok(f.contentWindow.AMB.game.path && sd2 && !sd2.hidden && /Remplacer ta progression/.test(sd2.textContent), '« Passer en Parcours » : puis la confirmation d\'import');
+    f.remove(); ['game', 'arcade', 'daily'].forEach((k) => localStorage.removeItem('ambient.' + k + '.svfree')); }
   log('DONE');
 } catch (e) { fail(e); } });
 </script></body></html>

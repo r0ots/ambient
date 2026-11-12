@@ -16,7 +16,9 @@
 .sv-paste .btn { white-space: nowrap; min-height: 40px; }
 .sv-msg { margin: 10px 0 0; font-size: 13px; color: var(--accent); }
 .sv-msg.err { color: #ff9a8a; }
-.back-card { position: relative; display: flex; flex-direction: column; gap: 3px; padding: 8px 28px 8px 10px; margin-bottom: 4px; border: 1px dashed var(--line); border-radius: 8px; font-size: 12px; color: var(--text); }
+.back-card { position: relative; display: flex; flex-direction: column; gap: 1px; padding: 5px 26px 5px 8px; margin-bottom: 2px; border: 1px dashed var(--line); border-radius: 8px; font-size: 11.5px; color: var(--text); max-width: 300px; }
+.back-card p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.back-card .back-note { display: none; }
 .back-card b { font-weight: 500; font-size: 12px; color: var(--accent); }
 .back-card small { color: var(--muted); font-size: 11px; }
 .back-card p { margin: 0; line-height: 1.35; }
@@ -25,3 +27,4 @@
 .more > summary.has-back { position: relative; }
 .more > summary.has-back::after { content: ''; position: absolute; top: 4px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 @media (max-width: 520px) { .sv-cmp { grid-template-columns: 1fr; } }
+.back-hd { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -2,7 +2,9 @@
   Modes: #free, #pz, #bar, #sel=<node>, #buy=<node>;
   #arcade (menu), #arcade-pacts (menu with pacts ticked, secret pacts shown), #arcade-play=<id> (round; &d=0.7 sets the level and skips the latency calibration, &mut=miroir|retro|transpose forces a Réponds mutator), #arcade-end (end screen), #arcade-daily (défi du jour + classement), #arcade-duel (lien de défi reçu);
   #pf-profile (who plays?), #pf-end (placement result), #pf-kid (« Jouer 2 min » button), #pf-joy (its end);
-  #save-open / #save-confirm (sauvegarde), #save-back (encart « depuis ta dernière visite » dans le menu ⋯).
+  #save-open / #save-confirm (sauvegarde), #save-back (encart « depuis ta dernière visite » dans le menu ⋯);
+  #more (menu ⋯ en Parcours : encart compact, sous-section « Parcours » dépliée, panneau Contrats dessous),
+  #arcade-kid (menu de la borne en profil Découverte : pas de pactes).
   #arcade*, #pf-* and #save-* cut particles and juice for clean captures --><meta charset="utf-8"><style>body{margin:0}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body>
 <script>localStorage.removeItem('ambient.game.shot');</script>
 <iframe id="f" src="../index.html?gamekey=ambient.game.shot"></iframe>
@@ -10,7 +12,7 @@
 <script>
 document.getElementById('f').addEventListener('load', () => {
   const A = document.getElementById('f').contentWindow.AMB, doc = document.getElementById('f').contentDocument, h = location.hash;
-  if (/arcade|pf-|save-/.test(h) && A.juice) {
+  if (/arcade|pf-|save-|more/.test(h) && A.juice) {
     const J = A.juice; J.reduced = true;
     ['burst', 'floatText', 'flash', 'shake', 'hitstop', 'pulseCombo', 'chime'].forEach(k => { J[k] = () => 0; });
     const fx = doc.getElementById('fx'); if (fx) fx.style.display = 'none';
@@ -19,7 +21,10 @@ document.getElementById('f').addEventListener('load', () => {
   A.game.setMode('path'); A.game.earn(200, 'x');
   ['t.son', 'h.pad', 'e.reverb', 'm.bells', 't.viz'].forEach(i => A.tree.buy(i));
   A.game.solve('p.gamme'); A.garden.welcome(false);
-  if (h.includes('save-')) {
+  if (h.includes('#more')) {
+    A.garden.showTree(false); A.garden.renderSwitch(); A.game.setProfile('musicien'); A.save.refreshCard(Date.now() - 26 * 3600e3);
+    doc.querySelector('.more').open = true; const pm = doc.querySelector('#pathMenu'); if (pm) pm.open = true;
+  } else if (h.includes('save-')) {
     const S = A.save; A.garden.showTree(false);
     A.arcade.stats('hautbas').best[''] = { score: 4200, stars: 2, at: 1700000000000 };
     A.arcade.stats('modes').best[''] = { score: 2650, stars: 3, at: 1700000000000 };
@@ -44,6 +49,7 @@ document.getElementById('f').addEventListener('load', () => {
       A.secrets.hasPact = () => true;
       A.pacts.set('hautbas', ['une-ecoute', 'proches', 'funambule']); A.pacts.set('intrus', ['transpose']);
     }
+    if (h.includes('arcade-kid')) A.game.setProfile('decouverte'); else A.game.setProfile('musicien');
     U.open();
     if (h.includes('arcade-daily')) {
       const D = A.daily; D.setName('Max');
