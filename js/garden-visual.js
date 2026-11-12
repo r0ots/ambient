@@ -8,6 +8,10 @@
 // Mode policy (wraps AMB.visual, visual.js is untouched): « Jardin » exists only in the Parcours, where it is the
 // default (own preference key ambient.vizMode.path); in free mode (or mode not chosen) the cycle, the stored choice
 // (ambient.vizMode) and the drawing are exactly the classic ones. Without this file the app is unchanged.
+// S4.5w (calé sur la musique): a plant that appears or gets taller GROWS (~1.2 s, Y scale of its cached sprite) from the
+// strong beat its layer comes in on (garden.beat / growAt); the sky follows the chord and the scale (cached skies,
+// cross-faded with globalAlpha); the ground pulses on the beat; the finale replays the recorded song (replayStart):
+// night -> dawn, each plant lights up when its layer plays. Reduced motion: no growth, no pulse (the sky still follows).
 // Perf: LED sprites pre-rendered in offscreen canvases (cache by species / size / pixel size), cached
 // background and labels, real dt, nothing drawn while the tab is hidden or the canvas off screen, reduced motion =
 // no sway nor particles. stats() gives the cost per frame (ms).
@@ -120,8 +124,16 @@
     return out;
   }
 
+  // sky per chord: a hue per scale degree; minor scales (minor third) darker and cooler
+  const HUES = [32, 290, 200, 165, 18, 245, 330];
+  const GROW = 1.2, SKY_FADE = 2; // s
+  const easeBack = (q) => 1 + 2.4 * (q - 1) ** 3 + 1.4 * (q - 1) ** 2; // a small overshoot: it springs up
+
   const gv = {
-    LAYERS, byLayer, layout, cells, hash,
+    LAYERS, byLayer, layout, cells, hash, GROW,
+    grow: {}, prevH: {}, growStart: null, growNext: false, // S4.5w growth: plant id -> {from (0..1 of its height), start}
+    skyKey: null, skyPrevKey: null, skyT: 0, skyQ: [], skies: new Map(), // S4.5w sky
+    replay: null, lit: {}, // S4.5w finale
     sprites: new Map(), glows: new Map(), labels: new Map(),
     plants: [], rares: [], parts: [], pending: [],
     energy: {}, // plant id -> 0..1 pulse
@@ -208,22 +220,89 @@
       this.labels.set(key, cv);
       return cv;
     },
+    // ground + stars (static), drawn under the sky of the current chord (S4.5w: two layers so the dawn can fade the stars)
     background(W, H, ground) {
-      const key = W + 'x' + H + '|' + ground;
-      if (this.bg && this.bg.key === key) return this.bg.cv;
-      const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-      const g = cv.getContext('2d'), r = mulberry(7), px = this.px || 3;
-      const sky = g.createLinearGradient(0, 0, 0, ground);
-      sky.addColorStop(0, '#0b0a08'); sky.addColorStop(1, '#17120b');
-      g.fillStyle = sky; g.fillRect(0, 0, W, ground);
+      const key = W + 'x' + H + '|' + ground + '|' + (this.px || 3);
+      if (this.bg && this.bg.key === key) return this.bg;
+      const r = mulberry(7), px = this.px || 3;
+      const st = document.createElement('canvas'); st.width = W; st.height = Math.max(1, ground);
+      let g = st.getContext('2d');
       for (let i = 0; i < 70; i++) { g.fillStyle = `rgba(255,179,71,${0.08 + r() * 0.18})`; g.fillRect(Math.floor(r() * W / px) * px, Math.floor(r() * ground * 0.7 / px) * px, px - 1, px - 1); }
-      g.fillStyle = '#120d07'; g.fillRect(0, ground, W, H - ground);
-      for (let y = ground; y < H; y += px) for (let x = 0; x < W; x += px) {
+      const gr = document.createElement('canvas'); gr.width = W; gr.height = Math.max(1, H - ground);
+      g = gr.getContext('2d');
+      g.fillStyle = '#120d07'; g.fillRect(0, 0, W, H - ground);
+      for (let y = 0; y < H - ground; y += px) for (let x = 0; x < W; x += px) {
         const v = r(); if (v < 0.22) { g.fillStyle = v < 0.05 ? '#4a3316' : '#2a1d0e'; g.fillRect(x, y, px - 1, px - 1); }
       }
-      g.fillStyle = 'rgba(255,179,71,0.35)'; g.fillRect(0, ground, W, Math.max(1, px >> 1));
-      this.bg = { key, cv };
+      g.fillStyle = 'rgba(255,179,71,0.35)'; g.fillRect(0, 0, W, Math.max(1, px >> 1));
+      this.bg = { key, stars: st, ground: gr };
+      return this.bg;
+    },
+    // the sky of a chord: 'night' (before any chord), 'dawn' (finale), or `${deg}|${minor}`; cached by key and size
+    skyColors(key) {
+      if (key === 'night') return [[0, '#0b0a08'], [1, '#17120b']];
+      if (key === 'dawn') return [[0, '#141a33'], [0.5, '#4d2f4f'], [0.82, '#b0584a'], [1, '#f2a65a']];
+      const [d, mi] = key.split('|'), h = HUES[(+d % 7 + 7) % 7] + (mi === '1' ? 18 : 0);
+      const c = (sa, l) => `rgb(${hsl2rgb(h, sa, l).join()})`;
+      return [[0, c(0.4, 0.03)], [0.6, c(0.45, mi === '1' ? 0.06 : 0.075)], [1, c(0.5, mi === '1' ? 0.1 : 0.13)]];
+    },
+    sky(key, W, ground) {
+      const k = key + '|' + W + 'x' + ground;
+      let cv = this.skies.get(k);
+      if (cv) return cv;
+      this.cacheMisses++;
+      cv = document.createElement('canvas'); cv.width = W; cv.height = Math.max(1, ground);
+      const g = cv.getContext('2d'), grd = g.createLinearGradient(0, 0, 0, ground);
+      for (const [o, c] of this.skyColors(key)) grd.addColorStop(o, c);
+      g.fillStyle = grd; g.fillRect(0, 0, W, ground);
+      this.skies.set(k, cv);
+      if (this.skies.size > 16) this.skies.delete(this.skies.keys().next().value);
       return cv;
+    },
+    chordKey(deg) {
+      let minor = false;
+      try { const Th = AMB.theory, sc = Th && AMB.store && AMB.store.get && Th.SCALES[AMB.store.get('global.scale')]; minor = !!(sc && sc[2] === 3); } catch (e) {}
+      return `${((deg | 0) % 7 + 7) % 7}|${minor ? 1 : 0}`;
+    },
+    setSky(key) {
+      if (key === this.skyKey) return;
+      this.skyPrevKey = this.skyKey || 'night'; this.skyKey = key; this.skyT = this.t || 0;
+    },
+
+    // ---- S4.5w growth: armed by an opening (garden.beat), timed on the audio clock ----
+    // growAt(t): the next state change grows from audio time t (null = now); retime(t): the growth already armed waits
+    // until t (the map closing)
+    growAt(t) { this.growNext = true; this.retime(t); },
+    retime(t) {
+      const now = this.clock(), at = t == null ? now : t;
+      this.growStart = at;
+      for (const id in this.grow) if (this.grow[id].start + GROW > now) this.grow[id].start = Math.max(at, now);
+    },
+    growth(id, now) {
+      const e = this.grow[id]; if (!e) return 1;
+      const q = (now - e.start) / GROW;
+      if (q >= 1) { delete this.grow[id]; return 1; }
+      return q <= 0 ? e.from : e.from + (1 - e.from) * easeBack(q);
+    },
+
+    // ---- S4.5w finale: the recorded song is heard again (garden.finale); its events light the plants ----
+    // r = {t0 (audio time of the song's start), from, len (s, the excerpt), ev: [{layer, t, vel, deg}]}
+    replayStart(r) {
+      const ev = (r.ev || []).filter((e) => e.t >= r.from && e.t < r.from + r.len).sort((x, y) => x.t - y.t);
+      this.replay = { t0: r.t0, from: r.from, len: r.len, ev, i: 0 };
+      this.pending.length = 0; this.skyQ.length = 0; this.lit = {};
+    },
+    replayStop() { this.replay = null; this.lit = {}; },
+    dawnLevel(now) {
+      const R = this.replay;
+      if (R) return Math.max(0, Math.min(1, (now - R.t0 - R.from) / Math.max(0.1, R.len)));
+      return AMB.game && AMB.game.s && AMB.game.s.ended ? 1 : 0; // the instrument handed over: the garden stays at dawn
+    },
+    // the beat (0..1 since the last one, strong = beat 1 or 3), null when the sequencer is stopped
+    beatPhase(now) {
+      const S = AMB.seq; if (!S || !S.playing || !S.stepDur) return null;
+      const sd = S.stepDur(), pos = (S.step - (S.nextTime - now) / sd - (S.origin || 0)) / 4, bt = Math.floor(pos);
+      return { ph: pos - bt, strong: ((bt % 2) + 2) % 2 === 0 };
     },
 
     // ---- state refresh (events + a cheap 1 s signature check, e.g. after a save import) ----
@@ -237,13 +316,22 @@
       this.px = this.cellPx(W, H, this.plants.length, avail);
       this.hMax = Math.max(12, Math.min(58, Math.floor((avail / this.px - 4) / 1.1)));
       this.ceil = ceil;
+      // S4.5w: after an opening, a new plant grows from 0, a taller one from its old height
+      const stSig = this.signature(st), now = this.clock(), hs = {};
+      for (const p of this.plants) hs[p.id] = this.heightCells(p);
+      if (this.growNext && stSig !== this.stSig && !this.reduced) {
+        const start = Math.max(this.growStart == null ? now : this.growStart, now);
+        for (const p of this.plants) { const was = this.prevH[p.id]; if (was == null || hs[p.id] > was) this.grow[p.id] = { from: was == null ? 0 : was / hs[p.id], start }; }
+      }
+      if (stSig !== this.stSig) this.growNext = false;
+      this.stSig = stSig; this.prevH = hs;
       this.W = W; this.H = H; this.lastCheck = this.now();
       return true;
     },
 
     // ---- events: queued with their audio time, applied when they sound ----
     onEvent(layer, time, vel) {
-      if (!this.running()) return;
+      if (!this.running() || this.replay) return; // the finale lights the plants from the recorded song only
       this.pending.push({ layer, time: time || 0, vel: vel == null ? 0.7 : vel });
       if (this.pending.length > 200) this.pending.splice(0, this.pending.length - 200);
     },
@@ -268,18 +356,39 @@
       this.lastT = t0; this.t = (this.t || 0) + dt;
       const now = this.clock();
       for (let i = this.pending.length - 1; i >= 0; i--) { const e = this.pending[i]; if (e.time <= now + 0.02) { this.pending.splice(i, 1); this.hit(e.layer, e.vel); } }
+      for (let i = this.skyQ.length - 1; i >= 0; i--) { const e = this.skyQ[i]; if (e.time <= now + 0.02) { this.skyQ.splice(i, 1); this.setSky(e.key); } }
+      const R = this.replay;
+      if (R) for (; R.i < R.ev.length && R.ev[R.i].t <= now - R.t0; R.i++) {
+        const e = R.ev[R.i];
+        if (e.layer === 'chord') this.setSky(this.chordKey(e.deg)); else if (this.hit(e.layer, e.vel == null ? 0.7 : e.vel)) this.lit[e.layer] = 1;
+      }
 
       g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-over"; g.globalAlpha = 1; g.imageSmoothingEnabled = false;
-      g.drawImage(this.background(W, H, this.ground), 0, 0);
+      // sky: the previous chord's, the current one fading in over it, the dawn (finale), the stars; then the ground
+      const gd = this.ground, bg = this.background(W, H, gd), sf = Math.min(1, ((this.t || 0) - this.skyT) / SKY_FADE), dawn = this.dawnLevel(now);
+      if (sf < 1) g.drawImage(this.sky(this.skyPrevKey || 'night', W, gd), 0, 0);
+      g.globalAlpha = sf; g.drawImage(this.sky(this.skyKey || 'night', W, gd), 0, 0);
+      if (dawn > 0) { g.globalAlpha = dawn * 0.92; g.drawImage(this.sky('dawn', W, gd), 0, 0); }
+      g.globalAlpha = 1 - dawn * 0.85; g.drawImage(bg.stars, 0, 0);
+      g.globalAlpha = 1; g.drawImage(bg.ground, 0, gd);
       const px = this.px, red = this.reduced, fs = Math.round(Math.max(11 * dpr, px * 2.6));
-      const all = this.plants.concat(this.rares);
+      // the ground breathes on the beat (stronger on beats 1 and 3); still in reduced motion and during the finale
+      const bp = red || R ? null : this.beatPhase(now);
+      if (bp || dawn > 0) {
+        g.globalCompositeOperation = 'lighter';
+        if (dawn > 0) { g.fillStyle = `rgba(242,166,90,${(dawn * 0.1).toFixed(3)})`; g.fillRect(0, gd, W, H - gd); }
+        if (bp) { const a = (bp.strong ? 0.3 : 0.16) * Math.exp(-bp.ph * 5); this.pulse = a; g.fillStyle = `rgba(255,179,71,${a.toFixed(3)})`; g.fillRect(0, gd, W, Math.max(2, px)); g.fillStyle = `rgba(255,179,71,${(a * 0.18).toFixed(3)})`; g.fillRect(0, gd, W, H - gd); }
+        g.globalCompositeOperation = 'source-over';
+      }
+      const all = this.plants.concat(this.rares), sy = {};
       for (const p of all) {
-        const s = this.sprite(p, px), e = this.energy[p.id] || 0;
+        const s = this.sprite(p, px), e = this.energy[p.id] || 0, gy = (sy[p.id] = p.rare ? 1 : this.growth(p.id, now));
         const sway = red ? 0 : (Math.sin(this.t * 0.7 + p.phase) * 0.05 + Math.sin(this.t * 1.9 + p.phase * 2) * 0.015) * (1 + e * 1.5);
         const k = red ? 1 : 1 + e * 0.05;
-        g.setTransform(k, 0, -sway * k, k, p.x, p.y); // shear from the base: the plant bends, the root stays put
-        g.drawImage(s.cv, -s.w / 2, -s.h);
-        if (!p.rare) { const lb = this.label(p, fs, this.slotW * 0.96); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 0.85; g.drawImage(lb, Math.round(p.x - lb.width / 2), Math.round(p.y + px * 1.5)); g.globalAlpha = 1; }
+        if (R && !p.rare) g.globalAlpha = 0.3 + 0.7 * Math.min(1, this.lit[p.id] || 0); // finale: dark until its layer plays
+        if (gy > 0.01) { g.setTransform(k, 0, -sway * k * gy, k * gy, p.x, p.y); g.drawImage(s.cv, -s.w / 2, -s.h); } // shear from the base: the plant bends, the root stays put; it grows from there
+        g.globalAlpha = 1;
+        if (!p.rare) { const lb = this.label(p, fs, this.slotW * 0.96); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 0.85 * Math.min(1, gy * 2); g.drawImage(lb, Math.round(p.x - lb.width / 2), Math.round(p.y + px * 1.5)); g.globalAlpha = 1; }
       }
       g.setTransform(1, 0, 0, 1, 0, 0);
       g.globalCompositeOperation = 'lighter';
@@ -287,9 +396,9 @@
         let e = this.energy[p.id] || 0;
         if (p.rare) e = Math.max(e, red ? 0.35 : 0.25 + 0.25 * Math.sin(this.t * 1.3 + p.phase));
         if (e < 0.02) continue;
-        const R = Math.max(16, px * (p.rare ? 8 : 12)), gl = this.glow(p.col, R), hC = this.heightCells(p);
+        const Rg = Math.max(16, px * (p.rare ? 8 : 12)), gl = this.glow(p.col, Rg), hC = this.heightCells(p) * sy[p.id];
         g.globalAlpha = Math.min(1, e);
-        g.drawImage(gl, p.x - R, p.y - hC * px * (p.rare ? 0.6 : 0.85) - R);
+        g.drawImage(gl, p.x - Rg, p.y - hC * px * (p.rare ? 0.6 : 0.85) - Rg);
       }
       g.globalAlpha = 1;
       for (let i = this.parts.length - 1; i >= 0; i--) {
@@ -301,6 +410,7 @@
       }
       g.globalCompositeOperation = 'source-over'; g.imageSmoothingEnabled = true; // nearest-neighbour above: crisp LEDs, cheaper shear
       for (const id in this.energy) this.energy[id] = Math.max(0, this.energy[id] - dt * (red ? 1.2 : 1.6));
+      for (const id in this.lit) this.lit[id] = Math.max(0, this.lit[id] - dt * 0.35);
       if (!all.length) { g.font = `${fs * 1.3}px VT323, monospace`; g.fillStyle = '#b38a4f'; g.textAlign = 'center'; g.fillText('Débloque une couche pour planter ton jardin', W / 2, H * 0.5); g.textAlign = 'start'; }
       const ms = this.now() - t0;
       this.times.push(ms); if (this.times.length > 240) this.times.shift();
@@ -325,7 +435,10 @@
       bus.on('note', (n) => n && this.onEvent(n.layer, n.time, n.vel));
       bus.on('grain', (n) => n && this.onEvent('grains', n.time, n.vel));
       bus.on('perc', (n) => n && this.onEvent('perc', n.time, n.vel));
-      bus.on('chord', (c) => { if (!c) return; this.onEvent('drone', c.time, 0.6); this.onEvent('pad', c.time, 0.3); });
+      bus.on('chord', (c) => {
+        if (!c) return; this.onEvent('drone', c.time, 0.6); this.onEvent('pad', c.time, 0.3);
+        if (this.running() && !this.replay) { this.skyQ.push({ time: c.time || 0, key: this.chordKey(c.deg) }); if (this.skyQ.length > 8) this.skyQ.shift(); }
+      });
       ['game:unlock', 'game:reset', 'game:secret'].forEach((ev) => bus.on(ev, () => { this.sig = null; }));
     },
   };
@@ -336,7 +449,7 @@
     if (mq && mq.addEventListener) mq.addEventListener('change', () => { gv.reduced = mq.matches; gv.parts.length = 0; });
   } catch (e) {}
   if (typeof document !== 'undefined') {
-    document.addEventListener('visibilitychange', () => { if (document.hidden) { gv.pending.length = 0; gv.lastT = null; } });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) { gv.pending.length = 0; gv.skyQ.length = 0; gv.lastT = null; } });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => gv.labels.clear());
   }
   AMB.gardenVisual = gv;

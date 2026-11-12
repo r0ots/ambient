@@ -36,7 +36,7 @@
     // Tronc
     C('k.xy', ['racine'], 'Glisse sur l\'écran : 4 glissés', 4, {
       act(st, id) { if (id === 'xy' && gesture(st, 'xy', 700)) st.n = (st.n || 0) + 1; },
-    }, 'Lance la lecture (▶), puis glisse le doigt ou la souris sur l\'écran : à gauche plus sombre, à droite plus clair. Lève-le entre chaque glissé.'),
+    }, 'Glisse le doigt ou la souris sur l\'écran (le son démarre) : à gauche plus sombre, à droite plus clair. Lève-le entre chaque glissé.'),
     C('k.couleur', ['racine'], 'Fais varier la couleur du drone pendant qu\'il joue', 2, {
       param(st, k, v, src) { if (k === 'drone.tone' && src === 'user' && playing() && gesture(st, k)) st.n = (st.n || 0) + 1; },
     }, 'Lance la lecture, puis Sculpter > Drone > Couleur : tourne le bouton deux fois en écoutant le son s\'ouvrir et se fermer.'),

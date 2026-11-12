@@ -333,13 +333,16 @@
       this.select(null);
       el.classList.remove('st-owned'); el.classList.add('is-buying'); // (painted as it was, until the impact)
       document.querySelectorAll(`#treeDlg .tree-glow[data-to="${id}"]`).forEach((p) => { p.classList.remove('lit'); void p.getBoundingClientRect(); p.classList.add('lit'); });
-      s.t.push(setTimeout(() => this.seqImpact(), SEQ.link));
-      s.t.push(setTimeout(() => this.seqFinish(), SEQ.end));
+      // S4.5w: the impact (chime) falls on the strong beat the opening waits for (beat(), garden.js)
+      const b = this.beatOf(id), ctx = AMB.engine && AMB.engine.ctx;
+      const hit = b.at != null && ctx ? Math.max(SEQ.link, (b.at - ctx.currentTime) * 1000 - 60) : SEQ.link;
+      s.t.push(setTimeout(() => this.seqImpact(), hit));
+      s.t.push(setTimeout(() => this.seqFinish(), hit + SEQ.end - SEQ.link));
     },
     seqImpact() {
       const s = this.seq; if (!s || s.hit) return; s.hit = true;
       const T = AMB.tree;
-      this.chime('unlock');
+      this.chime('unlock', this.beatOf(s.id));
       this.paintTree();
       const el = document.querySelector(`#treeDlg .tree-node[data-id="${s.id}"]`);
       if (!el || this.reduced) return;
@@ -357,6 +360,8 @@
       document.querySelectorAll('#treeDlg .is-buying, #treeDlg .is-born, #treeDlg .is-blink, #treeDlg .tree-glow.lit, #treeDlg .tree-glow.hint')
         .forEach((e) => e.classList.remove('is-buying', 'is-born', 'is-blink', 'lit', 'hint'));
       this.showTree(false);
+      // the plant grows once the map is gone (and not before the strong beat)
+      const GV = AMB.gardenVisual, b = this.beatOf(s.id); if (GV) GV.growAt(Math.max(GV.clock(), b.at || 0));
       this.reveal(s.id);
     },
     // show what a node just opened: go to the right mode, scroll to it, make it glow for a while

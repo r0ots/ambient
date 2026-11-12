@@ -24,7 +24,16 @@
     renderContracts(flashId) {
       const box = $('#lcdTask'), line = $('#lcdLine'); if (!box || !AMB.contracts) return;
       const K = AMB.contracts, g = AMB.game, id = g.path && !this.handedOver() ? K.state().active[0] : null, d = id && K.byId[id];
-      box.hidden = !d; if (line) line.hidden = !!d;
+      const offer = !d && g.path && this.offer && this.handedOver(); // S4.5w: after the finale, the song is offered here
+      box.hidden = !d && !offer; if (line) line.hidden = !!(d || offer);
+      const skip = box.querySelector('.lcd-skip'), skipTxt = offer ? 'Non merci' : 'Passer au défi suivant';
+      if (skip) { skip.title = skipTxt; skip.setAttribute('aria-label', skipTxt); }
+      if (offer) {
+        box.dataset.id = 'wav'; box.classList.remove('help');
+        const t = box.querySelector('.lcd-task-txt'); t.textContent = '⤓ Garde ton morceau (WAV)'; t.title = 'Toucher : télécharger le morceau que tu viens d\'entendre';
+        box.querySelector('.lcd-task-n').textContent = '';
+        return;
+      }
       if (!d) return;
       if (box.dataset.id !== id) box.classList.remove('help');
       box.dataset.id = id;
@@ -55,15 +64,16 @@
     },
     // ---- game feedback (G6.2): a chime tuned to the key, LCD messages ----
     // kind: 'unlock' (rising arpeggio), 'solve' (two chords), 'small' (one soft note); straight to the speakers
-    chime(kind = 'unlock') {
+    // S4.5w: `at` = audio time (the next strong beat, see beat()), `deg` = the opened layer's own note, in the key
+    chime(kind = 'unlock', o = {}) {
       const E = AMB.engine, ctx = E && E.ctx;
       if (!ctx || ctx.state !== 'running' || !AMB.game.path) return 0;
       const Th = AMB.theory, root = Th.NOTE_NAMES.indexOf(AMB.store.get('global.key'));
       const scale = Th.SCALES[AMB.store.get('global.scale')] || Th.SCALES['Ionien (majeur)'];
-      const degs = kind === 'small' ? [4] : kind === 'solve' ? [0, 2, 4, 7, 9, 11] : [0, 2, 4, 7];
+      const degs = (kind === 'small' ? [4] : kind === 'solve' ? [0, 2, 4, 7, 9, 11] : [0, 2, 4, 7]).map((d) => d + (o.deg || 0));
       const out = ctx.createGain(); out.gain.value = 0.16;
       out.connect(ctx.destination); // never recorded nor frozen
-      const t0 = ctx.currentTime + 0.02;
+      const t0 = Math.max(ctx.currentTime + 0.02, o.at || 0);
       degs.forEach((dg, i) => {
         const f = Th.mtof(Th.degreeToMidi(dg, root, scale, 5));
         const at = t0 + (kind === 'solve' ? (i < 3 ? 0 : 0.35) + i % 3 * 0.02 : i * 0.09);
@@ -75,9 +85,41 @@
           o.connect(g); g.connect(out); o.start(at); o.stop(at + 1.7);
         }
       });
-      setTimeout(() => out.disconnect(), 3000);
+      setTimeout(() => out.disconnect(), 3000 + (t0 - ctx.currentTime) * 1000);
       return degs.length;
     },
+    // ---- S4.5w: an opening lands on the music ----
+    // next strong beat (beat 1 or 3 of the bar, counted from the song section's start) at least `lead` s ahead, on the
+    // audio clock; null while the sequencer is stopped. S.step is the next step to schedule, at S.nextTime.
+    strongBeat(lead = 0.05, S = AMB.seq, now = AMB.engine && AMB.engine.ctx && AMB.engine.ctx.currentTime) {
+      if (!S || !S.playing || now == null) return null;
+      const sd = S.stepDur(), o = S.origin || 0;
+      let j = S.step + Math.ceil((now + lead - S.nextTime) / sd - 1e-6);
+      j += (8 - (((j - o) % 8) + 8) % 8) % 8;
+      return S.nextTime + (j - S.step) * sd;
+    },
+    // the opened layer's own chime note (scale degrees above the key's root): each plant has its voice
+    LAYER_DEG: { pad: 2, bells: 4, texture: 5, grains: 3, seq: 6, bass: -3, perc: 1 },
+    layersOf(id) { const GV = AMB.gardenVisual; return GV ? GV.LAYERS.filter((l) => l.node === id).map((l) => l.id) : []; },
+    FADE: 1.6, // s: a new layer comes in from silence on the strong beat
+    // a node opens (path): its chime and its layer wait for the next strong beat (map: after its link lit up), the layer
+    // fades in from there, its plant grows (garden-visual.js). Stopped: right away.
+    beat(id) {
+      const ctx = AMB.engine && AMB.engine.ctx, run = ctx && ctx.state === 'running';
+      const at = run ? this.strongBeat(0.45) : null, now = run ? ctx.currentTime : 0;
+      const ls = this.layersOf(id);
+      this.lastBeat = { id, at, deg: ls.length ? this.LAYER_DEG[ls[0]] || 0 : 0 };
+      if (AMB.gardenVisual) AMB.gardenVisual.growAt(at != null ? at : null);
+      if (!run) return this.lastBeat;
+      for (const l of ls) { // tree.onUnlock already switched it on (level glides up): hold it at 0 until the beat
+        const L = AMB.layers && AMB.layers[l], lv = L && L.ch && L.ch.level; if (!lv || !L.active) continue;
+        const v = Math.pow(AMB.store.get(l + '.vol'), 1.6), t = at != null ? at : now;
+        lv.gain.cancelScheduledValues(now); lv.gain.setValueAtTime(0, now); lv.gain.setValueAtTime(0, t);
+        lv.gain.linearRampToValueAtTime(v, t + this.FADE);
+      }
+      return this.lastBeat;
+    },
+    beatOf(id) { const b = this.lastBeat; return b && b.id === id ? b : {}; },
     lcd(text, ms = 3500) { AMB.lcdMsg = { text, until: Date.now() + ms }; },
     // ---- the instrument handed over (G6.3, S3.7) ----
     complete() { const T = AMB.tree; return T.NODES.every((n) => AMB.game.has(n.id)); },
@@ -95,13 +137,74 @@
         return false;
       }
       g.s.ended = true; g.save(); // nothing counts from now on (game.counts)
-      // no end screen: the instrument itself says it (chime, LCD), then the challenge line goes; the sound is untouched
+      // no end screen: the instrument itself says it (chime, LCD), then the challenge line goes; the sound is untouched.
+      // S4.5w: when the recorded song just ended the path (keepSong), it is heard again first (finale)
       this.handing = true;
-      setTimeout(() => {
-        this.showTree(false); this.chime('solve'); this.lcd('✦ L\'instrument est à toi', 6000);
-        setTimeout(() => { this.handing = false; this.closePuzzle(); this.renderContracts(); }, 2000);
-      }, 900);
+      setTimeout(() => { this.showTree(false); if (this.song) this.finale(); else this.handOver(); }, 900);
       return true;
+    },
+    handOver() {
+      this.chime('solve'); this.lcd('✦ L\'instrument est à toi', 6000);
+      setTimeout(() => { this.handing = false; this.closePuzzle(); this.renderContracts(); }, 2000);
+    },
+
+    // ---- S4.5w: a real ending. The song recorded by « Enregistre ton morceau » is replayed on the instrument (the live
+    // sound steps back), the garden goes from night to dawn and each plant lights up when its layer plays (the events
+    // taped during the recording); then « L'instrument est à toi » and the WAV is offered on the LCD line. ----
+    // The replay is an excerpt of REPLAY s (the whole song if barely longer): a song lasts 1-3 min at these tempos, the
+    // dawn is a moment to watch, not a second listening; the window with the most layers heard is chosen, and the whole
+    // WAV is what is offered.
+    REPLAY: 18,
+    songTape: { t0: null, ev: [] },
+    tape(layer, time, vel, deg) { // bus events during the song's recording (path only), times from its start
+      const R = AMB.rec, t0 = R && R.songT0 && R.songT0();
+      if (t0 == null || !AMB.game.path) return;
+      if (this.songTape.t0 !== t0) this.songTape = { t0, ev: [] };
+      if (this.songTape.ev.length < 20000) this.songTape.ev.push({ layer, t: (time || 0) - t0, vel, deg });
+    },
+    // rec.js hands the finished WAV here first: kept (true) when this recording is ending the path
+    keepSong(blob) {
+      if (!AMB.game.path || !this.handing || this.song || !blob) return false;
+      this.song = { blob, ev: this.songTape.ev.slice() };
+      return true;
+    },
+    excerpt(ev, dur, len = this.REPLAY) {
+      if (dur <= len + 4) return { from: 0, len: dur };
+      const e = ev.filter((x) => x.layer !== 'chord').sort((a, b) => a.t - b.t), cnt = {};
+      let best = 0, bestN = -1, lo = 0, hi = 0, n = 0;
+      for (let f = 0; f <= dur - len; f += 1) {
+        for (; hi < e.length && e[hi].t < f + len; hi++) if (!cnt[e[hi].layer]++) n++;
+        for (; lo < hi && e[lo].t < f; lo++) if (!--cnt[e[lo].layer]) n--;
+        if (n > bestN) { bestN = n; best = f; }
+      }
+      return { from: best, len };
+    },
+    async finale() {
+      const s = this.song, E = AMB.engine, ctx = E && E.ctx, GV = AMB.gardenVisual;
+      let buf = null;
+      try { if (ctx && ctx.state === 'running') buf = await ctx.decodeAudioData(await s.blob.arrayBuffer()); } catch (e) { buf = null; }
+      if (!buf) { this.offer = s.blob; this.song = null; return this.handOver(); }
+      const w = this.excerpt(s.ev, buf.duration), live = !!(AMB.seq && AMB.seq.playing);
+      if (live) E.fadeOut(0.8); // the instrument steps back while its song plays
+      const src = ctx.createBufferSource(), g = ctx.createGain(), t = ctx.currentTime + (live ? 0.9 : 0.1), fo = Math.min(2, w.len / 4);
+      src.buffer = buf; src.connect(g); g.connect(ctx.destination); // straight to the speakers: never recorded again
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(1, t + 0.3);
+      g.gain.setValueAtTime(1, t + w.len - fo); g.gain.linearRampToValueAtTime(0, t + w.len);
+      src.start(t, w.from, w.len);
+      this.playback = { src, live, t, len: w.len };
+      if (GV) GV.replayStart({ t0: t - w.from, from: w.from, len: w.len, ev: s.ev });
+      this.lcd('♪ Ton morceau', (t - ctx.currentTime + w.len) * 1000);
+      src.onended = () => this.finaleEnd();
+      this.playback.timer = setTimeout(() => this.finaleEnd(), (t - ctx.currentTime + w.len) * 1000 + 1500); // safety
+    },
+    finaleEnd() {
+      const p = this.playback; if (!p) return;
+      this.playback = null; clearTimeout(p.timer);
+      try { p.src.stop(); } catch (e) {}
+      if (AMB.gardenVisual) AMB.gardenVisual.replayStop();
+      if (p.live && AMB.seq && AMB.seq.playing) AMB.engine.fadeIn(2);
+      this.offer = this.song && this.song.blob; this.song = null;
+      this.handOver();
     },
 
     // ---- Écho card (S3.1): the phrase is heard, then played back note by note ----
@@ -191,7 +294,8 @@
           const n = AMB.tree.byId[d.id]; if (!AMB.game.path || !n || !n.req.length) return;
           if (this.checkEnd()) return;
           this.lcd(`✦ ${n.name} ouvert`);
-          if (d.by) this.unlockSeq(d.id); else this.chime('unlock');
+          this.beat(d.id);
+          if (d.by) this.unlockSeq(d.id); else this.chime('unlock', this.beatOf(d.id));
         });
         AMB.bus.on('game:contracts', (d) => { // the last challenge opens no node: its own small chime
           const c = AMB.contracts.byId[d && d.id]; if (!AMB.game.path || !c || c.node) return;
@@ -199,13 +303,23 @@
         });
         AMB.bus.on('game:puzzle', (e) => { if (e && e.res && this.pz && this.pz.id === e.id) this.puzzleResult(e.id, e.res); else this.renderPuzzle(); });
         AMB.bus.on('game:mode', () => { if (!AMB.game.path) this.closePuzzle(); });
+        // S4.5w: what each layer plays while the song is being recorded (the finale lights the plants with it)
+        AMB.bus.on('note', (n) => n && this.tape(n.layer, n.time, n.vel));
+        AMB.bus.on('perc', (n) => n && this.tape('perc', n.time, n.vel));
+        AMB.bus.on('grain', (n) => n && this.tape('grains', n.time, n.vel));
+        AMB.bus.on('chord', (c) => { if (c) { this.tape('chord', c.time, 0.6, c.deg); this.tape('drone', c.time, 0.6); this.tape('pad', c.time, 0.3); } });
         AMB.bus.on('game:reset', () => this.closePuzzle());
       }
       const task = $('#lcdTask');
       if (task) {
-        task.querySelector('.lcd-skip').addEventListener('click', () => { const id = task.dataset.id; if (id) AMB.contracts.skip(id); });
+        task.querySelector('.lcd-skip').addEventListener('click', () => {
+          const id = task.dataset.id; if (id === 'wav') { this.offer = null; return this.renderContracts(); }
+          if (id) AMB.contracts.skip(id);
+        });
         task.querySelector('.lcd-task-txt').addEventListener('click', () => {
-          const id = task.dataset.id; if (AMB.puzzles && AMB.puzzles.isEcho(id)) return this.openPuzzle(id); // an Écho: its card
+          const id = task.dataset.id;
+          if (id === 'wav') { if (this.offer) AMB.rec.download(this.offer, 'wav'); this.offer = null; AMB.ui.toast('Morceau téléchargé'); return this.renderContracts(); }
+          if (AMB.puzzles && AMB.puzzles.isEcho(id)) return this.openPuzzle(id); // an Écho: its card
           clearTimeout(this._helpT);
           task.classList.toggle('help'); this.renderContracts();
           if (task.classList.contains('help')) this._helpT = setTimeout(() => { task.classList.remove('help'); this.renderContracts(); }, 15000);

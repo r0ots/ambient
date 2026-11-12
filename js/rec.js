@@ -104,8 +104,10 @@
     AMB.song.render();
     if (!complete) { AMB.ui.toast('Enregistrement du morceau annulé'); return; }
     if (AMB.bus) { AMB.bus.emit('act', 'songRec'); AMB.bus.emit('rec:done', AMB.engine.capturedFrames / AMB.engine.ctx.sampleRate); }
-    api.download(blob, 'wav');
-    AMB.ui.toast('Morceau enregistré et téléchargé');
+    // the path's finale replays it first, then offers it (js/garden.js keepSong); otherwise it downloads now
+    const kept = !!(AMB.garden && AMB.garden.keepSong && AMB.garden.keepSong(blob));
+    if (!kept) api.download(blob, 'wav');
+    AMB.ui.toast(kept ? 'Morceau enregistré' : 'Morceau enregistré et téléchargé');
   }
 
   // ---------- sleep timer ----------
@@ -132,5 +134,5 @@
   }
 
   const api = (AMB.rec = { toggleRec, toggleSongRec, setSleep, download, SONG_TAIL,
-    recording: () => !!(recState || songRec), songRecording: () => !!songRec });
+    recording: () => !!(recState || songRec), songRecording: () => !!songRec, songT0: () => (songRec ? songRec.t0 : null) });
 })();
