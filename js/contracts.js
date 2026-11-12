@@ -20,7 +20,7 @@
   const C = (id, need, title, reward, goal, on, hint) => ({ id, need, title, reward, goal, on, hint: hint || '' });
   const DEFS = [
     // Tronc
-    C('k.couleur', ['racine'], 'Fais varier la couleur du drone pendant qu\'il joue', 7, 2, {
+    C('k.couleur', ['racine'], 'Fais varier la couleur du drone pendant qu\'il joue', 15, 2, {
       param(st, k, v, src) { if (k === 'drone.tone' && src === 'user' && playing() && gesture(st, k)) st.n = (st.n || 0) + 1; },
     }, 'Lance la lecture, puis Sculpter > Drone > Couleur : tourne le bouton deux fois en écoutant le son s\'ouvrir et se fermer.'),
     C('k.moments', ['t.journal'], 'Garde un moment (♥), puis reviens à un moment passé', 10, 2, {
@@ -81,29 +81,29 @@
     }, 'Maj+clic sur A puis sur B pour mémoriser deux sons, puis un clic sur A et sur B pour passer de l\'un à l\'autre.'),
 
     // Composer
-    C('c.dessin', ['c.seq'], 'Dessine 8 notes dans le piano roll', 10, 8, {
+    C('c.dessin', ['c.seq'], 'Dessine 8 notes dans le piano roll', 12, 8, {
       param(st, k, v, src) { if (/^seq\.pat/.test(k) && src === 'user' && gesture(st, 'pat', 120)) st.n = (st.n || 0) + 1; },
     }, 'Composer > Mélodie écrite : un clic pose une note, glisser l\'allonge.'),
-    C('c.chaine', ['c.motifs'], 'Enchaîne au moins deux motifs (ex. « A A B »)', 12, 1, {
+    C('c.chaine', ['c.motifs'], 'Enchaîne au moins deux motifs (ex. « A A B »)', 14, 1, {
       param(st, k, v, src) { if (k === 'seq.chain' && src === 'user' && new Set(String(v).toUpperCase().match(/[ABCD]/g) || []).size >= 2) st.n = 1; },
     }, 'Composer > Mélodie écrite : écris dans « Chaîne » l\'ordre des motifs, par exemple A A B.'),
-    C('c.reclive', ['c.motifs'], 'Enregistre 4 notes en Rec live', 12, 4, {
+    C('c.reclive', ['c.motifs'], 'Enregistre 4 notes en Rec live', 14, 4, {
       note(st) { const r = AMB.pianoRoll && AMB.pianoRoll.roll; if (r && r.recording) st.n = (st.n || 0) + 1; },
     }, 'Composer > Mélodie écrite > ● Rec live, puis joue au clavier (A à L) ou au clavier MIDI.'),
-    C('c.basse', ['c.bass'], 'Écris ta ligne de basse : 6 pas', 10, 6, {
+    C('c.basse', ['c.bass'], 'Écris ta ligne de basse : 6 pas', 12, 6, {
       param(st, k, v, src) { if (k === 'bass.pattern' && src === 'user' && gesture(st, k, 150)) st.n = (st.n || 0) + 1; },
     }, 'Composer > Basse : allume ou éteins des pas de la grille et écoute la ligne changer.'),
-    C('c.pulses', ['c.perc'], 'Écris ton rythme : 6 pas', 10, 6, {
+    C('c.pulses', ['c.perc'], 'Écris ton rythme : 6 pas', 12, 6, {
       param(st, k, v, src) { if (k === 'perc.pattern' && src === 'user' && gesture(st, k, 150)) st.n = (st.n || 0) + 1; },
     }, 'Composer > Pulsations : allume ou éteins des pas de la grille et écoute le rythme changer.'),
-    C('c.courbe', ['c.auto'], 'Dessine une courbe avec un vrai creux et un vrai sommet', 12, 1, {
+    C('c.courbe', ['c.auto'], 'Dessine une courbe avec un vrai creux et un vrai sommet', 14, 1, {
       param(st, k, v, src) {
         if (k !== 'auto.curve' || src !== 'user') return;
         const pts = String(v).split('').map((c) => parseInt(c, 36)).filter((x) => x >= 0);
         if (pts.length && Math.max(...pts) - Math.min(...pts) >= 18) st.n = 1; // spread of at least ~50 out of 100
       },
     }, 'Composer > Automation : dessine avec le doigt, bien en bas puis bien en haut, et écoute le réglage bouger.'),
-    C('c.morceau', ['c.song'], 'Crée 3 sections, puis joue le morceau', 18, 4, {
+    C('c.morceau', ['c.song'], 'Crée 3 sections, puis joue le morceau', 20, 4, {
       act(st, id) {
         if (id === 'section' && (st.n || 0) < 3) st.n = (st.n || 0) + 1;
         else if (id === 'song' && st.n >= 3) st.n = 4;
