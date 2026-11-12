@@ -2,7 +2,7 @@
 <script src="lib.js"></script>
 <div id="scenes"></div><div id="journal"></div><div id="layers"></div><div id="seqrow"></div><div id="macros"></div><div id="globals"></div><button data-mode="listen"></button><button data-mode="sculpt"></button><button data-mode="compose"></button>
 <button id="play"></button><button id="bigPlay"></button><div id="chordName"></div><div id="hudInfo"></div><select id="preset"></select><button id="dice"></button><button id="save"></button><button id="rec"></button><select id="recFmt"><option value="wav">w</option></select><select id="recDur"><option value="0">0</option></select><button id="share"></button><div id="toast"></div><select id="sleep"></select><span id="sleepLeft"></span><canvas id="viz" style="width:400px;height:200px"></canvas>
-<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/presets.js"></script><script src="../js/generator.js"></script><script src="../js/visual.js"></script><script src="../js/scenes.js"></script><script src="../js/journal.js"></script><script src="../js/pianoroll.js"></script><script src="../js/pulses.js"></script><script src="../js/bass.js"></script><script src="../js/chords.js"></script><script src="../js/midi.js"></script><script src="../js/automation.js"></script><script src="../js/song.js"></script><script src="../js/widgets.js"></script><script src="../js/perform.js"></script><script src="../js/rec.js"></script><script src="../js/ui.js"></script><script src="../js/play.js"></script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/presets.js"></script><script src="../js/generator.js"></script><script src="../js/visual.js"></script><script src="../js/scenes.js"></script><script src="../js/journal.js"></script><script src="../js/history.js"></script><script src="../js/pianoroll.js"></script><script src="../js/pulses.js"></script><script src="../js/bass.js"></script><script src="../js/chords.js"></script><script src="../js/midi.js"></script><script src="../js/automation.js"></script><script src="../js/song.js"></script><script src="../js/widgets.js"></script><script src="../js/perform.js"></script><script src="../js/rec.js"></script><script src="../js/ui.js"></script><script src="../js/play.js"></script>
 <script>
 const params=new URLSearchParams(location.search);
 async function measure(label, secs){
@@ -18,6 +18,8 @@ window.addEventListener('load', async ()=>{
   let seqNotes=0, bellNotes=0; AMB.bus.on('note',n=>{ if(n.layer==='seq') seqNotes++; if(n.layer==='bells') bellNotes++; });
   st.set('global.tempo',140); st.set('seq.steps','16');
   const canvas=document.querySelector('canvas.roll');
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  ok(document.querySelector('[data-act=keep]').disabled && !PR.canKeep(), 'Garder : grisé tant que rien n\'a été joué');
   log('roll canvas='+!!canvas+' w='+(canvas&&canvas.width));
   // click a cell through pointer events: step 0, row 7
   const r=canvas.getBoundingClientRect(), G=PR.roll.geom();
@@ -105,6 +107,50 @@ window.addEventListener('load', async ()=>{
   await new Promise(r=>setTimeout(r,5000));
   log('captured notes='+PR.parse(st.get('seq.pattern')).length+' bellNotes='+bellNotes);
   AMB.history && log('undoable='+(AMB.history.past.length>0));
+  // ---- S4.6 chromatic notes: an old motif still opens, a sharp survives encoding and is played ----
+  { st.set('global.key','C'); st.set('global.scale','Ionien (majeur)'); st.set('seq.octave','0'); st.set('seq.follow',false); st.set('seq.mutate',0);
+    const old='0.7.4,2.8.2.5,4.9.1.7.5'; ok(PR.encode(PR.parse(old))===old && PR.parse(old).every(n=>!n.a), 'ancien motif : se charge et se réécrit à l\'identique');
+    const chro='0.7.2.7.a.1,4.3.1.9.a.2'; const cn=PR.parse(chro);
+    ok(PR.encode(cn)===chro && cn[0].a===1 && cn[1].a===2, 'note chromatique : ♯ gardé à l\'encodage ('+chro+')');
+    ok(JSON.stringify(PR.cellFor(61))==='{"r":7,"a":1}' && JSON.stringify(PR.cellFor(60))==='{"r":7,"a":0}', 'C#4 → rangée C4 + ♯, C4 → C4 (octave gardée)');
+    st.set('seq.slot','A'); st.set('seq.pattern','0.7.1.7.a.1'); st.set('seq.on',true); st.set('seq.mode','Piano roll');
+    const got=[]; const onN=(n)=>{ if(n.layer==='seq') got.push(n.midi); }; AMB.bus.on('note',onN);
+    PR.onStep(0, AMB.engine.ctx.currentTime+0.05, 0.1, 0); AMB.bus.fns.note=AMB.bus.fns.note.filter(f=>f!==onN);
+    ok(got.includes(61), 'la note ♯ est jouée chromatique (midi '+got.join(',')+')'); }
+  // ---- S4.6 latency: the recorded step is the moment played (event timestamp), not the moment handled ----
+  { const ctx=AMB.engine.ctx, out=ctx.outputLatency||ctx.baseLatency||0, pa=AMB.seq.playedAt(performance.now()-100);
+    ok(Math.abs(ctx.currentTime-pa-0.1-out)<0.03, 'playedAt : 100 ms d\'avance de l\'événement rattrapés (+ latence de sortie '+(out*1000).toFixed(0)+' ms)');
+    const sd=AMB.seq.stepDur(), at=(k)=>AMB.seq.nextTime+(k-AMB.seq.step)*sd, len=parseInt(st.get('seq.steps'),10);
+    st.set('seq.pattern',''); rb.click();
+    const k=AMB.seq.step+8; AMB.bus.emit('live',{midi:64,time:at(k+3),played:at(k),vel:0.8,id:9100}); AMB.bus.emit('liveOff',{id:9100,midi:64,time:at(k+5),played:at(k+2)});
+    rb.click(); const n=PR.parse(st.get('seq.pattern'))[0]||{};
+    ok(n.s===k%len && n.l===2, 'Rec live : pas et longueur pris à l\'instant joué ('+st.get('seq.pattern')+')'); }
+  // ---- S4.6 « ⤓ Garder »: 4 bars played (no Rec) → the next empty motif, on the grid, real lengths; one undo ----
+  { const sd=AMB.seq.stepDur(), seq=AMB.seq, at=(k)=>seq.nextTime+(k-seq.step)*sd;
+    st.set('seq.steps','16'); st.set('seq.slot','A'); st.set('seq.pattern','0.0.1'); ['patB','patC','patD'].forEach(k=>st.set('seq.'+k,''));
+    const b0=(seq.origin||0)+Math.ceil((seq.step+40-(seq.origin||0))/16)*16; // a bar start, a bit ahead (any audio time works)
+    let id=9200; const play=(k,midi,steps,jit=0)=>{ id++; AMB.bus.emit('live',{midi,time:at(b0+k+jit),played:at(b0+k+jit),vel:0.8,id}); AMB.bus.emit('liveOff',{id,midi,time:at(b0+k+jit+steps),played:at(b0+k+jit+steps)}); };
+    play(-16,72,2);            // a bar before the 4 kept ones: left out
+    play(0,60,4,0.3);          // slightly late → step 0, 4 steps
+    play(18,61,2,-0.2);        // C#: chromatic, kept as such
+    play(36,64,0.3);           // very short → 1 step
+    play(52,67,8);             // last bar
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    const kb=document.querySelector('[data-act=keep]'); ok(!kb.disabled, 'Garder : actif après avoir joué');
+    await new Promise(r=>setTimeout(r,800)); // a separate undo step from the setup above
+    kb.click();
+    const pb=st.get('seq.patB'), want='0.7.4,i.7.2.7.a.1,10.9.1,1g.b.8'.split(',').sort().join(',');
+    ok(st.get('seq.slot')==='B' && st.get('seq.pattern')==='0.0.1', 'Garder : motif B (A était occupé), A intact');
+    ok(st.get('seq.steps')==='64', 'Garder : 4 mesures → motif de 64 pas');
+    ok(pb.split(',').sort().join(',')===want, 'Garder : bonnes notes, places et durées ('+pb+')');
+    AMB.history.undo();
+    ok(st.get('seq.patB')==='' && st.get('seq.slot')==='A' && st.get('seq.steps')==='16', 'Garder : ⌘Z annule tout d\'un coup'); }
+  // ---- S4.6 a chromatic .mid keeps its sharps ----
+  { const ev=[0,0x90,60,100, 24,0x80,60,0, 0,0x90,61,100, 24,0x80,61,0, 0,0x90,66,100, 48,0x80,66,0, 0,0xff,0x2f,0];
+    const hdr=[77,84,104,100,0,0,0,6,0,0,0,1,0,96], trk=[77,84,114,107,0,0,0,ev.length];
+    st.set('seq.slot','C');
+    const n=await AMB.midiExport.importMidi(new File([new Uint8Array([...hdr,...trk,...ev])],'c.mid'));
+    ok(n===3 && st.get('seq.patC')==='0.0.1,1.0.1.7.a.1,2.3.2.7.a.1', 'import .mid : C, C#, F# gardés ('+st.get('seq.patC')+')'); }
   log('DONE');
   }catch(e){log('EXC '+e.stack)}
 });
