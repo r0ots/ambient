@@ -271,3 +271,21 @@ Préparation V3 (v0.99) : refactors du point d'architecture — coquilles des 5 
 - Le retour reste sur l'instrument : carillon accordé, messages LCD, notes « +n ✧ », Jardin visuel qui pousse avec l'arbre.
 - Le clavier d'ordinateur et le clavier MIDI jouent dès la Mélodie auto ; la jauge d'aide des énigmes garde le jeu accessible au fils.
 - Le mode libre reste strictement intact ; la progression vit dans le navigateur, un parcours type dure environ 1 h 15.
+
+## Saison 3 — le Parcours comme rampe vers l'instrument
+
+Décision (utilisateur) : pour le neveu, « à terme il a juste une appli de musique complète avec laquelle il peut créer » ; pas de gameplay long sans accroche forte. Le Parcours est une rampe courte qui finit par la remise de l'instrument complet. Le fils doit s'amuser plus longtemps, avec ses mains et ses oreilles. Toujours : tout dans l'instrument, supprimer plutôt qu'empiler, jamais idle, mode libre intact. Écarté : morceau « jugé » par l'appli (juger le goût), entraînement d'oreille ou niveaux (arcade retirée en v1.05), secrets profonds pour la rejouabilité, toute récompense au temps.
+
+Vague 1 (en parallèle)
+- [ ] S3.1 Moteur « Écho » : l'instrument joue une courte phrase (voix Mélodie), le joueur la rejoue aux touches A–L / MIDI, pions ✓ ⬆ ⬇ par note sur la carte d'énigme existante ; nouvelle cible à chaque essai ; rien en mode libre
+- [ ] S3.2 Secrets-clés : un secret trouvé ouvre son nœud de l'arbre sans ✧ (ex. II-V-I → Progression) ; l'indice 2 se débloque par les secrets trouvés, plus par le temps (suppression du minuteur)
+- [ ] S3.3 MIDI de musicien : note-off, sustain (CC64), durée réelle des notes en Rec live
+- [ ] S3.4 Enregistrer le morceau en un geste : « ● Rec » du panneau Morceau joue le morceau depuis le début et l'enregistre en WAV jusqu'à la fin
+
+Vague 2
+- [ ] S3.5 Composer resserré en 3 nœuds (Mélodie écrite + arpège + motifs + Rec live ; Rythme = basse + pulsations + groove ; Morceau + automation) ; contrats de dessin remplacés par des contrats joués (Rec live) ; le dernier contrat = « enregistre ton morceau » ; équilibrage recalé
+- [ ] S3.6 Écho branché dans le Parcours : remplace les premières portes « à boutons » (Premier reflet, Suite connue) pour le fils
+
+Vague 3
+- [ ] S3.7 Remise de l'instrument : arbre complet → ligne de contrat et ✧ disparaissent, le son reste ; l'appli devient l'outil de création
+- [ ] S3.8 Aide, README, durées : parcours type ≤ 60 min, ≤ 40 min pour un musicien qui trouve les secrets ; revue finale « quoi supprimer »
