@@ -19,7 +19,7 @@ Trois modes (en haut) :
 
 **Mode libre vs Parcours.** Au premier lancement l'appli propose le **Parcours** (le « Jardin sonore ») ou le **mode libre** (menu ⋯, à tout moment, sans perdre son parcours).
 - **Mode libre** : tout est ouvert, aucune interface de jeu. Rien du jeu n'écrit dans les réglages, le journal, l'annulation ni les liens de partage (testé par `tests/free-intact.html`).
-- **Parcours** : on commence avec une seule note et on débloque l'outil dans un arbre de 38 nœuds (5 branches). Les ✧ éclats se gagnent en jouant : découvrir un réglage, remplir un **contrat** d'usage, résoudre une **énigme d'écoute** (reproduire un son cible en 6 validations, 0 à 3 ★ ; après 6 échecs la porte s'ouvre quand même), trouver des **secrets** en jouant. Tout se joue sur l'instrument lui-même ; le visuel **Jardin** montre ce qui a poussé. **Sauvegarde** en fichier ou en lien. Environ 1 h 20 pour tout l'arbre. On juge l'usage ou la cible, jamais le goût.
+- **Parcours** : on commence avec une seule note et on débloque l'outil dans un arbre de 37 nœuds (5 branches). Les ✧ éclats se gagnent en jouant : un **contrat** musical à la fois, affiché sur la 2e ligne de l'écran LCD (touche-le pour l'aide, ↷ pour le suivant), des **énigmes d'écoute** (retrouver un son à l'oreille en 6 validations, une nouvelle cible à chaque essai ; après 6 échecs la porte s'ouvre quand même) et des **secrets** trouvés en jouant. Tout se joue sur l'instrument lui-même ; le visuel **Jardin** montre ce qui a poussé. La progression est gardée dans le navigateur. Environ 1 h 15 pour tout l'arbre. On juge l'usage ou la cible, jamais le goût.
 
 Look : façade de synthé japonais fin 80 (version nuit), écran LCD d'état en haut à droite.
 
@@ -40,14 +40,14 @@ Lien « kiosque » : `?mood=Contemplatif&viz=Horizon&listen=1&autoplay=1`
 
 ## MIDI
 
-Branche un clavier ou des pads (Chrome, Edge, Opera ; Web MIDI) : ils jouent l'appli (notes graves = accords, CC1 densité, CC74 brillance). Import/export de fichiers `.mid` dans le piano roll.
+Branche un clavier ou des pads (Chrome, Edge, Opera ; Web MIDI) : ils jouent l'appli (notes graves = accords, CC1 densité, CC74 brillance). Import/export de fichiers `.mid` dans le piano roll. Dans le Parcours, le clavier MIDI s'ouvre avec la Mélodie auto (comme les touches A–L), l'import/export avec la Mélodie écrite.
 
 ## Développement
 
 - **Lancer en local** : `python3 -m http.server 8765`, puis http://localhost:8765.
-- **Structure** : `js/` (un fichier par domaine), `css/` (`style.css` + `save.css`), `tests/` (en-tête commun `lib.js`). Où mettre quoi, bus, store : voir [ARCHITECTURE.md](ARCHITECTURE.md).
+- **Structure** : `js/` (un fichier par domaine), `css/style.css`, `tests/` (en-tête commun `lib.js`). Où mettre quoi, bus, store : voir [ARCHITECTURE.md](ARCHITECTURE.md).
 - **Tests** (Chrome headless, sans audio réel) : serveur `python3 -u -m http.server 8765 2> /tmp/srv.log`, puis
-  - une page : `LOG=/tmp/srv.log tests/run.sh save.html 0.4` (une page par module : `tests/<module>.html`, ≤ 10 s ; `PORT=…` pour un autre port) ;
+  - une page : `LOG=/tmp/srv.log tests/run.sh game.html 0.4` (une page par module : `tests/<module>.html`, ≤ 10 s ; `PORT=…` pour un autre port) ;
   - tout : `LOG=/tmp/srv.log tests/run-all.sh` (~1 min, `ALL OK` attendu ; `balance.html` simule l'équilibrage du parcours ; `ALL=1` ajoute les pages de démo audio lentes `engines`, `smoke`, `spectrum`) ;
   - endurance : `tests/run.sh endurance.html 1`. `tests/game.html` vérifie aussi que `sw.js` précache tout `index.html`, dans l'ordre.
 - Feuille de route et journal des versions : `ROADMAP.md`.
