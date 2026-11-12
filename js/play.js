@@ -70,7 +70,8 @@
     const type = st & 0xf0;
     if (type === 0x80 || (type === 0x90 && d2 === 0)) lift('m' + d1); // note-off (or note-on at velocity 0)
     else if (type === 0x90) {
-      if (!AMB.seq.playing) return;
+      // stopped: MIDI notes are ignored, except to play an Écho back (its phrase is heard while stopped, like A–L)
+      if (!AMB.seq.playing && !(AMB.puzzles && AMB.puzzles.isEcho())) return;
       // in the path, like the computer keyboard: notes need the Melody, low notes (chords) the Pad
       const g = AMB.game, can = (id) => !g || g.isUnlocked(id);
       // the heard velocity is remapped to 0.25–1 (soft notes stay audible); the raw one (0..1) rides along on 'live'
