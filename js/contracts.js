@@ -32,7 +32,7 @@
     C('k.xy', ['t.macros'], 'Joue sur l\'écran : 4 glissés', 10, 4, {
       act(st, id) { if (id === 'xy' && gesture(st, 'xy', 700)) st.n = (st.n || 0) + 1; },
     }, 'Glisse le doigt ou la souris sur l\'écran (gauche-droite : sombre-clair, bas-haut : densité) ; lève-le entre chaque glissé.'),
-    C('k.paysages', ['t.dice', 't.journal'], 'Écoute 3 paysages, garde celui qui te plaît', 12, 4, {
+    C('k.paysages', ['t.dice', 't.journal'], 'Écoute 3 paysages, garde celui qui te plaît', 16, 4, {
       act(st, id) {
         if (id === 'dice' && (st.n || 0) < 3) st.n = (st.n || 0) + 1;
         else if ((id === 'keep' || id === 'save') && st.n >= 3) st.n = 4;
@@ -50,7 +50,7 @@
     C('h.tonalite', ['h.key'], 'Module : change 3 fois de tonalité pendant la lecture', 10, 3, {
       param(st, k, v, src) { if (k === 'global.key' && src === 'user' && playing()) distinct(st, v); },
     }, 'Sculpter > Global > Tonalité, pendant que ça joue : écoute tout le paysage monter ou descendre.'),
-    C('h.ecrire', ['h.prog'], 'Écris une progression de 4 accords et écoute-la', 14, 2, {
+    C('h.ecrire', ['h.prog'], 'Écris une progression de 4 accords et écoute-la', 18, 2, {
       param(st, k, v, src) {
         if (k === 'pad.custom' && src === 'user' && String(v).trim().split(/\s+/).filter(Boolean).length >= 4) st.n = Math.max(st.n || 0, 1);
       },
@@ -66,14 +66,14 @@
     C('m.notes', ['m.bells'], 'Joue 8 notes au clavier (A à L)', 7, 8, {
       note(st) { if (playing()) st.n = (st.n || 0) + 1; },
     }, 'Pendant la lecture, les touches A à L jouent la gamme (Q à P une octave au-dessus), ou ton clavier MIDI.'),
-    C('m.phrase', ['m.phrase'], 'Mets la mélodie en Phrase et écoute-la tourner 2 fois', 10, 2, {
+    C('m.phrase', ['m.phrase'], 'Mets la mélodie en Phrase et écoute-la tourner 2 fois', 14, 2, {
       param(st, k, v, src) { if (k === 'bells.mode' && src === 'user' && v === 'Phrase') st.on = 1; else if (k === 'bells.mode' && v !== 'Phrase') st.on = 0; },
       phrase(st) { if (st.on && store.get('bells.mode') === 'Phrase') st.n = (st.n || 0) + 1; },
     }, 'Sculpter > Mélodie > Jeu : Phrase. Le motif se répète et varie un peu à chaque tour.'),
-    C('m.figer', ['m.grains2'], 'Fige le son 2 fois (❄ ou Entrée)', 12, 2, {
+    C('m.figer', ['m.grains2'], 'Fige le son 2 fois (❄ ou Entrée)', 16, 2, {
       act(st, id) { if (id === 'freeze') st.n = (st.n || 0) + 1; },
     }, 'Pendant la lecture, ❄ Figer (ou Entrée) capture les 4 dernières secondes : les grains les rejouent.'),
-    C('m.scenes', ['m.scenes'], 'Mémorise deux scènes, puis rappelle-les l\'une après l\'autre', 14, 4, {
+    C('m.scenes', ['m.scenes'], 'Mémorise deux scènes, puis rappelle-les l\'une après l\'autre', 18, 4, {
       act(st, id) {
         if (id === 'sceneStore' && (st.n || 0) < 2 && gesture(st, 'store', 300)) st.n = (st.n || 0) + 1;
         else if (id === 'sceneRecall' && st.n >= 2 && gesture(st, 'recall', 300)) st.n += 1;
@@ -81,29 +81,29 @@
     }, 'Maj+clic sur A puis sur B pour mémoriser deux sons, puis un clic sur A et sur B pour passer de l\'un à l\'autre.'),
 
     // Composer
-    C('c.dessin', ['c.seq'], 'Dessine 8 notes dans le piano roll', 12, 8, {
+    C('c.dessin', ['c.seq'], 'Dessine 8 notes dans le piano roll', 21, 8, {
       param(st, k, v, src) { if (/^seq\.pat/.test(k) && src === 'user' && gesture(st, 'pat', 120)) st.n = (st.n || 0) + 1; },
     }, 'Composer > Mélodie écrite : un clic pose une note, glisser l\'allonge.'),
-    C('c.chaine', ['c.motifs'], 'Enchaîne au moins deux motifs (ex. « A A B »)', 14, 1, {
+    C('c.chaine', ['c.motifs'], 'Enchaîne au moins deux motifs (ex. « A A B »)', 23, 1, {
       param(st, k, v, src) { if (k === 'seq.chain' && src === 'user' && new Set(String(v).toUpperCase().match(/[ABCD]/g) || []).size >= 2) st.n = 1; },
     }, 'Composer > Mélodie écrite : écris dans « Chaîne » l\'ordre des motifs, par exemple A A B.'),
-    C('c.reclive', ['c.motifs'], 'Enregistre 4 notes en Rec live', 14, 4, {
+    C('c.reclive', ['c.motifs'], 'Enregistre 4 notes en Rec live', 23, 4, {
       note(st) { const r = AMB.pianoRoll && AMB.pianoRoll.roll; if (r && r.recording) st.n = (st.n || 0) + 1; },
     }, 'Composer > Mélodie écrite > ● Rec live, puis joue au clavier (A à L) ou au clavier MIDI.'),
-    C('c.basse', ['c.bass'], 'Écris ta ligne de basse : 6 pas', 12, 6, {
+    C('c.basse', ['c.bass'], 'Écris ta ligne de basse : 6 pas', 21, 6, {
       param(st, k, v, src) { if (k === 'bass.pattern' && src === 'user' && gesture(st, k, 150)) st.n = (st.n || 0) + 1; },
     }, 'Composer > Basse : allume ou éteins des pas de la grille et écoute la ligne changer.'),
-    C('c.pulses', ['c.perc'], 'Écris ton rythme : 6 pas', 12, 6, {
+    C('c.pulses', ['c.perc'], 'Écris ton rythme : 6 pas', 21, 6, {
       param(st, k, v, src) { if (k === 'perc.pattern' && src === 'user' && gesture(st, k, 150)) st.n = (st.n || 0) + 1; },
     }, 'Composer > Pulsations : allume ou éteins des pas de la grille et écoute le rythme changer.'),
-    C('c.courbe', ['c.auto'], 'Dessine une courbe avec un vrai creux et un vrai sommet', 14, 1, {
+    C('c.courbe', ['c.auto'], 'Dessine une courbe avec un vrai creux et un vrai sommet', 23, 1, {
       param(st, k, v, src) {
         if (k !== 'auto.curve' || src !== 'user') return;
         const pts = String(v).split('').map((c) => parseInt(c, 36)).filter((x) => x >= 0);
         if (pts.length && Math.max(...pts) - Math.min(...pts) >= 18) st.n = 1; // spread of at least ~50 out of 100
       },
     }, 'Composer > Automation : dessine avec le doigt, bien en bas puis bien en haut, et écoute le réglage bouger.'),
-    C('c.morceau', ['c.song'], 'Crée 3 sections, puis joue le morceau', 20, 4, {
+    C('c.morceau', ['c.song'], 'Crée 3 sections, puis joue le morceau', 29, 4, {
       act(st, id) {
         if (id === 'section' && (st.n || 0) < 3) st.n = (st.n || 0) + 1;
         else if (id === 'song' && st.n >= 3) st.n = 4;
