@@ -7,8 +7,74 @@
 window.addEventListener('load', () => {
   try {
     const A = AMB.arcade; let T = 0; A.clock = { now: () => T };
-    ok(!!A, 'moteur d\'arcade chargé');
-    // à coder : G9.7 — ok(A.byId['accordeur'], 'plugin enregistré'), make/check déterministes, escalier…
+    const rnd = Math.random; let calls = 0; Math.random = () => { calls++; return rnd(); };
+    const g = A.byId['accordeur'];
+    ok(!!A && !!g, 'plugin enregistré');
+    ok(g.kid === false && g.skill === 'hauteur', 'kid false, compétence hauteur');
+    const mk = (seed, d) => g.make(AMB.audition.rng(seed), d);
+    ok(JSON.stringify(mk(7, 0.4)) === JSON.stringify(mk(7, 0.4)), 'make déterministe pour une graine');
+    ok(JSON.stringify(mk(7, 0.4)) !== JSON.stringify(mk(8, 0.4)), 'graines différentes, défis différents');
+    ok(g.threshold(0) === 50 && Math.abs(g.threshold(1) - 2) < 1e-9, 'seuil 50 cents (d=0) à 2 cents (d=1)');
+    let mono = true; for (let d = 0.05; d <= 1.0001; d += 0.05) if (!(g.threshold(d) < g.threshold(d - 0.05))) mono = false;
+    ok(mono, 'seuil strictement décroissant');
+    const stats = {}, DS = [0, 0.25, 0.5, 0.75, 1];
+    for (const d of DS) {
+      let inRange = true, ratio = true, juste = 0, up = 0, down = 0, sum = 0, n = 0, offGrid = true, coh = true, chk = true;
+      for (let s = 1; s <= 500; s++) {
+        const ch = mk(s, d), a = Math.abs(ch.cents);
+        if (ch.cents === 0) juste++; else {
+          if (a < g.threshold(d) - 1e-9 || a > 50 + 1e-9) inRange = false;
+          if (ch.cents > 0) up++; else down++;
+          sum += a; n++;
+        }
+        if (Math.abs(ch.f2 / ch.f1 - Math.pow(2, ch.cents / 1200)) > 1e-12) ratio = false;
+        const grid = g.hz(ch.midi, 0);
+        if (Math.abs(1200 * Math.log2(ch.f1 / grid)) > 40.01) offGrid = false;
+        if (ch.answer !== (ch.cents === 0 ? 'ok' : ch.cents > 0 ? 'up' : 'down')) coh = false;
+        if (!g.check(ch, ch.answer).ok || g.check(ch, ch.answer === 'ok' ? 'up' : 'ok').ok) chk = false;
+        const st = g.stimulus(ch);
+        if (st.length !== 2 || st[0].hz !== ch.f1 || st[1].hz !== ch.f2 || st.some((e) => e.voice !== 'sine')) coh = false;
+        if (ch.f1 < 150 || ch.f1 > 1000) coh = false;
+      }
+      stats[d] = { mean: sum / n, juste: juste / 500 };
+      ok(inRange, `d=${d}: écart hors juste dans [seuil, 50]`);
+      ok(ratio, `d=${d}: f2/f1 = 2^(cents/1200)`);
+      ok(offGrid, `d=${d}: référence décalée de la grille 440 (±40 cents)`);
+      ok(coh && chk, `d=${d}: réponse, stimulus (2 sinus) et check cohérents`);
+      if (d >= 0.5) ok(Math.abs(stats[d].juste - 0.2) < 0.06, `d=${d}: ~20 % de juste (${(stats[d].juste * 100).toFixed(1)} %)`);
+      else ok(stats[d].juste < 0.2 && stats[d].juste > 0.02, `d=${d}: juste plus rare (${(stats[d].juste * 100).toFixed(1)} %)`);
+      ok(Math.abs(up - down) < 0.2 * (up + down), `d=${d}: signe équiréparti (${up}/${down})`);
+    }
+    ok(stats[0].mean > 49 && stats[1].mean < 3.5 && DS.every((d, i) => i === 0 || stats[DS[i - 1]].mean > stats[d].mean), 'écart moyen décroissant avec d (' + DS.map((d) => stats[d].mean.toFixed(1)).join(' > ') + ')');
+    const c0 = Array.from({ length: 60 }, (_, i) => mk(i + 1, 0)).filter((c) => c.cents), c1 = Array.from({ length: 60 }, (_, i) => mk(i + 1, 1)).filter((c) => c.cents);
+    ok(c0.length > 0 && c0.every((c) => Math.abs(c.cents) === 50) && c1.every((c) => Math.abs(c.cents) >= 2 && Math.abs(c.cents) <= 3.2), 'd=0 : ±50 cents ; d=1 : ±2 à 3,2 cents');
+    const ch = mk(3, 1);
+    ok(g.choices(ch).map((c) => c.value).join() === 'up,down,ok', '3 choix cohérents (up, down, ok)');
+    const got = []; const api = { answer: (v) => got.push(v), stop() {}, play: (e) => { got.push('beats' + e.length); } };
+    ['ArrowUp', 'ArrowDown', 'Space', 'Equal'].forEach((code) => ok(g.onKey(ch, { code }, api), 'touche ' + code + ' prise'));
+    ok(got.join() === 'up,down,ok,ok', 'touches ↑ ↓ Espace = → up, down, ok, ok');
+    ok(g.onKey(ch, { code: 'KeyB' }, api) && got[4] === 'beats2', 'B : battements (deux sons ensemble) à d fin');
+    ok(!g.onKey(mk(3, 0.1), { code: 'KeyB' }, api), 'B inactif aux niveaux faciles');
+    const el = document.createElement('div'); document.body.append(el);
+    const ch3 = { ...mk(11, 0.8), cents: 12, answer: 'up' };
+    g.render(ch3, el, api);
+    ok(!el.querySelector('.shown') && !!el.querySelector('.arc-accordeur-beats'), 'rendu : aiguille au repos, bouton battements à d fin');
+    ok(el.textContent.indexOf('12') < 0, 'écart réel caché avant la réponse');
+    AMB.bus.emit('arcade:answer', { ch: ch3, answer: 'down', ok: false });
+    ok(!!el.querySelector('.shown') && /rotate\(14\.4/.test(el.querySelector('.arc-accordeur-needle').style.transform), 'aiguille révélée à +12 cents (14,4°)');
+    ok(/\+12 cents/.test(el.textContent), 'texte : +12 cents après réponse');
+    const ch4 = { ...ch3, cents: 0, answer: 'ok' }; g.render(ch4, el, api); AMB.bus.emit('arcade:answer', { ch: ch4, answer: 'ok', ok: true });
+    ok(/JUSTE/.test(el.textContent) && !!el.querySelector('.in-tune'), 'juste : 0 cent révélé');
+    const off = new OfflineAudioContext(1, 4410, 44100);
+    const r = AMB.audition.play(g.stimulus(mk(5, 0.5)), { ctx: off });
+    ok(AMB.audition.lastCount === 2 && r.dur > 2, 'audition joue 2 sinus à fréquences non entières (hz)');
+    let storeW = 0; if (AMB.store) { const s0 = AMB.store.set; AMB.store.set = function () { storeW++; return s0.apply(this, arguments); }; }
+    const run = () => { localStorage.removeItem(window.AMB_ARCADE_KEY); A.s = { v: 1, profile: 'default', profiles: {} }; T = 0; A.start('accordeur', { seed: 99 }); const out = []; for (let i = 0; i < 12; i++) { const c = A.round.ch; out.push(c.cents, A.answer(i % 3 === 0 ? c.answer : 'up').ok); } A.end(); return JSON.stringify(out); };
+    const r1 = run(), r2 = run();
+    ok(r1 === r2, 'manche déterministe (graine + réponses)');
+    ok(storeW === 0, 'aucune écriture dans AMB.store');
+    ok(calls === 0, 'Math.random jamais appelé');
+    Math.random = rnd;
     localStorage.removeItem(window.AMB_ARCADE_KEY);
     done();
   } catch (e) { fail(e); }
