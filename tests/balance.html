@@ -1,9 +1,10 @@
 <!doctype html><html><head><meta charset="utf-8"></head><body>
-<!-- G11.3 / v1.06 — economy of the Parcours: scripted players run through the path on the REAL data (tree costs and gates,
-     contracts drawn one at a time like contracts.refill, puzzles; secrets pay no ✧: the player finds none) with a time model per activity.
-     These three are the only sources of ✧ (no discoveries since v1.06; the garden visual pays nothing: checked below).
-     Targets (ROADMAP S3.6): typical full path 40–60 min, never more than 5 min without a purchase, margin between the
-     ✧ that can be earned and the tree cost 50–80 %, a slow player: first purchase in under 2 min. -->
+<!-- Economy of the Parcours: scripted players run through the path on the REAL data (tree costs and gates, contracts drawn
+     one at a time like contracts.refill, puzzles, key secrets) with a time model per activity. Contracts and puzzles are the
+     only sources of ✧ (a secret opens its node instead; the garden visual pays nothing: checked below).
+     Targets (S3.8): typical full path 40–60 min without any secret, never more than 4.5 min without a purchase (5 min is the
+     limit), margin between the ✧ that can be earned and the tree cost 50–80 %, a slow player: first purchase in under 2 min;
+     the musician who finds the key secrets: ≤ 40 min. -->
 <script src="lib.js"></script>
 <script>localStorage.removeItem('ambient.game.balance');</script>
 <iframe id="f" src="../index.html?gamekey=ambient.game.balance&listen" style="width:800px;height:600px"></iframe>
@@ -14,7 +15,8 @@
 // and it only reorders a set of incomes that is the same in every run (the player earns about the tree's cost, the
 // deepest contracts come last), so the 5 draws all gave the very same total: the « range » measured nothing.
 const JITTER = 0.25;
-const TIME = { buy: 20, contract: (d) => 40 + 12 * Math.min(d.goal, 8), puzzle: 180, echo: 90, secret: 240 };
+// secret (S3.8): a short gesture once its hint is read, for the musician who finds the key secrets (the others find none)
+const TIME = { buy: 20, contract: (d) => 40 + 12 * Math.min(d.goal, 8), puzzle: 180, echo: 90, secret: 45 };
 const mulberry = (a) => () => { a = (a + 0x6d2b79f5) >>> 0; let t = Math.imul(a ^ (a >>> 15), a | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 
 document.getElementById('f').addEventListener('load', async () => {
@@ -24,25 +26,30 @@ document.getElementById('f').addEventListener('load', async () => {
     // --- the sources that pay: only contracts, puzzles, secrets call game.earn / complete / solve; no discovery any more
     const src = async (f) => (await (await fetch('../js/' + f)).text()).replace(/\/\/.*$/gm, '');
     ok(!/\.(earn|complete|solve)\(/.test(await src('garden-visual.js')), 'jardin visuel : aucun ✧ versé');
-    ok(!A.game.discover && !('found' in A.game.s) && !G.discoverables && !/\.(earn|discover)\(/.test(await src('garden.js')), 'découvertes supprimées : ni état found, ni carnet, l\'interface ne verse rien');
+    ok(!/\.earn\(/.test(await src('garden.js')), 'l\'interface du jeu ne verse rien');
 
     // --- every income, with its prerequisites
     const inc = [];
     for (const d of A.contracts.DEFS) inc.push({ id: d.id, need: d.need, n: d.reward, t: TIME.contract(d), kind: 'contrat' });
-    for (const d of A.puzzles.DEFS) inc.push({ id: d.id, need: d.need, n: d.reward, t: d.kind === 'echo' ? TIME.echo : TIME.puzzle, kind: d.opens ? 'porte' : 'énigme', solves: d.id });
+    for (const d of A.puzzles.DEFS) inc.push({ id: d.id, need: d.need, n: d.reward, t: d.kind === 'echo' ? TIME.echo : TIME.puzzle, kind: d.opens ? 'porte' : 'énigme', solves: d.id, gate: d.opens });
     // S3.2: a secret opens a node for 0 ✧ and pays no ✧ of its own: not an income. The economy is sized for a player who finds none.
     ok(A.secrets.DEFS.every((d) => !d.reward.n), 'secrets : aucun ✧ versé (ils ouvrent un nœud), l\'économie suppose zéro secret trouvé');
-    const total = inc.reduce((a, x) => a + x.n, 0), by = {}; inc.forEach((x) => { by[x.kind] = (by[x.kind] || 0) + x.n; });
+    const total = inc.reduce((a, x) => a + x.n, 0), by = {}; inc.filter((x) => x.n).forEach((x) => { by[x.kind] = (by[x.kind] || 0) + x.n; });
     const margin = Math.round(100 * (total / cost - 1));
     log(`économie : coût de l'arbre ${cost} ✧, gagnables ${total} ✧ (${JSON.stringify(by)}), marge ${margin} %`);
 
     const fmt = (s) => (s / 60).toFixed(1);
-    // --- one scripted player. opts: {k (time factor), midi, extra (puzzles without a gate), seed,
+    // S3.8 key secrets (secrets.OPENS): reachable once their node is owned (and, for Lenteur céleste, the controls it plays:
+    // Halo, Tempo); found = the node and its missing prerequisites open for 0 ✧, or its cost comes back if owned
+    const SECRET_NEED = { lent: ['e.halo', 'm.tempo'] };
+    for (const d of A.secrets.DEFS) inc.push({ id: 's.' + d.id, need: [d.node, ...(SECRET_NEED[d.id] || [])], n: 0, t: TIME.secret, kind: 'secret', opens: A.secrets.OPENS[d.id], midi: d.midi });
+    // --- one scripted player. opts: {k (time factor), midi, extra (puzzles without a gate), secrets (finds the key secrets), seed,
     //     worst (buys first the nodes that open no income: the dead end to avoid since discoveries are gone)}
     function sim(opts) {
       const k = opts.k || 1, rnd = mulberry(opts.seed || 7), jrnd = mulberry((opts.seed || 7) * 7919), jit = () => (opts.jitter ? 1 + JITTER * (2 * jrnd() - 1) : 1);
       const own = new Set(['racine']), solved = new Set(), done = new Set();
-      const pool = inc.filter((x) => (opts.extra || x.kind !== 'énigme') && (opts.midi || !x.midi));
+      const pool = inc.filter((x) => (opts.extra || x.kind !== 'énigme') && (opts.secrets || x.kind !== 'secret') && (opts.midi || !x.midi));
+      const openChain = (id) => { const n = T.byId[id]; if (own.has(id)) return 0; n.req.forEach(openChain); own.add(id); return 1; };
       // contracts: one active, drawn at random among the eligible ones (contracts.refill)
       const active = [];
       const refill = () => {
@@ -66,11 +73,13 @@ document.getElementById('f').addEventListener('load', async () => {
           if (t - lastBuy > gap) { gap = t - lastBuy; gapAt = buy.id; }
           lastBuy = t; steps.push(`${Math.round(t / 60)}′ ${buy.id}`); refill(); continue;
         }
-        const todo = pool.filter((x) => !done.has(x.id) && x.need.every((r) => own.has(r)) && (x.kind !== 'contrat' || active.includes(x.id)))
-          .sort((a, b) => (b.kind === 'porte') - (a.kind === 'porte') || (a.kind === 'énigme') - (b.kind === 'énigme') || a.t / a.n - b.t / b.n)[0];
+        // a gate whose node a secret already opened is only an optional puzzle (played with `extra`)
+        const todo = pool.filter((x) => !done.has(x.id) && x.need.every((r) => own.has(r)) && (x.kind !== 'contrat' || active.includes(x.id)) && (opts.extra || !x.gate || !own.has(x.gate)))
+          .sort((a, b) => (b.kind === 'secret') - (a.kind === 'secret') || (b.kind === 'porte') - (a.kind === 'porte') || (a.kind === 'énigme') - (b.kind === 'énigme') || a.t / a.n - b.t / b.n)[0];
         if (!todo) break;
         done.add(todo.id); shards += todo.n; earned += todo.n; t += todo.t * k * jit();
         if (todo.solves) solved.add(todo.solves);
+        if (todo.opens) { if (!openChain(todo.opens)) { shards += T.byId[todo.opens].cost; earned += T.byId[todo.opens].cost; } else { lastBuy = t; refill(); } }
         if (todo.kind === 'contrat') { active.splice(active.indexOf(todo.id), 1); refill(); }
       }
       // the path ends with its last contract (« Enregistre ton morceau »): with the whole tree owned, it is played before the handover
@@ -87,7 +96,7 @@ document.getElementById('f').addEventListener('load', async () => {
     log('jalons (tirage 1) : ' + r1.steps.filter((s, i) => i % 6 === 5 || i === r1.steps.length - 1).join(' · '));
     ok(runs.every((r) => !r.left.length), 'aucun blocage, tout l\'arbre est atteignable ' + runs.map((r) => r.left.join(',')).join(''));
     ok(tMin >= 40 * 60 && tMax <= 60 * 60, 'cible : parcours type complet en 40–60 min (sans secret) (' + fmt(tMin) + '–' + fmt(tMax) + ')');
-    ok(gMax <= 5 * 60, 'cible : jamais plus de 5 min sans achat possible (' + fmt(gMax) + ' min)');
+    ok(gMax <= 4.5 * 60, 'cible : jamais plus de 4,5 min sans achat possible (limite 5 min) (' + fmt(gMax) + ' min)');
     ok(margin >= 50 && margin <= 80, 'cible : marge gagnables / coût de 50 à 80 % (' + margin + ' %)');
 
     // a slower player (the son): 1.3× slower, no MIDI, no puzzle without a gate
@@ -99,10 +108,11 @@ document.getElementById('f').addEventListener('load', async () => {
     // the worst buying order (nodes opening no income first) never ends in a dead end
     const bad = [1, 2, 3].map((seed) => sim({ seed, worst: true }));
     ok(bad.every((r) => !r.left.length), 'pire ordre d\'achat (nœuds sans revenu d\'abord) : jamais d\'impasse ' + bad.map((r) => r.left.join(',')).join(''));
-    // a musician with a MIDI keyboard: every secret reachable, every puzzle
-    const mus = sim({ seed: 2, midi: true, extra: true });
-    log(`musicien au clavier MIDI : arbre en ${fmt(mus.t)} min, attente max ${fmt(mus.gap)} min (attentes > 4 min : ${mus.waits.join(' ') || 'aucune'})`);
-    ok(!mus.left.length && mus.gap <= 5 * 60, 'musicien au clavier MIDI : tout atteignable, jamais plus de 5 min sans achat (' + fmt(mus.gap) + ')');
+    // S3.8 the musician (MIDI keyboard) who finds the key secrets: each one opens its node, the ramp is shorter
+    const mus = [1, 2, 3, 4, 5].map((seed) => sim({ seed, midi: true, secrets: true, jitter: true }));
+    const mMax = Math.max(...mus.map((r) => r.t)), mGap = Math.max(...mus.map((r) => r.gap));
+    log(`musicien MIDI qui trouve les secrets-clés : arbre puis morceau en ${fmt(Math.min(...mus.map((r) => r.t)))}–${fmt(mMax)} min, attente max ${fmt(mGap)} min ; jalons : ${mus[0].steps.filter((x, i) => i % 6 === 5).join(' · ')}`);
+    ok(mus.every((r) => !r.left.length) && mMax <= 40 * 60 && mGap <= 5 * 60, 'cible : musicien qui trouve les secrets-clés, tout l\'arbre en ≤ 40 min, jamais plus de 5 min sans achat (' + fmt(mMax) + ' min)');
     done();
   } catch (e) { fail(e); }
 });

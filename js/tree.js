@@ -58,7 +58,7 @@
       'seq.mode', 'seq.arpDir', 'seq.arpRate', 'seq.arpOct', 'seq.patB', 'seq.patC', 'seq.patD', 'seq.slot', 'seq.chain', 'seq.mutate', 'seq.follow'],
       ['pianoroll', 'mode-compose', 'midiFile', 'motifs', 'reclive'], 'Le piano roll, l\'arpège, 4 motifs et leur chaîne, le Rec live ; importer et exporter des .mid.', 'p.composer'),
     N('c.rythme', 'composer', 'Rythme', 26, ['c.seq'], ['bass.*', 'perc.*', 'global.swing', 'global.humanize', 'seq.swing'], [], 'Une basse qui suit les accords, 4 pistes de pulsations, le swing et l\'imprécision humaine.'),
-    N('c.song', 'composer', 'Morceau', 26, ['c.rythme', 'h.prog'], ['auto.*'], ['automation', 'song'], 'Enchaîner des sections, faire évoluer un réglage sur plusieurs mesures, enregistrer le morceau entier.'),
+    N('c.song', 'composer', 'Morceau', 18, ['c.rythme', 'h.prog'], ['auto.*'], ['automation', 'song'], 'Enchaîner des sections, faire évoluer un réglage sur plusieurs mesures, enregistrer le morceau entier.'),
   ];
 
   const byId = Object.fromEntries(NODES.map((n) => [n.id, n]));
