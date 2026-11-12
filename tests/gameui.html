@@ -162,6 +162,37 @@ f.addEventListener('load', async ()=>{
       A.garden.closePuzzle(); f.style.width='1300px'; f.style.height='900px'; await wait(200); }
     A.garden.openPuzzle('p.premier'); A.game.setMode('free'); await wait(20); ok(pzc.hidden && !P.current, 'passage en libre : carte Écho fermée');
     A.game.setMode('path'); A.game.reset(); }
+  // --- S4.4 touch pads: under the screen once the Melody is owned, play like A–L (held, multitouch), long press = chord
+  { A.game.reset(); A.game.earn(300,'test'); A.perform.setMode('listen'); await wait(30);
+    const bar=d.getElementById('pads'), pads=[...bar.querySelectorAll('.pad')], PE=(t,id)=>new w.PointerEvent(t,{bubbles:true,pointerId:id,pointerType:'touch'});
+    ok(bar.hidden && !shown('#pads'), 'pastilles : cachées avant la Mélodie auto');
+    A.tree.buy('m.bells'); await wait(30);
+    const stage=d.querySelector('.stage').getBoundingClientRect(), br=bar.getBoundingClientRect();
+    ok(!bar.hidden && pads.length===9 && A.play.PADS.length===9 && br.top>=stage.bottom-1 , 'pastilles : 9, sous l\'écran, dès la Mélodie auto');
+    const sp=A.seq.playMidi, rel=[], lives=[]; A.bus.on('live',e=>lives.push(e.midi)); A.seq.playing=true;
+    A.seq.playMidi=(m,v,r,h)=>{ A.bus.emit('live',{midi:m,time:0,vel:v,raw:r}); return {id:m,midi:m,release:()=>{}}; };
+    const eo=A.seq.endLive; A.seq.endLive=(h)=>rel.push(h.midi);
+    { const st=A.contracts.state(A.game); st.active=['m.notes']; st.prog['m.notes']={n:0}; }
+    const n0=0;
+    pads[2].dispatchEvent(PE('pointerdown',1)); pads[6].dispatchEvent(PE('pointerdown',2)); await wait(20);
+    ok(lives.length===2 && lives[0]!==lives[1] && A.play.held===2 && pads[2].classList.contains('on') && pads[6].classList.contains('on'), 'multitouch : 2 doigts = 2 notes tenues');
+    pads[2].dispatchEvent(PE('pointerup',1)); await wait(10);
+    ok(rel.length===1 && A.play.held===1 && !pads[2].classList.contains('on') && pads[6].classList.contains('on'), 'un doigt levé : sa note finit, l\'autre tient');
+    pads[6].dispatchEvent(PE('pointercancel',2)); await wait(10);
+    ok(rel.length===2 && A.play.held===0, 'pointercancel : note relâchée');
+    ok(((A.game.s.prog['m.notes']||{}).n||0)===n0+2 || A.game.s.contracts.includes('m.notes'), 'une pastille compte pour « Joue 8 notes » ('+(((A.game.s.prog['m.notes']||{}).n||0)-n0)+')');
+    const ch=[], fc=A.seq.forceChord; A.seq.forceChord=(dg)=>ch.push(dg); A.tree.buy('h.pad');
+    pads[3].dispatchEvent(PE('pointerdown',3)); await wait(250); const early=ch.length; await wait(350);
+    ok(early===0 && ch.join()==='3' && pads[3].classList.contains('chord'), 'appui long : l\'accord du degré (pas avant)');
+    pads[3].dispatchEvent(PE('pointerup',3)); A.seq.forceChord=fc; A.seq.playMidi=sp; A.seq.endLive=eo; A.seq.playing=false;
+    // 390 px: at least 44 px under the thumb, nothing wider than the screen
+    f.style.width='390px'; f.style.height='780px'; await wait(250);
+    const de=d.documentElement, r2=pads.map(b=>b.getBoundingClientRect());
+    ok(r2.every(r=>r.width>=44 && r.height>=44 && r.right<=de.clientWidth+1 && r.left>=-1) && de.scrollWidth<=de.clientWidth+1, '390 px : pastilles ≥ 44 px, dans l\'écran ('+Math.round(Math.min(...r2.map(r=>r.width)))+'×'+Math.round(Math.min(...r2.map(r=>r.height)))+')');
+    f.style.width='1300px'; f.style.height='900px'; await wait(200);
+    A.garden.openPuzzle('p.premier'); await wait(20); ok(!shown('#pads'), 'carte Écho ouverte : la barre cède la place aux pastilles de la carte'); A.garden.closePuzzle();
+    A.game.setMode('free'); await wait(30); ok(bar.hidden && !shown('#pads'), 'mode libre sur ordinateur : aucune pastille');
+    A.game.setMode('path'); A.game.reset(); }
   // --- actions on success (G7.2): a cancelled save emits nothing, a real one does (contracts count it)
   { A.game.reset(); A.game.earn(300,'test'); ['t.son','t.journal'].forEach(i=>A.tree.buy(i)); const acts=[]; A.bus.on('act',id=>acts.push(id));
     const op=w.prompt; w.prompt=()=>null; d.getElementById('save').click(); await wait(20);

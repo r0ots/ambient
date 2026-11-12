@@ -603,3 +603,17 @@ body.pz-veil .pz-veiled { filter: blur(4px) grayscale(.6); opacity: .55; }
 @media (prefers-reduced-motion: reduce) {
   .tree-node .led, .tree-node.st-available .led, .tree-node.is-buying .led, .tree-node.is-born .led, .tree-node.is-blink .led, .tree-link.available, .tree-glow.lit, .tree-glow.hint { animation: none; transition: none; }
 }
+
+/* Touch pads (S4.4): the 9 notes of A–L under the screen; low to high = deep blue to warm gold; letters only with a mouse */
+.pads { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; margin: -6px 0 14px; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.pads[hidden], body.pz-echo .pads { display: none; }
+.pad { height: 56px; min-width: 0; padding: 0; border-radius: 8px; border: 1px solid var(--line); cursor: pointer; touch-action: none; -webkit-tap-highlight-color: transparent;
+  background: hsl(calc(250 - var(--i) * 27) 55% calc(30% + var(--i) * 3.5%)); color: #ffffffb0; font: 600 11px var(--f-ui); }
+.pad.on { filter: brightness(1.5); transform: translateY(1px); }
+.pad.chord { box-shadow: 0 0 0 2px var(--lcd-fg) inset; }
+@media (pointer: coarse) { .pad span { display: none; } }
+@media (max-width: 560px) {
+  .pads { grid-template-columns: repeat(10, 1fr); }
+  .pad { grid-column: span 2; height: 52px; }
+  .pad:nth-child(6) { grid-column: 2 / span 2; }
+}

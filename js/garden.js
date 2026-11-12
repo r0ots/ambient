@@ -138,6 +138,7 @@
       if (want && AMB.perform && AMB.mode !== want && AMB.tree.uiUnlocked('mode-' + want)) AMB.perform.setMode(want);
       const card = $('#puzzle'); card.hidden = false;
       document.body.classList.add('pz-open');
+      document.body.classList.toggle('pz-echo', P.isEcho(id)); // the card has its own pads: the bar under the screen steps aside
       const d = P.byId[id];
       // phone: the card covers the bottom of the screen, so bring the first control in play to the top
       const first = Object.keys(d.keys || {}).map((k) => document.querySelector(`[data-key="${k}"]`)).find((e) => e && e.getClientRects().length);
@@ -152,11 +153,11 @@
       if (AMB.puzzles) AMB.puzzles.stop();
       const back = this.pz && this.pz.mode; this.pz = null;
       const c = $('#puzzle'); if (c) c.hidden = true;
-      document.body.classList.remove('pz-open');
+      document.body.classList.remove('pz-open', 'pz-echo');
       if (back && AMB.perform && AMB.mode !== back && AMB.game.path && (back === 'listen' || AMB.tree.uiUnlocked('mode-' + back))) AMB.perform.setMode(back);
     },
     // one validation = one row of pegs: ✓ right, ≈ close, ✗ far, plus ⬆ / ⬇ or « autre » (another option)
-    PADS: ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+    get PADS() { return AMB.play.PADS; }, // the 9 pads of the bar under the screen (js/play.js), also on the Écho card
     PEG: { ok: ['✓', 'juste'], near: ['≈', 'proche'], far: ['✗', 'loin'] },
     DIR: { up: ['⬆', 'plus haut'], down: ['⬇', 'plus bas'], other: [' autre', 'autre option'] },
     pegHTML(p) {
