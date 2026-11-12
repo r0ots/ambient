@@ -140,6 +140,31 @@ window.addEventListener('load', ()=>{
     g.load(); ok(g.s.puzzles.includes('p.premier') && !('found' in g.s) && !('stars' in g.s) && Array.isArray(g.s.opened) && g.s.shards===3, 'ancienne sauvegarde (découvertes, étoiles) : chargée, champs retirés ignorés');
     ok(Pz.run('p.gamme').tries.length===1 && Pz.target('p.gamme') && Object.keys(Pz.target('p.gamme')).length===4, 'ancienne énigme en cours sans cible : une cible est tirée, l\'essai fait est gardé');
     K.refill(); ok(g.s.active.join()==='k.couleur', 'ancienne sauvegarde : un seul contrat actif valide'); }
+  // --- Écho (S3.1): a phrase on the Melody voice, played back note by note through 'live'; seeded game rng
+  { const Ec='e.premier', S=AMB.seq, mid=(dg)=>AMB.theory.degreeToMidi(dg,S.root,S.scale,4), live=(m)=>AMB.bus.emit('live',{midi:m,time:0,vel:0.85,raw:null});
+    let res=null, n=0; const evs=[]; AMB.bus.on('game:puzzle',e=>{ if(e&&e.res) res=e.res; }); AMB.bus.on('game:opened',e=>evs.push('opened:'+e.id)); AMB.bus.on('game:earn',e=>{ if(e.id===Ec) evs.push('earn:'+e.n); });
+    ok(Pz.isEcho(Ec) && !Pz.DEFS.includes(Pz.byId[Ec]) && Pz.echoLen(0)===3 && Pz.echoLen(1)===6, 'Écho : hors de la liste des 12, 3 notes à d=0, 6 au plus');
+    const mr=Math.random; Math.random=()=>{ n++; return 0.5; };
+    K.seed(1234); const a=Pz.draw(Ec).degs; K.seed(1234); const b=Pz.draw(Ec).degs; Math.random=mr;
+    ok(a.join()===b.join() && !n && a.length===3 && a.every(x=>x>=0&&x<9) && a.every((x,i)=>!i||x!==a[i-1]), 'tirage à graine (rng du jeu, jamais Math.random) : '+a.join(' '));
+    g.setMode('path'); delete g.s.runs[Ec]; g.s.puzzles=g.s.puzzles.filter(x=>x!==Ec); K.seed(42); Pz.start(Ec); const t1=Pz.target().degs.slice(), snap=JSON.stringify(AMB.store.stableSnapshot()), sh0=g.s.shards;
+    live(mid(t1[0])); live(mid(t1[1])-1);
+    ok(Pz.echoRow.length===2 && Pz.echoRow[0].state==='ok' && Pz.echoRow[1].dir==='up' && !Pz.run(Ec).tries.length && res===null, 'pions après chaque note : ✓ puis ⬆');
+    live(mid(t1[2])+2); const t2=Pz.target().degs;
+    ok(res && !res.ok && res.row.pegs.map(p=>p.state+':'+p.dir).join()==='ok:null,far:up,far:down' && Pz.run(Ec).tries.length===1 && !Pz.echoRow.length, 'phrase finie : ✓ ⬆ ⬇, 1 essai sur 6');
+    ok(t2.length===3 && t2.join()!==t1.join(), 'nouvel essai : nouvelle phrase '+t1.join(' ')+' → '+t2.join(' '));
+    res=null; t2.forEach(dg=>live(mid(dg)));
+    ok(res && res.ok && res.first && res.tries===2 && g.s.puzzles.includes(Ec) && g.s.shards===sh0+15 && Pz.current===null && !g.s.runs[Ec], 'phrase entièrement juste : réussite en 2 essais, +15');
+    ok(JSON.stringify(AMB.store.stableSnapshot())===snap, 'pendant l\'Écho : l\'ambiance n\'est pas touchée');
+    // 6 failures → the gate opens anyway, without ✧; a new phrase at each attempt
+    g.s.puzzles=g.s.puzzles.filter(x=>x!==Ec); evs.length=0; Pz.start(Ec); const seen=[]; res=null;
+    for(let i=0;i<6;i++){ const t=Pz.target().degs; seen.push(t.join('')); t.forEach(dg=>live(mid(dg)+1)); }
+    ok(res && res.out && !res.ok && res.left===0 && Pz.given(Ec) && evs.join()==='opened:'+Ec && Pz.current===null, '6 échecs → porte ouverte, sans ✧ ('+evs.join()+')');
+    ok(seen.every((x,i)=>!i||x!==seen[i-1]), '6 essais, 6 phrases tirées : '+seen.join(' '));
+    // free mode: nothing judged, nothing shown
+    g.setMode('free'); Pz.start(Ec); res=null; evs.length=0; const tf=Pz.target().degs; tf.forEach(dg=>live(mid(dg)));
+    ok(!Pz.echoRow.length && !Pz.run(Ec).tries.length && res===null && !evs.length && Pz.echoPlay()===0, 'mode libre : rien de détecté ni joué');
+    Pz.stop(); delete g.s.runs[Ec]; g.setMode('path'); }
   ok(Pz.keyScore('drone.tone',0.5,0.5)===1 && Pz.keyScore('drone.tone',0,1)===0 && Pz.keyScore('pad.wave','Verre','Nappe')===0, 'score par réglage');
   g.reset();
   g.setMode('free'); ok(T.paramUnlocked('fx.echo') && T.uiUnlocked('song'), 'mode libre : tout ouvert');

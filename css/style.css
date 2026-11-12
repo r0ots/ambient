@@ -472,6 +472,9 @@ body.pz-veil .pz-veiled { filter: blur(4px) grayscale(.6); opacity: .55; }
 .pz-peg.far { color: #e08a7a; }
 .pz-help { display: flex; gap: 6px; align-items: center; font-size: 11.5px; color: var(--muted); cursor: pointer; }
 .pz-help input { margin: 0; accent-color: var(--lcd-fg); }
+/* S3.1 « Écho » : no Valider nor gauge, pegs ✓ ⬆ ⬇ per note, the notes to come as « · » */
+.pz-ok[hidden], .pz-help[hidden] { display: none; }
+.pz-peg.wait { color: var(--muted); }
 
 /* G10.1 secrets: folded panel inside the tree screen (path only) */
 .secrets { margin: 0 0 4px; border-radius: var(--radius, 4px); background: #0003; }

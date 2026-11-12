@@ -51,7 +51,27 @@
     P('b.groove', ['c.groove', 'm.tempo'], 'Chaloupé', 'Le rythme : le kit des pulsations, le tempo, le swing et l\'imprécision.',
       { 'perc.kit': null, 'global.tempo': [50, 120], 'global.swing': [0, 0.8], 'global.humanize': [0, 0.8] }, 25),
   ];
-  const byId = Object.fromEntries(DEFS.map((d) => [d.id, d]));
+  // S3.1 « Écho » : the instrument plays a short phrase on the Melody voice, in the current key and scale; the player
+  // plays it back (A–L keys or MIDI, the 'live' path) and gets one peg per note: ✓ right, ⬆ play higher, ⬇ play lower.
+  // A whole phrase right = solved; each new attempt draws a new phrase (seeded game rng). d = difficulty 0..1:
+  // 3 notes at 0, up to 6. Not in DEFS (the tree's list) until S3.6 hangs them on gates (`opens`).
+  const E = (id, need, title, intro, d, reward, opens) => ({ id, kind: 'echo', need, title, intro, d, reward, opens: opens || null });
+  const ECHOS = [
+    E('e.premier', ['m.bells'], 'Écho', 'Écoute la phrase, puis rejoue-la note à note.', 0, 15),
+  ];
+  const ECHO_DEGS = 9, ECHO_GAP = 0.55; // A–L = degrees 0..8 of octave 4; seconds between the phrase's notes
+  const byId = Object.fromEntries([...DEFS, ...ECHOS].map((d) => [d.id, d]));
+  const echoLen = (d) => Math.max(3, Math.min(6, 3 + Math.round((d || 0) * 3)));
+  // a singable phrase: a walk of steps (seconds, thirds; a fourth from d ≥ 0.5) inside A–L, never twice the same note in a row
+  function echoPhrase(d, rnd) {
+    const n = echoLen(d), steps = d >= 0.5 ? [-3, -2, -1, 1, 2, 3] : [-2, -1, 1, 2];
+    const out = [Math.floor(rnd() * 5)];
+    while (out.length < n) {
+      const p = out[out.length - 1], ok = steps.map((s) => p + s).filter((x) => x >= 0 && x < ECHO_DEGS);
+      out.push(ok[Math.floor(rnd() * ok.length)]);
+    }
+    return out;
+  }
 
   // one peg per key: state ok / near / far, and which way to go (up / down / other option)
   function peg(key, value, target) {
@@ -75,11 +95,17 @@
   }
 
   const puzzles = {
-    DEFS, byId, PASS, TRIES, NEAR, keyScore, peg, drawValue,
+    DEFS, ECHOS, byId, PASS, TRIES, NEAR, keyScore, peg, drawValue, echoLen, echoPhrase,
     rnd: Math.random, // overridable by tests
-    // a new target for a puzzle: same controls, values drawn anew, never already reached by `values`
-    draw(id, values = store.stableSnapshot()) {
+    // a new target for a puzzle: same controls, values drawn anew, never already reached by `values`;
+    // an echo: a new phrase (seeded game rng), never the same as the previous one
+    draw(id, values = store.stableSnapshot(), prev = null) {
       const d = byId[id]; let t = null;
+      if (d.kind === 'echo') {
+        const rnd = AMB.contracts ? AMB.contracts.rng() : this.rnd;
+        for (let i = 0; i < 10; i++) { t = { degs: echoPhrase(d.d, rnd) }; if (!prev || t.degs.join() !== prev.degs.join()) break; }
+        return t;
+      }
       for (let i = 0; i < 30; i++) {
         t = {}; for (const [k, r] of Object.entries(d.keys)) t[k] = drawValue(k, r, this.rnd);
         if (this.score(id, values, t).total < 0.75) break;
@@ -88,7 +114,7 @@
     },
     // per-key detail and overall score of a sound against a target (the attempt's own by default)
     score(id, values = store.stableSnapshot(), target = this.target(id)) {
-      if (!byId[id] || !target) return { total: 0, keys: [] };
+      if (!byId[id] || !target || byId[id].kind === 'echo') return { total: 0, keys: [] };
       const keys = Object.entries(target).map(([k, t]) => ({ key: k, target: t, value: values[k], s: keyScore(k, values[k], t) }));
       const total = keys.reduce((a, x) => a + x.s, 0) / keys.length;
       return { total, keys };
@@ -97,7 +123,7 @@
     // puzzles that can be attempted now (prerequisite nodes owned), solved or not: they are always replayable
     available(g = AMB.game) { return DEFS.filter((d) => d.need.every((n) => g.has(n))); },
     // the puzzle guarding a node (tree gate)
-    forNode(nodeId) { return DEFS.find((d) => d.opens === nodeId) || null; },
+    forNode(nodeId) { return DEFS.find((d) => d.opens === nodeId) || ECHOS.find((d) => d.opens === nodeId) || null; },
     current: null,
     // the attempt in progress (kept in the game state until solved or out of validations: closing the card and
     // coming back gives neither the 6 validations nor a new target); a new attempt draws a new target
@@ -122,6 +148,7 @@
     values() { return this.ab ? { ...store.stableSnapshot(), ...this.ab.mine } : store.stableSnapshot(); },
     currentScore() { return this.current ? this.score(this.current, this.values()) : { total: 0, keys: [] }; },
     listen(side) {
+      if (this.isEcho()) return false; // an echo is heard with echoPlay, never on the controls
       const target = this.target(); if (!target) return false;
       if (side === 'target' && !this.ab) {
         // the target is played on the real ambience (source 'game'); ab.mine = the player's own values of those keys
@@ -152,16 +179,58 @@
       AMB.game.emit('puzzle', { id, side: 'mine', ...this.currentScore() });
       return true;
     },
-    stop() { if (this.ab) this.listen('mine'); this.current = null; AMB.game.emit('puzzle', { id: null }); },
+    stop() { if (this.ab) this.listen('mine'); this.current = null; this.echoRow = []; AMB.game.emit('puzzle', { id: null }); },
+
+    // ---- Écho (S3.1) ----
+    isEcho(id = this.current) { const d = byId[id]; return !!d && d.kind === 'echo'; },
+    echoRow: [], // pegs of the phrase being played back (the attempt in progress)
+    echoUntil: 0, // audio time until which the phrase is heard: notes played meanwhile are not judged
+    // the phrase's notes, in the current key and scale, where the A–L keys play them
+    echoMidis(id = this.current) {
+      const t = this.target(id), S = AMB.seq; if (!t || !t.degs || !S) return [];
+      return t.degs.map((dg) => AMB.theory.degreeToMidi(dg, S.root, S.scale, 4));
+    },
+    // the instrument plays the phrase on the Melody voice, like the player's notes (no 'live' event: it is not played
+    // by the player, nothing counts it); the ambience is left as it is. Returns the number of notes scheduled.
+    echoPlay(id = this.current) {
+      const ctx = AMB.engine && AMB.engine.ctx, L = AMB.layers;
+      if (!this.isEcho(id) || !AMB.game.path || !ctx || !L || !L.bells) return 0;
+      if (!store.get('bells.on')) L.bells.ch.setLevel(Math.pow(store.get('bells.vol'), 1.6)); // as seq.playMidi does
+      const ms = this.echoMidis(id), t0 = ctx.currentTime + 0.12;
+      ms.forEach((m, i) => L.bells.note(m, t0 + i * ECHO_GAP, 0.8, true));
+      this.echoUntil = t0 + (ms.length - 1) * ECHO_GAP + 0.1;
+      return ms.length;
+    },
+    // a note played by the player (path only): one peg; the last note of the phrase makes the attempt.
+    // Returns null (not judged), { row } (in progress) or the attempt's result.
+    echoInput(midi, id = this.current) {
+      if (!this.isEcho(id) || !AMB.game.path || this.current !== id) return null;
+      const ctx = AMB.engine && AMB.engine.ctx; if (ctx && ctx.currentTime < this.echoUntil) return null;
+      const ms = this.echoMidis(id), i = this.echoRow.length, t = ms[i]; if (t === undefined) return null;
+      this.echoRow.push({ key: 'n' + (i + 1), state: midi === t ? 'ok' : 'far', dir: midi === t ? null : midi < t ? 'up' : 'down', echo: true });
+      if (this.echoRow.length < ms.length) { AMB.game.emit('puzzle', { id, side: 'mine', total: 0, keys: [], note: i + 1 }); return { row: this.echoRow }; }
+      const res = this.attempt(id);
+      AMB.game.emit('puzzle', { id, side: 'mine', total: 0, keys: [], res });
+      return res;
+    },
     // validate (G8.1): one of the 6 validations, judged on the player's own sound (never while
     // the target is playing). Returns { ok, row, tries, left, first, out } or null.
     attempt(id = this.current) {
       if (!id || !byId[id] || this.ab) return null;
-      const g = AMB.game, d = byId[id], r = this.run(id, g), sc = this.score(id);
-      const row = { total: sc.total, pegs: sc.keys.map((k) => peg(k.key, k.value, k.target)) };
+      const g = AMB.game, d = byId[id], r = this.run(id, g), echo = d.kind === 'echo';
+      let row;
+      if (echo) { // the whole phrase played back: right when every note is
+        if (this.echoRow.length < this.echoMidis(id).length) return null;
+        const pegs = this.echoRow; this.echoRow = [];
+        row = { total: pegs.filter((p) => p.state === 'ok').length / pegs.length, pegs };
+      } else {
+        const sc = this.score(id);
+        row = { total: sc.total, pegs: sc.keys.map((k) => peg(k.key, k.value, k.target)) };
+      }
       r.tries.push(row);
-      const res = { ok: sc.total >= PASS, row, tries: r.tries.length, left: TRIES - r.tries.length };
+      const res = { ok: echo ? row.total === 1 : row.total >= PASS, row, tries: r.tries.length, left: TRIES - r.tries.length };
       if (res.ok || res.left <= 0) { delete g.s.runs[id]; if (this.current === id) this.current = null; }
+      else if (echo) r.target = this.draw(id, null, r.target); // an echo: a new phrase at each attempt
       if (res.ok) res.first = g.solve(id, d.reward); // first resolution only: emits game:puzzles + game:earn (saves)
       else if (res.left <= 0) {
         // out of validations: never a dead end — the gate opens anyway, without ✧
@@ -186,6 +255,9 @@
     }
     AMB.game.emit('puzzle', { id: puzzles.current, side: puzzles.side(), ...puzzles.currentScore() });
   });
+
+  // Écho: the player's notes (computer keyboard or MIDI, already heard on the Melody voice) are judged in the path only
+  if (AMB.bus) AMB.bus.on('live', (n) => { if (n && puzzles.isEcho()) puzzles.echoInput(n.midi); });
 
   // never leave the target sound behind when the page goes away (a mode change is handled by tree.onMode)
   window.addEventListener('pagehide', () => { if (puzzles.ab) puzzles.listen('mine'); });
