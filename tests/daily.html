@@ -1,0 +1,130 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
+<!-- Défi du jour (G10.2) + classement (G10.5): date → plan, codec and checksum, ghost rounds chained, official / practice, zen,
+     links (malformed, forged, free mode → proposal, nothing stored before). Horloge injectée, mini-jeux de test. -->
+<script src="lib.js"></script>
+<script>['game','arcade','daily','duel'].forEach(k=>localStorage.removeItem('ambient.'+k+'.dlt'));</script>
+<iframe id="f" src="../index.html?gamekey=ambient.game.dlt&arcadekey=ambient.arcade.dlt&dailykey=ambient.daily.dlt&duelkey=ambient.duel.dlt" style="width:1200px;height:800px;border:0"></iframe>
+<script>
+const f=document.getElementById('f');
+f.addEventListener('load', async ()=>{
+  try{
+  const t0=performance.now();
+  const w=f.contentWindow, d=f.contentDocument, A=w.AMB, AR=A.arcade, U=A.arcadeUI, DY=A.daily, L=DY.link;
+  w.addEventListener('error',e=>log('ERROR '+e.message+' @'+e.filename+':'+e.lineno));
+  const until=async(fn,n=80)=>{ for(let i=0;i<n&&!fn();i++) await wait(50); return fn(); };
+  const setHash=async(h)=>{ w.location.hash=h; await wait(80); };
+  // --- codec: round trip, checksum, garbage never throws
+  const pl={v:1,day:'2026-11-12',n:'Léo',s:12400,p:'m',z:0,r:12400};
+  const enc=L.encode(pl), dec=L.decode(enc);
+  ok(dec && dec.n==='Léo' && dec.s===12400 && DY.parse(dec), 'lien : encode → decode identique ('+enc.length+' car.)');
+  const [b,sig]=enc.split('~'), forged=L.encode({...pl,s:99999});
+  const swapped=b.slice(0,-3)+(b.slice(-3)==='AAA'?'BBB':'AAA')+'~'+sig;
+  ok(L.decode(swapped)===null && L.decode(forged.split('~')[0]+'~'+sig)===null, 'somme de contrôle : score retouché à la main → rejeté');
+  ok(DY.parse(L.decode(forged))===null, 'score falsifié avec une somme recalculée mais relatif incohérent → rejeté');
+  let threw=false; const junk=['','~','abc','abc~','~zz','%%%~1','e30~0','x'.repeat(5000)+'~1',null,undefined,42,{},'bnVsbA~'+L.sign('bnVsbA'),'WzFd~'+L.sign('WzFd')];
+  try{ junk.forEach(j=>{ const o=L.decode(j); if(o!==null&&DY.parse(o)!==null) throw new Error('accepted '+j); }); }catch(e){ threw=e.message; }
+  ok(!threw, 'liens malformés ('+junk.length+' cas : vide, base64 cassé, null, tableau, JSON « null ») : null, aucune exception'+(threw?' — '+threw:''));
+  ok(['day','n','s','p','z'].every(k=>{ const o={...pl}; o[k]=k==='z'?3:k==='s'?-5:k==='n'?'':k==='p'?'x':'2026-13-40'; return DY.parse(o)===null; }) && DY.parse({...pl,s:1e9,r:1e9})===null, 'charge utile hors bornes (date, nom vide, score négatif ou énorme, niveau inconnu) → rejetée');
+  // --- the day: same date → same plan; another date → another plan
+  const D1=new Date(2026,10,12,8), D2=new Date(2026,10,12,23,59), D3=new Date(2026,10,13,8);
+  ok(DY.dayKey(D1)==='2026-11-12' && DY.dayKey(D2)==='2026-11-12' && DY.dayKey(D3)==='2026-11-13' && DY.dayLabel('2026-11-12')==='12/11', 'date locale → clé du jour (8 h et 23 h 59 : même jour)');
+  const p1=DY.plan('2026-11-12'), p1b=DY.plan('2026-11-12'), others=['2026-11-13','2026-11-14','2026-11-15'].map(x=>JSON.stringify(DY.plan(x)));
+  ok(p1.length===3 && new Set(p1.map(x=>x.id)).size===3 && JSON.stringify(p1)===JSON.stringify(p1b) && others.every(o=>o!==JSON.stringify(p1)), 'plan du jour : 3 mini-jeux distincts, mêmes graines pour tous ('+p1.map(x=>x.id).join(', ')+'), autre jour → autre tirage');
+  // --- level: neutral fallback, then the profile of the placement test
+  const hadProfile=typeof A.game.setProfile==='function', gs=A.game.s, prof0=gs.profile;
+  gs.profile=null; const n0=DY.level();
+  gs.profile='musicien'; const m=DY.level(); gs.profile='decouverte'; const k=DY.level();
+  const sv=A.game.s, pf=A.game.profile; A.game.s=null; A.game.profile=()=>{ throw new Error('x'); }; const n1=DY.level(); A.game.s=sv; A.game.profile=pf;
+  gs.profile=prof0;
+  ok(n0==='n' && m==='m' && k==='k' && n1==='n' && DY.rel(1000,'m')===1000 && DY.rel(1000,'k')===1350 && DY.rel(1000,'n')===1150, 'niveau : profil pas encore choisi → standard (×1,15), musicien ×1, découverte ×1,35, profil qui plante → neutre'+(hadProfile?' (game.setProfile présent)':' (profil absent)'));
+
+  // --- free mode: no trace; a link proposes the path, nothing stored before
+  A.game.setMode('free'); A.garden.welcome(false);
+  ok(DY.backLine()==='', 'backLine() : vide en mode libre');
+  const snap=JSON.stringify(A.store.snapshot()), dk=DY.key;
+  U.open(); await wait(30);
+  ok(DY.bar.hidden && !d.querySelector('.arc-dj-open:not([hidden])').offsetParent, 'mode libre : aucune bannière défi du jour / cousin dans la borne');
+  U.close();
+  const link1='#dj='+L.encode({v:1,day:DY.today(),n:'Léo',s:5000,p:'m',z:0,r:5000});
+  await setHash(link1);
+  const dlg=d.getElementById('cousinDlg');
+  ok(dlg && !dlg.hidden && /Léo/.test(dlg.textContent) && !localStorage.getItem(dk) && A.game.s.mode==='free', 'lien ouvert en mode libre : proposition de passer en Parcours, rien d\'enregistré');
+  dlg.querySelector('[data-cz=no]').click(); await wait(30);
+  ok(dlg.hidden && !/dj=/.test(w.location.hash) && !localStorage.getItem(dk) && A.game.s.mode==='free' && JSON.stringify(A.store.snapshot())===snap && U.dlg.hidden, '« Plus tard » : lien effacé, mode libre et son intacts, aucune trace');
+  await setHash('#dj=garbage~zz');
+  ok(dlg.hidden && !/dj=/.test(w.location.hash) && !localStorage.getItem(dk), 'lien abîmé en mode libre : ignoré (message), aucune trace');
+  await setHash(link1);
+  dlg.querySelector('[data-cz=path]').click(); await wait(60);
+  const B0=DY.board();
+  ok(A.game.path && B0.length===1 && B0[0].n==='Léo' && B0[0].r===5000 && !U.dlg.hidden && U.screen==='daily' && d.querySelector('.arc-daily .arc-dj-board .hi'), '« Passer en Parcours » : mode Parcours, score de Léo au classement, borne ouverte sur le défi du jour');
+
+  // --- a run: 3 ghost rounds chained (test mini-games, injected clock)
+  ['t.a','t.b','t.c'].forEach(id=>AR.register({id, title:'Test '+id, make:(rng)=>({v:rng.int(2)}), stimulus:()=>[], choices:()=>[{value:0,label:'0'},{value:1,label:'1'}], check:(ch,a)=>({ok:a===ch.v})}));
+  DY.POOL=['t.a','t.b','t.c'];
+  let T=0; const clk=AR.clock.now; AR.clock.now=()=>T;
+  const lsA0=localStorage.getItem('ambient.arcade.dlt');
+  DY.view='home'; DY.show(); await wait(20);
+  ok(d.querySelector('.arc-daily [data-dj=go]') && /3 × 30 s/.test(d.querySelector('.arc-daily').textContent), 'écran défi du jour : bouton « Jouer · 3 × 30 s » et « Zen »');
+  const plan=DY.plan(), seeds=[];
+  const firstSeeds=[];
+  d.querySelector('.arc-daily [data-dj=go]').click();
+  for(let i=0;i<3;i++){
+    await until(()=>AR.active); seeds.push(AR.round.seed); if(i===0) firstSeeds.push(AR.round.ch.v);
+    ok(AR.active && AR.round.ghost && AR.round.d0===DY.LEVELS.n.d && AR.round.dur===30000 && AR.round.game.id===plan[i].id && AR.round.seed===plan[i].seed && /DÉFI \d\/3/.test(d.querySelector('.arc-game').textContent), `manche ${i+1}/3 : ${plan[i].id}, graine du jour, niveau de départ ${DY.LEVELS.n.d}, 30 s`);
+    for(let j=0;j<3;j++){ AR.answer(AR.round.ch.v); }
+    T+=31000; AR.tick(); await wait(30);
+    if(i<2){ ok(U.screen==='daily' && DY.view==='between' && d.querySelector('[data-dj=next]'), 'fin de manche '+(i+1)+' : écran intermédiaire, bouton manche suivante'); d.querySelector('[data-dj=next]').click(); }
+  }
+  const off=DY.official(false);
+  ok(U.screen==='daily' && DY.view==='result' && off && !off.partial && off.s>0 && off.s===DY.last.total, 'fin du défi : score du jour officiel '+(off&&off.s));
+  ok(localStorage.getItem('ambient.arcade.dlt')===lsA0 && ['t.a','t.b','t.c'].every(id=>{ const st=AR.stats(id); return st.d===0 && st.plays===0 && !Object.keys(st.best).length; }), 'manches fantômes : niveaux, parties et records de l\'arcade intacts (rien d\'enregistré)');
+  const me=DY.board().find(x=>x.me);
+  ok(me && me.s===off.s && DY.board()[0].r>=DY.board()[1].r, 'classement : mon score ajouté, trié par score relatif ('+DY.board().map(x=>x.n+' '+x.r).join(' / ')+')');
+  // share
+  d.querySelector('.arc-dj-name').value='Max'; d.querySelector('.arc-dj-name').dispatchEvent(new Event('change',{bubbles:true}));
+  d.querySelector('[data-dj=share]').click(); await wait(60);
+  const ta=d.querySelector('.arc-dj-link'), m1=/#dj=([^\s]+)/.exec(ta.value);
+  const back=m1&&DY.parse(L.decode(m1[1]));
+  ok(!ta.hidden && /^J'ai fait .* au défi du \d\d\/\d\d/.test(ta.value) && back && back.n==='Max' && back.s===off.s, 'partage : « '+ta.value.split(' http')[0]+' » + lien lisible');
+  // practice
+  d.querySelector('[data-dj=home]').click(); await wait(20);
+  d.querySelector('.arc-daily [data-dj=go]').click(); await until(()=>AR.active);
+  ok(AR.round.ch.v===firstSeeds[0] && AR.round.seed===plan[0].seed, 'rejouer : même tirage (même premier défi)');
+  for(let i=0;i<3;i++){ await until(()=>AR.active); AR.answer(1-AR.round.ch.v); T+=31000; AR.tick(); await wait(30); if(i<2) d.querySelector('[data-dj=next]').click(); }
+  ok(DY.view==='result' && !DY.last.official && DY.official(false).s===off.s && /ENTRAÎNEMENT/.test(d.querySelector('.arc-daily').textContent), '2e essai = entraînement : le score du jour ne change pas');
+  
+  // zen: no clock, 5 challenges per mini-game
+  DY.view='home'; DY.show(); d.querySelector('.arc-daily [data-dj=zen]').click(); await until(()=>AR.active);
+  ok(!isFinite(AR.round.dur) && AR.round.count===5 && /^1\/5$/.test(d.querySelector('.arc-time').textContent), 'zen : pas de chrono, compteur 1/5 au lieu du temps');
+  T+=500000; AR.tick(); await wait(20);
+  ok(AR.active, 'zen : le temps qui passe ne termine pas la manche');
+  for(let i=0;i<3;i++){ await until(()=>AR.active); for(let j=0;j<5;j++) AR.answer(AR.round.ch.v); await wait(30); if(i<2) d.querySelector('[data-dj=next]').click(); }
+  ok(DY.view==='result' && DY.official(true) && DY.official(true).s>0 && DY.board(DY.today(),true).length===1, 'zen : 3 × 5 défis, score zen à part ('+DY.official(true).s+')');
+  // official run left on the way: keeps the score reached
+  DY.now=()=>new Date(2026,10,20,10);
+  DY.view='home'; DY.show(); d.querySelector('.arc-daily [data-dj=go]').click(); await until(()=>AR.active);
+  AR.answer(AR.round.ch.v); T+=31000; AR.tick(); await wait(30);
+  d.querySelector('[data-dj=next]').click(); await until(()=>AR.active);
+  w.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',code:'Escape',bubbles:true})); await wait(30);
+  const lft=DY.official(false);
+  ok(U.screen==='menu' && !DY.run && lft && !lft.partial && lft.left && lft.s>0 && !U.after, 'défi officiel quitté en route (Échap) : retour au menu, score atteint gardé ('+(lft&&lft.s)+')');
+  // received link for another day, a forged one, and the same name twice (best kept)
+  DY.now=()=>new Date();
+  await setHash('#dj='+L.encode({v:1,day:DY.today(),n:'léo',s:7000,p:'k',z:0,r:9450}));
+  await setHash('#dj='+L.encode({v:1,day:DY.today(),n:'Léo',s:2000,p:'m',z:0,r:2000}));
+  await setHash('#dj='+L.encode({v:1,day:DY.today(),n:'Ana',s:3000,p:'m',z:0,r:9999}));
+  const leo=DY.board().filter(x=>x.n.toLowerCase()==='léo');
+  ok(leo.length===1 && leo[0].r===9450 && !DY.board().some(x=>x.n==='Ana') && !/dj=/.test(w.location.hash), 'même joueur deux fois : une ligne, meilleur relatif gardé ; lien falsifié (Ana) ignoré');
+  ok(d.querySelector('.arc-daily .arc-dj-board') && d.querySelectorAll('.arc-daily .arc-dj-board tbody tr').length>=2, 'tableau du classement affiché');
+  DY.now=()=>new Date(2026,10,12,9); const bl=DY.backLine(); DY.now=()=>new Date();
+  ok(/^★ Défi du jour 12\/11 : [\d\u202f]+ · \d+(er|e) sur \d+$/.test(bl), 'backLine() en Parcours : « '+bl+' »');
+  // menu banner in path mode
+  U.menu(); await wait(20);
+  ok(!DY.bar.hidden && d.querySelector('.arc-dj-open[data-dj=open]') && d.querySelector('.arc-dj-open[data-du=open]'), 'Parcours : bannière « Défi du jour » et « Défie ton cousin » dans le menu de la borne');
+  U.close(); AR.clock.now=clk;
+  ['game','arcade','daily','duel'].forEach(k=>localStorage.removeItem('ambient.'+k+'.dlt'));
+  log('durée '+((performance.now()-t0)/1000).toFixed(1)+' s');
+  done();
+  }catch(e){ fail(e); }
+});
+</script></body></html>

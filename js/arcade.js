@@ -56,6 +56,9 @@
 //               ended = wrong (late)        `pacts: {transpose: false}`); the staircase level is never touched
 //   metronome   no answer 3 s after the stimulus ended = wrong (late)   funambule  first wrong answer ends the round
 //   silence     UI only (no verdict, no score until the end)
+// start(id, opts): opts.seed, opts.duration (ms; Infinity = no clock, « zen »), opts.d (starting level instead of the
+// player's), opts.fixed (level frozen: no staircase), opts.count (the round ends after that many answers),
+// opts.ghost (nothing saved: level, plays and records untouched — daily challenge, duels: js/daily.js, js/duel.js)
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const q = new URLSearchParams(location.search);
@@ -144,12 +147,13 @@
       const seed = opts.seed != null ? opts.seed >>> 0 : (Math.floor(now * 1000) ^ 0x9e3779b9) >>> 0;
       const rng = AMB.audition ? AMB.audition.rng(seed) : null;
       if (!rng) return null;
-      const d0 = clamp(opts.d != null ? +opts.d : this.kid ? 0 : st.d, STAIR.lo, opts.dMax != null ? +opts.dMax : STAIR.hi);
+      const d0 = clamp(opts.d != null && isFinite(opts.d) ? +opts.d : this.kid ? 0 : st.d, STAIR.lo, opts.dMax != null ? +opts.dMax : STAIR.hi);
       const pacts = (opts.pacts || []).slice(), P = AMB.pacts;
       this.round = {
         game: g, seed, rng, pacts, t0: now,
         pmult: P && P.mult ? P.mult(pacts) : 1, trRng: pacts.includes('transpose') ? AMB.audition.rng((seed ^ 0x5bd1e995) >>> 0) : null, tr: 0, stimEnd: 0, dur: opts.duration || this.DURATION,
         d0, stair: { d: d0, step: Math.max(st.step, STAIR.restart), run: 0, dir: 0, hi: opts.dMax }, peak: d0, practice: !!opts.practice, kid: this.kid,
+        fixed: !!opts.fixed, count: Math.max(0, opts.count | 0), ghost: !!opts.ghost,
         score: 0, n: 0, good: 0, clean: 0, replays: 0, chReplays: 0, ch: null, history: [], over: false, t0Stim: 0,
       };
       this.active = true;
@@ -259,13 +263,14 @@
         pts = Math.round(pts * mult * r.pmult);
       }
       r.score += pts; if (ok) { r.good++; if (clean) r.clean++; }
-      const dWas = r.stair.d, d = this.stair(r.stair, ok);
+      const dWas = r.stair.d, d = r.fixed ? dWas : this.stair(r.stair, ok);
       r.peak = Math.max(r.peak, d);
       r.history.push({ ok, pts, d: dWas, replays: r.chReplays });
       const reveal = typeof r.game.reveal === 'number' && r.game.reveal >= 0 ? Math.min(r.game.reveal, 5000) : REVEAL;
       const out = { ok, partial: res.partial, bonus, reveal, pts, d, combo: C.n, mult, clean, score: r.score, ch: r.ch, answer: x, late };
       emit('arcade:answer', out);
       if (!ok && r.pacts.includes('funambule')) { this.end({ fall: true }); return out; } // one slip ends the round
+      if (r.count && r.history.length >= r.count) { this.end(); return out; }
       this.next();
       return out;
     },
@@ -275,19 +280,21 @@
     end(opts = {}) {
       const r = this.round; if (!r) return null;
       r.over = true;
-      const g = r.game, st = this.stats(g.id), abort = !!opts.abort;
+      const g = r.game, abort = !!opts.abort, ghost = r.ghost;
+      // a ghost round (daily challenge, duel) leaves the player's own stats alone
+      const st = ghost ? { ...this.stats(g.id), best: { ...this.stats(g.id).best } } : this.stats(g.id);
       // the level always follows the staircase (it is the player's ear), even after an abort
       st.d = r.stair.d; st.step = r.stair.step; st.peak = Math.max(st.peak || 0, r.peak);
-      const stars = abort ? 0 : this.starsFor(r.score, r.d0, r.dur);
+      const stars = abort || !isFinite(r.dur) ? 0 : this.starsFor(r.score, r.d0, r.dur);
       const pk = this.pactKey(r.pacts), prev = st.best[pk];
-      const record = !abort && !r.practice && r.score > 0 && (!prev || r.score > prev.score);
-      if (!abort && !r.practice) {
+      const record = !abort && !ghost && !r.practice && r.score > 0 && (!prev || r.score > prev.score);
+      if (!abort && !ghost && !r.practice) {
         st.plays++;
         if (record) st.best[pk] = { score: r.score, stars: Math.max(stars, prev ? prev.stars : 0), at: Date.now() };
         else if (prev && stars > prev.stars) prev.stars = stars;
       }
-      this.save();
-      const out = { id: g.id, score: r.score, stars, record, abort, good: r.good, clean: r.clean, total: r.history.length, replays: r.replays, d: st.d, peak: st.peak, best: st.best[pk] || null, pacts: r.pacts, pmult: r.pmult, fall: !!opts.fall };
+      if (!ghost) this.save();
+      const out = { ghost, d0: r.d0, seed: r.seed, id: g.id, score: r.score, stars, record, abort, good: r.good, clean: r.clean, total: r.history.length, replays: r.replays, d: st.d, peak: st.peak, best: st.best[pk] || null, pacts: r.pacts, pmult: r.pmult, fall: !!opts.fall };
       this.round = null; this.active = false; this.last = out;
       if (AMB.audition) AMB.audition.session(false);
       emit('arcade:end', out);
