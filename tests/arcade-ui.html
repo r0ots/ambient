@@ -36,6 +36,22 @@ f.addEventListener('load', async ()=>{
   // closing while the audio starts: no round behind a closed cabinet
   d.getElementById('arcadeBtn').click(); await wait(20); await A.engine.ctx.suspend(); cart().click(); U.close(); await wait(250);
   ok(!AR.active && !AR.round, 'fermée pendant le démarrage audio : aucune manche ne démarre derrière');
+  // --- plugin prepare(api): runs before arcade.start (off the clock), gets the keys; then the plugin's reveal pause
+  { let P=null; const until=async(f)=>{ for(let i=0;i<60&&!f();i++) await wait(50); };
+    AR.register({id:'t.prep', title:'Prep', reveal:1600, make:(rng)=>({v:rng.int(3)}), choices:()=>[0,1,2].map(v=>({value:v,label:String(v)})), check:(ch,a)=>({ok:a===ch.v}),
+      prepare:(api)=>new Promise((res)=>{ P={api, res, keys:''}; api.onKey((e)=>{ P.keys+=e.code; return true; }); }) });
+    U.open(); U.start('t.prep'); await until(()=>P);
+    ok(P && !AR.active && !AR.round && U.screen==='play' && P.api.stage===dlg.querySelector('.arc-stage') && AR.prep && !P.api.cancelled(), 'prepare(api) avant la manche : aucun chrono, scène fournie');
+    w.dispatchEvent(new w.KeyboardEvent('keydown',{code:'KeyA',key:'a',bubbles:true})); ok(P.keys==='KeyA', 'pendant prepare : touches routées au plugin');
+    const tRes=w.performance.now(); P.res(); await until(()=>AR.active);
+    ok(AR.active && !AR.prep && AR.round.t0>=tRes-5 && AR.timeLeft()>74000, 'prepare résolu → la manche démarre ensuite, chrono complet ('+(AR.timeLeft()/1000).toFixed(1)+' s)');
+    await wait(400); const good=AR.round.ch.v; U.pick(good); const lock=U.lockUntil-Date.now();
+    ok(lock>1800 && lock<=1950, 'réponse : défi suivant après le reveal du plugin (1600 + 350 de rendu = '+lock+' ms ; 450 + 350 sans hook)');
+    U.menu(); P=null; U.start('t.prep'); await until(()=>P); const P2=P;
+    w.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',code:'Escape',bubbles:true}));
+    ok(P2.api.cancelled() && U.screen==='menu' && !AR.prep, 'Échap pendant prepare : annulé, retour au menu');
+    P2.res(); await wait(60); ok(!AR.active && !AR.round, 'prepare annulé : aucune manche ne démarre');
+    U.close(); delete AR.byId['t.prep']; AR.games.splice(AR.games.findIndex(g=>g.id==='t.prep'),1); }
   localStorage.removeItem('ambient.game.arcui'); localStorage.removeItem('ambient.arcade.arcui');
   done();
   }catch(e){ fail(e); }

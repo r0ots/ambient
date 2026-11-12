@@ -12,7 +12,17 @@
 //   stimulus(ch) -> [{t, midi|hz, dur, vel, cents?, voice}]   events for AMB.audition.play (voice: sine|triangle|pluck|bell)
 //     or play(ch, api) -> Promise      custom playback (api.play(events) plays events and sets api.t0)
 //   choices(ch) -> [{value, label}] | null    null = the answer is played (keyboard / MIDI) or given by render()
-//   check(ch, answer) -> {ok, partial?}       partial in 0..1 = share of the points (ok must be false)
+//   check(ch, answer) -> {ok, partial?, bonus?}   partial in 0..1 = share of the points (ok must be false);
+//                                      bonus in 0..1 = precision bonus, adds SCORE.bonus × bonus of the base points
+//                                      (e.g. Réponds en jouant: share of « parfait » notes)
+//   reveal?: ms                        pause after the answer before the next challenge (default REVEAL = 450 ms):
+//                                      time to see the plugin's own feedback (Accordeur's needle, Réponds' verdict);
+//                                      answers are locked meanwhile. arcade:answer carries it as `reveal`
+//   prepare?(api) -> Promise           called by js/arcade-ui.js BEFORE arcade.start, off the clock (e.g. Réponds'
+//                                      first-launch latency calibration). api = {stage (element), play(events),
+//                                      note(ev), stop(), now(), onKey(fn(e) -> true if handled), onMidi(fn({midi,
+//                                      vel, time})), cancelled() -> true once the player left}; while it runs,
+//                                      arcade.prep = {key, midi} routes the keys and MIDI to it
 //   render?(ch, el, api)               optional custom UI inside the round's stage element (.arc-<id>-* classes)
 //   onKey?(ch, e, api) -> true if handled     keys reach the plugin during a round (the app's are muted)
 //   passKeys?: ['KeyA', …]             e.code values let through to the app's own shortcuts
@@ -34,7 +44,8 @@
 
   // staircase: 2 successes in a row -> harder, 1 error -> easier; the step shrinks at each reversal
   const STAIR = { step: 0.12, shrink: 0.7, minStep: 0.02, restart: 0.04, lo: 0, hi: 1 };
-  const SCORE = { base: 100, levelBonus: 100, noReplay: 0.5 };
+  const SCORE = { base: 100, levelBonus: 100, noReplay: 0.5, bonus: 0.5 };
+  const REVEAL = 450; // default pause (ms) after an answer, before the next challenge (plugin hook: reveal)
   // stars: score relative to what is expected at the level the round started at
   const STARS = [0.4, 0.8, 1.3];
 
@@ -51,12 +62,13 @@
   const arcade = {
     key: KEY,
     DURATION: 75000,
-    STAIR, SCORE, STARS,
+    STAIR, SCORE, STARS, REVEAL,
     games: [], byId: {},
     clock: { now: () => (window.performance ? performance.now() : Date.now()) },
     s: fresh(),
     round: null,
     active: false, // a round is running
+    prep: null, // {key, midi} handlers while a plugin's prepare() runs (set by js/arcade-ui.js)
     open: false, // the cabinet (js/arcade-ui.js) is on screen: the app plays no MIDI, juice effects allowed in free mode
 
     // ---- registry ----
@@ -164,7 +176,9 @@
     },
     // incoming MIDI while a round runs (called by js/play.js): routed to the plugin, if it listens
     midi(note) {
-      const r = this.round; if (!r || r.over || !r.ch || typeof r.game.onMidi !== 'function') return false;
+      const r = this.round;
+      if (!r && this.prep && typeof this.prep.midi === 'function') { this.prep.midi({ midi: note.midi, vel: note.vel, time: note.time != null ? note.time : this.clock.now() }); return true; }
+      if (!r || r.over || !r.ch || typeof r.game.onMidi !== 'function') return false;
       r.game.onMidi(r.ch, { midi: note.midi, vel: note.vel, time: note.time != null ? note.time : this.clock.now() }, this.api());
       return true;
     },
@@ -182,10 +196,10 @@
       // the combo grows only on risky answers (no replay); a replayed right answer keeps it
       let mult = C.mult;
       if (ok && clean) mult = C.hit(); else if (!ok) mult = C.miss();
-      const part = ok ? 1 : clamp(+res.partial || 0, 0, 1);
+      const part = ok ? 1 : clamp(+res.partial || 0, 0, 1), bonus = clamp(+res.bonus || 0, 0, 1);
       let pts = 0;
-      if (part > 0) {
-        pts = (SCORE.base + SCORE.levelBonus * r.stair.d) * part;
+      if (part + bonus > 0) {
+        pts = (SCORE.base + SCORE.levelBonus * r.stair.d) * (part + SCORE.bonus * bonus);
         if (clean) pts *= 1 + SCORE.noReplay;
         pts = Math.round(pts * mult);
       }
@@ -193,7 +207,8 @@
       const dWas = r.stair.d, d = this.stair(r.stair, ok);
       r.peak = Math.max(r.peak, d);
       r.history.push({ ok, pts, d: dWas, replays: r.chReplays });
-      const out = { ok, partial: res.partial, pts, d, combo: C.n, mult, clean, score: r.score, ch: r.ch, answer: x };
+      const reveal = typeof r.game.reveal === 'number' && r.game.reveal >= 0 ? Math.min(r.game.reveal, 5000) : REVEAL;
+      const out = { ok, partial: res.partial, bonus, reveal, pts, d, combo: C.n, mult, clean, score: r.score, ch: r.ch, answer: x };
       emit('arcade:answer', out);
       this.next();
       return out;

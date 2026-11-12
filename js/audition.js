@@ -21,10 +21,11 @@
 
   const hzOf = (ev) => (ev.hz || 440 * Math.pow(2, ((ev.midi == null ? 69 : ev.midi) - 69) / 12)) * Math.pow(2, (ev.cents || 0) / 1200);
 
-  // Each voice builds its nodes into `dest` and returns {stopAt, nodes(sources), gain}
+  // Each voice builds its nodes into `dest` and returns {stopAt, nodes(sources), gain}; ev = the raw event
+  // (simple voices read ev.atk: attack in s, default min(20 ms, dur / 4))
   const VOICES = {
-    sine: (ctx, dest, hz, t, dur, vel) => simple(ctx, dest, 'sine', hz, t, dur, vel * 0.32),
-    triangle: (ctx, dest, hz, t, dur, vel) => simple(ctx, dest, 'triangle', hz, t, dur, vel * 0.3),
+    sine: (ctx, dest, hz, t, dur, vel, ev) => simple(ctx, dest, 'sine', hz, t, dur, vel * 0.32, ev && ev.atk),
+    triangle: (ctx, dest, hz, t, dur, vel, ev) => simple(ctx, dest, 'triangle', hz, t, dur, vel * 0.3, ev && ev.atk),
     pluck(ctx, dest, hz, t, dur, vel) {
       const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = hz;
       const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 0.7;
@@ -62,10 +63,10 @@
     },
   };
 
-  function simple(ctx, dest, type, hz, t, dur, pk) {
+  function simple(ctx, dest, type, hz, t, dur, pk, atkIn) {
     const o = ctx.createOscillator(); o.type = type; o.frequency.value = hz;
     const a = ctx.createGain(); a.gain.value = 0;
-    const end = t + dur, atk = Math.min(0.02, dur * 0.25);
+    const end = t + dur, atk = atkIn != null ? Math.max(0, Math.min(+atkIn, dur - 0.04)) : Math.min(0.02, dur * 0.25);
     a.gain.setValueAtTime(0, t);
     a.gain.linearRampToValueAtTime(pk, t + atk);
     a.gain.setValueAtTime(pk, Math.max(t + atk, end - 0.04));
@@ -82,7 +83,7 @@
     lastCount: 0,
     active: false,
 
-    // events: [{t, midi | hz, dur, vel, cents?, voice}] -> {dur, at, t0}: total duration (s), start time on the
+    // events: [{t, midi | hz, dur, vel, cents?, voice, atk?}] -> {dur, at, t0}: total duration (s), start time on the
     // audio clock (ctx s) and the same instant in performance.now() ms (what MIDI / key timestamps are compared to).
     // opts.ctx / opts.dest let tests render into an OfflineAudioContext; opts.when = start (ctx s).
     play(events, opts = {}) {
@@ -95,7 +96,7 @@
       for (const ev of events) {
         const dur = Math.max(0.03, ev.dur || 0.5), t0 = when + (ev.t || 0);
         const mk = VOICES[ev.voice] || VOICES.sine;
-        const v = mk(ctx, dest, hzOf(ev), t0, dur, ev.vel == null ? 0.8 : ev.vel);
+        const v = mk(ctx, dest, hzOf(ev), t0, dur, ev.vel == null ? 0.8 : ev.vel, ev);
         v.ctx = ctx; n++;
         total = Math.max(total, (ev.t || 0) + dur);
         if (opts.ctx) continue; // offline render (tests): nothing to track

@@ -6,6 +6,8 @@
 // The rest of the app is `inert` while the cabinet is open (focus goes back to #arcadeBtn on close); the
 // app's MIDI is muted too (js/play.js reads arcade.open). A round starts the audio if needed (never muted)
 // and refuses to start while a recording runs (the round ducks the ambience).
+// A plugin's prepare(api) runs before arcade.start, off the clock (keys / MIDI routed to it, Échap cancels);
+// after an answer the next challenge waits the plugin's `reveal` ms (default arcade.REVEAL).
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const $ = (s, r = document) => r.querySelector(s);
@@ -14,7 +16,7 @@
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   const ui = {
-    dlg: null, screen: 'closed', gameId: null, timer: 0, token: 0, lockUntil: 0, lastPick: null, startTok: 0, inerted: [],
+    dlg: null, prep: null, screen: 'closed', gameId: null, timer: 0, token: 0, lockUntil: 0, lastPick: null, startTok: 0, inerted: [],
 
     get A() { return AMB.arcade; },
     el(sel) { return $(sel, this.dlg); },
@@ -52,7 +54,7 @@
     },
     close() {
       if (!this.dlg) return;
-      this.startTok++;
+      this.startTok++; this.endPrep(true);
       if (this.A.round) this.A.end({ abort: true });
       this.stopTimer();
       if (AMB.juice) AMB.juice.showCombo(false);
@@ -77,6 +79,7 @@
       return !!((AMB.rec && AMB.rec.recording && AMB.rec.recording()) || (AMB.pianoRoll && AMB.pianoRoll.roll && AMB.pianoRoll.roll.recording));
     },
     menu() {
+      if (this.prep) { this.startTok++; this.endPrep(true); }
       if (this.A.round) this.A.end({ abort: true });
       this.stopTimer();
       if (AMB.juice) AMB.juice.showCombo(false);
@@ -118,12 +121,40 @@
       this.gameId = id; this.lastPick = null; this.lockUntil = 0;
       this.show('play');
       this.el('.arc-game').textContent = A.byId[id].title;
+      if (typeof A.byId[id].prepare === 'function') {
+        await this.prepare(A.byId[id], tok);
+        if (tok !== this.startTok || !this.dlg || this.dlg.hidden) return; // left during the preparation
+      }
       const r = A.start(id, {});
       if (!r) { this.menu(); return; }
       if (AMB.juice) { const c = AMB.juice.comboEl(); this.el('.arc-combo-slot').append(c); AMB.juice.showCombo(true); }
       this.renderHud();
       this.stopTimer();
       this.timer = setInterval(() => { if (!this.A.tick()) this.renderHud(); }, 100);
+    },
+    // the plugin's prepare(api), off the clock: HUD frozen at the full time, keys / MIDI routed to it
+    async prepare(g, tok) {
+      const A = this.A, Au = AMB.audition, stage = this.el('.arc-stage'), P = (this.prep = { key: null, midi: null });
+      A.prep = P;
+      this.el('.arc-choices').innerHTML = ''; stage.innerHTML = '';
+      this.el('.arc-time').textContent = String(Math.ceil(A.DURATION / 1000)).padStart(2, '0');
+      this.el('.arc-time').classList.remove('low');
+      this.el('.arc-bar i').style.width = '100%';
+      this.el('.arc-score').textContent = pad6(0);
+      this.el('.arc-replay').hidden = true; // nothing to replay before the round
+      if (Au) Au.session(true); // the ambience is ducked during the preparation too
+      const api = {
+        stage, play: (ev) => A.playEvents(ev), note: (ev) => A.note(ev), stop: () => Au && Au.stop(), now: () => A.clock.now(),
+        onKey: (fn) => { P.key = fn; }, onMidi: (fn) => { P.midi = fn; }, cancelled: () => tok !== this.startTok,
+      };
+      try { await g.prepare(api); } catch (e) { /* a failed preparation never blocks the round */ }
+      if (this.prep === P) this.endPrep(false);
+    },
+    endPrep(cancel) {
+      if (!this.prep) return;
+      this.prep = null; this.A.prep = null;
+      this.el('.arc-replay').hidden = false;
+      if (cancel && AMB.audition && !this.A.round) AMB.audition.session(false);
     },
     stopTimer() { if (this.timer) clearInterval(this.timer); this.timer = 0; },
     renderHud() {
@@ -165,7 +196,7 @@
       btns.forEach((b, i) => { const c = this.choices[i]; if (c && g && g.check(d.ch, c.value).ok) b.classList.add('good'); });
       const mine = btns.find((b) => b.dataset.value === String(d.answer)) || (this.lastPick != null && btns[this.lastPick]);
       if (mine && !d.ok) mine.classList.add('bad');
-      this.lockUntil = Date.now() + 450;
+      this.lockUntil = Date.now() + (d.reveal != null ? d.reveal : this.A.REVEAL);
       const at = mine || this.el('.arc-stage');
       if (J) {
         if (d.ok) {
@@ -204,6 +235,7 @@
       e.stopPropagation(); // no app shortcut: Space, Enter, A–L, Z–M, 1–8, ⌘Z…
       if (e.metaKey || e.ctrlKey || e.altKey) { if (/^Key[ZY]$/.test(e.code)) e.preventDefault(); return; }
       if (e.key === 'Escape') { e.preventDefault(); if (this.screen === 'play' || this.screen === 'end') this.menu(); else this.close(); return; }
+      if (this.screen === 'play' && !r && this.prep) { if (!e.repeat && this.prep.key && this.prep.key(e)) e.preventDefault(); return; }
       if (this.screen !== 'play' || !r) return;
       if (e.code === 'Space') e.preventDefault(); // never "click" a focused answer by accident
       if (e.repeat) return;

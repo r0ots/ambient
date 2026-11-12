@@ -4,7 +4,7 @@
 <script>window.AMB_ARCADE_KEY='ambient.arcade.test-reponds'; window.AMB_REPONDS_KEY='ambient.reponds.test'; localStorage.removeItem(window.AMB_ARCADE_KEY); localStorage.removeItem(window.AMB_REPONDS_KEY); testBus();</script>
 <script src="../js/audition.js"></script><script src="../js/arcade.js"></script><script src="../js/arcade/reponds.js"></script>
 <script>
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
   try {
     const A = AMB.arcade; let T = 0; A.clock = { now: () => T };
     ok(!!A, 'moteur d\'arcade chargé');
@@ -72,19 +72,26 @@ window.addEventListener('load', () => {
     // --- live path: play(), keys / MIDI with the injected clock, latency compensation
     const midiOf = (x) => ch.root + x.semi;
     const keyOf = (x) => g.KEYS[x.deg];
+    let afterCal = null;
     const runRound = (input, shift, opts = {}) => {
       A.stats('reponds').d = 0.6;
+      if (opts.calib) {
+        // first launch: prepare(api) calibrates BEFORE the round (off the clock), as js/arcade-ui.js does
+        T = 500; const P = {}; let resolved = null;
+        const papi = { stage: null, play: (ev) => A.playEvents(ev), note: (ev) => A.note(ev), stop() {}, now: () => A.clock.now(), onKey: (fn) => { P.key = fn; }, onMidi: (fn) => { P.midi = fn; }, cancelled: () => false };
+        const pr = g.prepare(papi); pr.then((v) => { resolved = v; });
+        ok(!A.round && g.cal && typeof P.key === 'function', 'premier lancement : prepare() lance la calibration, aucune manche (chrono) en cours');
+        for (let k = 0; k < g.CAL.n; k++) { T = g.cal.t0 + k * g.CAL.ms + opts.calib; P.key({ code: 'KeyA', timeStamp: T }); }
+        T = g.cal.t0 + g.CAL.n * g.CAL.ms + 400; g.calTick();
+        ok(g.calibrated() && g.latFor('key') === opts.calib && !g.cal, 'calibration : latence clavier mémorisée = ' + g.latFor('key') + ' ms');
+        let again = 'pending'; g.prepare(papi).then((v) => { again = v; });
+        afterCal = () => ok(resolved && resolved.ms === opts.calib && again === null, 'prepare() résolu ; déjà calibré → aucune calibration au lancement suivant');
+      }
       A.start('reponds', { seed: 4242 });
       const rc = A.round.ch, answers = [];
       AMB.bus.fns['arcade:answer'] = [(d) => answers.push(d)];
       T = 1000; g.play(rc, A.api());
       const s = g.st(rc);
-      if (opts.calib) {
-        ok(s.mode === 'calib', 'premier lancement : calibration avant le motif');
-        for (let k = 0; k < g.CAL.n; k++) { T = s.calT0 + k * g.CAL.ms + opts.calib; g.onKey(rc, { code: 'KeyA', timeStamp: T }, A.api()); }
-        T = s.calT0 + g.CAL.n * g.CAL.ms + 400; g.tick(rc, A.api());
-        ok(g.calibrated() && g.latFor('key') === opts.calib && s.mode === 'count', 'calibration : latence clavier mémorisée = ' + g.latFor('key') + ' ms');
-      }
       const rs = s.t0 + g.respStart(rc);
       T = s.t0 + g.callStart(rc) + 10; g.tick(rc, A.api());
       const listenOk = s.mode === 'listen';
@@ -103,6 +110,7 @@ window.addEventListener('load', () => {
     const auditionPlay = AMB.audition.play; AMB.audition.play = (ev, o) => { if (ev.length === 1) N0(ev[0]); return auditionPlay.call(AMB.audition, ev, o); };
     const kRun = runRound((rc, x, t) => g.onKey(rc, { code: keyOf(x), timeStamp: t }, A.api()), 25, { calib: 25 });
     ok(kRun.listenOk && kRun.judged && kRun.a && kRun.a.ok, 'manche au clavier en retard de 25 ms (= latence calibrée) : phases écoute → jugée → réponse ok');
+    ok(g.reveal === 1200 && kRun.a.reveal === 1200 && kRun.a.bonus === 1, 'jugement visible 1200 ms (reveal), bonus de précision = part de parfait (' + kRun.a.bonus + ')');
     ok(g.check(ch, { hits: kRun.s.hits }).perfect === n && kRun.s.hits.every((h, i) => Math.abs(h.t - ch.notes[i].t) <= 0.1), 'latence compensée : frappes recalées pile sur la grille (parfait)');
     ok(notes.length >= n && notes.every((e) => e.voice === 'pluck'), 'retour sonore immédiat (api.note) à chaque touche : ' + notes.length);
     notes = [];
@@ -112,6 +120,7 @@ window.addEventListener('load', () => {
     const k60 = runRound((rc, x, t) => g.onKey(rc, { code: keyOf(x), timeStamp: t }, A.api()), 25 + 60);
     const m60 = runRound((rc, x, t) => A.midi({ midi: midiOf(x), vel: 0.5, time: t }), 25 + 60);
     const rk = g.check(ch, { hits: k60.s.hits }), rm = g.check(ch, { hits: m60.s.hits });
+    ok(rk.bonus === 0 && rk.ok, 'tout « bien », aucun parfait → bonus 0');
     ok(rk.good === n && rm.good === n && rk.score === rm.score, 'clavier et MIDI décalés de 60 ms : même note (bien) ' + rk.score + ' = ' + rm.score);
     // separate MIDI latency
     g.setLat('midi', 40);
@@ -142,6 +151,7 @@ window.addEventListener('load', () => {
     Math.random = mr;
     ok(rCalls === 0, 'Math.random jamais appelé');
     ok(storeW.length === 0, 'aucune écriture dans le store');
+    await new Promise((r) => setTimeout(r, 0)); if (afterCal) afterCal(); else ok(false, 'calibration par prepare() non testée');
     localStorage.removeItem(window.AMB_ARCADE_KEY); localStorage.removeItem(window.AMB_REPONDS_KEY);
     done();
   } catch (e) { fail(e); }

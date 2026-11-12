@@ -1,4 +1,4 @@
-# Architecture (v0.99)
+# Architecture (v1.00)
 
 Scripts classiques, pas de build. État global `window.AMB`. Un module = un IIFE qui pose `AMB.<nom>` (ordre de chargement = `index.html`). Bus : `AMB.bus.on/emit` (js/sequencer.js). Réglages : `AMB.store` (js/params.js, schéma `AMB.SCHEMA`).
 
@@ -13,17 +13,17 @@ AMB.arcade.register({ id: 'x', title: 'Titre', skill: 'hauteur', blurb: 'Une phr
   make(rng, d) { return { up: rng() < 0.5, d }; },          // d 0..1 (0 = facile) ; rng() rng.int(n) rng.pick(a)
   stimulus(ch) { return [{ t: 0, midi: 60, dur: 0.6, vel: 0.8, voice: 'triangle' }]; }, // ou play(ch, api)
   choices(ch) { return [{ value: 'up', label: '⬆' }, { value: 'down', label: '⬇' }]; }, // null = réponse jouée
-  check(ch, a) { return { ok: a === (ch.up ? 'up' : 'down') }; },                       // {ok, partial?}
+  check(ch, a) { return { ok: a === (ch.up ? 'up' : 'down') }; },                       // {ok, partial?, bonus?}
 });
 ```
-Optionnels : `play(ch, api)`, `render(ch, el, api)`, `onKey(ch, e, api)`, `passKeys`, `onMidi(ch, {midi, vel, time}, api)`, `onMidiOff(ch, {midi, time}, api)`. `api = {answer, replay, play(ev) → {dur, at, t0}, stop, note(ev), t0, ch, d, rng}` ; `t0` = performance.now() (ms) du départ réel du stimulus (même horloge que `time` du MIDI) ; `note(ev)` = retour sonore immédiat. Voix : sine, triangle, pluck, bell. Classes CSS `.arc-<id>-*`. Jamais `Math.random`. `arcade.open` = borne à l'écran, `arcade.active` = manche en cours.
+Optionnels : `reveal` (ms, pause après la réponse avant le défi suivant, réponses bloquées ; défaut `arcade.REVEAL` = 450 ; Accordeur 1600, Réponds 1200), `prepare(api)` → Promise (appelé par arcade-ui AVANT `arcade.start`, hors chrono ; `api = {stage, play, note, stop, now, onKey(fn), onMidi(fn), cancelled()}`, touches et MIDI routés via `arcade.prep`, Échap annule ; ex. calibration de latence de Réponds), `bonus` dans `check` (0..1 : + `SCORE.bonus` (0,5) × bonus des points de base, ex. part de « parfait »), `play(ch, api)`, `render(ch, el, api)`, `onKey(ch, e, api)`, `passKeys`, `onMidi(ch, {midi, vel, time}, api)`, `onMidiOff(ch, {midi, time}, api)`. `api = {answer, replay, play(ev) → {dur, at, t0}, stop, note(ev), t0, ch, d, rng}` ; `t0` = performance.now() (ms) du départ réel du stimulus (même horloge que `time` du MIDI) ; `note(ev)` = retour sonore immédiat. Voix : sine, triangle, pluck, bell (`ev.atk` = attaque en s des voix simples sine / triangle, défaut min(20 ms, dur/4)). Classes CSS `.arc-<id>-*`. Jamais `Math.random`. `arcade.open` = borne à l'écran, `arcade.active` = manche en cours.
 
 ## Bus (événements et charges utiles)
 - `live` {midi, time (s ctx), vel (entendue), raw (vélocité MIDI brute 0..1, null au clavier d'ordinateur)} · `chord` {time, deg, midis} · `phrase` {i, len, time} · `section` {index, name}
 - `note` {layer, midi, time, vel, dur} · `perc` {track, time, vel} · `grain` {layer, midi, time, vel} · `freeze` {}
 - `act` 'id' (action réussie : save, share, keep, restore, rec, reclive, chord, note, freeze, xy, midiConnect, midiExport, preset, sceneStore…) · `rec:done` secondes · `secret` {id}
 - `game:*` earn {n, reason, id, total}, spend, unlock {id}, found / contracts / puzzles {id}, mode, reset, contract, puzzle, stars, opened, secret, chime {kind}
-- `arcade:*` register, start {id, seed, d, pacts}, challenge {id, n, d}, answer {ok, pts, d, combo, mult…}, end {score, stars, record…} · `juice:combo` {n, mult, best}
+- `arcade:*` register, start {id, seed, d, pacts}, challenge {id, n, d}, answer {ok, partial, bonus, reveal, pts, d, combo, mult…}, end {score, stars, record…} · `juice:combo` {n, mult, best}
 
 ## Store (sources de `store.set(k, v, source)`)
 - `user` = la seule qui paie ou compte (découvertes, contrats, secrets) ; l'annulation enregistre `user`, `preset`, `macro`.
@@ -38,4 +38,7 @@ Optionnels : `play(ch, api)`, `render(ch, el, api)`, `onKey(ch, e, api)`, `passK
 ## Tester
 - Un serveur par worktree : `python3 -u -m http.server $PORT 2> $LOG` (PORT=87xx), puis `PORT=… LOG=… tests/run.sh <page>.html 0.4` ; suite : `tests/run-all.sh` (ALL OK).
 - Page dédiée ≤ 10 s, sans audio réel (horloge injectée `arcade.clock.now`, rng à graine, OfflineAudioContext si le son doit être vérifié).
-- 2 captures regardées (bureau + 390 px). Chrome headless impose ≥ 500 px : pour 390 px, `tests/shot-tree.html?w=390&h=780` (page dans une iframe de 390 px). Modes : `#sel=<nœud>`, `#pz`, `#bar`, `#free`, `#arcade`, `#arcade-play=<id>`, `#arcade-end` (manche : ajouter `--autoplay-policy=no-user-gesture-required`).
+- 2 captures regardées (bureau + 390 px). Chrome headless impose ≥ 500 px : pour 390 px, `tests/shot-tree.html?w=390&h=780` (page dans une iframe de 390 px). Modes : `#sel=<nœud>`, `#pz`, `#bar`, `#free`, `#arcade`, `#arcade-play=<id>`, `#arcade-end` (manche : ajouter `--autoplay-policy=no-user-gesture-required` ; en `#arcade*` particules et juice coupés).
+
+## Points ouverts
+- Pas de drapeau joueur « enfant » : seuls le plugin (`kid: true` → étiquette « facile » sur la cartouche) et le profil d'arcade (`arcade.setProfile(nom)`, niveaux et records à part, sans UI) existent. Un mini-jeu ne peut donc pas adapter son niveau ou son affichage au fils ; à décider avant G8.4 / G9b.3.

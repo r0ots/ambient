@@ -65,6 +65,7 @@ window.addEventListener('load', () => {
     ok(/\+12 cents/.test(el.textContent), 'texte : +12 cents après réponse');
     const ch4 = { ...ch3, cents: 0, answer: 'ok' }; g.render(ch4, el, api); AMB.bus.emit('arcade:answer', { ch: ch4, answer: 'ok', ok: true });
     ok(/JUSTE/.test(el.textContent) && !!el.querySelector('.in-tune'), 'juste : 0 cent révélé');
+    ok(g.reveal === 1600, 'aiguille visible 1600 ms avant le défi suivant (hook reveal)');
     const off = new OfflineAudioContext(1, 4410, 44100);
     const r = AMB.audition.play(g.stimulus(mk(5, 0.5)), { ctx: off });
     ok(AMB.audition.lastCount === 2 && r.dur > 2, 'audition joue 2 sinus à fréquences non entières (hz)');

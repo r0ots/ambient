@@ -2,7 +2,8 @@
 // Gap in cents shrinks with the difficulty d: ±50 cents at d = 0 down to ±2 cents at d = 1 (log scale).
 // "In tune" = exactly 0 cent, about 20 % of the challenges (rarer on the easiest levels).
 // The reference pitch is never on the 440 Hz grid (random offset of ±40 cents): no absolute pitch, no tuning-fork anchor.
-// Pure sines (stable timbre, no overtones to mislead). A tuner needle reveals the real gap AFTER the answer.
+// Pure sines (stable timbre, no overtones to mislead). A tuner needle shows the real gap AFTER the answer
+// (reveal = 1600 ms: the engine waits that long before the next challenge).
 // At fine levels (d >= 0.5) a "beats" button plays both tones together (beats = |gap| Hz-ish, no beats = in tune).
 (function () {
   const AMB = (window.AMB = window.AMB || {});
@@ -19,6 +20,7 @@
     skill: 'hauteur',
     blurb: 'Une note de référence, puis une autre : plus haute, plus basse ou juste ? Écart de 50 à 2 cents.',
     kid: false,
+    reveal: 1600,
     MAX, MIN, BEATS_FROM,
     // smallest gap (cents) at difficulty d: 50 at d = 0, 2 at d = 1, geometric in between
     threshold(d) { return MAX * Math.pow(MIN / MAX, clamp(+d || 0, 0, 1)); },
@@ -71,7 +73,7 @@
       cur.ch = ch; cur.el = el;
     },
     // after the answer: the needle swings to the real gap
-    reveal(ch, el, picked) {
+    showGap(ch, el, picked) {
       const box = el && el.querySelector('.arc-accordeur-box'); if (!box) return;
       box.classList.add('shown', ch.cents === 0 ? 'in-tune' : 'off');
       const n = box.querySelector('.arc-accordeur-needle'); if (n) n.style.transform = `rotate(${G.angle(ch.cents)}deg)`;
@@ -79,6 +81,6 @@
       if (r) r.textContent = ch.cents === 0 ? 'JUSTE : 0 cent' : `${fmt(ch.cents)} : le test était ${ch.cents > 0 ? 'plus haut' : 'plus bas'}`;
     },
   };
-  if (AMB.bus) AMB.bus.on('arcade:answer', (d) => { if (d && d.ch && cur.ch === d.ch && cur.el) G.reveal(d.ch, cur.el, d.answer); });
+  if (AMB.bus) AMB.bus.on('arcade:answer', (d) => { if (d && d.ch && cur.ch === d.ch && cur.el) G.showGap(d.ch, cur.el, d.answer); });
   AMB.arcade.register(G);
 })();
