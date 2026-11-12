@@ -288,4 +288,11 @@ Vague 2
 
 Vague 3
 - [x] S3.7 (v1.08) Remise de l'instrument : arbre complet → ligne de contrat et ✧ disparaissent, le son reste ; l'appli devient l'outil de création. Décision : dans l'instrument (carillon, « L'instrument est à toi » sur le LCD, puis plus de contrat ni de ✧) ; `game.s.ended` sauvegardé, plus rien ne compte ensuite ; l'arbre reste consultable sans ✧ ni énigmes, seuls les secrets trouvés restent ; le store n'est jamais touché
-- [ ] S3.8 Aide, README, durées : parcours type ≤ 60 min, ≤ 40 min pour un musicien qui trouve les secrets ; revue finale « quoi supprimer »
+- [x] S3.8 (v1.09) Aide, README, durées : parcours type ≤ 60 min, ≤ 40 min pour un musicien qui trouve les secrets ; revue finale « quoi supprimer ». Décision : après la remise, les secrets restent à trouver (cadeau, LCD, sans nœud ni ✧) ; au MIDI, un Écho se rejoue lecture arrêtée ; Morceau coûte 18 ✧ (attente max 4,8 → 4,1 min, test ≤ 4,5) ; simulation du musicien qui trouve les secrets-clés (45 s par secret, portes déjà ouvertes sautées) : 34,4–39,4 min ; parcours type 45,8–47,8 min, joueur lent 60,8 min ; aide du Parcours en 4 rubriques ; `tests/mobile.html` retiré
+
+## Fin de la saison 3
+- Le Parcours est une rampe de 45–50 min (moins de 40 min pour un musicien qui trouve les secrets) qui finit par « Enregistre ton morceau » et la remise de l'instrument complet ; le mode libre reste intact.
+- Pour le neveu : les secrets-clés au MIDI ouvrent vite Composer ; il reste à faire jouer le MIDI lecture arrêtée en mode libre (comme le clavier d'ordinateur), et à confirmer en vrai les 45 s par secret de la simulation.
+- Pour le fils : les Échos et la jauge d'énigme tiennent ; sur téléphone, les contrats « joue des notes » (A–L, Rec live, écho) n'ont pas de touches : pastilles à prévoir ou contrats à écarter.
+- À trancher : retirer les 6 énigmes sans porte (150 ✧ à rééquilibrer) et la note flottante « +n ✧ », redondante avec le compteur, le carillon et le LCD.
+- Rien n'a été mesuré sur de vrais joueurs : la prochaine étape est une séance chronométrée avec chacun des deux.

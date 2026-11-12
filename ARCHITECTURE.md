@@ -1,4 +1,4 @@
-# Architecture (v1.08)
+# Architecture (v1.09)
 
 Scripts classiques, pas de build. État global `window.AMB`. Un module = un IIFE qui pose `AMB.<nom>` (ordre de chargement = `index.html`). Bus : `AMB.bus.on/emit` (js/sequencer.js). Réglages : `AMB.store` (js/params.js, schéma `AMB.SCHEMA`).
 
@@ -22,14 +22,14 @@ Règle de produit (v1.05) : le jeu se joue SUR l'instrument (ses commandes, son 
 - Cible d'énigme : tirée au début de chaque essai (`puzzles.draw`, gardée dans `game.s.runs[id].target` jusqu'à la réussite ou au 6e échec) ; `puzzles.listen('target')` la joue sur l'ambiance réelle (source `game`) ; `puzzles.ab.mine` garde les valeurs du joueur, que `stableSnapshot()` rend à la place ; `game.counts()` est faux pendant l'écoute ; un changement de mode (`tree.onMode`) ou toucher un réglage rend le son du joueur.
 
 ## Écho (S3.1, S3.6)
-- Énigme `kind: 'echo'` dans `puzzles.DEFS` (pas de `keys`, une difficulté `d` : 3 notes à 0, jusqu'à 6) : l'instrument joue une phrase sur la voix Mélodie (`echoPlay`, sans événement `live`), le joueur la rejoue (touches A–L, les 9 pastilles A–L de la carte, MIDI à n'importe quelle octave) ; un pion par note (✓ ⬆ ⬇), l'essai est jugé à la dernière note, nouvelle phrase à chaque essai (rng du jeu). Porte ouverte en réussissant ou après 6 échecs (sans ✧), comme les autres.
+- Énigme `kind: 'echo'` dans `puzzles.DEFS` (pas de `keys`, une difficulté `d` : 3 notes à 0, jusqu'à 6) : l'instrument joue une phrase sur la voix Mélodie (`echoPlay`, sans événement `live`), le joueur la rejoue (touches A–L, les 9 pastilles A–L de la carte, MIDI à n'importe quelle octave, même lecture arrêtée) ; un pion par note (✓ ⬆ ⬇), l'essai est jugé à la dernière note, nouvelle phrase à chaque essai (rng du jeu). Porte ouverte en réussissant ou après 6 échecs (sans ✧), comme les autres.
 - Portes Écho : Premier reflet → Grands réglages (`t.macros`), Suite connue → Phrases (`m.phrase`). Le `need` d'un Écho contient la Mélodie (`m.bells`, qui rend A–L et le MIDI jouables) et le nœud-porte la demande aussi : l'Écho est jouable dès que la porte est atteinte.
 - Pendant un Écho, aucun secret n'est détecté (`secrets.active()`) et les notes jouées ne comptent pour aucun contrat. Pendant que l'instrument joue la phrase (`puzzles.hush(time)`), la Mélodie auto se tait (`seq.melodyNote`, par où passent toutes ses notes) puis reprend. Capture : `tests/shot-tree.html#echo`.
 
 ## Composer et remise de l'instrument (S3.5, S3.7)
 - Composer = 3 nœuds : Mélodie écrite (`c.seq` : piano roll, arpège, motifs, Rec live), Rythme (`c.rythme` : basse, pulsations, groove), Morceau (`c.song` : sections, automation, Rec du morceau). `game.load()` remplace les anciens ids (`game.MERGED` : c.arp, c.motifs → c.seq ; c.bass, c.perc, c.groove → c.rythme ; c.auto → c.song), sans toucher aux ✧.
 - Contrats Composer joués : 8 notes en Rec live, un groove de basse qui tourne 4 mesures (événements `note` de la basse), « Enregistre ton morceau » (`act` songRec). Ce dernier (`first`) passe avant les autres dès que Morceau est acquis.
-- Remise (`garden.checkEnd`) : arbre complet → le dernier contrat d'abord ; une fois fait ou passé (↷) : `game.s.ended` (sauvegardé), carillon, « L'instrument est à toi » sur le LCD, puis la ligne de contrat et le compteur ✧ disparaissent (`garden.handedOver()`). Le store n'est pas touché. Ensuite `game.counts()` est faux : ni contrat, ni secret, ni ✧ ; l'arbre reste consultable (sans ✧ ni énigmes), les secrets trouvés restent.
+- Remise (`garden.checkEnd`) : arbre complet → le dernier contrat d'abord ; une fois fait ou passé (↷) : `game.s.ended` (sauvegardé), carillon, « L'instrument est à toi » sur le LCD, puis la ligne de contrat et le compteur ✧ disparaissent (`garden.handedOver()`). Le store n'est pas touché. Ensuite `game.counts()` est faux : ni contrat ni ✧ ; l'arbre reste consultable (sans ✧ ni énigmes). Les secrets restent à trouver (`secrets.active()` ne dépend que du Parcours, de la cible et de l'Écho) : cadeau, carillon et LCD, sans nœud ni ✧ ; le panneau ne montre que les secrets trouvés.
 
 ## Mode libre intact
 - En libre : aucun verrou, aucune interface de jeu (la 2e ligne du LCD redevient l'état du son), aucun gain ni détection, pas de carillon. Son, journal, annulation et liens partagés sans trace du jeu. `AMB.game.counts()` = Parcours, instrument pas encore remis et pas de cible d'énigme en écoute.
