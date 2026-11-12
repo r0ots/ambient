@@ -26,8 +26,16 @@
 //   render?(ch, el, api)               optional custom UI inside the round's stage element (.arc-<id>-* classes)
 //   onKey?(ch, e, api) -> true if handled     keys reach the plugin during a round (the app's are muted)
 //   passKeys?: ['KeyA', …]             e.code values let through to the app's own shortcuts
-//   onMidi?(ch, {midi, vel, time}, api)    MIDI note-on during a round (vel 0..1 raw, time = performance.now ms)
-//   onMidiOff?(ch, {midi, time}, api)      MIDI note-off during a round (note-on with velocity 0 included)
+//   onMidi?(ch, {midi, vel, time, sustain, input}, api)   MIDI note-on during a round (vel = raw MIDI velocity 0..1,
+//                                      time = performance.now ms, sustain = CC64 pedal held, input = MIDI input name:
+//                                      every connected input is accepted, several at once)
+//   onMidiOff?(ch, {midi, time, sustain, input}, api)     MIDI note-off during a round (note-on with velocity 0 included);
+//                                      while sustain is true the note still rings: a game that cares waits for onCC
+//   onCC?(ch, {cc, value, time, sustain, input}, api)     any MIDI control change (value 0..1). Decision (G9b.2): the
+//                                      engine tracks CC64 (sustain pedal) in arcade.sustain and puts it on every note
+//                                      event; onCC gets the pedal's own moves (e.g. Dictée evaluates on pedal release)
+//   rhythm games: prepare(api) { return AMB.latency.ensure(api); } and subtract AMB.latency.get(src, input) from the
+//                                      tap times (js/latency.js: per device, per input key / touch / midi / MIDI keyboard)
 //                                      while the cabinet is open the app never plays MIDI (js/play.js): without
 //                                      these hooks the notes are simply ignored
 // })
@@ -208,17 +216,29 @@
       r.replays++; r.chReplays++;
       return this.listen();
     },
-    // incoming MIDI while a round runs (called by js/play.js): routed to the plugin, if it listens
+    // incoming MIDI while the cabinet is open (called by js/play.js): routed to the plugin (or to a prepare()), if it
+    // listens. Payload {midi, vel (raw 0..1), time (performance.now ms), sustain (CC64 held), input (MIDI input name)}
+    sustain: false,
+    midiEv(note) { return { midi: note.midi, vel: note.vel, time: note.time != null ? note.time : this.clock.now(), sustain: this.sustain, input: note.input || null }; },
     midi(note) {
       const r = this.round;
-      if (!r && this.prep && typeof this.prep.midi === 'function') { this.prep.midi({ midi: note.midi, vel: note.vel, time: note.time != null ? note.time : this.clock.now() }); return true; }
+      if (!r && this.prep && typeof this.prep.midi === 'function') { this.prep.midi(this.midiEv(note)); return true; }
       if (!r || r.over || !r.ch || typeof r.game.onMidi !== 'function') return false;
-      r.game.onMidi(r.ch, { midi: note.midi, vel: note.vel, time: note.time != null ? note.time : this.clock.now() }, this.api());
+      r.game.onMidi(r.ch, this.midiEv(note), this.api());
       return true;
     },
     midiOff(note) {
       const r = this.round; if (!r || r.over || !r.ch || typeof r.game.onMidiOff !== 'function') return false;
-      r.game.onMidiOff(r.ch, { midi: note.midi, time: note.time != null ? note.time : this.clock.now() }, this.api());
+      const ev = this.midiEv(note); delete ev.vel;
+      r.game.onMidiOff(r.ch, ev, this.api());
+      return true;
+    },
+    // a control change {cc, value (0..1), time, input}: CC64 (sustain pedal, >= 0.5 = held) is tracked in arcade.sustain,
+    // rides along on every onMidi / onMidiOff, and every CC reaches the plugin's onCC(ch, {cc, value, time, sustain, input}, api)
+    cc(m) {
+      if (m.cc === 64) this.sustain = m.value >= 0.5;
+      const r = this.round; if (!r || r.over || !r.ch || typeof r.game.onCC !== 'function') return false;
+      r.game.onCC(r.ch, { cc: m.cc, value: m.value, time: m.time != null ? m.time : this.clock.now(), sustain: this.sustain, input: m.input || null }, this.api());
       return true;
     },
     choices() { const r = this.round; return r && r.ch && typeof r.game.choices === 'function' ? r.game.choices(r.ch) : null; },
