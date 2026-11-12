@@ -5,9 +5,12 @@
 //                      → the theme gives the settings, the seed gives the target AND the starting sound (same for both)
 // The sender must succeed first (motif played right / target found) before the link exists. The receiver's first try
 // counts; the comparison uses the relative score (AMB.daily.rel: score × level coefficient). A reply link is the same
-// challenge with the receiver's score: opening it shows the comparison. Mastermind is heard on the real ambience
-// (store writes with source 'game', like the path's puzzles); the player's own values come back when leaving.
-// Ghost rounds (arcade.start opts): the arcade levels and records are untouched; path only, nothing in free mode.
+// challenge with the receiver's score: opening it shows the comparison. Mastermind is heard on the real ambience: it
+// BORROWS the sound (AMB.store.borrow('duel', vals), source 'game', js/params.js) — the journal, patches and mode snapshots
+// keep seeing the player's own values — and gives it back when leaving (giveBack, also on a mode change or pagehide).
+// Frozen levels (anti-cheat): the creator's level (p) and the motif's level (d) are written in the link (p frozen when
+// the draft is made); the receiver's level is frozen the first time the link is opened (s.seen[challengeKey]).
+// Ghost rounds (arcade.start kind 'ghost'): the arcade levels and records are untouched; path only, nothing in free mode.
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const q = new URLSearchParams(location.search);
@@ -23,18 +26,26 @@
 
   const duel = {
     key: KEY, LVL, MAXTRY, mmScore,
-    s: { v: 1, mine: {} }, // mine[challengeKey] = {s, r, p, ok, t?, l?} : the first try (sender: the success)
+    s: { v: 1, mine: {}, seen: {} }, // mine[challengeKey] = {s, r, p, ok, t?, l?} : the first try (sender: the success);
+    // seen[challengeKey] = the receiver's level frozen at the first opening of the link
     view: 'make', kind: 'r', draft: null, mm: null, incoming: null, result: null, note: '',
 
     load() {
-      try { const o = JSON.parse(localStorage.getItem(this.key)); if (o && o.v === 1 && o.mine && typeof o.mine === 'object') this.s = o; } catch (e) {}
+      try { const o = JSON.parse(localStorage.getItem(this.key)); if (o && o.v === 1 && o.mine && typeof o.mine === 'object') this.s = { seen: {}, ...o }; } catch (e) {}
       return this;
     },
     save() {
-      const ks = Object.keys(this.s.mine); if (ks.length > 60) ks.slice(0, ks.length - 60).forEach((k) => delete this.s.mine[k]);
+      for (const m of [this.s.mine, this.s.seen]) { const ks = Object.keys(m); if (ks.length > 60) ks.slice(0, ks.length - 60).forEach((k) => delete m[k]); }
       try { localStorage.setItem(this.key, JSON.stringify(this.s)); } catch (e) {}
     },
     ckey(c) { return c.k === 'r' ? `r:${c.sd}:${c.d}` : `m:${c.th}:${c.sd}`; },
+    // the receiver's level for this challenge: frozen at the first opening of its link
+    seenLevel(c) {
+      const k = this.ckey(c);
+      if (!D().LEVELS[this.s.seen[k]]) { this.s.seen[k] = D().level(); this.save(); }
+      return this.s.seen[k];
+    },
+    draftOf(o) { return { ...o, p: D().level() }; }, // the creator's level, frozen with the draft (then in the link)
     newSeed() { this.ctr = (this.ctr || 0) + 1; return D().link.fnv(`${Date.now()}|${this.ctr}|${(AMB.arcade && AMB.arcade.clock.now()) || 0}`) >>> 0; },
 
     // ---- Mastermind targets: theme = a puzzle of js/puzzles.js (its settings), seed → target + starting sound ----
@@ -89,23 +100,26 @@
 
     // ---- playing a challenge (who: 'me' = the sender trying their own, 'them' = taking up a cousin's) ----
     play(c, who) {
-      this.cur = { c, who };
+      const U = AMB.arcadeUI;
+      if (U && U.recording && U.recording()) { this.note = U.RECORDING; this.render(); return false; } // nothing tried yet
+      this.note = '';
+      const cur = (this.cur = { c, who });
       if (c.k === 'r') {
-        const U = AMB.arcadeUI;
-        U.after = this.afterFn;
-        U.start('reponds', { seed: c.sd, d: c.d, fixed: true, ghost: true, pacts: [], count: 1, duration: Infinity })
+        U.start('reponds', { kind: 'ghost', seed: c.sd, d: c.d, fixed: true, count: 1, duration: Infinity, onEnd: (d) => this.roundEnd(d, cur) })
           .then(() => { const t = U.el('.arc-game'); if (t && AMB.arcade.round) t.textContent = who === 'me' ? 'TON DÉFI' : `DÉFI DE ${c.n.toUpperCase()}`; });
       } else this.mmStart(c);
+      return true;
     },
-    roundEnd(d) {
-      if (AMB.arcadeUI.after === this.afterFn) AMB.arcadeUI.after = null;
-      const cur = this.cur; if (!cur) return false;
+    roundEnd(d, cur) {
+      if (!cur || this.cur !== cur || d.abort) return false; // left: the cabinet goes where it was sent
       this.finish({ ok: d.good >= 1, s: d.score });
       return true;
     },
-    // a try is over: the sender's success unlocks the link; the receiver's first try is kept for the comparison
+    // a try is over: the sender's success unlocks the link; the receiver's first try is kept for the comparison.
+    // Levels: the sender's is the one frozen in the draft (c.p), the receiver's the one frozen at the link's first opening
     finish(res) {
-      const { c, who } = this.cur, p = D().level(), k = this.ckey(c);
+      const { c, who } = this.cur, k = this.ckey(c);
+      const p = who === 'me' ? (D().LEVELS[c.p] ? c.p : D().level()) : this.seenLevel(c);
       const me = { s: res.ok ? res.s : 0, r: res.ok ? D().rel(res.s, p) : 0, p, ok: !!res.ok, t: res.t, l: res.l };
       if (who === 'me') {
         if (res.ok && (!this.s.mine[k] || !this.s.mine[k].ok)) { this.s.mine[k] = me; this.save(); }
@@ -122,16 +136,14 @@
     // ---- Mastermind duel in the cabinet ----
     mmStart(c) {
       const dr = this.draw(c.th, c.sd); if (!dr) return;
-      const S = AMB.store, orig = {};
-      dr.keys.forEach((k) => { orig[k] = S.get(k); });
       this.mmLeave();
-      this.mm = { c, ...dr, mine: { ...dr.start }, tries: [], listens: 0, side: 'mine', orig };
+      this.mm = { c, ...dr, mine: { ...dr.start }, tries: [], listens: 0, side: 'mine' };
       this.apply(this.mm.mine);
       this.view = 'mm'; this.show();
     },
     apply(vals) {
       if (AMB.puzzles && AMB.puzzles.ab) AMB.puzzles.listen('mine');
-      AMB.store.setMany(vals, 'game');
+      AMB.store.borrow('duel', vals); // the player's own values are remembered once, given back by mmLeave
       if (AMB.seq && !AMB.seq.playing && AMB.ui && AMB.ui.play) AMB.ui.play().catch(() => {});
     },
     mmListen(side) {
@@ -161,9 +173,8 @@
     },
     // leaving the Mastermind: the player's own sound comes back
     mmLeave() {
-      const m = this.mm; if (!m) return;
-      this.mm = null;
-      AMB.store.setMany(m.orig, 'game');
+      const m = this.mm; this.mm = null;
+      AMB.store.giveBack('duel'); // no-op when nothing is borrowed
     },
 
     // ---- links ----
@@ -176,6 +187,7 @@
       D().offerPath(`${c.n} te défie : ${this.title(c)}, son score ${D().fmt(c.s)}.`, () => {
         L.clear();
         this.incoming = c; this.result = null;
+        this.seenLevel(c); // the receiver's level is frozen now, at the first opening
         this.view = 'take';
         const U = AMB.arcadeUI; if (U.dlg.hidden) U.open();
         if (!AMB.arcade.round) this.show();
@@ -188,7 +200,6 @@
     setup() {
       const U = AMB.arcadeUI;
       if (!U || !U.dlg || this.sec || !D() || !D().bar) return;
-      this.afterFn = (d) => this.roundEnd(d);
       this.sec = document.createElement('section');
       this.sec.className = 'arc-duel arc-dj'; this.sec.hidden = true;
       $('.arc-cab', U.dlg).append(this.sec);
@@ -201,10 +212,10 @@
       this.sec.addEventListener('input', (e) => { const k = e.target.dataset.mm; if (k) this.mmSet(k, e.target.value); });
       this.sec.addEventListener('change', (e) => {
         if (e.target.matches('.arc-dj-name')) D().setName(e.target.value);
-        if (e.target.matches('.arc-du-theme')) { this.draft = { k: 'm', th: e.target.value, sd: this.newSeed() }; this.render(); }
+        if (e.target.matches('.arc-du-theme')) { this.draft = this.draftOf({ k: 'm', th: e.target.value, sd: this.newSeed() }); this.render(); }
       });
       if (AMB.bus) {
-        AMB.bus.on('arcade:screen', (name) => { if (name !== 'duel') this.mmLeave(); if (name === 'menu' && U.after === this.afterFn) U.after = null; });
+        AMB.bus.on('arcade:screen', (name) => { if (name !== 'duel') this.mmLeave(); });
         AMB.bus.on('game:mode', () => this.mmLeave());
       }
       window.addEventListener('pagehide', () => this.mmLeave());
@@ -214,9 +225,10 @@
     onClick(e) {
       const b = e.target.closest('[data-du]'); if (!b) return;
       const a = b.dataset.du, dr = this.draft;
+      this.note = ''; // a refused try (recording) says so again
       if (a === 'menu') AMB.arcadeUI.menu();
       else if (a === 'kind') { this.kind = b.dataset.k; this.draft = null; this.view = 'make'; this.render(); }
-      else if (a === 'lvl') { this.draft = { k: 'r', d: +b.dataset.d, sd: this.newSeed() }; this.render(); }
+      else if (a === 'lvl') { this.draft = this.draftOf({ k: 'r', d: +b.dataset.d, sd: this.newSeed() }); this.render(); }
       else if (a === 'reroll' && dr) { dr.sd = this.newSeed(); this.render(); }
       else if (a === 'try' && dr) this.play({ ...dr }, 'me');
       else if (a === 'retry' && this.result) this.play(this.result.c, 'me');
@@ -313,7 +325,7 @@
           <p class="arc-dj-line arc-dj-small">Il faut réussir ton défi avant de l'envoyer. Ton cousin reçoit un lien ; le score compare vos niveaux (musicien ×1, découverte ×1,35).</p>
           <div class="arc-dj-btns"><button class="btn" data-du="menu">◂ Menu</button></div>`;
       }
-      this.sec.innerHTML = `<h3 class="arc-title">${esc(title)}</h3>${body}`;
+      this.sec.innerHTML = `<h3 class="arc-title">${esc(title)}</h3>${this.note ? `<p class="arc-dj-note" role="status">${esc(this.note)}</p>` : ''}${body}`;
     },
   };
 

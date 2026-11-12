@@ -79,6 +79,15 @@ window.addEventListener('load', async () => {
     T = 1900; L.ensure(api); ok(!!L.cur && !L.force, 'ensure() lance le calibrage demandé');
     T = 99999; L.tick(); await new Promise((r) => setTimeout(r, 0));
     ok(!L.cur && L.msg.includes('Pas assez'), 'sans tape : message clair, ancienne latence gardée (' + L.get('key') + ' ms)');
+    // v1.02: the kid (« découverte ») is never forced to calibrate: « Passer ▸ », then not asked again this session
+    { AMB.game = { isKid: () => true }; const before2 = JSON.stringify(L.data); L.request();
+      let k1 = 'pending'; T = 1900; L.ensure(api).then((v) => { k1 = v; });
+      const sk = stage.querySelector('.lat-skip'); ok(!!L.cur && sk, 'Découverte : calibrage proposé avec « Passer »');
+      sk.click(); await new Promise((r) => setTimeout(r, 0));
+      let k2 = 'pending'; L.ensure(api).then((v) => { k2 = v; }); await new Promise((r) => setTimeout(r, 0));
+      ok(k1 === null && k2 === null && !L.cur && L.skipped && JSON.stringify(L.data) === before2, '« Passer » : la manche continue, latence inchangée, pas redemandé dans la session');
+      delete AMB.game; L.skipped = false;
+      L.request(); T = 1900; L.ensure(api); ok(L.cur && !stage.querySelector('.lat-skip'), 'musicien : calibrage sans bouton « Passer »'); L.finish(true); }
     stage.remove();
 
     // --- arcade MIDI: raw velocity, sustain, CCs, several inputs

@@ -5,6 +5,8 @@
 // AMB.latency.get(src, input) from the tap times. The cabinet's menu has a « ⟲ Latence » button (js/arcade-ui.js)
 // that runs run(api, {force: true}) on its own; request() asks for a new one at the next rhythm round.
 // Never AMB.store (own localStorage key, under try/catch); the tests drive tick() with an injected clock (manual = true).
+// The kid (profile « découverte », arcade.kid): never an imposed calibration — ensure() shows it with a « Passer » button;
+// skipped once, it is not asked again this session (latency 0 until someone calibrates with ⟲).
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -68,14 +70,19 @@
     },
 
     // a rhythm game's prepare(api): calibrates only on the first launch or when asked (request / ⟲)
-    ensure(api) { return this.needs() ? this.run(api) : Promise.resolve(null); },
+    skipped: false, // the kid skipped the calibration this session
+    ensure(api) {
+      const kid = !!(AMB.arcade && AMB.arcade.kid);
+      if (!this.needs() || (kid && this.skipped && !this.force)) return Promise.resolve(null);
+      return this.run(api, kid ? { skippable: true } : {});
+    },
     // the calibration itself, off the clock. api = the prepare api of js/arcade-ui.js
     // ({stage, play, note, stop, now, onKey, onMidi, cancelled}); resolves {ms, src, input, n} or null
     run(api, opts = {}) {
       this.force = false;
       if (this.cur) this.finish(true);
       return new Promise((resolve) => {
-        const C = (this.cur = { taps: [], api, resolve, view: null, t0: 0, title: opts.title || 'Calibrage de la latence (hors chrono)' });
+        const C = (this.cur = { taps: [], api, resolve, view: null, t0: 0, title: opts.title || 'Calibrage de la latence (hors chrono)', skippable: !!opts.skippable });
         const tap = (time, src, input) => { C.taps.push({ time, src, input }); this.flash(); return true; };
         api.onKey((e) => (KEYS.includes(e.code) ? tap(this.evTime(e, api), 'key') : false));
         api.onMidi((m) => { tap(m.time != null ? m.time : api.now(), 'midi', m.input || null); if (api.note) api.note({ midi: m.midi, voice: 'pluck', dur: 0.2, vel: 0.5 }); });
@@ -116,14 +123,18 @@
       C.resolve(out);
       return out;
     },
+    // « Passer » (kid only): no calibration, the game goes on (latency unchanged: 0 if never calibrated)
+    skip() { if (!this.cur) return null; this.skipped = true; this.msg = ''; return this.finish(true); },
     view(el, onPad) {
       el.innerHTML = `<div class="lat">
         <p class="lat-title">${esc(this.cur.title)}</p>
         <div class="lat-top"><span class="lat-dots">${Array.from({ length: CAL.n }, (_, i) => `<i class="lat-dot${i % 4 ? '' : ' acc'}"></i>`).join('')}</span><b class="lat-status" aria-live="polite">0/${CAL.n}</b></div>
         <p class="lat-hint">Tape pile sur chaque clic : touche A–L ou Espace, clavier MIDI ou le gros bouton</p>
         <button class="lat-pad" type="button">TAPE</button>
+        ${this.cur.skippable ? '<button class="btn lat-skip" type="button">Passer ▸</button>' : ''}
       </div>`;
       this.cur.view = { status: el.querySelector('.lat-status'), dots: [...el.querySelectorAll('.lat-dot')], pad: el.querySelector('.lat-pad') };
+      const sk = el.querySelector('.lat-skip'); if (sk) sk.addEventListener('click', () => this.skip());
       this.cur.view.pad.addEventListener('pointerdown', (e) => { e.preventDefault(); onPad(e); });
     },
     flash() {

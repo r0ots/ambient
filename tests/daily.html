@@ -88,24 +88,31 @@ f.addEventListener('load', async ()=>{
   ok(!ta.hidden && /^J'ai fait .* au défi du \d\d\/\d\d/.test(ta.value) && back && back.n==='Max' && back.s===off.s, 'partage : « '+ta.value.split(' http')[0]+' » + lien lisible');
   // practice
   d.querySelector('[data-dj=home]').click(); await wait(20);
-  // wave 4: the profile (placement test, js/game.js) sets the start level; the pacts ticked on a cartridge never reach a daily round
-  A.game.setProfile('musicien'); A.pacts.set('t.a',['une-ecoute','proches']);
+  // v1.02: the level is frozen at the day's first opening (here « standard »): a new profile only counts tomorrow;
+  // the pacts ticked on a cartridge never reach a daily round
+  A.game.setProfile('musicien'); A.pacts.set('t.a',['une-ecoute','proches']); DY.show(); await wait(10);
+  ok(DY.s.days[DY.today()].p==='n' && /comptera pour le défi de demain/.test(d.querySelector('.arc-daily').textContent), 'profil changé dans la journée : niveau du jour figé (standard), « il comptera pour le défi de demain »');
   d.querySelector('.arc-daily [data-dj=go]').click(); await until(()=>AR.active);
-  ok(A.pacts.chosen('t.a').length===2 && AR.round.pacts.length===0 && AR.round.pmult===1 && AR.round.d0===DY.LEVELS.m.d && DY.run.p==='m', 'profil musicien → départ '+DY.LEVELS.m.d+' (×'+DY.LEVELS.m.coef+') ; pactes cochés ignorés en défi du jour (scores comparables)');
+  ok(A.pacts.chosen('t.a').length===2 && AR.round.pacts.length===0 && AR.round.pmult===1 && AR.round.d0===DY.LEVELS.n.d && DY.run.p==='n', 'niveau figé → départ '+DY.LEVELS.n.d+' malgré le profil musicien ; pactes cochés ignorés en défi du jour (scores comparables)');
   ok(AR.round.ch.v===firstSeeds[0] && AR.round.seed===plan[0].seed, 'rejouer : même tirage (même premier défi)');
   for(let i=0;i<3;i++){ await until(()=>AR.active); AR.answer(1-AR.round.ch.v); T+=31000; AR.tick(); await wait(30); if(i<2) d.querySelector('[data-dj=next]').click(); }
   ok(DY.view==='result' && !DY.last.official && DY.official(false).s===off.s && /ENTRAÎNEMENT/.test(d.querySelector('.arc-daily').textContent), '2e essai = entraînement : le score du jour ne change pas');
   
   // zen: no clock, 5 challenges per mini-game
-  A.game.setProfile('decouverte'); A.pacts.set('t.a',[]);
+  A.pacts.set('t.a',[]);
   DY.view='home'; DY.show(); d.querySelector('.arc-daily [data-dj=zen]').click(); await until(()=>AR.active);
-  ok(AR.round.d0===DY.LEVELS.k.d && DY.run.p==='k' && DY.rel(1000,DY.run.p)===1350, 'profil découverte → départ '+DY.LEVELS.k.d+', score relatif ×1,35');
-  A.game.s.profile=null; A.game.save();
+  ok(AR.round.d0===DY.LEVELS.n.d && DY.run.p==='n', 'zen : même niveau figé du jour');
   ok(!isFinite(AR.round.dur) && AR.round.count===5 && /^1\/5$/.test(d.querySelector('.arc-time').textContent), 'zen : pas de chrono, compteur 1/5 au lieu du temps');
   T+=500000; AR.tick(); await wait(20);
   ok(AR.active, 'zen : le temps qui passe ne termine pas la manche');
   for(let i=0;i<3;i++){ await until(()=>AR.active); for(let j=0;j<5;j++) AR.answer(AR.round.ch.v); await wait(30); if(i<2) d.querySelector('[data-dj=next]').click(); }
   ok(DY.view==='result' && DY.official(true) && DY.official(true).s>0 && DY.board(DY.today(),true).length===1, 'zen : 3 × 5 défis, score zen à part ('+DY.official(true).s+')');
+  // a recording refuses the run BEFORE the official try is written (another day: no try yet)
+  DY.now=()=>new Date(2026,10,19,10); A.game.setProfile('musicien');
+  { const rec0=A.rec.recording; A.rec.recording=()=>true;
+    DY.view='home'; DY.show(); d.querySelector('.arc-daily [data-dj=go]').click(); await wait(80);
+    ok(!AR.active && !DY.run && !DY.official(false) && U.screen==='daily' && /Enregistrement en cours/.test(d.querySelector('.arc-daily').textContent), 'enregistrement en cours : défi refusé avant d\'écrire l\'essai officiel, message clair');
+    A.rec.recording=rec0; DY.note=''; }
   // official run left on the way: keeps the score reached
   DY.now=()=>new Date(2026,10,20,10);
   DY.view='home'; DY.show(); d.querySelector('.arc-daily [data-dj=go]').click(); await until(()=>AR.active);
@@ -113,14 +120,30 @@ f.addEventListener('load', async ()=>{
   d.querySelector('[data-dj=next]').click(); await until(()=>AR.active);
   w.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',code:'Escape',bubbles:true})); await wait(30);
   const lft=DY.official(false);
-  ok(U.screen==='menu' && !DY.run && lft && !lft.partial && lft.left && lft.s>0 && !U.after, 'défi officiel quitté en route (Échap) : retour au menu, score atteint gardé ('+(lft&&lft.s)+')');
+  ok(U.screen==='menu' && !DY.run && lft && !lft.partial && lft.left && lft.s>0 && !('after' in U), 'défi officiel quitté en route (Échap) : retour au menu, score atteint gardé ('+(lft&&lft.s)+')');
+  // a partial official try left by a reload is over at the next load, with its score
+  { const day='2026-11-18'; DY.s.days[day]={p:'n', c:{s:1234, r:DY.rel(1234,'n'), p:'n', partial:true, at:1}}; DY.save(); DY.load();
+    const o=DY.official(false,day), me=(DY.s.board[day]||[]).find(x=>x.me);
+    ok(o && !o.partial && o.left===1 && o.s===1234 && me && me.s===1234, 'essai partiel laissé par un rechargement : terminé au chargement, score 1234 gardé et classé'); }
+  // Découverte: its own draw among the kid games (non-rhythmic), its own leaderboard; level frozen for the day
+  { const day='2026-11-21', POOL0=DY.KID_POOL, realK=DY.plan(day,'k');
+    ok(realK.length===3 && realK.every(x=>AR.byId[x.id].kid && typeof AR.byId[x.id].prepare!=='function'), 'Découverte : défi tiré parmi les jeux kid sans calibration ('+realK.map(x=>x.id).join(', ')+')');
+    DY.KID_POOL=['t.a','t.b','t.c']; DY.now=()=>new Date(2026,10,21,10);
+    A.game.setProfile('decouverte'); DY.view='home'; DY.show(); await wait(10);
+    A.game.setProfile('musicien'); // changed after the first opening: still « découverte » today
+    d.querySelector('.arc-daily [data-dj=zen]').click(); await until(()=>AR.active);
+    ok(AR.round.d0===DY.LEVELS.k.d && DY.run.p==='k' && DY.rel(1000,'k')===1350 && JSON.stringify(DY.run.plan)!==JSON.stringify(DY.plan(day,'n')), 'Découverte : départ '+DY.LEVELS.k.d+', ×1,35, tirage à part, niveau figé malgré le changement de profil');
+    for(let i=0;i<3;i++){ await until(()=>AR.active); for(let j=0;j<5;j++) AR.answer(AR.round.ch.v); await wait(30); if(i<2) d.querySelector('[data-dj=next]').click(); }
+    DY.addEntry(day,{n:'Léo',s:9000,p:'m',z:1});
+    ok(DY.board(day,true,'k').some(x=>x.me) && !DY.board(day,true,'k').some(x=>x.n==='Léo') && DY.board(day,true,'m').some(x=>x.n==='Léo') && /Découverte/.test(d.querySelector('.arc-daily caption').textContent), 'Découverte : classement à part (Léo, musicien, dans l\'autre catégorie)');
+    DY.KID_POOL=POOL0; }
   // received link for another day, a forged one, and the same name twice (best kept)
   DY.now=()=>new Date();
-  await setHash('#dj='+L.encode({v:1,day:DY.today(),n:'léo',s:7000,p:'k',z:0,r:9450}));
+  await setHash('#dj='+L.encode({v:1,day:DY.today(),n:'léo',s:8000,p:'n',z:0,r:9200}));
   await setHash('#dj='+L.encode({v:1,day:DY.today(),n:'Léo',s:2000,p:'m',z:0,r:2000}));
   await setHash('#dj='+L.encode({v:1,day:DY.today(),n:'Ana',s:3000,p:'m',z:0,r:9999}));
   const leo=DY.board().filter(x=>x.n.toLowerCase()==='léo');
-  ok(leo.length===1 && leo[0].r===9450 && !DY.board().some(x=>x.n==='Ana') && !/dj=/.test(w.location.hash), 'même joueur deux fois : une ligne, meilleur relatif gardé ; lien falsifié (Ana) ignoré');
+  ok(leo.length===1 && leo[0].r===9200 && !DY.board().some(x=>x.n==='Ana') && !/dj=/.test(w.location.hash), 'même joueur deux fois : une ligne, meilleur relatif gardé ; lien falsifié (Ana) ignoré');
   ok(d.querySelector('.arc-daily .arc-dj-board') && d.querySelectorAll('.arc-daily .arc-dj-board tbody tr').length>=2, 'tableau du classement affiché');
   DY.now=()=>new Date(2026,10,12,9); const bl=DY.backLine(); DY.now=()=>new Date();
   ok(/^★ Défi du jour 12\/11 : [\d\u202f]+ · \d+(er|e) sur \d+$/.test(bl), 'backLine() en Parcours : « '+bl+' »');

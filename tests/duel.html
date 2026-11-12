@@ -41,8 +41,12 @@ f.addEventListener('load', async ()=>{
   d.querySelector('.arc-dj-open[data-du=open]').click(); await wait(20);
   ok(U.screen==='duel' && q('[data-du=kind][data-k=r]') && q('[data-du=kind][data-k=m]'), 'écran « Défie ton cousin » : Réponds en jouant ou énigme Mastermind');
   q('[data-du=lvl][data-d="0.45"]').click(); await wait(10);
-  const sd=DU.draft.sd;
-  ok(q('[data-du=try]') && !q('[data-du=share]'), 'motif tiré : « Réussir mon défi », pas encore de lien');
+  const sd=DU.draft.sd, pDraft=DU.draft.p, profS=A.game.s.profile;
+  ok(q('[data-du=try]') && !q('[data-du=share]') && pDraft===DY.level(), 'motif tiré : « Réussir mon défi », pas encore de lien ; niveau du créateur figé dans le brouillon ('+pDraft+')');
+  A.game.s.profile='decouverte'; // changed after the draft: the link keeps the draft's level
+  // a recording refuses the try before anything (message on the duel screen)
+  { const rec0=A.rec.recording; A.rec.recording=()=>true; q('[data-du=try]').click(); await wait(60);
+    ok(!AR.active && U.screen==='duel' && /Enregistrement en cours/.test(q('.arc-dj-note').textContent), 'enregistrement en cours : essai refusé, message sur l\'écran du duel'); A.rec.recording=rec0; }
   q('[data-du=try]').click(); await until(()=>AR.active);
   const ch1=JSON.stringify(AR.round.ch.notes);
   ok(AR.round.game.id==='reponds' && AR.round.seed===sd && AR.round.fixed && AR.round.ghost && AR.round.count===1 && AR.round.d0===0.45 && /TON DÉFI/.test(d.querySelector('.arc-game').textContent), 'mon défi : manche Réponds, graine du motif, niveau figé 45 %, une mesure');
@@ -57,13 +61,15 @@ f.addEventListener('load', async ()=>{
   ok(localStorage.getItem('ambient.arcade.dut')===st0, 'manches de duel fantômes : niveau et records de Réponds intacts');
   q('.arc-dj-name').value='Max'; q('[data-du=share]').click(); await wait(60);
   const txt=q('.arc-dj-link').value, lk=/#df=(\S+)/.exec(txt), sent=lk&&DU.parse(L.decode(lk[1]));
-  ok(sent && sent.n==='Max' && sent.sd===sd && sent.d===0.45 && sent.s===mine.s && /^Je te défie/.test(txt), 'lien envoyé : « '+txt.split(' http')[0]+' »');
+  ok(sent && sent.n==='Max' && sent.sd===sd && sent.d===0.45 && sent.s===mine.s && sent.p===pDraft && /^Je te défie/.test(txt), 'lien envoyé : « '+txt.split(' http')[0]+' » (niveau '+sent.p+' et coefficient figés par le créateur)');
+  A.game.s.profile=profS;
 
   // --- receiver (another player = fresh duel state): same motif, comparison, reply link
   DU.s.mine={};
   const prof0=A.game.s.profile; A.game.s.profile='decouverte'; // the cousin is the kid (raw profile, js/game.js)
   await setHash('#df='+lk[1]);
-  ok(U.screen==='duel' && DU.view==='take' && /Max/.test(q('.arc-dj-line').textContent) && q('[data-du=take]'), 'lien ouvert en Parcours : écran du défi de Max, « Relever le défi »');
+  ok(U.screen==='duel' && DU.view==='take' && /Max/.test(q('.arc-dj-line').textContent) && q('[data-du=take]') && DU.s.seen[DU.ckey(DU.incoming)]==='k', 'lien ouvert en Parcours : écran du défi de Max, « Relever le défi », niveau du relevé figé à l\'ouverture (découverte)');
+  A.game.s.profile='musicien'; // switching profile after opening the link changes nothing
   A.pacts.set('reponds',['une-ecoute','proches']);
   q('[data-du=take]').click(); await until(()=>AR.active);
   ok(AR.round.pacts.length===0 && AR.round.ghost && A.pacts.chosen('reponds').length===2, 'duel : pactes cochés ignorés (manche fantôme, scores comparables)'); A.pacts.set('reponds',[]);
@@ -72,6 +78,7 @@ f.addEventListener('load', async ()=>{
   AR.answer({hits:half}); await wait(40);
   const res=DU.result;
   ok(DU.view==='taken' && res.me.p==='k' && res.me.r===DY.rel(res.me.s,'k') && /gagne|Égalité/.test(q('.arc-dj-big').textContent), 'comparaison au score relatif : toi (découverte) '+res.me.s+' → '+res.me.r+' contre Max '+sent.s+' — « '+q('.arc-dj-big').textContent+' »');
+  A.game.s.profile='decouverte';
   const first=res.me.s;
   q('[data-du=take]').click(); await until(()=>AR.active); AR.answer({hits:[]}); await wait(40);
   ok(DU.result.me.s===first && /premier essai/.test(q('.arc-dj-note').textContent), 'rejouer : seul le premier essai compte');
@@ -88,13 +95,22 @@ f.addEventListener('load', async ()=>{
   ok(MM && U.screen==='duel' && DU.view==='mm' && MM.keys.every(k=>S.get(k)===MM.start[k]) && d.querySelectorAll('.arc-duel [data-mm]').length===MM.keys.length, 'énigme de duel : son de départ appliqué, un contrôle par réglage');
   q('[data-du=target]').click(); await wait(10);
   ok(MM.listens===1 && MM.keys.every(k=>S.get(k)===MM.target[k]), '▶ cible : on entend la cible (1 écoute)');
+  // v1.02: the Mastermind BORROWS the sound (store.borrow): snapshots, journal and freePlay see the player's own values
+  { const snap=S.stableSnapshot(); A.journal.items=[]; A.journal.record('Do'); const jst=A.journal.items[0].state;
+    ok(S.lending() && JSON.stringify(m1.keys.map(k=>snap[k]))===before && JSON.stringify(m1.keys.map(k=>jst[k]))===before && !A.game.freePlay(), 'son emprunté : stableSnapshot et journal gardent les réglages du joueur, freePlay() faux'); }
   q('[data-du=mine]').click(); q('[data-du=validate]').click(); await wait(10);
   ok(MM.tries.length===1 && d.querySelectorAll('.arc-mm-row').length===1 && d.querySelectorAll('.arc-mm-peg').length===MM.keys.length, 'validation : une ligne de pions ✓ ≈ ✗ ⬆⬇');
   MM.keys.forEach(k=>{ const el=q(`[data-mm="${k}"]`); el.value=String(MM.target[k]); el.dispatchEvent(new Event('input',{bubbles:true})); });
   q('[data-du=validate]').click(); await wait(20);
   const mm=Object.values(DU.s.mine)[0];
   ok(!DU.mm && DU.view==='made' && mm && mm.ok && mm.t===2 && mm.s===DU.mmScore(2,1) && q('[data-du=share]'), 'trouvée en 2 validations : réussi ('+mm.s+'), lien disponible');
-  ok(JSON.stringify(m1.keys.map(k=>S.get(k)))===before, 'fin de l\'énigme : le son du joueur revient tel quel');
+  ok(JSON.stringify(m1.keys.map(k=>S.get(k)))===before && !S.lending(), 'fin de l\'énigme : le son du joueur revient tel quel (plus rien d\'emprunté)');
+  // a mode change while borrowing gives the sound back (tree.onMode → store.giveBackAll)
+  { DU.view='make'; DU.draft={k:'m',th:'p.premier',sd:9}; DU.kind='m'; DU.render(); q('[data-du=try]').click(); await wait(10);
+    const lent=S.lending(); const freeSnap=localStorage.getItem(A.game.key+'.snap.path');
+    A.game.setMode('free'); await wait(10); const pathSnap=JSON.parse(localStorage.getItem(A.game.key+'.snap.path')||'{}');
+    ok(lent && !S.lending() && JSON.stringify(m1.keys.map(k=>pathSnap[k]))===before, 'changement de mode pendant l\'énigme : son rendu, l\'instantané du Parcours garde les réglages du joueur');
+    A.game.setMode('path'); await wait(10); U.open(); }
   // leaving a Mastermind in the middle (Échap → menu) also restores the sound
   DU.view='make'; DU.draft={k:'m',th:'p.premier',sd:7}; DU.kind='m'; DU.render(); q('[data-du=try]').click(); await wait(10);
   w.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',code:'Escape',bubbles:true})); await wait(20);
