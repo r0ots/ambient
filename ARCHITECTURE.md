@@ -1,10 +1,10 @@
-# Architecture (v1.00)
+# Architecture (v1.01)
 
 Scripts classiques, pas de build. État global `window.AMB`. Un module = un IIFE qui pose `AMB.<nom>` (ordre de chargement = `index.html`). Bus : `AMB.bus.on/emit` (js/sequencer.js). Réglages : `AMB.store` (js/params.js, schéma `AMB.SCHEMA`).
 
 ## Où mettre quoi
-- Mini-jeu = `js/arcade/<id>.js` + `css/arcade-<id>.css` + `tests/arcade-<id>.html`, rien d'autre. Coquilles déjà déclarées dans `index.html`, `sw.js`, `tests/run-all.sh` (intrus, bouge, reponds, modes, accordeur ; démo : hautbas).
-- Nouveau module = sa page `tests/<module>.html` (≤ 10 s) avec l'en-tête `tests/lib.js` (log, ok, wait, done, fail, testBus ; erreurs capturées). Plus rien dans gameui.html.
+- Mini-jeu = `js/arcade/<id>.js` + `css/arcade-<id>.css` + `tests/arcade-<id>.html`, rien d'autre. Coquilles déjà déclarées dans `index.html`, `sw.js`, `tests/run-all.sh` (intrus, bouge, reponds, modes, accordeur, dictee ; démo : hautbas).
+- Nouveau module = sa page `tests/<module>.html` (≤ 10 s) avec l'en-tête `tests/lib.js` (log, ok, wait, done, fail, testBus ; erreurs capturées). Plus rien dans gameui.html. Une CSS par module (`css/<module>.css`) : les agents ne touchent pas `css/style.css`. Les agents lancent seulement leurs pages ; la suite complète est lancée à la fusion. `tests/game.html` vérifie que `sw.js` précache tout `index.html`, dans l'ordre.
 - Seul le réconciliateur modifie `index.html`, `sw.js` (ASSETS dans l'ordre d'index.html + CACHE), `ROADMAP.md`, `css/style.css` et les manifestes.
 
 ## Plugin d'arcade (contrat : en-tête de js/arcade.js)
@@ -23,7 +23,13 @@ Optionnels : `reveal` (ms, pause après la réponse avant le défi suivant, rép
 - `note` {layer, midi, time, vel, dur} · `perc` {track, time, vel} · `grain` {layer, midi, time, vel} · `freeze` {}
 - `act` 'id' (action réussie : save, share, keep, restore, rec, reclive, chord, note, freeze, xy, midiConnect, midiExport, preset, sceneStore…) · `rec:done` secondes · `secret` {id}
 - `game:*` earn {n, reason, id, total}, spend, unlock {id}, found / contracts / puzzles {id}, mode, reset, contract, puzzle, stars, opened, secret, chime {kind}
-- `arcade:*` register, start {id, seed, d, pacts}, challenge {id, n, d}, answer {ok, partial, bonus, reveal, pts, d, combo, mult…}, end {score, stars, record…} · `juice:combo` {n, mult, best}
+- `arcade:*` register, start {id, seed, d, pacts}, challenge {id, n, d}, answer {ok, partial, bonus, reveal, pts, d, combo, mult, late…}, end {score, stars, record, ghost, pacts, pmult, fall…}, screen 'menu' | 'play' | 'end' | 'daily' | 'duel' | 'closed' (arcade-ui `show`, toute `section.arc-<nom>` de la borne) · `juice:combo` {n, mult, best} · `game:profile` 'musicien' | 'decouverte'
+
+## Manches (options de `arcade.start` / `arcadeUI.start`)
+- `{seed, duration (Infinity = zen), d (départ), dMax (plafond), fixed (pas d'escalier), count (fin après n réponses), practice (ni record ni partie comptée), ghost (rien d'enregistré), pacts}` + côté UI `label`, `onEnd` (manches enchaînées : placement, « Jouer 2 min ») et `arcadeUI.after(d)` (défi du jour, duel).
+- Pactes (js/pacts.js) : seulement ceux cochés sur la cartouche pour une manche normale ; jamais en manche enchaînée (`onEnd`) ni fantôme (`ghost` : défi du jour, duel) pour que les scores restent comparables. Exclusions par jeu : `pacts.SKIP` ou `pacts: {id: bool}` du plugin.
+- Profil joueur : `AMB.game.s.profile` (null = pas choisi, `profile()` répond alors 'musicien') ; le défi du jour lit la valeur brute (null → « standard » ×1,15, musicien ×1, découverte ×1,35).
+- Latence : `AMB.latency` (par appareil et par entrée, jamais exportée). Sauvegarde (js/save.js) : `game.s` (profil, placement), `arcade.s` (niveaux, records, pactes cochés), `daily.s` (nom, essais, classement) ; pas la latence ni les essais de duel.
 
 ## Store (sources de `store.set(k, v, source)`)
 - `user` = la seule qui paie ou compte (découvertes, contrats, secrets) ; l'annulation enregistre `user`, `preset`, `macro`.
@@ -38,7 +44,7 @@ Optionnels : `reveal` (ms, pause après la réponse avant le défi suivant, rép
 ## Tester
 - Un serveur par worktree : `python3 -u -m http.server $PORT 2> $LOG` (PORT=87xx), puis `PORT=… LOG=… tests/run.sh <page>.html 0.4` ; suite : `tests/run-all.sh` (ALL OK).
 - Page dédiée ≤ 10 s, sans audio réel (horloge injectée `arcade.clock.now`, rng à graine, OfflineAudioContext si le son doit être vérifié).
-- 2 captures regardées (bureau + 390 px). Chrome headless impose ≥ 500 px : pour 390 px, `tests/shot-tree.html?w=390&h=780` (page dans une iframe de 390 px). Modes : `#sel=<nœud>`, `#pz`, `#bar`, `#free`, `#arcade`, `#arcade-play=<id>`, `#arcade-end` (manche : ajouter `--autoplay-policy=no-user-gesture-required` ; en `#arcade*` particules et juice coupés).
+- 2 captures regardées (bureau + 390 px). Chrome headless impose ≥ 500 px : pour 390 px, `tests/shot-tree.html?w=390&h=780` (page dans une iframe de 390 px). Modes : `#sel=<nœud>`, `#pz`, `#bar`, `#free`, `#arcade`, `#arcade-pacts`, `#arcade-play=<id>` (`&d=0.7`, `&mut=…`), `#arcade-end`, `#arcade-daily`, `#arcade-duel`, `#pf-profile`, `#pf-end`, `#pf-kid`, `#pf-joy`, `#save-open`, `#save-confirm`, `#save-back` (manche : ajouter `--autoplay-policy=no-user-gesture-required` ; en `#arcade*`, `#pf-*`, `#save-*` particules et juice coupés).
 
 ## Points ouverts
 - Aucun pour l'instant.
