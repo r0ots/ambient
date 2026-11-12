@@ -1,7 +1,8 @@
 <!doctype html><html><head><!-- Dev captures (not in the suite): ?w=390&h=780 for phone width.
   Modes: #free, #pz (énigme ouverte, écran en Sculpter), #bar (barre + LCD avec le contrat), #task-help (aide du contrat sur le LCD),
   #sel=<node>; #help-path / #help-free (aide du Parcours ; libre), #more (menu ⋯ en Parcours),
-  #garden (Jardin visuel débutant : 3 couches), #garden-adv (tout l'arbre, secrets) — notes simulées sur le bus. --><meta charset="utf-8"><style>body{margin:0}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body>
+  #garden (Jardin visuel débutant : 3 couches), #garden-adv (tout l'arbre, secrets) — notes simulées sur le bus ;
+  #song (panneau Morceau, mode libre, 3 sections, ● Rec), #song-empty (aucune section : ● Rec désactivé). --><meta charset="utf-8"><style>body{margin:0}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body>
 <script>localStorage.removeItem('ambient.game.shot');</script>
 <iframe id="f" src="../index.html?gamekey=ambient.game.shot"></iframe>
 <script>{const q=new URLSearchParams(location.search),f=document.getElementById('f');if(q.get('w'))f.style.width=q.get('w')+'px';if(q.get('h'))f.style.height=q.get('h')+'px';}</script>
@@ -9,6 +10,11 @@
 document.getElementById('f').addEventListener('load', () => {
   const A = document.getElementById('f').contentWindow.AMB, doc = document.getElementById('f').contentDocument, h = location.hash;
   if (h.includes('help-free')) { A.game.setMode('free'); A.garden.welcome(false); doc.getElementById('help').click(); return; }
+  if (h.includes('song')) {
+    A.game.setMode('free'); A.garden.welcome(false); doc.querySelector('[data-mode=compose]').click();
+    A.song.sections = []; if (!h.includes('empty')) { A.song.add(); A.song.add(); A.song.add(); }
+    A.song.render(); setTimeout(() => A.song.panel.scrollIntoView({ block: 'start' }), 300); return;
+  }
   if (h.includes('free')) { A.game.setMode('free'); A.garden.welcome(false); return; }
   A.game.setMode('path'); A.game.earn(200, 'x');
   ['t.son', 'h.pad', 'e.reverb', 'm.bells', 't.viz'].forEach(i => A.tree.buy(i));

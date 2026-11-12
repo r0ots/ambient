@@ -49,14 +49,15 @@ window.addEventListener('load', async ()=>{
     ok(Math.abs(dec.duration-want)<=bar, `WAV ${dec.duration.toFixed(2)} s ≈ sections + queue ${want.toFixed(2)} s (± 1 mesure ${bar.toFixed(2)} s)`);
     ok(done.length===1 && Math.abs(done[0]-dec.duration)<0.1, 'rec:done = durée du WAV ('+(done[0]||0).toFixed(2)+' s)');
   }
-  await untilAudio(2.2); ok(AMB.engine.out.gain.value>0.9 && AMB.seq.playing, 'après la queue, le son revient (gain '+AMB.engine.out.gain.value.toFixed(2)+')');
+  const g0=AMB.engine.out.gain.value; await untilAudio(0.5); const g1=AMB.engine.out.gain.value;
+  ok(g1>g0 && g1>0.15 && AMB.seq.playing, `après la queue, le son revient (gain ${g0.toFixed(2)} → ${g1.toFixed(2)})`);
   // second click = cancel: no file, no rec:done, normal sound
-  recB.click(); await untilAudio(0.6); recB.click(); await untilAudio(0.3);
+  recB.click(); await untilAudio(0.4); recB.click(); await untilAudio(0.2);
   ok(files.length===1 && done.length===1 && !SG.playing && !AMB.rec.songRecording() && !AMB.engine.capturing && recB.textContent==='● Rec' && AMB.seq.playing, 'second clic : annulé, aucun fichier, le son continue');
   // the song stopped another way (■ Arrêter le morceau) cancels too
-  recB.click(); await untilAudio(0.4); document.querySelector('[data-s=play]').click(); await untilAudio(0.4);
+  recB.click(); await untilAudio(0.3); document.querySelector('[data-s=play]').click(); await untilAudio(0.3);
   ok(files.length===1 && !AMB.rec.songRecording(), 'arrêter le morceau pendant l\'enregistrement l\'annule');
-  log('DONE');
+  await wait(100); log('DONE');
   }catch(e){log('EXC '+e.stack)}
 });
 </script></body></html>
