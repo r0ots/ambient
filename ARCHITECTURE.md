@@ -28,7 +28,7 @@ Règle de produit (v1.05) : le jeu se joue SUR l'instrument (ses commandes, son 
 
 ## Composer et remise de l'instrument (S3.5, S3.7)
 - Composer = 3 nœuds : Mélodie écrite (`c.seq` : piano roll, arpège, motifs, Rec live), Rythme (`c.rythme` : basse, pulsations, groove), Morceau (`c.song` : sections, automation, Rec du morceau). `game.load()` remplace les anciens ids (`game.MERGED` : c.arp, c.motifs → c.seq ; c.bass, c.perc, c.groove → c.rythme ; c.auto → c.song), sans toucher aux ✧.
-- Contrats Composer joués : 8 notes en Rec live, un groove de basse qui tourne 4 mesures (événements `note` de la basse), « Enregistre ton morceau » (`act` songRec). Ce dernier (`first`) passe avant les autres dès que Morceau est acquis.
+- Contrats Composer joués : 6 notes en Rec live, un groove de basse qui tourne 4 mesures (événements `note` de la basse), « Enregistre ton morceau » (`act` songRec). Ce dernier (`first`) passe avant les autres dès que Morceau est acquis.
 - Remise (`garden.checkEnd`) : arbre complet → le dernier contrat d'abord ; une fois fait ou passé (↷) : `game.s.ended` (sauvegardé), carillon, « L'instrument est à toi » sur le LCD, puis la ligne de contrat et le compteur ✧ disparaissent (`garden.handedOver()`). Le store n'est pas touché. Ensuite `game.counts()` est faux : ni contrat ni ✧ ; l'arbre reste consultable (sans ✧ ni énigmes). Les secrets restent à trouver (`secrets.active()` ne dépend que du Parcours, de la cible et de l'Écho) : cadeau, carillon et LCD, sans nœud ni ✧ ; le panneau ne montre que les secrets trouvés.
 
 ## Mode libre intact

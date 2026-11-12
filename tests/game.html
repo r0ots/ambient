@@ -52,7 +52,7 @@ window.addEventListener('load', async ()=>{
     const gone=['k.paysages','h.ecrire','m.scenes','b.gamme','b.pad','b.salle','b.radio','b.grains','b.groove','c.dessin','k.souffle'];
     ok(gone.every(id=>!K.byId[id]) && !Pz.DEFS && !Pz.keyScore && !Pz.listen && !Pz.ab, 'énigmes « régler des boutons sur une cible » et défis sans nœud retirés');
     const ech=K.DEFS.filter(d=>d.kind==='echo'); log('Échos : '+ech.map(d=>d.title+' → '+T.byId[d.node].name+' ('+Pz.echoLen(d.d)+' notes)').join(' · '));
-    ok(ech.length===6 && ech.every(d=>d.need.includes('m.bells')) && Pz.echoLen(K.byId['p.premier'].d)===3 && Pz.echoLen(K.byId['p.mouvement'].d)===5, 'Échos : 6 portes, longueur selon la profondeur (3 notes près de la racine, 5 plus haut)'); }
+    ok(ech.length===6 && ech.every(d=>d.need.includes('m.bells')) && Pz.echoLen(K.byId['p.premier'].d)===3 && Pz.echoLen(K.byId['p.mouvement'].d)===4, 'Échos : 6 portes, longueur selon la profondeur (3 notes près de la racine, 4 plus haut)'); }
   // --- the queue (one at a time, in the order of the table)
   g.reset(); g.setMode('path'); K.refill(); ev.length=0;
   ok(g.s.active.join()==='k.xy', 'S4.3 : le premier défi = glisser sur l\'écran ('+g.s.active.join()+')');
@@ -66,7 +66,7 @@ window.addEventListener('load', async ()=>{
   K.skip('m.monte'); K.skip('m.descend'); ok(g.s.active.join()==='m.pas', 'passer encore : '+g.s.active.join());
   K.skip('m.pas'); K.skip('p.suite'); K.skip('k.timbre'); ok(g.s.active.join()==='m.notes', 'tous passés : le premier passé revient');
   const live=(m,t)=>AMB.bus.emit('live',{midi:m==null?60:m,time:t||0,vel:1}), lives=(n)=>()=>{ for(let i=0;i<n;i++) live(); };
-  lives(8)(); ok(g.has('h.pad') && g.s.active.join()==='h.forcer', '8 notes jouées → Pad ouvert, le suivant non passé arrive : '+g.s.active.join());
+  lives(8)(); ok(g.has('h.pad') && g.s.active.join()==='h.forcer', '6 notes jouées → Pad ouvert, le suivant non passé arrive : '+g.s.active.join());
   ok(!K.eligible(K.byId['m.notes']) && K.eligible(K.byId['h.forcer']) && !K.eligible(K.byId['h.suivre']), 'un défi n\'est proposé que si son nœud peut s\'ouvrir (Pad ouvert : Drone qui suit oui, Tonalité pas encore)');
   // --- each kind of challenge is done by its gesture, not by anything else
   const force=(id)=>{ g.s.active=[id]; g.s.prog[id]={n:0}; };
@@ -76,17 +76,17 @@ window.addEventListener('load', async ()=>{
       for(const f of steps) f(); ok(sh() && (!K.byId[id].node || g.has(K.byId[id].node)), id+' : réussi par son geste'+(K.byId[id].node ? ', '+T.byId[K.byId[id].node].name+' ouvert' : '')); };
     const S=(k,v,src)=>()=>AMB.store.set(k,v,src||'user'), notes=(ms,dt)=>()=>ms.forEach((m,i)=>live(m,100+i*dt)), tick=(n)=>()=>{ for(let i=0;i<n;i++) K.dispatch('bar',i); };
     run('e.echo',[S('fx.echo',0.6),lives(6)],[S('fx.echo',0.2),lives(6)]);
-    run('m.monte',[notes([60,62,64,65,67],0.4)],[notes([60,62,61,64,65],0.4),notes([67,65,64],0.4)]);
+    run('m.monte',[notes([60,62,64,65,67],0.4)],[notes([60,62,61,64,65],0.4),notes([64,62,60],0.4)]);
     run('m.descend',[notes([72,71,69,67,65],0.4)],[notes([60,62,64,65,67],0.4)]);
     run('m.respire',[notes([60,62,64,65],2)],[notes([60,62,64,65],0.5)]);
     run('m.pas',[notes([60,62,64,65],0.6)],[notes([60,62,64,65],0.1),()=>[0,0.4,1.4,1.6].forEach((t,i)=>live(60,200+t))]);
     run('m.nuage',[S('grains.density',0.7),lives(4)],[lives(6),S('grains.density',0.65,'preset')]);
-    run('e.noyer',[S('pad.send',0.8),...[1,2].map(()=>()=>{ K.state().prog['e.noyer'].t_chord=0; AMB.bus.emit('act','chord'); })],[()=>AMB.bus.emit('act','chord'),S('pad.send',0.5)]);
+    run('e.noyer',[S('pad.send',0.8),...[1].map(()=>()=>{ K.state().prog['e.noyer'].t_chord=0; AMB.bus.emit('act','chord'); })],[()=>AMB.bus.emit('act','chord'),S('pad.send',0.5)]);
     run('k.timbre',[S('drone.wave',AMB.store.spec('drone.wave').options[1]),lives(4)],[lives(6)]);
     // S3.5: the Composer challenges are played (Rec live, a groove that turns, the song recorded), never drawn
     AMB.pianoRoll=AMB.pianoRoll||{roll:{recording:false}}; // this page has no piano roll: its Rec live state is enough
     const R=AMB.pianoRoll.roll, rec0=R.recording;
-    run('c.reclive',[()=>{ R.recording=true; }, lives(8), ()=>{ R.recording=rec0; }],[lives(8), S('seq.pattern','0.0.1','user')]);
+    run('c.reclive',[()=>{ R.recording=true; }, lives(6), ()=>{ R.recording=rec0; }],[lives(8), S('seq.pattern','0.0.1','user')]);
     const S0=AMB.seq, step0=S0.step, bassNote=(bar)=>()=>{ S0.step=(S0.origin||0)+bar*16+3; AMB.bus.emit('note',{layer:'bass',midi:36,time:0,vel:0.8,dur:0.2}); };
     run('c.groove',[S('bass.pattern','groove-test','user'),bassNote(0),bassNote(1),bassNote(1),bassNote(2),bassNote(3)],[bassNote(0),bassNote(1),bassNote(2),bassNote(3),bassNote(4),S('bass.pattern','preset-test','preset')]);
     S0.step=step0;

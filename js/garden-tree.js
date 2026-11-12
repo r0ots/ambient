@@ -76,7 +76,7 @@
       if (!map.querySelector('.tree-stage') || map.dataset.n !== String(T.NODES.length)) this.buildMap(map);
       this.paintTree();
     },
-    // what opens a node: its challenge, or a secret (S4.3) — « ◇ Joue 8 notes », « ◈ Écho : Premier reflet », « ✦ Secret : ??? »
+    // what opens a node: its challenge, or a secret (S4.3) — « ◇ Joue 6 notes », « ◈ Écho : Premier reflet », « ✦ Secret : ??? »
     openers(id) {
       const K = AMB.contracts, S = AMB.secrets, d = K && K.forNode(id), out = [];
       if (d) out.push({ kind: d.kind === 'echo' ? 'echo' : 'défi', d, text: d.kind === 'echo' ? `◈ Réussis l'Écho « ${d.title} »` : `◇ ${d.title}` });

@@ -1,4 +1,4 @@
-// « Jardin sonore » : challenges — small musical goals ("play 8 notes", "force 3 chords") and Échos (play a phrase
+// « Jardin sonore » : challenges — small musical goals ("play 6 notes", "force 3 chords") and Échos (play a phrase
 // back, js/puzzles.js). S4.3: each one opens a node of the tree (table OPENS below), no currency. One at a time, on the
 // 2nd line of the LCD, in the order of OPENS among those whose node can be reached now; ↷ passes to the next one.
 // Judged on usage only, never on taste. Progress lives in game.s.prog, completion in game.s.contracts.
@@ -40,52 +40,52 @@
     C('k.couleur', ['racine'], 'Fais varier la couleur du drone pendant qu\'il joue', 2, {
       param(st, k, v, src) { if (k === 'drone.tone' && src === 'user' && playing() && gesture(st, k)) st.n = (st.n || 0) + 1; },
     }, 'Lance la lecture, puis Sculpter > Drone > Couleur : tourne le bouton deux fois en écoutant le son s\'ouvrir et se fermer.'),
-    C('k.timbre', ['t.son', 'm.bells'], 'Change le son du drone, puis joue 4 notes dessus', 5, thenNotes((k) => k === 'drone.wave'),
-      'Sculpter > Drone > Son : choisis-en un autre, puis joue 4 notes (pastilles ou A à L) et écoute-les sur ce fond.'),
+    C('k.timbre', ['t.son', 'm.bells'], 'Change le son du drone, puis joue 3 notes dessus', 4, thenNotes((k) => k === 'drone.wave'),
+      'Sculpter > Drone > Son : choisis-en un autre, puis joue 3 notes (pastilles ou A à L) et écoute-les sur ce fond.'),
     C('k.moments', ['t.journal'], 'Garde un moment (♥), puis reviens à un moment passé', 2, {
       act(st, id) { if (id === 'keep') st.n = Math.max(st.n || 0, 1); else if (id === 'restore' && st.n === 1) st.n = 2; },
     }, 'Sculpter > Journal : ♥ garde le son de l\'instant ; un clic sur un moment passé le fait revenir.'),
     C('k.enreg', ['t.rec'], 'Enregistre au moins 30 secondes', 1, {
       rec(st, secs) { if (secs >= 30) st.n = 1; }, // real duration of the finished recording
     }, '● Rec, joue au moins 30 s, puis ● Rec à nouveau pour arrêter (ou choisis une durée fixe dans ▾).'),
-    C('k.macros', ['t.macros'], 'Tourne un grand réglage, puis joue 4 notes', 5, thenNotes((k) => k.startsWith('macro.')),
-      'Écouter : tourne Lumière, Densité, Espace, Nostalgie ou Nature, puis joue 4 notes dans ce nouveau paysage.'),
+    C('k.macros', ['t.macros'], 'Tourne un grand réglage, puis joue 3 notes', 4, thenNotes((k) => k.startsWith('macro.')),
+      'Écouter : tourne Lumière, Densité, Espace, Nostalgie ou Nature, puis joue 3 notes dans ce nouveau paysage.'),
 
     // Harmonie
     C('h.forcer', ['h.pad'], 'Force 3 accords (Z à M, ou appui long sur une pastille)', 3, {
       act(st, id) { if (id === 'chord' && gesture(st, 'chord', 600)) st.n = (st.n || 0) + 1; },
     }, 'Pendant la lecture, les touches Z, X, C, V, B, N, M jouent les accords I à VII ; au doigt, un appui long sur une pastille force l\'accord de son degré (au clavier MIDI : les notes graves).'),
-    C('h.son', ['h.pad'], 'Change le son du Pad, puis force 2 accords', 3, thenChords((k) => k === 'pad.wave'),
-      'Sculpter > Pad > Son : choisis-en un autre, puis force deux accords (Z à M, ou appui long sur une pastille) pour l\'entendre.'),
+    C('h.son', ['h.pad'], 'Change le son du Pad, puis force un accord', 2, thenChords((k) => k === 'pad.wave'),
+      'Sculpter > Pad > Son : choisis-en un autre, puis force un accord (Z à M, ou appui long sur une pastille) pour l\'entendre.'),
     C('h.suivre', ['h.drone'], 'Fais suivre les accords au drone, puis force un accord', 2, {
       param(st, k, v, src) { if (k === 'drone.follow' && src === 'user' && v) st.n = Math.max(st.n || 0, 1); },
       act(st, id) { if (id === 'chord' && st.n === 1 && store.get('drone.follow')) st.n = 2; },
     }, 'Sculpter > Drone > Suit accords, puis une touche de Z à M pendant la lecture : écoute le drone changer de note.'),
-    C('h.tonalite', ['h.key'], 'Module : change 3 fois de tonalité pendant la lecture', 3, {
+    C('h.tonalite', ['h.key'], 'Module : change 2 fois de tonalité pendant la lecture', 2, {
       param(st, k, v, src) { if (k === 'global.key' && src === 'user' && playing()) distinct(st, v); },
     }, 'Sculpter > Global > Tonalité, pendant que ça joue : écoute tout le paysage monter ou descendre.'),
 
     // Espace
-    C('e.resonne', ['e.reverb', 'm.bells'], 'Ouvre l\'espace (au-dessus de 60), puis joue 4 notes', 5, thenNotes((k, v) => k === 'fx.space' && v >= 0.6),
-      'Sculpter > Espace > Espace au-dessus de 60, puis joue 4 notes et écoute-les se prolonger.'),
-    C('m.respire', ['e.reverb', 'm.bells'], 'Laisse respirer : 4 notes, une seconde et demie entre chacune', 4, run((p, n) => n.time - p.time >= 1.5 && n.time - p.time <= 6),
-      'Joue une note, laisse-la s\'éteindre dans l\'espace (au moins une seconde et demie), puis la suivante : quatre fois.'),
-    C('e.noyer', ['e.reverb', 'h.pad'], 'Noie le Pad dans l\'espace, puis force 2 accords', 3, thenChords((k, v) => k === 'pad.send' && v >= 0.7),
-      'Sculpter > Pad > Espace au-dessus de 70, puis force deux accords (Z à M) : ils flottent dans la salle.'),
-    C('e.grande', ['e.salle', 'm.bells'], 'Agrandis la salle (au-dessus de 80), puis joue 4 notes', 5, thenNotes((k, v) => k === 'fx.size' && v >= 0.8),
-      'Sculpter > Espace > Taille au-dessus de 80, puis joue 4 notes dans cette grande salle.'),
-    C('e.echo', ['e.echo', 'm.bells'], 'Joue 6 notes dans l\'écho', 6, {
+    C('e.resonne', ['e.reverb', 'm.bells'], 'Ouvre l\'espace (au-dessus de 60), puis joue 3 notes', 4, thenNotes((k, v) => k === 'fx.space' && v >= 0.6),
+      'Sculpter > Espace > Espace au-dessus de 60, puis joue 3 notes et écoute-les se prolonger.'),
+    C('m.respire', ['e.reverb', 'm.bells'], 'Laisse respirer : 3 notes, une seconde et demie entre chacune', 3, run((p, n) => n.time - p.time >= 1.5 && n.time - p.time <= 6),
+      'Joue une note, laisse-la s\'éteindre dans l\'espace (au moins une seconde et demie), puis la suivante : trois fois.'),
+    C('e.noyer', ['e.reverb', 'h.pad'], 'Noie le Pad dans l\'espace, puis force un accord', 2, thenChords((k, v) => k === 'pad.send' && v >= 0.7),
+      'Sculpter > Pad > Espace au-dessus de 70, puis force un accord (Z à M) : il flotte dans la salle.'),
+    C('e.grande', ['e.salle', 'm.bells'], 'Agrandis la salle (au-dessus de 80), puis joue 3 notes', 4, thenNotes((k, v) => k === 'fx.size' && v >= 0.8),
+      'Sculpter > Espace > Taille au-dessus de 80, puis joue 3 notes dans cette grande salle.'),
+    C('e.echo', ['e.echo', 'm.bells'], 'Joue 4 notes dans l\'écho', 4, {
       note(st) { if (store.get('fx.echo') >= 0.4) st.n = (st.n || 0) + 1; },
     }, 'Monte l\'Écho au-dessus de 40 (Sculpter > Espace), puis joue des notes (pastilles ou A à L) et écoute-les se répéter.'),
 
     // Mouvement
-    C('m.notes', ['m.bells'], 'Joue 8 notes (pastilles ou clavier A à L)', 8, {
+    C('m.notes', ['m.bells'], 'Joue 6 notes (pastilles ou clavier A à L)', 6, {
       note(st) { st.n = (st.n || 0) + 1; },
     }, 'Les pastilles sous l\'écran ou les touches A à L jouent la gamme (Q à P une octave au-dessus), ou ton clavier MIDI.'),
-    C('m.monte', ['m.bells'], 'Joue 5 notes qui montent', 5, run((p, n) => n.midi > p.midi),
-      'Cinq notes de suite, chacune plus aiguë que la précédente : de gauche à droite sur les pastilles (ou A, S, D, F, G).'),
-    C('m.descend', ['m.bells'], 'Joue 5 notes qui descendent', 5, run((p, n) => n.midi < p.midi),
-      'Cinq notes de suite, chacune plus grave que la précédente : de droite à gauche sur les pastilles (ou L, K, J, H, G).'),
+    C('m.monte', ['m.bells'], 'Joue 4 notes qui montent', 4, run((p, n) => n.midi > p.midi),
+      'Quatre notes de suite, chacune plus aiguë que la précédente : de gauche à droite sur les pastilles (ou A, S, D, F).'),
+    C('m.descend', ['m.bells'], 'Joue 4 notes qui descendent', 4, run((p, n) => n.midi < p.midi),
+      'Quatre notes de suite, chacune plus grave que la précédente : de droite à gauche sur les pastilles (ou L, K, J, H).'),
     C('m.pas', ['m.bells'], 'Marche : 4 notes régulières, comme des pas', 4, {
       note(st, n) { // each gap 0.25–1.5 s and within a quarter of the previous one: a steady walk
         const g = st.p ? n.time - st.p.time : null, fine = g != null && g >= 0.25 && g <= 1.5;
@@ -93,20 +93,20 @@
         st.g = fine ? g : null; st.p = { time: n.time };
       },
     }, 'Quatre notes à intervalles égaux, comme des pas tranquilles (ni trop vite ni trop lent) : c\'est un tempo.'),
-    C('m.ralenti', ['m.tempo', 'm.bells'], 'Ralentis sous 60 bpm, puis joue 4 notes', 5, thenNotes((k, v) => k === 'global.tempo' && v < 60),
-      'Sculpter > Global > Tempo sous 60, puis joue 4 notes sur ce paysage plus lent.'),
+    C('m.ralenti', ['m.tempo', 'm.bells'], 'Ralentis sous 60 bpm, puis joue 3 notes', 4, thenNotes((k, v) => k === 'global.tempo' && v < 60),
+      'Sculpter > Global > Tempo sous 60, puis joue 3 notes sur ce paysage plus lent.'),
     C('m.phrase', ['m.phrase'], 'Mets la mélodie en Phrase et écoute-la tourner 2 fois', 2, {
       param(st, k, v, src) { if (k === 'bells.mode' && src === 'user' && v === 'Phrase') st.on = 1; else if (k === 'bells.mode' && v !== 'Phrase') st.on = 0; },
       phrase(st) { if (st.on && store.get('bells.mode') === 'Phrase') st.n = (st.n || 0) + 1; },
     }, 'Sculpter > Mélodie > Jeu : Phrase. Le motif se répète et varie un peu à chaque tour.'),
-    C('m.nuage', ['m.grains', 'm.bells'], 'Épaissis les grains (au-dessus de 60), puis joue 4 notes', 5, thenNotes((k, v) => k === 'grains.density' && v >= 0.6),
-      'Sculpter > Grains > Densité au-dessus de 60, puis joue 4 notes au milieu du nuage.'),
+    C('m.nuage', ['m.grains', 'm.bells'], 'Épaissis les grains (au-dessus de 60), puis joue 3 notes', 4, thenNotes((k, v) => k === 'grains.density' && v >= 0.6),
+      'Sculpter > Grains > Densité au-dessus de 60, puis joue 3 notes au milieu du nuage.'),
     C('m.figer', ['m.grains2'], 'Fige le son 2 fois (❄ ou Entrée)', 2, {
       act(st, id) { if (id === 'freeze') st.n = (st.n || 0) + 1; },
     }, 'Pendant la lecture, ❄ Figer (ou Entrée) capture les 4 dernières secondes : les grains les rejouent.'),
 
     // Composer (S3.5: played, not drawn — the notes, the groove and the song come from playing them)
-    C('c.reclive', ['c.seq'], 'Enregistre 8 notes en Rec live', 8, {
+    C('c.reclive', ['c.seq'], 'Enregistre 6 notes en Rec live', 6, {
       note(st) { const r = AMB.pianoRoll && AMB.pianoRoll.roll; if (r && r.recording) st.n = (st.n || 0) + 1; },
     }, 'Composer > Mélodie écrite > ● Rec live, puis joue sur les pastilles, au clavier (A à L) ou au clavier MIDI : tes notes s\'écrivent dans le piano roll.'),
     C('c.groove', ['c.rythme'], 'Change ta ligne de basse, puis fais tourner le groove 4 mesures', 4, {
@@ -146,9 +146,9 @@
   for (const [node, id] of Object.entries(OPENS)) byId[id].node = node;
   byId['c.morceau'].first = true;
   const ORDER = Object.values(OPENS).map((id) => byId[id]).concat(DEFS.filter((d) => !d.node));
-  // an Écho's difficulty from the depth of its node: 3 notes at depth 2, one more per level, up to 6
+  // an Écho's difficulty from the depth of its node: 3 notes up to depth 3, one more per level, up to 6
   const depth = (id) => { const n = AMB.tree.byId[id]; return n.req.length ? 1 + Math.max(...n.req.map(depth)) : 0; };
-  for (const d of DEFS) if (d.kind === 'echo') d.d = Math.max(0, Math.min(1, (depth(d.node) - 2) / 3));
+  for (const d of DEFS) if (d.kind === 'echo') d.d = Math.max(0, Math.min(1, (depth(d.node) - 3) / 3));
 
   const contracts = {
     DEFS, byId, OPENS, ORDER,

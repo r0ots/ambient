@@ -59,7 +59,7 @@ f.addEventListener('load', async () => {
     ok(A.history.past.length === undoBefore, 'annulation : aucune entrée ajoutée');
     const GAMEUI = ['treeBtn', 'pads', 'lcdTask', 'puzzle', 'treeDlg', 'welcomeDlg'];
     const showing = GAMEUI.filter(id => { const e = d.getElementById(id); return e && vis(e); });
-    ok(!showing.length && !d.querySelector('.gain-feed:not(:empty),.tree-badge:not([hidden])'), 'aucun élément de jeu visible (arbre, défi, Écho) ' + showing.join());
+    ok(!showing.length && !d.querySelector('.gain-feed,.tree-badge,#lcdShards'), 'aucun élément de jeu visible (arbre, défi, Écho) ' + showing.join());
     d.querySelector('.more').open = true; await wait(40);
     ok(vis(d.getElementById('gameMode')), 'menu ⋯ ouvert : la bascule vers le Parcours');
     d.querySelector('.more').open = false;
@@ -90,7 +90,7 @@ f.addEventListener('load', async () => {
       w2.addEventListener('error', e => errs.push(e.message));
       await wait(100);
       const lsAfter2 = LS(), touched = Object.keys(Object.assign({}, lsBefore2, lsAfter2)).filter(k => lsBefore2[k] !== lsAfter2[k] && !HARMLESS.includes(k));
-      ok(A2.game.s.mode === 'free' && !d2.querySelector('.modal:not([hidden])') && !errs.length && !touched.length && A2.game.s.shards !== 321, 'ancien lien #save (' + code.slice(0, 6) + '…) : ignoré, aucune boîte, aucune clé de jeu écrite (' + (touched.join(', ') || 'aucune') + ')');
+      ok(A2.game.s.mode === 'free' && !d2.querySelector('.modal:not([hidden])') && !errs.length && !touched.length && !('shards' in A2.game.s), 'ancien lien #save (' + code.slice(0, 6) + '…) : ignoré, aucune boîte, aucune clé de jeu écrite (' + (touched.join(', ') || 'aucune') + ')');
       ok(JSON.stringify(A2.store.stableSnapshot()) === before.store && JSON.stringify(A2.game.s) === before.game, 'ancien lien #save : réglages et état du jeu inchangés');
       g2.remove();
     }

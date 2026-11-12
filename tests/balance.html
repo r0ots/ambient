@@ -1,113 +1,81 @@
 <!doctype html><html><head><meta charset="utf-8"></head><body>
-<!-- Economy of the Parcours: scripted players run through the path on the REAL data (tree costs and gates, contracts drawn
-     one at a time like contracts.refill, puzzles, key secrets) with a time model per activity. Contracts and puzzles are the
-     only sources of ✧ (a secret opens its node instead: tests/secrets.html; the garden visual pays nothing: tests/garden-visual.html).
-     Targets (S3.8): typical full path 40–60 min without any secret, never more than 4.5 min without a purchase (5 min is the
-     limit), margin between the ✧ that can be earned and the tree cost 50–80 %, a slow player: first purchase in under 2 min;
-     the musician who finds the key secrets: ≤ 40 min. -->
+<!-- Pace of the Parcours (S4.3, no currency): scripted players run through the path on the REAL data (tree, contracts.OPENS,
+     contracts.eligible / refill order, Écho lengths, secrets.OPENS) with a time model per activity. Each challenge opens its
+     node; a secret opens its own node (or, already owned, the next node of the path).
+     Targets: typical full path ≤ 45 min, never more than 3 min without a new node, no dead end whatever the order the
+     challenges are played in (↷), the musician who finds the key secrets is faster; the slow player is reported. -->
 <script src="lib.js"></script>
 <script>localStorage.removeItem('ambient.game.balance');</script>
 <iframe id="f" src="../index.html?gamekey=ambient.game.balance&listen" style="width:800px;height:600px"></iframe>
 <script>
-// seconds per activity (a player exploring at a calm pace; `k` slows everything down for a slower player)
-// an Écho (S3.6 gates) is a few phrases played back: shorter than a puzzle on named controls.
-// v1.08: for the typical player's 5 runs, each activity takes 0.75–1.25× its time (seeded per run). Before, the contract draw was the only random part
-// and it only reorders a set of incomes that is the same in every run (the player earns about the tree's cost, the
-// deepest contracts come last), so the 5 draws all gave the very same total: the « range » measured nothing.
+// seconds per activity, for a player exploring at a calm pace (`k` slows everything down); each run draws 0.75–1.25× per activity
 const JITTER = 0.25;
-// secret (S3.8): a short gesture once its hint is read, for the musician who finds the key secrets (the others find none)
-const TIME = { buy: 20, contract: (d) => 40 + 12 * Math.min(d.goal, 8), puzzle: 180, echo: 90, secret: 45 };
 const mulberry = (a) => () => { a = (a + 0x6d2b79f5) >>> 0; let t = Math.imul(a ^ (a >>> 15), a | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 
 document.getElementById('f').addEventListener('load', async () => {
   try {
-    const w = document.getElementById('f').contentWindow, A = w.AMB, T = A.tree;
-    const nodes = T.NODES, cost = nodes.reduce((a, n) => a + n.cost, 0);
-
-    // --- every income, with its prerequisites
-    const inc = [];
-    for (const d of A.contracts.DEFS) inc.push({ id: d.id, need: d.need, n: d.reward, t: TIME.contract(d), kind: 'contrat' });
-    for (const d of A.puzzles.DEFS) inc.push({ id: d.id, need: d.need, n: d.reward, t: d.kind === 'echo' ? TIME.echo : TIME.puzzle, kind: d.opens ? 'porte' : 'énigme', solves: d.id, gate: d.opens });
-    // S3.2: a secret opens a node for 0 ✧ and pays no ✧ of its own: not an income. The economy is sized for a player who finds none.
-    const total = inc.reduce((a, x) => a + x.n, 0), by = {}; inc.filter((x) => x.n).forEach((x) => { by[x.kind] = (by[x.kind] || 0) + x.n; });
-    const margin = Math.round(100 * (total / cost - 1));
-    log(`économie : coût de l'arbre ${cost} ✧, gagnables ${total} ✧ (${JSON.stringify(by)}), marge ${margin} %`);
-
+    const w = document.getElementById('f').contentWindow, A = w.AMB, T = A.tree, K = A.contracts, nodes = T.NODES;
+    const TIME = { contract: (d) => 40 + 12 * Math.min(d.goal, 8), echo: (d) => 45 + 15 * A.puzzles.echoLen(d.d), secret: 45 };
+    const tOf = (d) => (d.kind === 'echo' ? TIME.echo(d) : TIME.contract(d));
     const fmt = (s) => (s / 60).toFixed(1);
-    // S3.8 key secrets (secrets.OPENS): reachable once their node is owned (and, for Lenteur céleste, the controls it plays:
-    // Halo, Tempo); found = the node and its missing prerequisites open for 0 ✧, or its cost comes back if owned
+    // a key secret is reachable once its node is owned (Lenteur céleste also plays Halo and Tempo); MIDI-only ones for the musician
     const SECRET_NEED = { lent: ['e.halo', 'm.tempo'] };
-    for (const d of A.secrets.DEFS) inc.push({ id: 's.' + d.id, need: [d.node, ...(SECRET_NEED[d.id] || [])], n: 0, t: TIME.secret, kind: 'secret', opens: A.secrets.OPENS[d.id], midi: d.midi });
-    // --- one scripted player. opts: {k (time factor), midi, extra (puzzles without a gate), secrets (finds the key secrets), seed,
-    //     worst (buys first the nodes that open no income: the dead end to avoid since discoveries are gone)}
+    const SECRETS = A.secrets.DEFS.map((d) => ({ id: d.id, need: [d.node, ...(SECRET_NEED[d.id] || [])], opens: A.secrets.OPENS[d.id], midi: d.midi }));
+
+    // one scripted player. opts: {k, seed, jitter, random (plays any eligible challenge, ↷ at random), secrets, midi}
     function sim(opts) {
-      const k = opts.k || 1, rnd = mulberry(opts.seed || 7), jrnd = mulberry((opts.seed || 7) * 7919), jit = () => (opts.jitter ? 1 + JITTER * (2 * jrnd() - 1) : 1);
-      const own = new Set(['racine']), solved = new Set(), done = new Set();
-      const pool = inc.filter((x) => (opts.extra || x.kind !== 'énigme') && (opts.secrets || x.kind !== 'secret') && (opts.midi || !x.midi));
-      const openChain = (id) => { const n = T.byId[id]; if (own.has(id)) return 0; n.req.forEach(openChain); own.add(id); return 1; };
-      // contracts: one active, drawn at random among the eligible ones (contracts.refill)
-      const active = [];
-      const refill = () => {
-        const cand = A.contracts.DEFS.filter((d) => !done.has(d.id) && !active.includes(d.id) && d.need.every((r) => own.has(r)));
-        while (active.length < 1 && cand.length) { const f = cand.findIndex((d) => d.first); active.push(cand.splice(f >= 0 ? f : Math.floor(rnd() * cand.length), 1)[0].id); }
-      };
-      let shards = 0, t = 0, gap = 0, gapAt = '', lastBuy = 0, firstBuy = null, earned = 0; const steps = [], waits = [];
-      const avail = (n) => !own.has(n.id) && n.req.every((r) => own.has(r)) && (!n.gate || solved.has(n.gate));
-      refill();
-      for (let guard = 0; guard < 5000 && own.size < nodes.length; guard++) {
-        const pays = (n) => inc.some((x) => x.need.includes(n.id)); // a node that opens an income
-        // worst order: the player is not blind: never buys a no-income node that would leave him unable to afford the cheapest node that opens an income
-        const close = (n, seen = new Set()) => { if (own.has(n.id) || seen.has(n.id)) return seen; seen.add(n.id); n.req.forEach((r) => close(T.byId[r], seen)); return seen; };
-        const cheapPays = Math.min(...nodes.filter((n) => !own.has(n.id) && pays(n)).map((n) => [...close(n)].reduce((a, id) => a + T.byId[id].cost, 0)), Infinity); // cost of the cheapest way to an income
-        const safe = (n) => !opts.worst || pays(n) || shards - n.cost >= cheapPays;
-        const buy = nodes.filter((n) => avail(n) && n.cost <= shards && safe(n)).sort((a, b) => (opts.worst ? pays(a) - pays(b) : 0) || a.cost - b.cost)[0];
-        if (buy) {
-          shards -= buy.cost; own.add(buy.id); t += TIME.buy * k * jit();
-          if (firstBuy == null) firstBuy = t;
-          if (t - lastBuy > 4 * 60) waits.push(`${fmt(t - lastBuy)}′→${buy.id}`);
-          if (t - lastBuy > gap) { gap = t - lastBuy; gapAt = buy.id; }
-          lastBuy = t; steps.push(`${Math.round(t / 60)}′ ${buy.id}`); refill(); continue;
-        }
-        // a gate whose node a secret already opened is only an optional puzzle (played with `extra`)
-        const todo = pool.filter((x) => !done.has(x.id) && x.need.every((r) => own.has(r)) && (x.kind !== 'contrat' || active.includes(x.id)) && (opts.extra || !x.gate || !own.has(x.gate)))
-          .sort((a, b) => (b.kind === 'secret') - (a.kind === 'secret') || (b.kind === 'porte') - (a.kind === 'porte') || (a.kind === 'énigme') - (b.kind === 'énigme') || a.t / a.n - b.t / b.n)[0];
-        if (!todo) break;
-        done.add(todo.id); shards += todo.n; earned += todo.n; t += todo.t * k * jit();
-        if (todo.solves) solved.add(todo.solves);
-        if (todo.opens) { if (!openChain(todo.opens)) { shards += T.byId[todo.opens].cost; earned += T.byId[todo.opens].cost; } else { lastBuy = t; refill(); } }
-        if (todo.kind === 'contrat') { active.splice(active.indexOf(todo.id), 1); refill(); }
+      const k = opts.k || 1, rnd = mulberry(opts.seed || 7), jit = () => (opts.jitter ? 1 + JITTER * (2 * rnd() - 1) : 1);
+      const own = new Set(['racine']), done = new Set(), found = new Set();
+      const g = { has: (id) => own.has(id), s: { contracts: [] } }; // enough of game for tree.status / contracts.eligible
+      const status = (id) => T.status(id, g);
+      const eligible = (d) => !done.has(d.id) && d.need.every((n) => own.has(n)) && (d.node ? status(d.node) === 'available' : true);
+      const openChain = (id) => { if (own.has(id)) return; T.byId[id].req.forEach(openChain); own.add(id); };
+      const nextNode = () => { const d = K.ORDER.find((x) => x.node && status(x.node) === 'available'); return d && d.node; };
+      let t = 0, last = 0, gap = 0, gapAt = '', firstNode = null; const steps = [];
+      const opened = (before) => { if (own.size > before) { if (firstNode == null) firstNode = t; if (t - last > gap) { gap = t - last; gapAt = [...own].pop(); } last = t; steps.push(`${Math.round(t / 60)}′ ${[...own].pop()}`); } };
+      for (let guard = 0; guard < 500; guard++) {
+        if (own.size === nodes.length && done.has(A.garden.FINALE)) break;
+        const before = own.size;
+        const sec = opts.secrets && SECRETS.find((x) => !found.has(x.id) && (opts.midi || !x.midi) && x.need.every((n) => own.has(n)));
+        if (sec) { found.add(sec.id); t += TIME.secret * k * jit(); const nid = own.has(sec.opens) ? nextNode() : sec.opens; if (nid) openChain(nid); opened(before); continue; }
+        const cand = K.ORDER.filter((d) => d.first).concat(K.ORDER.filter((d) => !d.first)).filter(eligible);
+        if (!cand.length) break;
+        const d = opts.random ? cand[Math.floor(rnd() * cand.length)] : cand[0];
+        done.add(d.id); t += tOf(d) * k * jit();
+        if (d.node) own.add(d.node);
+        opened(before);
       }
-      // the path ends with its last contract (« Enregistre ton morceau »): with the whole tree owned, it is played before the handover
-      const fin = A.contracts.DEFS.find((d) => d.first);
-      if (fin && own.size === nodes.length && !done.has(fin.id)) t += TIME.contract(fin) * k * jit();
-      return { t, gap, gapAt, firstBuy, steps, left: nodes.filter((n) => !own.has(n.id)).map((n) => n.id), earned, waits };
+      return { t, gap, gapAt, firstNode, steps, left: nodes.filter((n) => !own.has(n.id)).map((n) => n.id), fin: done.has(A.garden.FINALE), secrets: found.size };
     }
 
-    // typical player (no MIDI, puzzles without a gate last, secrets when the cheaper things are done), 5 contract draws
-    const runs = [1, 2, 3, 4, 5].map((seed) => sim({ seed, extra: true, jitter: true }));
+    const echoes = K.DEFS.filter((d) => d.kind === 'echo').map((d) => `${d.title} ${A.puzzles.echoLen(d.d)}`);
+    const base = K.DEFS.reduce((a, d) => a + tOf(d), 0);
+    log(`${K.DEFS.length} défis (${echoes.length} Échos : ${echoes.join(', ')}), ${nodes.length - 1} nœuds à ouvrir ; somme des temps nominaux ${fmt(base)} min`);
+
+    // typical player: the path's order (the LCD's), 5 jittered runs
+    const runs = [1, 2, 3, 4, 5].map((seed) => sim({ seed, jitter: true }));
     const tMin = Math.min(...runs.map((r) => r.t)), tMax = Math.max(...runs.map((r) => r.t)), gMax = Math.max(...runs.map((r) => r.gap));
-    const r1 = runs[0];
-    log(`parcours type (5 tirages de contrats) : tout l'arbre puis « Enregistre ton morceau » en ${fmt(tMin)}–${fmt(tMax)} min, plus longue attente sans achat ${fmt(gMax)} min (avant ${runs.find((r) => r.gap === gMax).gapAt} ; attentes > 4 min, tirage 1 : ${r1.waits.join(' ') || 'aucune'})`);
-    log('jalons (tirage 1) : ' + r1.steps.filter((s, i) => i % 6 === 5 || i === r1.steps.length - 1).join(' · '));
-    ok(runs.every((r) => !r.left.length), 'aucun blocage, tout l\'arbre est atteignable ' + runs.map((r) => r.left.join(',')).join(''));
-    ok(tMin >= 40 * 60 && tMax <= 60 * 60, 'cible : parcours type complet en 40–60 min (sans secret) (' + fmt(tMin) + '–' + fmt(tMax) + ')');
-    ok(gMax <= 4.5 * 60, 'cible : jamais plus de 4,5 min sans achat possible (limite 5 min) (' + fmt(gMax) + ' min)');
-    ok(margin >= 50 && margin <= 80, 'cible : marge gagnables / coût de 50 à 80 % (' + margin + ' %)');
+    log(`parcours type (5 tirages) : tout l'arbre puis « Enregistre ton morceau » en ${fmt(tMin)}–${fmt(tMax)} min, plus longue attente sans nouveau nœud ${fmt(gMax)} min (avant ${runs.find((r) => r.gap === gMax).gapAt})`);
+    log('jalons (tirage 1) : ' + runs[0].steps.filter((s, i) => i % 6 === 5 || i === runs[0].steps.length - 1).join(' · '));
+    ok(runs.every((r) => !r.left.length && r.fin), 'parcours type : tout l\'arbre ouvert et le dernier défi joué ' + runs.map((r) => r.left.join(',')).join(''));
+    ok(tMax <= 45 * 60, 'cible : parcours type complet en ≤ 45 min (' + fmt(tMin) + '–' + fmt(tMax) + ')');
+    ok(gMax <= 3 * 60, 'cible : jamais plus de 3 min sans nouveau nœud (' + fmt(gMax) + ' min)');
 
-    // a slower player (the son): 1.3× slower, no MIDI, no puzzle without a gate
-    const kid = sim({ seed: 3, k: 1.3 });
-    log(`joueur lent : 1er achat à ${Math.round(kid.firstBuy)} s, arbre en ${fmt(kid.t)} min, attente max ${fmt(kid.gap)} min (attentes > 4 min : ${kid.waits.join(' ') || 'aucune'})`);
-    ok(kid.firstBuy < 120, 'cible : joueur lent, premier achat en moins de 2 min (' + Math.round(kid.firstBuy) + ' s)');
-    ok(kid.gap <= 5 * 60 * 1.3, 'joueur lent : attente max ≤ 6,5 min (5 min × 1,3) (' + fmt(kid.gap) + ')');
+    // any order (↷ at random among the eligible challenges): never a dead end
+    const any = Array.from({ length: 40 }, (_, i) => sim({ seed: 100 + i, random: true, jitter: true }));
+    ok(any.every((r) => !r.left.length && r.fin), '40 ordres au hasard : jamais d\'impasse, tout l\'arbre et le dernier défi ' + any.map((r) => r.left.join(',')).join(''));
+    log(`ordres au hasard : ${fmt(Math.min(...any.map((r) => r.t)))}–${fmt(Math.max(...any.map((r) => r.t)))} min, attente max ${fmt(Math.max(...any.map((r) => r.gap)))} min`);
 
-    // the worst buying order (nodes opening no income first) never ends in a dead end
-    const bad = [1, 2, 3].map((seed) => sim({ seed, worst: true }));
-    ok(bad.every((r) => !r.left.length), 'pire ordre d\'achat (nœuds sans revenu d\'abord) : jamais d\'impasse ' + bad.map((r) => r.left.join(',')).join(''));
-    // S3.8 the musician (MIDI keyboard) who finds the key secrets: each one opens its node, the ramp is shorter
+    // the slow player (the son): 1.3× slower, reported
+    const kid = sim({ seed: 3, k: 1.3, jitter: true });
+    log(`joueur lent (×1,3) : 1er nœud à ${Math.round(kid.firstNode)} s, arbre en ${fmt(kid.t)} min, attente max ${fmt(kid.gap)} min`);
+    ok(!kid.left.length && kid.fin, 'joueur lent : tout l\'arbre et le dernier défi (rapporté, pas de cible de temps)');
+
+    // the musician (MIDI keyboard) who finds the key secrets: each one opens a node, the path is shorter
     const mus = [1, 2, 3, 4, 5].map((seed) => sim({ seed, midi: true, secrets: true, jitter: true }));
-    const mMax = Math.max(...mus.map((r) => r.t)), mGap = Math.max(...mus.map((r) => r.gap));
-    log(`musicien MIDI qui trouve les secrets-clés : arbre puis morceau en ${fmt(Math.min(...mus.map((r) => r.t)))}–${fmt(mMax)} min, attente max ${fmt(mGap)} min ; jalons : ${mus[0].steps.filter((x, i) => i % 6 === 5).join(' · ')}`);
-    ok(mus.every((r) => !r.left.length) && mMax <= 40 * 60 && mGap <= 5 * 60, 'cible : musicien qui trouve les secrets-clés, tout l\'arbre en ≤ 40 min, jamais plus de 5 min sans achat (' + fmt(mMax) + ' min)');
+    const mMax = Math.max(...mus.map((r) => r.t));
+    log(`musicien MIDI qui trouve les secrets-clés (${mus[0].secrets}) : ${fmt(Math.min(...mus.map((r) => r.t)))}–${fmt(mMax)} min, attente max ${fmt(Math.max(...mus.map((r) => r.gap)))} min`);
+    ok(mus.every((r) => !r.left.length && r.fin) && mMax < tMin, 'musicien avec secrets : tout l\'arbre, plus rapide que le parcours type (' + fmt(mMax) + ' < ' + fmt(tMin) + ' min)');
     done();
   } catch (e) { fail(e); }
 });

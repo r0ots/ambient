@@ -26,17 +26,17 @@ f.addEventListener('load', async ()=>{
   { const miss=A.tree.NODES.flatMap(n=>n.req.map(r=>[r,n.id])).filter(([r,n])=>!d.querySelector('#treeDlg .tree-link[data-from="'+r+'"][data-to="'+n+'"]'));
     ok(!miss.length && d.querySelectorAll('#treeDlg .tree-link.x').length>0 && d.querySelector('#treeDlg svg.tree-links'), 'G11.1 : un lien SVG par prérequis, liens entre branches compris'+(miss.length?' manquants '+miss.join(' '):''));
     ok(d.querySelector('.tree-link[data-from="racine"][data-to="h.pad"]').classList.contains('available') && d.querySelector('.tree-link[data-from="h.pad"][data-to="h.key"]').classList.contains('locked'), 'liens : disponible / verrouillé');
-    ok(tn('h.pad').tagName==='BUTTON' && /^Pad, Harmonie, peut s'ouvrir, s'ouvre par : Joue 8 notes/.test(tn('h.pad').getAttribute('aria-label')) && /fermé/.test(tn('h.scale').getAttribute('aria-label')) && !/éclat|✧/.test(tn('h.pad').getAttribute('aria-label')), 'nœuds : boutons, aria-label état + ce qui ouvre '+tn('h.pad').getAttribute('aria-label')); }
+    ok(tn('h.pad').tagName==='BUTTON' && /^Pad, Harmonie, peut s'ouvrir, s'ouvre par : Joue 6 notes/.test(tn('h.pad').getAttribute('aria-label')) && /fermé/.test(tn('h.scale').getAttribute('aria-label')) && !/éclat|✧/.test(tn('h.pad').getAttribute('aria-label')), 'nœuds : boutons, aria-label état + ce qui ouvre '+tn('h.pad').getAttribute('aria-label')); }
   tn('h.pad').dispatchEvent(new w.MouseEvent('mouseover',{bubbles:true})); ok(tn('racine').classList.contains('is-req') && tn('h.key').classList.contains('is-dep'), 'survol : prérequis et suites surlignés');
   ok(tn('racine').classList.contains('st-owned') && tn('h.pad').classList.contains('st-available') && tn('h.scale').classList.contains('st-locked'), 'états acquis / disponible / verrouillé');
   ok(!d.getElementById('lcdShards') && !d.querySelector('#treeBtn .tree-badge') && !d.querySelector('.tree-puzzles'), 'S4.3 : ni compteur ✧ sur le LCD, ni pastille sur l\'Arbre, ni liste d\'énigmes');
   tn('h.scale').click(); ok(!A.game.has('h.scale') && !d.getElementById('treeDlg').hidden && A.garden.sel==='h.scale', 'clic sur un nœud fermé : sa fiche, rien d\'ouvert');
-  tn('h.pad').click(); ok(!A.game.has('h.pad') && /Joue 8 notes/.test(d.querySelector('#treeDlg .tree-info .ti-o').textContent), 'clic sur un nœud à ouvrir : la fiche dit ce qui l\'ouvre, rien d\'acheté');
+  tn('h.pad').click(); ok(!A.game.has('h.pad') && /Joue 6 notes/.test(d.querySelector('#treeDlg .tree-info .ti-o').textContent), 'clic sur un nœud à ouvrir : la fiche dit ce qui l\'ouvre, rien d\'acheté');
   // touch: a tap selects (card + « Débloquer »), it does not buy
   { const pe=(t,el,o)=>el.dispatchEvent(new w.PointerEvent(t,Object.assign({bubbles:true,pointerId:7,pointerType:'touch',isPrimary:true},o)));
     pe('pointerdown',tn('h.pad')); pe('pointerup',tn('h.pad')); tn('h.pad').dispatchEvent(new w.MouseEvent('click',{bubbles:true,detail:1}));
     const info=d.querySelector('#treeDlg .tree-info');
-    ok(!A.game.has('h.pad') && !info.hidden && /Pad/.test(info.textContent) && !info.querySelector('.tree-buy') && /Pour l'ouvrir : ◇ Joue 8 notes/.test(info.textContent) && tn('h.pad').classList.contains('is-sel') && tn('racine').classList.contains('is-req'), 'toucher = sélection : la fiche dit ce qui ouvre le nœud, pas de bouton « Débloquer »');
+    ok(!A.game.has('h.pad') && !info.hidden && /Pad/.test(info.textContent) && !info.querySelector('.tree-buy') && /Pour l'ouvrir : ◇ Joue 6 notes/.test(info.textContent) && tn('h.pad').classList.contains('is-sel') && tn('racine').classList.contains('is-req'), 'toucher = sélection : la fiche dit ce qui ouvre le nœud, pas de bouton « Débloquer »');
     // pan (drag) and wheel zoom move the stage; the click that ends a drag does nothing
     const map=d.querySelector('#treeDlg .tree-map'), v=A.garden.view, k0=v.k;
     map.dispatchEvent(new w.WheelEvent('wheel',{bubbles:true,cancelable:true,deltaY:-200,clientX:600,clientY:400})); ok(v.k>k0 && /scale/.test(d.querySelector('.tree-stage').style.transform), 'molette : zoom '+k0.toFixed(2)+' → '+v.k.toFixed(2));
@@ -98,7 +98,7 @@ f.addEventListener('load', async ()=>{
   for (const x of [0.1,0.9,0.2,0.8]) { A.contracts.state().prog['k.xy'].t_xy=0; A.perform.setMacro('macro.light', x); A.perform.setMacro('macro.density', 0.5); }
   ok(A.store.get('drone.tone')!==tone0 && A.store.get('macro.light')===mac0 && locked('.macros [data-key="macro.light"]') && A.game.has('m.bells'), 'glisser sur l\'écran dès la Graine : la couleur du drone suit, les grands réglages restent fermés ; 4 glissés → Mélodie ouverte');
   await wait(1500); A.garden.showTree(false); A.perform.setMode('listen'); await wait(30);
-  ok(/0\/8/.test(task.querySelector('.lcd-task-n').textContent) && /8 notes/.test(task.textContent), 'défi suivant : '+task.textContent);
+  ok(/0\/6/.test(task.querySelector('.lcd-task-n').textContent) && /6 notes/.test(task.textContent), 'défi suivant : '+task.textContent);
   task.querySelector('.lcd-task-txt').click(); await wait(20);
   ok(task.classList.contains('help') && task.querySelector('.lcd-task-txt').textContent===A.contracts.byId['m.notes'].hint, 'toucher le défi : son aide s\'affiche sur le LCD');
   task.querySelector('.lcd-task-txt').click(); await wait(20); ok(!task.classList.contains('help') && /◇/.test(task.textContent), 'toucher encore : retour au défi');
@@ -187,7 +187,7 @@ f.addEventListener('load', async ()=>{
     ok(rel.length===1 && A.play.held===1 && !pads[2].classList.contains('on') && pads[6].classList.contains('on'), 'un doigt levé : sa note finit, l\'autre tient');
     pads[6].dispatchEvent(PE('pointercancel',2)); await wait(10);
     ok(rel.length===2 && A.play.held===0, 'pointercancel : note relâchée');
-    ok(((A.game.s.prog['m.notes']||{}).n||0)===n0+2 || A.game.s.contracts.includes('m.notes'), 'une pastille compte pour « Joue 8 notes » ('+(((A.game.s.prog['m.notes']||{}).n||0)-n0)+')');
+    ok(((A.game.s.prog['m.notes']||{}).n||0)===n0+2 || A.game.s.contracts.includes('m.notes'), 'une pastille compte pour « Joue 6 notes » ('+(((A.game.s.prog['m.notes']||{}).n||0)-n0)+')');
     const ch=[], fc=A.seq.forceChord; A.seq.forceChord=(dg)=>ch.push(dg); A.game.unlock('h.pad');
     pads[3].dispatchEvent(PE('pointerdown',3)); await wait(250); const early=ch.length; await wait(350);
     ok(early===0 && ch.join()==='3' && pads[3].classList.contains('chord'), 'appui long : l\'accord du degré (pas avant)');
