@@ -55,10 +55,12 @@ f.addEventListener('load', async ()=>{
   ok(A.mode==='listen', 'mode verrouillé → retour Écouter');
   // --- discoveries (G3.1)
   A.game.reset(); await wait(20); const s0=A.game.s.shards;
-  A.store.set('drone.tone',0.5,'user'); A.store.set('drone.tone',0.6,'user'); A.store.set('drone.on',false,'user'); A.store.set('drone.on',true,'user');
-  ok(A.game.s.shards===s0+5 && A.game.s.found.includes('p:drone.tone'), 'découvertes : 1re fois seulement (+2 knob, +3 interrupteur) = '+(A.game.s.shards-s0));
-  A.store.set('fx.echo',0.5,'user'); A.store.set('drone.vol',0.4,'preset'); ok(A.game.s.shards===s0+5, 'rien pour un réglage verrouillé ou une écriture non-utilisateur');
-  await wait(30); ok(/découverte : Drone · Couleur/.test(d.getElementById('gainFeed').textContent), 'note « +2 ✧ découverte » affichée');
+  A.seq.playing=false; A.store.set('drone.vol',0.9,'user'); ok(A.game.s.shards===s0 && !A.game.s.found.includes('p:drone.vol'), 'découverte : rien à l\'arrêt (G8.2)');
+  A.seq.playing=true;
+  A.store.set('drone.tone',0.5,'user'); A.store.set('drone.tone',0.6,'user'); A.store.set('drone.vol',0.3,'user'); A.store.set('drone.vol',0.45,'user');
+  ok(A.game.s.shards===s0+2 && A.game.s.found.includes('p:drone.tone'), 'découvertes : 1re fois seulement, 1 ✧ chacune, en lecture = '+(A.game.s.shards-s0));
+  A.store.set('fx.echo',0.5,'user'); A.store.set('drone.wave','Orgue','preset'); ok(A.game.s.shards===s0+2, 'rien pour un réglage verrouillé ou une écriture non-utilisateur');
+  await wait(30); ok(/découverte : Drone · Couleur/.test(d.getElementById('gainFeed').textContent), 'note « +1 ✧ découverte » affichée'); A.seq.playing=false;
   // --- action discoveries (G3.2)
   ok(Object.values(A.garden.ACTS).every(a=>A.tree.byId[a[0]]) && A.garden.CLICKS.every(([sel,id])=>A.garden.ACTS[id] && (sel==='.moment' || d.querySelector(sel))), 'actions : nœuds et boutons existent '+A.garden.CLICKS.filter(([sel])=>!d.querySelector(sel)).map(x=>x[0]).join(' | '));
   const s1=A.game.s.shards;
@@ -78,6 +80,7 @@ f.addEventListener('load', async ()=>{
   A.game.setMode('free'); A.store.set('drone.motion',0.2,'user'); A.game.setMode('path'); ok(!A.game.s.found.includes('p:drone.motion'), 'rien en mode libre');
   // --- contracts card (G4.4)
   A.game.reset(); await wait(30);
+  A.contracts.state().active=['k.couleur','k.souffle']; A.contracts.refill(); await wait(30); // fixed order (the draw is random)
   ok(shown('#contracts') && d.querySelectorAll('.ct-item').length===2 && /couleur du drone/.test(d.querySelector('.ct-item p').textContent), 'carte contrats : 2 actifs au départ');
   A.seq.playing=true; A.store.set('drone.tone',0.3,'user'); await wait(20);
   ok(/1\/3/.test(d.querySelector('.ct-item .ct-meta').textContent), 'progression affichée '+d.querySelector('.ct-item .ct-meta').textContent);

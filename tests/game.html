@@ -52,7 +52,7 @@ window.addEventListener('load', ()=>{
     ok(new Set(ids).size===ids.length && K0.DEFS.every(d=>d.title && d.goal>0 && d.reward>0 && d.need.every(n=>T.byId[n])), 'contrats valides ('+ids.length+')');
     const br={}; K0.DEFS.forEach(d=>{const b=T.byId[d.need[d.need.length-1]].branch; br[b]=(br[b]||0)+1}); log('contrats par branche '+JSON.stringify(br)); }
   const K=AMB.contracts; g.reset(); g.setMode('path'); K.refill();
-  ok(g.s.active.length===2 && g.s.active[0]==='k.couleur', 'contrats actifs = ceux dont les nœuds sont acquis : '+g.s.active.join(','));
+  ok(g.s.active.length===2 && g.s.active.includes('k.couleur') && g.s.active.includes('k.souffle'), 'contrats actifs = ceux dont les nœuds sont acquis : '+g.s.active.join(','));
   AMB.seq.playing=true;
   AMB.store.set('drone.tone',0.2,'user'); AMB.store.set('drone.tone',0.25,'user'); ok(K.progress('k.couleur')===1, 'un geste = 1 (glisser ne compte qu\'une fois)');
   const kc=g.s.prog['k.couleur']; kc.t_drone_tone=0; kc['t_drone.tone']=0; AMB.store.set('drone.tone',0.5,'user'); kc['t_drone.tone']=0; AMB.store.set('drone.tone',0.6,'user');
@@ -66,11 +66,37 @@ window.addEventListener('load', ()=>{
   const force=(id)=>{ if(!g.s.active.includes(id)){ g.s.active=[id].concat(g.s.active).slice(0,3); g.s.prog[id]={n:0}; } };
   force('e.extremes'); AMB.store.set('fx.space',0.95,'user'); AMB.store.set('fx.space',0.05,'user'); AMB.store.set('fx.space',0.95,'user'); ok(g.s.contracts.includes('e.extremes'), 'min puis max');
   force('e.salles'); ['Plate','Cloud','Hall'].forEach(v=>AMB.store.set('fx.revType',v,'user')); ok(g.s.contracts.includes('e.salles'), '3 salles');
-  force('h.riches'); AMB.store.set('pad.voicing',1,'user'); AMB.bus.emit('chord',{time:0,deg:0,midis:[60]}); AMB.bus.emit('chord',{time:0,deg:1,midis:[62]}); ok(g.s.contracts.includes('h.riches'), 'accords riches sur 2 changements');
+  force('h.riches'); AMB.store.set('pad.voicing',1,'user'); AMB.bus.emit('chord',{time:0,deg:0,midis:[60]}); AMB.bus.emit('chord',{time:0,deg:1,midis:[62]}); ok(!g.s.contracts.includes('h.riches') && K.progress('h.riches')===1, 'accords riches : attendre ne suffit pas, il faut le retour');
+  AMB.store.set('pad.voicing',0.05,'user'); ok(g.s.contracts.includes('h.riches'), 'accords riches : max puis min');
   ['m.bells','m.tempo','c.seq','c.motifs'].forEach(i=>{ g.solve('p.composer'); T.buy(i); });
   force('m.libre'); AMB.store.set('global.time','Flottant','user'); AMB.store.set('global.time','Pulsé','user'); ok(g.s.contracts.includes('m.libre'), 'libre puis régulier');
   force('c.chaine'); AMB.store.set('seq.chain','A A B','user'); ok(g.s.contracts.includes('c.chaine'), 'chaîne de 2 motifs');
   force('m.notes'); for(let i=0;i<8;i++) AMB.bus.emit('live',{midi:60,time:0,vel:1}); ok(g.s.contracts.includes('m.notes'), '8 notes jouées');
+  // G8.3 : gestes aller-retour (chaque contrat ne se remplit que par son geste), arcade ignorée
+  {
+    g.earn(5000,'test'); for(let more=true;more;){ more=false; for(const n of T.NODES){ const st=T.status(n.id); if(st==='gated'){ g.solve(n.gate); more=true; } else if(st==='available'){ T.buy(n.id); more=true; } } }
+    const run=(id,steps,wrong)=>{ force(id); const sh=()=>g.s.contracts.includes(id);
+      for(const f of wrong) f(); ok(!sh() && K.progress(id)<K.byId[id].goal, id+' : pas rempli sans le geste');
+      for(const f of steps) f(); ok(sh(), id+' : rempli par son geste'); };
+    const S=(k,v,src)=>()=>AMB.store.set(k,v,src||'user'), tick=(n)=>()=>{ for(let i=0;i<n;i++) K.dispatch('bar',i); };
+    run('e.halo',[S('fx.shimmer',0.6),S('fx.shimmer',0.9),S('fx.shimmer',0.1)],[tick(4),S('fx.shimmer',0.9),S('fx.shimmer',0.5),S('fx.shimmer',0.1,'preset')]);
+    run('m.derive',[S('global.evolve',0.5),S('global.evolve',0.9),S('global.evolve',0.1)],[tick(6),S('global.evolve',0.1),S('global.evolve',0.9,'preset')]);
+    run('c.swing',[S('global.swing',0.5),S('global.swing',0.8),S('global.swing',0.02)],[tick(4),S('global.swing',0.02),S('global.swing',0.8,'macro')]);
+    run('k.xy',[1,2,3,4].map(i=>()=>{ K.state().prog['k.xy']['t_xy']=0; AMB.bus.emit('act','xy'); }),[tick(8),()=>AMB.bus.emit('act','dice')]);
+    run('c.courbe',[S('auto.curve','i'.repeat(32)),S('auto.curve','0'.repeat(16)+'z'.repeat(16))],[S('auto.curve','i'.repeat(32)),S('auto.curve','0'.repeat(16)+'z'.repeat(16),'preset'),S('auto.on',true)]);
+    // arcade round: everything is ignored
+    force('c.swing'); AMB.arcade={active:true}; AMB.store.set('global.swing',0.8,'user'); AMB.store.set('global.swing',0.02,'user');
+    const before=K.progress('c.swing'); ok(before===0, 'manche d\'arcade : contrats ignorés'); delete AMB.arcade;
+    // phrase : objectif 2 tours
+    force('m.phrase'); ok(K.byId['m.phrase'].goal===2,'m.phrase objectif 2'); AMB.store.set('bells.mode','Aléatoire','user'); AMB.bus.emit('phrase',{}); ok(K.progress('m.phrase')===0,'phrase : tours non comptés hors mode Phrase'); AMB.store.set('bells.mode','Phrase','user'); AMB.bus.emit('phrase',{}); ok(K.progress('m.phrase')===1,'1 tour'); AMB.bus.emit('phrase',{}); ok(g.s.contracts.includes('m.phrase'),'2 tours');
+    // tirage mélangé, déterministe avec une graine, compatible anciennes sauvegardes
+    const draw=(seed)=>{ g.s.active=[]; g.s.skipped=[]; g.s.prog={}; K.seed(seed); K.refill(); return g.s.active.join(','); };
+    const a=draw(42), b=draw(42), c=draw(7), d=draw(99), e=draw(12345);
+    ok(a===b && g.s.active.length===3, 'tirage déterministe avec une graine : '+a);
+    ok(new Set([a,c,d,e]).size>1, 'la graine change le tirage : '+[a,c,d,e].join(' | '));
+    ok(g.s.active.every(id=>K.eligible(K.byId[id])), 'tirage : seulement des contrats éligibles');
+    delete g.s.rng; g.s.active=[]; K.refill(); ok(typeof g.s.rng==='number' && g.s.active.length===3, 'ancienne sauvegarde (sans graine) : graine créée');
+  }
   AMB.seq.playing=false; g.setMode('free'); AMB.store.set('drone.tone',0.1,'user'); ok(true,'libre : pas de suivi');
   g.reset();
   // --- puzzles engine (G5.1)
