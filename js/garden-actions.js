@@ -19,7 +19,7 @@
       const g = AMB.game;
       if (source !== 'user' || !g.path || !AMB.tree.paramUnlocked(key)) return;
       if (!(AMB.seq && AMB.seq.playing)) return; // listening is the point: no pay while stopped
-      g.discover('p:' + key, this.paramReward(key));
+      g.discover('p:' + key, g.isPlaced(AMB.tree.nodeFor(key)) ? 0 : this.paramReward(key)); // opened by the placement test: no ✧
     },
     // ---- action discoveries (G3.2): doing something for the first time pays too ----
     // id: [node that must be owned, reward, label]
@@ -47,7 +47,7 @@
     act(id) {
       const a = this.ACTS[id], g = AMB.game;
       if (!a || !g.path || !g.has(a[0])) return false;
-      return g.discover('a:' + id, a[1]);
+      return g.discover('a:' + id, g.isPlaced(a[0]) ? 0 : a[1]);
     },
     hookActions() {
       // every action goes on the bus (discoveries count the first one, contracts count them all)
