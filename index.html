@@ -26,6 +26,7 @@
       <div id="lcd" class="lcd" aria-live="polite" title="État du son">
         <span id="lcdTop">AMBIENT</span>
         <span id="lcdLine">■ STOP</span>
+        <span id="lcdTask" class="lcd-task" hidden><button type="button" class="lcd-task-txt" title="Toucher : comment faire"></button><b class="lcd-task-n"></b><button type="button" class="lcd-skip" title="Passer au contrat suivant" aria-label="Passer au contrat suivant">↷</button></span>
         <span id="lcdShards" class="lcd-shards" title="Éclats : à dépenser dans l'arbre"></span>
       </div>
       <div class="transport">
@@ -117,11 +118,6 @@
     <div id="globals" class="row globals"></div>
     <div id="layers" class="row layers"></div>
     <div id="seqrow" class="row seqrow"></div>
-
-    <aside id="contracts" class="contracts" aria-label="Contrats" hidden>
-      <button class="ct-head" title="Réduire / ouvrir"><span>Contrats</span><b class="ct-count"></b></button>
-      <div class="ct-list"></div>
-    </aside>
 
     <aside id="puzzle" class="puzzle-card" aria-label="Énigme d'écoute" hidden>
       <header><b class="pz-title"></b><button class="pz-x" title="Abandonner pour l'instant">✕</button></header>

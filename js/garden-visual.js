@@ -193,15 +193,14 @@
       this.glows.set(key, cv);
       return cv;
     },
-    // « MÉLODIE 67% » under the plant; when it does not fit its slot (phone): « MÉLO » over « 95% »
+    // « MÉLODIE » under the plant; « MÉLO » when it does not fit its slot (phone)
     label(p, fs, maxW) {
-      const pc = `${Math.round(p.level * 100)}%`, full = `${p.label.toUpperCase()} ${pc}`, key = full + '|' + fs + '|' + Math.round(maxW);
-
+      const full = p.label.toUpperCase(), key = full + '|' + fs + '|' + Math.round(maxW);
       let s = this.labels.get(key);
       if (s) return s;
       const cv = document.createElement('canvas'), g = cv.getContext('2d'), font = `${fs}px VT323, "IBM Plex Mono", monospace`;
       g.font = font;
-      const lines = g.measureText(full).width + 4 <= maxW ? [full] : [p.short.toUpperCase(), pc];
+      const lines = [g.measureText(full).width + 4 <= maxW ? full : p.short.toUpperCase()];
       const w = Math.ceil(Math.max(...lines.map((t) => g.measureText(t).width))) + 4;
       cv.width = w; cv.height = Math.ceil(fs * 1.05 * lines.length + fs * 0.2);
       g.font = font; g.textBaseline = 'top'; g.textAlign = 'center'; g.fillStyle = '#b38a4f';

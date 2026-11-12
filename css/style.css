@@ -422,26 +422,6 @@ body:not(.game) #lcdShards { display: none !important; }
 .gain { font: 18px var(--f-lcd); color: var(--lcd-fg); background: var(--lcd-bg, #120d05); border: 1px solid #000; box-shadow: var(--bevel-in, none); padding: 2px 10px; border-radius: 4px; text-shadow: 0 0 6px var(--lcd-glow, transparent); animation: gain-in 3.2s ease forwards; }
 @keyframes gain-in { 0% { opacity: 0; transform: translateY(-6px); } 10%, 75% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(4px); } }
 @media (prefers-reduced-motion: reduce) { .gain { animation: none; } }
-.contracts { position: fixed; left: 16px; bottom: 16px; z-index: 30; width: 290px; max-width: calc(100vw - 32px); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius, 10px); box-shadow: var(--bevel, none), 0 12px 30px #000a; }
-.contracts[hidden], body.listen .contracts { display: none; }
-.ct-head { width: 100%; display: flex; justify-content: space-between; align-items: center; background: none; border: 0; color: var(--lcd-fg); font: 20px var(--f-lcd); padding: 6px 12px; cursor: pointer; letter-spacing: .05em; }
-.ct-head b { font: 13px var(--f-mono, monospace); color: var(--muted); }
-.ct-head span::before { content: '▾ '; }
-.contracts.min .ct-head span::before { content: '▸ '; }
-.contracts.min .ct-list { display: none; }
-.ct-list { display: grid; gap: 8px; padding: 0 12px 12px; }
-.ct-item { position: relative; display: grid; gap: 4px; padding-right: 22px; }
-.ct-item p { margin: 0; font-size: 12.5px; line-height: 1.35; color: var(--text); }
-.ct-bar { height: 5px; border-radius: 3px; background: #ffffff14; overflow: hidden; }
-.ct-bar i { display: block; height: 100%; background: var(--lcd-fg); transition: width .4s; }
-.ct-meta { font: 11px var(--f-mono, monospace); color: var(--muted); }
-.ct-skip { position: absolute; top: 0; right: 0; background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 14px; }
-.ct-skip:hover { color: var(--lcd-fg); }
-.ct-empty { margin: 0; font-size: 12px; color: var(--muted); }
-.ct-item.bump { animation: ct-bump .7s; }
-@keyframes ct-bump { 30% { transform: scale(1.03); } }
-@media (max-width: 560px) { .contracts { left: 8px; right: 8px; width: auto; bottom: 8px; } }
-@media (prefers-reduced-motion: reduce) { .ct-item.bump { animation: none; } .ct-bar i { transition: none; } }
 .puzzle-card { position: fixed; right: 16px; bottom: 16px; z-index: 31; width: 320px; max-width: calc(100vw - 32px); background: var(--panel); border: 1px solid var(--lcd-fg); border-radius: var(--radius, 10px); box-shadow: var(--bevel, none), 0 12px 30px #000a, 0 0 18px color-mix(in srgb, var(--lcd-fg) 25%, transparent); padding: 10px 12px 12px; display: grid; gap: 8px; }
 .puzzle-card[hidden] { display: none; }
 body.listen .puzzle-card { display: none; }
@@ -462,6 +442,17 @@ body.listen .puzzle-card { display: none; }
 @media (max-width: 560px) { .puzzle-card { left: 8px; right: 8px; width: auto; bottom: 8px; } }
 .tree-puzzles { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 6px; font: 12px var(--f-mono, monospace); color: var(--muted); }
 .tree-puzzles .btn { color: var(--lcd-fg); }
+/* v1.06: the contract on the LCD's 2nd line (path only): tap = how to do it, ↷ = the next one */
+.lcd-task { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 6px; font-size: 18px; color: #d9953a; white-space: normal; }
+.lcd-task[hidden], body:not(.game) .lcd-task, #lcdLine[hidden] { display: none; }
+.lcd-task button { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-shadow: inherit; cursor: pointer; text-align: left; }
+.lcd-task-txt { line-height: 1.05; }
+.lcd-task.help .lcd-task-txt { font-size: 16px; color: var(--lcd-fg); }
+.lcd-task-n { font-weight: 400; white-space: nowrap; }
+.lcd-skip { padding: 0 4px !important; font-size: 20px !important; color: var(--lcd-fg) !important; }
+.lcd-skip:hover, .lcd-task-txt:hover { color: #fff3c4 !important; }
+.lcd-task.bump { animation: lcd-bump .6s; }
+@media (prefers-reduced-motion: reduce) { .lcd-task.bump { animation: none; } }
 #lcdTop.lcd-flash { animation: lcd-flash 1.2s ease-out; text-shadow: 0 0 10px var(--lcd-fg); }
 @keyframes lcd-flash { 0%, 30% { opacity: 1; } 10%, 20% { opacity: .35; } 100% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { #lcdTop.lcd-flash { animation: none; } }
