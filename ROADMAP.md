@@ -157,21 +157,44 @@ Technique : `js/game.js` (état `localStorage` `ambient.game.v1`, clé surcharg�
 - [x] G6.4 (v0.89) Aide et README ; `tests/app.html` en mode libre et en parcours. Fait : aide (?) avec une section « Jardin sonore » (parcours, éclats, contrats, énigmes, mode libre) ; README (présentation du parcours, fichiers du jeu, `balance.html`). `app.html` a sa propre clé de jeu et vérifie : mode libre = aucun verrou ni élément de jeu ; passage en Parcours = outil réduit à la graine ; retour au libre = même son (tolérance 0,03 pour la dérive qui tourne) et même interface
 - [x] G6.5 (v0.90) Revue par sous-agents (joueur débutant + musicien) puis corrections. Fait : 2 revues en parallèle (bugs, design). Corrigé — triche aux énigmes : valeurs cibles masquées sur les réglages pendant l'écoute, instantanés (journal, annuler, partage) = mon son, contrats ignorés pendant l'écoute et pour les écritures du jeu ; changer de mode pendant l'écoute ne corrompt plus le son libre ; reset ferme l'énigme ; raccourcis (Entrée = Figer, 1–8 = Morceau, notes, accords) respectent les verrous ; carillon direct vers les haut-parleurs (jamais enregistré ni figé). Design : effets achetés remis à leur valeur par défaut (l'achat s'entend), « Drone qui suit » neutre avant achat, « Espace » d'une couche seulement avec la couche, jauge calculée hors dérive/LFO, La grotte demande le Pad, indice plus haut/plus bas pour tonalité et écho, bonus jamais nommés avant le dernier indice, textes (Pulsé/Flottant, valeurs 0–100). Laissé de côté (noté) : récompense des actions au clic plutôt qu'à la réussite (Sauver annulé), contrat d'enregistrement déduit des clics, quelques contrats « règle puis attends » à transformer en gestes
 
-### G7 — Salle d'arcade de l'oreille (profondeur pour joueurs musiciens)
-Public : le neveu (très bon musicien, gros joueur) en priorité, le fils (non musicien, peu de temps) au niveau 1. La profondeur vient de défis d'adresse générés à l'infini, pas des verrous. Toujours juger la cible (vérifiable), jamais le goût. Pas de jauge en direct : on écoute.
-- [ ] G7.1 Moteur de manches : générateur de défis à partir d'une graine (cible + leurres), niveaux 1→10, score, combo ×1→×4, chrono optionnel, résultat en étoiles ; meilleurs scores et série en localStorage
-- [ ] G7.2 Écran Arcade : bouton dans la barre (Parcours et mode libre), menu des mini-jeux avec niveau atteint, record et étoiles ; manche de 60–90 s
-- [ ] G7.3 « Juice » commun : compteur de combo animé, particules sur l'écran visuel, petite secousse à l'erreur, sons de réussite/échec accordés, LCD qui annonce le combo, écran de fin de manche (score, record battu, étoiles)
-- [ ] G7.4 Mini-jeu « L'intrus » (A/B/X) : 3 sons, lequel est la cible ? Écarts de plus en plus fins avec le niveau (niveau 1 = accessible au fils)
-- [ ] G7.5 Mini-jeu « Qu'est-ce qui a bougé ? » : le son change, désigner le réglage (choix parmi 4, puis 6, puis tous)
-- [ ] G7.6 Mini-jeu « Chasseur de modes » : une phrase joue, nommer le mode / la qualité d'accord en rafale (majeur/mineur → modes voisins Dorien/Éolien, Lydien/Ionien → pentatoniques, exotiques) ; tonalité relative, jamais absolue
-- [ ] G7.7 Mini-jeu « Dictée » : un motif de 3→8 notes, le recopier sur une mini-grille (vérifié note par note) ; moins d'écoutes = plus de points
-- [ ] G7.8 Mini-jeu « Dictée d'accords » : une progression, la reconstituer en degrés I–VII (grille existante)
-- [ ] G7.9 Mini-jeu « Recréer » : patch cible généré, le reproduire sans jauge, 3 validations ; précision + temps + nombre d'écoutes
-- [ ] G7.10 Boss de branche : examen mixte (5 manches enchaînées) sur chaque porte du Parcours ; réussi = toute la branche ouverte d'un coup (raccourci musicien), sinon le chemin normal reste
-- [ ] G7.11 Défi du jour : même graine pour tout le monde ce jour-là, score partageable par lien (cousins en compétition) ; variante « zen » sans chrono
-- [ ] G7.12 Rangs par compétence (Oreille, Harmonie, Mélodie, Son) avec paliers et petits titres ; les étoiles rapportent aussi des ✧ au Parcours (sans en dépendre)
-- [ ] G7.13 Équilibrage (simulation : un niveau 1 réussi par un débutant en < 1 min, niveau 10 réellement dur) + tests + aide
-- [ ] G7.14 Revue par sous-agents (joueur musicien exigeant + débutant) puis corrections
+## Saison 2 — « Jardin sonore » devient un jeu (G7 → G11)
+Synthèse de 4 analyses (game design, audio, visuel, architecture), 2026-11-12. Joueurs : le neveu (très bon musicien, gros joueur : profondeur, skill, rejouabilité) en priorité ; le fils (non musicien, peu de temps : niveau facile, courts moments). Principes : le skill vient de l'oreille et des mains ; on juge la cible ou l'usage, jamais le goût ; jamais idle ; pas de prestige ; le mode libre reste intact (aucune trace dans son son, journal, annulation, partage). Décisions par défaut (à confirmer) : conçu d'abord pour le clavier d'ordinateur, MIDI en bonus ; tonalité relative uniquement (pas d'oreille absolue requise).
+
+### G7 — Fondations
+- [ ] G7.1 Découper garden.js : `juice.js` (carillon, LCD, notes de gain, secousse), `garden-actions.js` (actions, découvertes, carnet), `garden-tree.js` (écran Arbre) ; aucun changement de comportement
+- [ ] G7.2 Actions payées à la réussite, plus au clic : émettre `act` depuis les chemins de succès (sauver, partager, paysage, journal, scènes, morceau, MIDI, rec live, accord) ; supprimer CLICKS et le patch de forceChord/playMidi ; enregistrement : événements `rec` / `rec:done` réels
+- [ ] G7.3 Audio d'audition : bus séparé (reverb courte fixe, sans cassette/écho) vers la sortie, atténuation de l'ambiance pendant une manche, PRNG à graine (mulberry32, jamais global), lecteur de stimuli (liste de notes datées, voix aux paramètres figés), Dérive/LFO en pause pendant une manche
+- [ ] G7.4 Boîte à outils « juice » : canvas `#fx` au-dessus de tout, particules (pool), nombres flottants, flash, secousse, compteur de combo, hitstop ; mouvement réduit respecté ; branchée sur gains, achats, contrats, erreurs
+
+### G8 — Réparer le parcours (le rendre jouable pour un musicien)
+- [ ] G8.1 Énigmes « Mastermind » : plus de jauge en direct ; 6 validations, retour par réglage (juste / proche / plus haut-bas / autre option) ; score = essais + écoutes ; option « aide » (jauge) pour le fils, sans record ; après 6 échecs la porte s'ouvre quand même, sans les ✧
+- [ ] G8.2 Découvertes allégées : ÷3, versées seulement si on modifie le réglage pendant la lecture ; rééquilibrer (balance.html)
+- [ ] G8.3 Contrats : remplacer ceux « règle puis attends » (halo, dérive, swing, xy, riches, courbe) par des gestes ; tirage mélangé (graine) au lieu de l'ordre fixe ; ignorés pendant une manche d'arcade
+- [ ] G8.4 Test de placement « Je suis musicien » à l'accueil (~3 min d'épreuves mixtes) : chaque branche réussie s'ouvre d'un coup, découvertes non payées pour ce profil
+- [ ] G8.5 Déblocage spectaculaire : l'arbre reste ouvert, lien qui s'allume, nœud qui explose en particules au carillon, enfants qui clignotent, puis révélation
+
+### G9 — Arcade de l'oreille (le cœur de la profondeur)
+- [ ] G9.1 Moteur de manches pur (graine + horloge injectée, testable sans audio) : mini-jeux en plugins `register({id, make(rng, d), schedule, check})`, difficulté ADAPTATIVE en escalier (2 réussites → plus dur, 1 erreur → plus facile), score, combo ×1→×4 nourri par des choix risqués (répondre sans réécouter), records par mini-jeu et par combinaison de Pactes
+- [ ] G9.2 Écran Arcade (Parcours et mode libre) : borne plein écran, cartouches par mini-jeu (niveau atteint, record), manche de 60–90 s, fin de manche (étoiles qui tombent, RECORD), raccourcis de l'appli neutralisés pendant la manche
+- [ ] G9.3 « L'intrus » (A/B/X) : quel son est la cible ? de la liste (niveau facile) aux écarts fins ; volume perçu égalisé
+- [ ] G9.4 « Qu'est-ce qui a bougé ? » : désigner le réglage modifié ; carte des réglages inaudibles exclus ; leurres de même famille perceptive au niveau expert
+- [ ] G9.5 « Réponds en jouant » (question-réponse en rythme) : la machine joue un motif d'une mesure, tu le rejoues au clavier A–L (ou MIDI) la mesure suivante ; justesse + placement (parfait / bien / raté) ; calibration de latence au premier lancement ; 2–3 notes pentatoniques (fils) → 8 notes, syncopes
+- [ ] G9.6 « Chasseur de modes » : phrase sur drone de tonique, nommer le mode ; validateur d'ambiguïté (la note caractéristique doit être jouée, sur un temps fort) ; paires voisines au niveau expert
+- [ ] G9.7 « Accordeur » : deux sons, plus haut / plus bas / juste, de ±50 à ±2 cents (battements) — le plus « expert »
+- [ ] G9.8 Pactes (difficulté choisie, à la Hades) : une seule écoute, transposition à chaque manche, leurres plus proches, réponse avant la fin de la phrase ; chacun un multiplicateur
+- [ ] G9.9 Mutateurs de « Réponds en jouant » : transposé, à rebours, miroir ; dictée d'accords en variante (basse mise en avant)
+
+### G10 — Secrets et duel entre cousins
+- [ ] G10.1 Secrets : nœuds « ??? » dans l'arbre, déclencheurs musicaux (suite d'intervalles jouée au clavier, cadence forcée, combinaisons de réglages), récompenses réelles (timbre caché, mode visuel, mode miroir du clavier, Pacte secret), indices gradués cryptiques
+- [ ] G10.2 Défi du jour : même graine pour tous ce jour-là, variante zen sans chrono, score partageable par lien
+- [ ] G10.3 « Défie ton cousin » : fixer une cible (son, motif) → lien ; il faut réussir son propre défi avant de l'envoyer ; relevé en Mastermind ou en Réponds en jouant ; score relatif au niveau de chacun
+- [ ] G10.4 Commandes générées (briefs à contraintes vérifiables + optimisation à la Opus Magnum : moins de gestes, moins de couches) pour remplacer peu à peu les contrats d'interface
+
+### G11 — Visuel et finition
+- [ ] G11.1 Arbre en vraie carte de talents : nœuds ronds façon LED, liens SVG animés, liens entre branches dessinés, pan/zoom sur mobile (corrige le débordement à 390 px)
+- [ ] G11.2 Jardin visuel (mode « Jardin » de l'écran, défaut en Parcours) comme vitrine de maîtrise : une plante par couche débloquée, qui réagit à ses notes ; taille = niveau atteint en arcade, fleurs = Pactes, plantes rares = secrets ; perf (sprites pré-rendus, cache, dt réel, pause hors écran)
+- [ ] G11.3 Équilibrage global (simulation parcours + escalier de difficulté : niveau facile réussi par un débutant en < 1 min, haut de l'échelle vraiment dur) ; suite de tests toujours ~2 min (moteur testé sans audio, fusion de petites pages si besoin)
+- [ ] G11.4 Aide, README, test « mode libre intact » étendu (arcade en mode libre sans trace) ; test index.html ↔ sw.js
+- [ ] G11.5 Revue par sous-agents (musicien gamer exigeant + débutant + code) puis corrections
 
 **Backlog (après le parcours)** : horloge MIDI + note-off, MIDI learn, mute/solo, parameter locks, stems WAV par couche, banc de scènes 8 slots, catalogue de sons commun à toutes les parties.
