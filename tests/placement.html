@@ -1,0 +1,123 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
+<!-- Player profile (game.s.profile, arcade.kid), placement test G8.4 (plan / apply / chained rounds, no ✧), « Jouer 2 min » G9b.3. -->
+<script src="lib.js"></script>
+<script>
+const GK='ambient.game.place', AK='ambient.arcade.place';
+// an old save (before profiles): must load as « musicien », untouched
+localStorage.setItem(GK, JSON.stringify({v:1, mode:'path', shards:7, earned:7, nodes:['racine'], found:[], contracts:[], puzzles:[]}));
+localStorage.removeItem(AK);
+</script>
+<iframe id="f" src="../index.html?gamekey=ambient.game.place&arcadekey=ambient.arcade.place" style="width:1200px;height:800px;border:0"></iframe>
+<script>
+const f=document.getElementById('f');
+f.addEventListener('load', async ()=>{
+  try{
+  const t0=performance.now();
+  const w=f.contentWindow, d=f.contentDocument, A=w.AMB, g=A.game, AR=A.arcade, U=A.arcadeUI, P=A.placement, T=A.tree;
+  w.addEventListener('error',e=>log('ERROR '+e.message+' @'+e.filename+':'+e.lineno));
+  if(A.juice){ A.juice.reduced=true; }
+  A.ui.ensureStarted().catch(()=>{}); // the audio starts while the pure checks run (the first round waits for it)
+  const until=async(fn,ms=3000)=>{ const e=performance.now()+ms; while(!fn() && performance.now()<e) await wait(20); return fn(); };
+
+  // --- 1. profile flag: old save, API, persistence, reset
+  ok(g.s.profile===null && g.profile()==='musicien' && !g.isKid() && g.s.shards===7 && Array.isArray(g.s.placed), 'ancienne sauvegarde : chargée, profil « musicien » par défaut, rien perdu');
+  ok(!g.setProfile('x') && g.setProfile('decouverte') && g.isKid() && JSON.parse(localStorage.getItem(GK)).profile==='decouverte', 'setProfile : valeur inconnue refusée, « decouverte » sauvegardé');
+  ok(AR.kid && AR.profile==='decouverte', 'arcade.kid suit le profil ; profil d\'arcade à part (niveaux, records)');
+  g.reset(); ok(g.isKid() && g.s.mode==='path', 'reset du Parcours : le profil est gardé');
+  // kid: easy start level, kid labels, api.kid
+  AR.stats('modes').d=0.8; AR.stats('modes', 'decouverte').d=0.8;
+  let r=AR.start('modes',{seed:5}); const lk=AR.choices().map(c=>c.label).join('/');
+  ok(r.d0===0 && AR.api().kid && /Joyeux/.test(lk), 'découverte : départ au niveau 0, api.kid, libellés enfant ('+lk+')');
+  AR.end({abort:true});
+  g.setProfile('musicien'); await wait(10);
+  ok(AR.profile==='default' && !AR.kid, 'musicien : profil d\'arcade par défaut');
+  AR.stats('modes').d=0; r=AR.start('modes',{seed:5}); const lm=AR.choices().map(c=>c.label).join('/');
+  ok(r.d0===0 && /Ionien/.test(lm) && !/Joyeux/.test(lm), 'musicien : vrais noms ('+lm+')'); AR.end({abort:true});
+  r=AR.start('hautbas',{seed:1,d:0,dMax:0.15,practice:true}); for(let i=0;i<8;i++) AR.answer(AR.round.ch.answer);
+  ok(AR.round.stair.d<=0.15, 'dMax : le niveau plafonne ('+AR.round.stair.d.toFixed(2)+')');
+  const rec0=AR.record('hautbas'); AR.end(); ok(!AR.record('hautbas') && !rec0, 'practice : pas de record');
+
+  // --- 2. welcome: choosing the Parcours asks who plays (real click), musician -> placement intro
+  g.s.profile=null; g.setMode('free'); const dlg=()=>d.getElementById('placeDlg');
+  ok(d.getElementById('quickPlay').hidden && d.getElementById('profileBtn').hidden, 'mode libre : ni profil ni « Jouer 2 min »');
+  A.garden.welcome(true); d.querySelector('[data-choose=path]').click(); await wait(30);
+  ok(g.path && !dlg().hidden && dlg().querySelectorAll('[data-profile]').length===2, 'accueil → Parcours : « Qui joue ? » (2 profils)');
+  dlg().querySelector('[data-profile=musicien]').click(); await wait(10);
+  ok(g.profile()==='musicien' && g.s.profile==='musicien' && dlg().querySelector('[data-pf=go]') && dlg().querySelectorAll('.pf-row').length===5, 'musicien : intro du test (5 épreuves)');
+  ok(!d.getElementById('placeBtn').hidden && d.getElementById('quickPlay').hidden, 'menu ⋯ : test de placement visible pour le musicien');
+  dlg().querySelector('[data-pf=close]').click(); ok(dlg().hidden, '« Plus tard » : sautable');
+
+  // --- 3. plan (pure)
+  const names=(ids)=>ids.join(',');
+  const pH=P.plan(['harmonie']), pC=P.plan(['composer']), pHC=P.plan(['harmonie','composer']);
+  ok(T.NODES.filter(n=>n.branch==='harmonie').every(n=>pH.nodes.includes(n.id)) && !pH.extra.length, 'plan Harmonie : toute la branche ('+pH.nodes.length+' nœuds)');
+  ok(pC.extra.includes('h.pad') && pC.extra.includes('m.bells') && pC.nodes.includes('c.seq') && !pC.nodes.includes('c.song') && pC.nodes.indexOf('h.pad')<pC.nodes.indexOf('c.seq'), 'plan Composer : prérequis d\'entrée en plus (Pad, Mélodie auto), Morceau attend la Progression ('+names(pC.extra)+')');
+  ok(pHC.nodes.includes('c.song'), 'plan Harmonie + Composer : Morceau aussi');
+
+  // --- 4. the chained run: harmonie (modes) and composer (reponds) pass, the others fail
+  AR.byId.reponds.setLat('any',0);
+  P.BETWEEN=60; P.REVEAL_CAP=20;
+  const pass={harmonie:1, composer:1}, shards0=g.s.shards, earned0=g.s.earned;
+  const answer=(good)=>{ const R=AR.round, ch=R.ch, G=R.game;
+    if(G.id==='reponds') return AR.answer(good?{hits:ch.notes.map(n=>({pc:n.pc,t:n.t}))}:{hits:[]});
+    const c=AR.choices().find(c=>G.check(ch,c.value).ok===good); return AR.answer(c?c.value:'zz'); };
+  const seen=[];
+  ok(P.startPlacement(), 'test lancé');
+  for(let k=0;k<5;k++){
+    if(!await until(()=>AR.round && !seen.includes(AR.round.game.id),4000)){ log('ERROR fail manche '+(k+1)+' jamais lancée'); break; }
+    const id=AR.round.game.id, st=P.cur.tally.step; seen.push(id);
+    if(k===0) ok(AR.round.practice && Math.abs(AR.round.d0-st.d)<1e-9 && /Placement 1\/5/.test(d.querySelector('.arc-game').textContent), 'manche de placement : niveau musicien ('+st.d+'), hors records, titre « '+d.querySelector('.arc-game').textContent+' »');
+    const good=!!pass[st.branch];
+    for(let i=0;i<(good?4:2);i++) answer(good);
+  }
+  await until(()=>!P.cur && !dlg().hidden,4000);
+  ok(seen.join(',')==='accordeur,modes,intrus,bouge,reponds', 'les 5 mini-jeux enchaînés ('+seen.join(',')+')');
+  const L=P.last;
+  ok(L && L.res.filter(x=>x.pass).map(x=>x.branch).join(',')==='harmonie,composer' && !AR.open, 'fin : Harmonie et Composer réussies, borne fermée');
+  ok(pHC.nodes.every(id=>g.has(id)) && !g.has('e.reverb') && !g.has('t.son'), 'branches réussies ouvertes (+ prérequis), les autres non');
+  ok(g.s.shards===shards0 && g.s.earned===earned0, 'aucun ✧ gagné ni dépensé ('+g.s.shards+')');
+  ok(g.s.opened.includes('p.gamme') && g.s.opened.includes('p.composer') && !g.s.puzzles.includes('p.gamme'), 'portes d\'énigme ouvertes sans résolution (p.gamme, p.composer)');
+  ok(g.s.placement && g.s.placement.passed.join(',')==='harmonie,composer' && g.s.placed.includes('h.prog'), 'résultat mémorisé');
+  const end=dlg().textContent;
+  ok(/nœuds ouverts/.test(end) && /Harmonie/.test(end) && /Pad/.test(end) && dlg().querySelector('[data-pf=tree]') && dlg().querySelector('[data-pf=retry]'), 'écran de fin : ce qui s\'est ouvert, Voir l\'arbre, Refaire');
+  // discoveries of placed nodes pay nothing; others still pay
+  A.seq.playing=true; const e1=g.s.earned;
+  A.store.set('pad.tone',0.31,'user'); const e2=g.s.earned;
+  g.unlock('e.reverb',0); A.store.set('fx.space',0.5,'user'); const e3=g.s.earned; A.seq.playing=false;
+  ok(e2===e1 && g.s.found.includes('p:pad.tone') && e3>e2, 'découverte d\'un nœud placé : marquée, 0 ✧ ; ailleurs payée ('+e1+'→'+e2+'→'+e3+')');
+  dlg().querySelector('[data-pf=tree]').click(); await wait(30);
+  ok(!d.getElementById('treeDlg').hidden && dlg().hidden, 'Voir l\'arbre : arbre ouvert');
+  A.garden.showTree(false);
+  ok(P.todo().every(t=>t.branch!=='harmonie'), 'refaire : seules les branches pas encore ouvertes');
+  // stopping: Échap in a round -> stopped, nothing more
+  P.startPlacement(); await until(()=>AR.round);
+  w.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',code:'Escape',bubbles:true}));
+  await until(()=>!P.cur);
+  ok(!P.cur && !AR.open && !AR.active && P.last.stopped && !dlg().hidden, 'Échap pendant une épreuve : test arrêté, récapitulatif');
+  dlg().querySelector('[data-pf=close]').click();
+
+  // --- 5. « Jouer 2 min » (kid)
+  d.getElementById('profileBtn').click(); dlg().querySelector('[data-profile=decouverte]').click(); await wait(10);
+  const qp=d.getElementById('quickPlay');
+  ok(!qp.hidden && d.getElementById('placeBtn').hidden && dlg().hidden, 'découverte : gros bouton « Jouer 2 min » à l\'accueil');
+P.QUICK.dur=400; // short rounds for the test
+  qp.click();
+  const qs=[];
+  for(let k=0;k<4;k++){
+    if(!await until(()=>AR.round && !qs.includes(AR.round.game.id),4000)){ log('ERROR fail manche rapide '+(k+1)); break; }
+    const R=AR.round; qs.push(R.game.id);
+    if(k===0) ok(R.d0===0 && R.stair.hi===P.QUICK.dMax && AR.api().kid && R.practice, 'manche facile : niveau 0, plafonné à '+P.QUICK.dMax+', profil enfant');
+    for(let i=0;i<3;i++) answer(true);
+  }
+  await until(()=>!P.cur && !dlg().hidden,4000);
+  ok(qs.length===4 && qs.every(id=>AR.byId[id].kid), '4 jeux kid enchaînés en un geste ('+qs.join(',')+')');
+  ok(/Bravo/.test(dlg().textContent) && dlg().querySelector('[data-pf=quick]') && dlg().querySelectorAll('.pf-stars i').length===4, 'fin joyeuse : Bravo, étoiles, Encore');
+  dlg().querySelector('[data-pf=close]').click();
+  g.setMode('free'); await wait(10);
+  ok(qp.hidden && !d.body.classList.contains('kid'), 'mode libre : bouton caché');
+  log('durée '+((performance.now()-t0)/1000).toFixed(1)+' s');
+  localStorage.removeItem(GK); localStorage.removeItem(AK);
+  done();
+  }catch(e){ fail(e); }
+});
+</script></body></html>

@@ -76,8 +76,10 @@ window.addEventListener('load', () => {
     ok(stat[0].gap >= 2.99 && stat[0.3].gap >= 2 && stat[0.55].gap >= 2 && stat[0.8].gap <= 1 && stat[1].gap <= 1, 'écart réponse ↔ leurre le plus proche : ' + DS.map((d) => stat[d].gap.toFixed(1)).join(' → ') + ' notes');
     ok(stat[1].beat < stat[0].beat - 0.2 && stat[1].notes > stat[0].notes, `plus vite et plus dense (${stat[0].beat.toFixed(2)} s/temps, ${stat[0].notes.toFixed(1)} notes → ${stat[1].beat.toFixed(2)} s, ${stat[1].notes.toFixed(1)})`);
     // --- labels and check
-    { const c0 = G.make(R(5), 0), L = G.choices(c0);
-      ok(L.length === 2 && L[0].label.includes('Joyeux') && L[1].label.includes('Triste') && L[0].value === 'Ionien', 'd=0 : « Joyeux / Triste » (majeur / mineur)');
+    { const g0 = AMB.game; AMB.game = { isKid: () => true }; const c0 = G.make(R(5), 0), L = G.choices(c0); AMB.game = g0;
+      ok(L.length === 2 && L[0].label.includes('Joyeux') && L[1].label.includes('Triste') && L[0].value === 'Ionien', 'd=0, profil découverte : « Joyeux / Triste » (majeur / mineur)');
+      const Lm = G.choices(G.make(R(5), 0));
+      ok(Lm[0].label.includes('Ionien') && Lm[1].label.includes('Éolien'), 'd=0, profil musicien : vrais noms (' + Lm.map((c) => c.label).join(' / ') + ')');
       const c1 = G.make(R(5), 1), L1 = G.choices(c1);
       ok(L1.every((c) => sc(c.value)) && L1.some((c) => c.value === c1.mode), 'd=1 : noms des modes de theory.js');
       ok(G.check(c1, c1.mode).ok && L1.filter((c) => c.value !== c1.mode).every((c) => !G.check(c1, c.value).ok) && !G.check(c1, 'x').ok, 'check() : juste / faux'); }

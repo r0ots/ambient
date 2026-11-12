@@ -35,6 +35,9 @@
 //   t0 = performance.now() ms at which the last stimulus really starts sounding (compare with MIDI / key times)
 //   note(ev) = immediate feedback sound on the audition bus ({midi|hz, dur?, vel?, cents?, voice?}), does not move t0
 // arcade.open = the cabinet is on screen (set by js/arcade-ui.js); arcade.active = a round is running.
+// arcade.kid (also api.kid) = the player profile is « découverte » (AMB.game.isKid()): rounds start at d = 0 and
+//   plugins show kid labels (read it in make() and store it in the challenge, e.g. Chasseur de modes).
+// start(id, {seed, pacts, duration, d (start level), dMax (level cap), practice (no record, no play counted)}).
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const q = new URLSearchParams(location.search);
@@ -96,6 +99,8 @@
     pactKey(pacts) { return (pacts || []).slice().sort().join('+'); },
     record(id, pacts) { return this.stats(id).best[this.pactKey(pacts)] || null; },
     level(id) { return this.stats(id).d; },
+    // the player is the kid (profile « découverte », js/game.js): easy start level, kid labels
+    get kid() { return !!(AMB.game && AMB.game.isKid && AMB.game.isKid()); },
 
     // ---- staircase ----
     // st = {d, step, run, dir}; returns the new d
@@ -105,7 +110,7 @@
       if (!dir) return st.d;
       if (st.dir && dir !== st.dir) st.step = Math.max(STAIR.minStep, st.step * STAIR.shrink); // reversal
       st.dir = dir;
-      st.d = clamp(st.d + dir * st.step, STAIR.lo, STAIR.hi);
+      st.d = clamp(st.d + dir * st.step, STAIR.lo, st.hi != null ? st.hi : STAIR.hi);
       return st.d;
     },
 
@@ -119,16 +124,17 @@
       const seed = opts.seed != null ? opts.seed >>> 0 : (Math.floor(now * 1000) ^ 0x9e3779b9) >>> 0;
       const rng = AMB.audition ? AMB.audition.rng(seed) : null;
       if (!rng) return null;
+      const d0 = clamp(opts.d != null ? +opts.d : this.kid ? 0 : st.d, STAIR.lo, opts.dMax != null ? +opts.dMax : STAIR.hi);
       this.round = {
         game: g, seed, rng, pacts: (opts.pacts || []).slice(), t0: now, dur: opts.duration || this.DURATION,
-        d0: st.d, stair: { d: st.d, step: Math.max(st.step, STAIR.restart), run: 0, dir: 0 }, peak: st.d,
+        d0, stair: { d: d0, step: Math.max(st.step, STAIR.restart), run: 0, dir: 0, hi: opts.dMax }, peak: d0, practice: !!opts.practice, kid: this.kid,
         score: 0, n: 0, good: 0, clean: 0, replays: 0, chReplays: 0, ch: null, history: [], over: false, t0Stim: 0,
       };
       this.active = true;
       this.combo().reset();
       if (AMB.audition) AMB.audition.session(true);
       this.next();
-      emit('arcade:start', { id: g.id, seed, d: st.d, pacts: this.round.pacts });
+      emit('arcade:start', { id: g.id, seed, d: d0, pacts: this.round.pacts });
       return this.round;
     },
     next() {
@@ -146,7 +152,7 @@
       return {
         answer: (x) => this.answer(x), replay: () => this.replay(), stop: () => AMB.audition && AMB.audition.stop(),
         play: (ev) => this.playEvents(ev), note: (ev) => this.note(ev),
-        get t0() { return r ? r.t0Stim : 0; }, ch: r && r.ch, d: r && r.stair.d, rng: r && r.rng,
+        get t0() { return r ? r.t0Stim : 0; }, ch: r && r.ch, d: r && r.stair.d, rng: r && r.rng, kid: !!(r && r.kid),
       };
     },
     // a stimulus: remembers when it really starts (api.t0)
@@ -224,8 +230,8 @@
       st.d = r.stair.d; st.step = r.stair.step; st.peak = Math.max(st.peak || 0, r.peak);
       const stars = abort ? 0 : this.starsFor(r.score, r.d0, r.dur);
       const pk = this.pactKey(r.pacts), prev = st.best[pk];
-      const record = !abort && r.score > 0 && (!prev || r.score > prev.score);
-      if (!abort) {
+      const record = !abort && !r.practice && r.score > 0 && (!prev || r.score > prev.score);
+      if (!abort && !r.practice) {
         st.plays++;
         if (record) st.best[pk] = { score: r.score, stars: Math.max(stars, prev ? prev.stars : 0), at: Date.now() };
         else if (prev && stars > prev.stars) prev.stars = stars;

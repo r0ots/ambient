@@ -8,6 +8,8 @@
 // and refuses to start while a recording runs (the round ducks the ambience).
 // A plugin's prepare(api) runs before arcade.start, off the clock (keys / MIDI routed to it, Échap cancels);
 // after an answer the next challenge waits the plugin's `reveal` ms (default arcade.REVEAL).
+// start(id, opts): opts go to arcade.start (d, dMax, duration, practice) plus `label` (HUD title) and `onEnd(result)`:
+// a chained run (placement test, « Jouer 2 min », js/placement.js) gets the result instead of the end screen (abort too).
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const $ = (s, r = document) => r.querySelector(s);
@@ -99,7 +101,7 @@
     },
 
     // ---- round ----
-    async start(id) {
+    async start(id, opts = {}) {
       const A = this.A;
       if (!id || !A.byId[id]) return;
       if (this.recording()) {
@@ -118,14 +120,14 @@
       await Promise.race([audio, new Promise((r) => setTimeout(r, 1500))]);
       if (tok !== this.startTok || !this.dlg || this.dlg.hidden) return; // closed (or another start) meanwhile
       this.say('');
-      this.gameId = id; this.lastPick = null; this.lockUntil = 0;
+      this.gameId = id; this.lastPick = null; this.lockUntil = 0; this.run = opts.onEnd ? opts : null;
       this.show('play');
-      this.el('.arc-game').textContent = A.byId[id].title;
+      this.el('.arc-game').textContent = opts.label || A.byId[id].title;
       if (typeof A.byId[id].prepare === 'function') {
         await this.prepare(A.byId[id], tok);
         if (tok !== this.startTok || !this.dlg || this.dlg.hidden) return; // left during the preparation
       }
-      const r = A.start(id, {});
+      const r = A.start(id, opts);
       if (!r) { this.menu(); return; }
       if (AMB.juice) { const c = AMB.juice.comboEl(); this.el('.arc-combo-slot').append(c); AMB.juice.showCombo(true); }
       this.renderHud();
@@ -214,6 +216,8 @@
     onEnd(d) {
       this.stopTimer();
       if (AMB.juice) AMB.juice.showCombo(false);
+      const run = this.run; this.run = null;
+      if (run) { run.onEnd(d); return; } // a chained run handles its own end (even an abort)
       if (this.screen !== 'play' || d.abort) return;
       this.token++;
       this.show('end');

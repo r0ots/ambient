@@ -2,7 +2,7 @@
 // the player names the mode. Relative pitch only: the tonic is drawn at random each challenge.
 //
 // Difficulty d (0..1) -> tier of choices, then tempo / length / leaps inside the tier:
-//   d < 0.2   majeur vs mineur (Ionien / Éolien), labels « Joyeux / Triste » (kid level)
+//   d < 0.2   majeur vs mineur (Ionien / Éolien), labels « Joyeux / Triste » for the kid profile (arcade.kid), real names otherwise
 //   d < 0.45  3 contrasted modes (pairwise >= 2 notes apart, no inclusion)
 //   d < 0.7   4 contrasted modes (diatonic + Par tons, Hirajoshi)
 //   d < 0.9   neighbour pairs: Ionien/Lydien, Dorien/Éolien, Mixolydien/Ionien, Phrygien/Éolien, Hirajoshi ⊂ Éolien
@@ -100,7 +100,7 @@
       const root = 55 + rng.int(12); // G3..F#4: relative pitch only
       for (let tries = 0; tries < 400; tries++) {
         const ch = this.phrase(rng, d, tier, mode, choices, root);
-        if (!this.validate(ch).length) return ch;
+        if (!this.validate(ch).length) { ch.kid = !!AMB.arcade.kid; return ch; }
       }
       throw new Error('modes: no valid phrase'); // never happens (tests: 300 seeds × every tier)
     },
@@ -180,11 +180,12 @@
       return bad;
     },
 
-    label(name, tier) {
-      if (tier === 0) return name === 'Ionien' ? '☀ Joyeux' : '☂ Triste';
+    // kid profile (ch.kid = arcade.kid at make time): « Joyeux / Triste »; a musician reads the real names
+    label(name, tier, kid) {
+      if (tier === 0) return kid ? (name === 'Ionien' ? '☀ Joyeux' : '☂ Triste') : (name === 'Ionien' ? '☀ Ionien (majeur)' : '☂ Éolien (mineur)');
       return name;
     },
-    choices(ch) { return ch.choices.map((c) => ({ value: c, label: this.label(c, ch.tier) })); },
+    choices(ch) { return ch.choices.map((c) => ({ value: c, label: this.label(c, ch.tier, ch.kid) })); },
     check(ch, a) { return { ok: a === ch.answer }; },
 
     LEAD: 0.9, // the drone sounds alone first: the tonic is set before the phrase

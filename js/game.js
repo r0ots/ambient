@@ -17,6 +17,8 @@
     stars: {}, opened: [], runs: {}, pzHelp: false, // puzzles (G8.1): best stars per puzzle, gates opened after 6 failures, attempts in progress, live gauge
     active: [], prog: {}, // active contracts and their progress (contracts.js)
     ended: false, // the end screen was shown (whole tree owned)
+    profile: null, // player profile (G8.4 / G9b.3): null (not chosen, behaves as 'musicien'), 'musicien' or 'decouverte'
+    placed: [], placement: null, // nodes opened by the placement test (their discoveries pay nothing), last test {at, passed}
   });
 
   const game = {
@@ -31,7 +33,7 @@
     },
     save() { try { localStorage.setItem(KEY, JSON.stringify(this.s)); } catch (e) {} },
     // restart the path (the chosen mode is kept; the root is given back by tree.js)
-    reset() { const m = this.s.mode; this.s = fresh(); this.s.mode = m; this.save(); this.emit('reset'); },
+    reset() { const m = this.s.mode, p = this.s.profile; this.s = fresh(); this.s.mode = m; this.s.profile = p; this.save(); this.emit('reset'); },
     emit(ev, data) { if (AMB.bus) AMB.bus.emit('game:' + ev, data); },
 
     // mode
@@ -43,6 +45,19 @@
       if (m !== 'path' && m !== 'free') return;
       this.s.mode = m; this.save(); this.emit('mode', m);
     },
+
+    // player profile (whoever plays, in any mode): 'musicien' (real names, placement test) or 'decouverte' (the kid:
+    // easy start levels, kid labels, « Jouer 2 min »). Read it with profile() / isKid(); emits game:profile
+    PROFILES: ['musicien', 'decouverte'],
+    profile() { return this.s.profile || 'musicien'; },
+    isKid() { return this.s.profile === 'decouverte'; },
+    setProfile(p) {
+      if (!this.PROFILES.includes(p)) return false;
+      this.s.profile = p; this.save(); this.emit('profile', p);
+      return true;
+    },
+    // a node opened by the placement test: its discoveries are marked but pay nothing (no free ✧)
+    isPlaced(id) { return !!id && (this.s.placed || []).includes(id); },
 
     // shards
     earn(n, reason, id) {

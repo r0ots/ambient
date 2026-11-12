@@ -198,7 +198,7 @@
       }
       if (AMB.bus) {
         AMB.bus.on('game:unlock', (d) => {
-          const n = AMB.tree.byId[d.id]; if (!AMB.game.path || !n || !n.cost) return;
+          const n = AMB.tree.byId[d.id]; if (!AMB.game.path || !n || !n.cost || AMB.game.quiet) return; // quiet: batch unlock (placement test)
           if (this.checkEnd()) return;
           this.chime('unlock'); this.lcd(`✦ ${n.name} débloqué`);
         });
