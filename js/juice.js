@@ -1,10 +1,8 @@
-// « Jardin sonore » : game feel — gain notes, chime tuned to the key, LCD messages, shake.
+// « Jardin sonore » : game feel — gain notes, chime tuned to the key, LCD messages. Shake: AMB.juice.
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const $ = (s) => document.querySelector(s);
   Object.assign(AMB.garden, {
-    // restart a CSS shake animation on an element
-    shake(el) { if (!el) return; el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); },
     // small "+n ✧" notes that float under the LCD, one per gain
     pop(text) {
       let feed = $('#gainFeed');

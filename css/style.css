@@ -404,11 +404,10 @@ body.game .is-locked { display: none !important; }
 .tree-grp { display: none !important; }
 body.game .tree-grp { display: flex !important; }
 
-@keyframes tree-shake { 0%,100% { transform: none; } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 .is-new { position: relative; animation: is-new-glow 1.2s ease-in-out 4; outline: 2px solid var(--lcd-fg); outline-offset: 3px; border-radius: 8px; }
 .is-new::after { content: 'NOUVEAU'; position: absolute; top: -9px; right: -6px; font: 11px var(--f-lcd); letter-spacing: .08em; padding: 0 4px; border-radius: 3px; background: var(--lcd-fg); color: #1a1408; pointer-events: none; z-index: 2; }
 @keyframes is-new-glow { 50% { box-shadow: 0 0 18px color-mix(in srgb, var(--lcd-fg) 60%, transparent); } }
-@media (prefers-reduced-motion: reduce) { .is-new, .tree-node.shake { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .is-new { animation: none; } }
 .lcd-shards { display: none; position: absolute; right: 10px; top: 4px; font-size: 21px; }
 body.game .lcd-shards { display: block; }
 .lcd { position: relative; }
@@ -461,7 +460,6 @@ body.listen .puzzle-card { display: none; }
 .pz-btns .btn { flex: 1; }
 .pz-ok.ready { border-color: #8fe3a0; color: #8fe3a0; box-shadow: 0 0 10px #8fe3a066; }
 .pz-hint { font: 12px var(--f-mono, monospace) !important; color: var(--lcd-fg) !important; }
-.puzzle-card.shake { animation: tree-shake .35s; }
 @media (max-width: 560px) { .puzzle-card { left: 8px; right: 8px; width: auto; bottom: 8px; } }
 .tree-puzzles { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 6px; font: 12px var(--f-mono, monospace); color: var(--muted); }
 .tree-puzzles .btn { color: var(--lcd-fg); }
@@ -584,7 +582,6 @@ html[data-lcd="neon"] { --lcd-bg: #150a1c; --lcd-fg: #ff6fd8; --lcd-dim: #5a2160
 .tree-node.is-req .led { outline: 2px solid #8fe3a0; outline-offset: 3px; }
 .tree-node.is-dep .led { outline: 2px dashed var(--lcd-fg); outline-offset: 3px; }
 .tree-node.is-sel .led { outline: 2px solid #fff; outline-offset: 4px; }
-.tree-node.shake { animation: tree-shake .35s; }
 /* unlock sequence (G8.5) */
 .tree-node.is-buying .led { animation: led-charge .38s ease-in forwards; }
 .tree-node.is-born .led { animation: led-born .6s cubic-bezier(.2, 1.6, .4, 1); }

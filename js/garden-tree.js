@@ -352,7 +352,7 @@
       const T = AMB.tree, g = AMB.game, n = T.byId[id], st = T.status(id);
       if (this.seq) { this.seqFinish(); return false; }
       const el = document.querySelector(`.tree-node[data-id="${id}"]`);
-      const shake = () => { this.shake(el); if (AMB.juice) AMB.juice.shake(el, 5); };
+      const shake = () => { if (AMB.juice) AMB.juice.shake(el, 5); };
       if (st === 'owned') return false;
       if (st === 'locked') { shake(); AMB.ui.toast(`D'abord : ${n.req.filter((r) => !g.has(r)).map((r) => T.byId[r].name).join(', ')}`); return false; }
       if (st === 'gated') {

@@ -151,7 +151,7 @@
         if (AMB.game.path) this.lcd(gate ? '◈ porte ouverte' : '◈ à rejouer', 3000);
         if (gate) this.showTree(true);
       } else {
-        this.shake($('#puzzle')); if (AMB.juice) AMB.juice.shake($('#puzzle'), 7);
+        if (AMB.juice) AMB.juice.shake($('#puzzle'), 7);
         this.renderPuzzle();
       }
     },
