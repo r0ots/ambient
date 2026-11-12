@@ -15,7 +15,7 @@
   };
   const distinct = (st, v) => { st.seen = st.seen || []; if (!st.seen.includes(v)) { st.seen.push(v); st.n = st.seen.length; } };
 
-  // contract: { id, need: [node ids], title, hint, reward, goal, on: { param|act|chord|bar|note(st, …) } }
+  // contract: { id, need: [node ids], title, hint, reward, goal, on: { param|act|chord|note(st, …) } }
   const C = (id, need, title, reward, goal, on, hint) => ({ id, need, title, reward, goal, on, hint: hint || '' });
   const DEFS = [
     // Tronc
@@ -256,17 +256,8 @@
     AMB.bus.on('rec:done', (secs) => contracts.dispatch('rec', secs));
     AMB.bus.on('live', (n) => contracts.dispatch('note', n));
     AMB.bus.on('phrase', (p) => contracts.dispatch('phrase', p));
-    AMB.bus.on('section', (x) => contracts.dispatch('section', x));
     ['unlock', 'mode', 'reset'].forEach((e) => AMB.bus.on('game:' + e, () => contracts.refill()));
   }
-  // bar lines while playing (the sequencer counts 16th steps)
-  let lastBar = -1;
-  setInterval(() => {
-    if (!playing()) { lastBar = -1; return; }
-    const bar = Math.floor((AMB.seq.step || 0) / 16);
-    if (bar !== lastBar) { if (lastBar >= 0) contracts.dispatch('bar', bar); lastBar = bar; }
-  }, 250);
-
   AMB.contracts = contracts;
   contracts.refill();
 })();
