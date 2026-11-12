@@ -235,6 +235,9 @@ canvas.auto-lane { display: block; width: 100%; border-radius: 8px; border: 1px 
 
 .song-sections { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
 .song-empty { font-size: 12px; color: var(--muted); padding: 10px 2px; }
+.song-rec-why { display: none; font-size: 11px; color: var(--muted); }
+.song-none .song-rec-why { display: inline; }
+.song-panel .btn:disabled { opacity: .4; cursor: default; }
 .song-card { flex: 0 0 170px; background: #171a25; border: 1px solid #2a2f45; border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 5px; }
 .song-card.now { border-color: var(--c); box-shadow: 0 0 12px color-mix(in srgb, var(--c) 35%, transparent); }
 .song-name { background: transparent; border: 0; color: var(--c); font: inherit; font-weight: 600; font-size: 14px; width: 100%; padding: 0; }

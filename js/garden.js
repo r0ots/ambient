@@ -41,7 +41,7 @@
     },
     // clicks that always succeed go on the bus as actions (contracts count them); actions that can fail or be
     // cancelled (save, journal, chords, freeze) are emitted by their own code once they really happened
-    CLICKS: [['#dice', 'dice'], ['.sc-store', 'sceneStore'], ['[data-s=add]', 'section'], ['[data-s=play]', 'song']],
+    CLICKS: [['#dice', 'dice'], ['.sc-store', 'sceneStore'], ['[data-s=add]', 'section'], ['[data-s=play]', 'song'], ['[data-s=rec]', 'song']],
     hookActions() {
       const emit = (id) => AMB.bus.emit('act', id);
       document.addEventListener('click', (e) => {

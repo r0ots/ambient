@@ -14,6 +14,7 @@
   async function toggleRec(btn) {
     await AMB.ui.ensureStarted();
     if (recState) return finishRec(btn);
+    if (songRec) { AMB.ui.toast('Le morceau est en cours d\'enregistrement'); return; }
     if (!AMB.seq.playing) await AMB.ui.play();
     const fmt = $('#recFmt').value, mins = Number($('#recDur').value);
     recState = { fmt, t0: Date.now() };
@@ -49,11 +50,62 @@
     clearInterval(recState.iv); clearTimeout(recState.fadeT); clearTimeout(recState.endT);
     if (recState.fading && AMB.seq.playing) AMB.engine.fadeIn(2); // stopped during the end fade: bring sound back
     if (AMB.bus) AMB.bus.emit('rec:done', (Date.now() - recState.t0) / 1000); // real duration, however it stopped
-    if (recState.fmt === 'wav') download(AMB.engine.stopCapture(), 'wav');
+    if (recState.fmt === 'wav') api.download(AMB.engine.stopCapture(), 'wav');
     else if (recorder) recorder.stop();
     recState = null;
     btn.classList.remove('rec'); btn.textContent = '● Rec';
     AMB.ui.toast('Enregistrement téléchargé');
+  }
+
+  // ---------- the song in one gesture (● Rec of the Morceau panel) ----------
+  // Plays the song once from its first section into a WAV, then stops by itself. The drone and
+  // texture layers never fall silent, so silence detection could wait forever: the ending is a
+  // fixed SONG_TAIL fade (the reverb rings into it), like the fade of a timed recording, after
+  // which the sound comes back. Every wait runs on the audio clock (the WAV is audio frames).
+  // A second click cancels: no file and no rec:done (a cut-off take is not a recording).
+  const SONG_TAIL = 2;
+  let songRec = null; // {btn, t0, end, iv}
+  const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  async function toggleSongRec(btn) {
+    const song = AMB.song;
+    if (songRec) return endSongRec(false);
+    if (!song.sections.length) return;
+    await AMB.ui.ensureStarted();
+    if (recState) { AMB.ui.toast('Arrête d\'abord l\'enregistrement en cours (● Rec de la barre)'); return; }
+    if (song.playing) song.stop();
+    const ctx = AMB.engine.ctx;
+    const total = song.sections.reduce((a, s) => a + s.bars, 0) * 16 * AMB.seq.stepDur() + SONG_TAIL;
+    songRec = { btn, t0: ctx.currentTime, end: null };
+    AMB.engine.startCapture();
+    song.start((t) => {
+      songRec.end = t + SONG_TAIL;
+      AMB.engine.fadeOut(Math.max(0.1, songRec.end - ctx.currentTime));
+    });
+    if (!song.playing) { songRec = null; AMB.engine.stopCapture(); return; }
+    btn.classList.add('rec');
+    songRec.iv = setInterval(() => {
+      if (!songRec) return;
+      const now = ctx.currentTime;
+      btn.textContent = `■ ${clock(now - songRec.t0)} / ${clock(total)}`;
+      // the tap hands frames over in blocks: wait one block past the end before closing the file
+      if (songRec.end != null) { if (now >= songRec.end + 0.15) endSongRec(true); }
+      else if (!song.playing) endSongRec(false); // the song was stopped some other way (■ Stop, ■ Arrêter le morceau)
+    }, 100);
+    btn.textContent = `■ 0:00 / ${clock(total)}`;
+  }
+  function endSongRec(complete) {
+    const r = songRec; if (!r) return;
+    songRec = null;
+    clearInterval(r.iv);
+    const blob = AMB.engine.stopCapture();
+    if (AMB.song.playing) AMB.song.stop();
+    if (AMB.seq.playing) AMB.engine.fadeIn(2); // back to the normal sound (after the end fade, or a cancel during it)
+    r.btn.classList.remove('rec'); r.btn.textContent = '● Rec';
+    AMB.song.render();
+    if (!complete) { AMB.ui.toast('Enregistrement du morceau annulé'); return; }
+    if (AMB.bus) AMB.bus.emit('rec:done', AMB.engine.capturedFrames / AMB.engine.ctx.sampleRate);
+    api.download(blob, 'wav');
+    AMB.ui.toast('Morceau enregistré et téléchargé');
   }
 
   // ---------- sleep timer ----------
@@ -79,5 +131,6 @@
     tick();
   }
 
-  AMB.rec = { toggleRec, setSleep, download, recording: () => !!recState };
+  const api = (AMB.rec = { toggleRec, toggleSongRec, setSleep, download, SONG_TAIL,
+    recording: () => !!(recState || songRec), songRecording: () => !!songRec });
 })();

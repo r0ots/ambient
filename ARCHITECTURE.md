@@ -12,7 +12,7 @@ Règle de produit (v1.05) : le jeu se joue SUR l'instrument (ses commandes, son 
 ## Bus (événements)
 - `live` {midi, time, vel (entendue), raw (vélocité MIDI brute 0..1, null au clavier)} · `chord` {time, deg, midis, forced (accord joué par le joueur)} · `phrase` {i, len, time} · `section` {index, name}
 - `note` {layer, midi, time, vel, dur} · `perc` {track, time, vel} · `grain` {layer, midi, time, vel} · `freeze` {}
-- `act` 'id' (action réussie, comptée par les contrats : save, keep, restore, chord, freeze, xy, dice, sceneStore, sceneRecall, section, song ; midiConnect = un clavier MIDI est là) · `rec:done` secondes
+- `act` 'id' (action réussie, comptée par les contrats : save, keep, restore, chord, freeze, xy, dice, sceneStore, sceneRecall, section, song ; midiConnect = un clavier MIDI est là) · `rec:done` secondes (● Rec de la barre, ou ● Rec du panneau Morceau mené à son terme ; rien à l'annulation)
 - `game:*` earn {n, reason, id, total}, spend, unlock {id}, contracts / puzzles {id}, mode, reset, contract, puzzle, opened, secret
 
 ## Store (sources de `store.set(k, v, source)`)

@@ -30,14 +30,16 @@
       this.save(); this.render();
     },
 
-    start() {
+    // onEnd (the one-gesture song recording, js/rec.js): play the song once, then call onEnd(audio time of the end)
+    start(onEnd) {
       if (!this.sections.length) { AMB.ui.toast('Ajoute d\'abord des sections (+ Section)'); return; }
-      this.playing = true; this.idx = 0; this.barInSection = 0;
+      this.playing = true; this.idx = 0; this.barInSection = 0; this.pending = null;
+      this.onEnd = typeof onEnd === 'function' ? onEnd : null;
       this.enter(0, true);
       if (!AMB.seq.playing) AMB.ui.play();
       this.render();
     },
-    stop() { this.playing = false; this.fade = null; this.render(); },
+    stop() { this.playing = false; this.fade = null; this.onEnd = null; this.render(); },
 
     // switch to section i: discrete params now, continuous params faded over `fadeBars`
     enter(i, instant = false) {
@@ -69,7 +71,9 @@
         for (const [k, a, b] of f.cont) if (!AMB.isAutomated(k)) store.set(k, a + (b - a) * e, 'morph');
         if (t >= 1) this.fade = null;
       }
-      if (step % 16 !== 0 || step === 0) return;
+      // bar lines count from the section start (seq.origin), like the sequencer's bars: a section lasts its full bars
+      const rel = step - (AMB.seq.origin || 0);
+      if (rel <= 0 || rel % 16 !== 0) return;
       // queued jump (keys 1–8): switch on the next bar line
       if (this.pending != null && this.sections[this.pending]) {
         this.idx = this.pending; this.pending = null; this.barInSection = 0;
@@ -80,6 +84,8 @@
       if (sec && this.barInSection >= sec.bars) {
         this.barInSection = 0;
         if (this.idx + 1 >= this.sections.length) {
+          const onEnd = this.onEnd;
+          if (onEnd) { this.stop(); onEnd(AMB.seq.nextTime); return; } // the step being scheduled = end of the last bar
           if (!this.loop) { this.stop(); AMB.ui.toast('Fin du morceau'); return; }
           this.idx = 0;
         } else this.idx++;
@@ -97,6 +103,8 @@
         <div class="roll-tools">
           <button class="btn small" data-s="add" title="Nouvelle section = état actuel du son">+ Section</button>
           <button class="btn small" data-s="play">▶ Jouer le morceau</button>
+          <button class="btn small" data-s="rec" title="Joue le morceau depuis le début et l'enregistre en WAV jusqu'à la fin">● Rec</button>
+          <span class="song-rec-why">● Rec : ajoute d'abord une section</span>
           <label class="btn small"><input type="checkbox" data-s="loop"> Boucler</label>
           <span class="roll-hint">Chaque section mémorise le son (couches, effets, motif joué) ; les motifs et la progression sont partagés. Touches 1–8 : aller à une section.</span>
         </div>`;
@@ -106,6 +114,8 @@
       panel.querySelector('[data-s=add]').addEventListener('click', () => this.add());
       this.playBtn = panel.querySelector('[data-s=play]');
       this.playBtn.addEventListener('click', () => (this.playing ? this.stop() : this.start()));
+      this.recBtn = panel.querySelector('[data-s=rec]');
+      this.recBtn.addEventListener('click', () => AMB.rec.toggleSongRec(this.recBtn));
       const lp = panel.querySelector('[data-s=loop]');
       lp.checked = this.loop;
       lp.addEventListener('change', () => { this.loop = lp.checked; this.save(); });
@@ -115,6 +125,9 @@
       if (!this.list) return;
       this.playBtn.textContent = this.playing ? '■ Arrêter le morceau' : '▶ Jouer le morceau';
       this.playBtn.classList.toggle('on', this.playing);
+      const recording = AMB.rec && AMB.rec.songRecording();
+      this.recBtn.disabled = !this.sections.length && !recording;
+      this.panel.classList.toggle('song-none', !this.sections.length);
       const total = this.sections.reduce((a, s) => a + s.bars, 0);
       const secs = total * 4 * 60 / store.get('global.tempo');
       this.panel.querySelector('.song-total').textContent = this.sections.length

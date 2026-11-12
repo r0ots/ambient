@@ -23,6 +23,18 @@ window.addEventListener('load', async ()=>{
   const dec=await AMB.engine.ctx.decodeAudioData(ab.slice(0));
   const d=dec.getChannelData(0); let pk=0; for(const v of d) pk=Math.max(pk,Math.abs(v));
   log('wav bytes='+blob.size+' dur='+dec.duration.toFixed(2)+' ch='+dec.numberOfChannels+' peak='+pk.toFixed(3));
+  // one recording at a time: the bar's ● Rec and the song panel's ● Rec share the capture
+  AMB.song.sections=[{name:'A',bars:4,snap:{}}];
+  const barB=document.getElementById('rec'), songB=document.createElement('button');
+  await AMB.rec.toggleSongRec(songB);
+  await AMB.rec.toggleRec(barB);
+  ok(AMB.rec.songRecording() && !barB.classList.contains('rec') && AMB.engine.capturing, 'morceau en cours : le ● Rec de la barre ne démarre pas');
+  await AMB.rec.toggleSongRec(songB);
+  ok(!AMB.rec.recording() && !AMB.engine.capturing, 'annulation : plus de capture');
+  await AMB.rec.toggleRec(barB); await AMB.rec.toggleSongRec(songB);
+  ok(!AMB.rec.songRecording() && barB.classList.contains('rec'), 'barre en cours : le ● Rec du morceau ne démarre pas');
+  const files=[]; AMB.rec.download=(b,ext)=>files.push(ext); await AMB.rec.toggleRec(barB);
+  ok(files.join()==='wav' && !AMB.rec.recording(), 'le ● Rec libre de la barre reste : WAV proposé');
   log('DONE');
   }catch(e){log('EXC '+e.stack)}
 });
