@@ -23,12 +23,12 @@
     N('t.journal', 'tronc', 'Journal', 5, ['t.son'], [], ['journal', 'save'], 'Revenir à un moment passé, garder un son comme patch.'),
     N('t.rec', 'tronc', 'Enregistreur', 10, ['t.son'], [], ['rec'], 'Enregistrer ce que tu entends.'),
     N('t.macros', 'tronc', 'Grands réglages', 10, ['t.son', 'h.pad'], ['macro.*'], ['xy'], 'Les 5 macros et le pad XY : beaucoup de réglages d\'un geste.', 'p.premier'),
-    N('t.share', 'tronc', 'Partage', 5, ['t.journal'], [], ['share', 'patches'], 'Partager un lien, exporter et importer ses patchs.'),
+    N('t.share', 'tronc', 'Partage', 10, ['t.journal'], [], ['share', 'patches'], 'Partager un lien, exporter et importer ses patchs.'),
     N('t.dice', 'tronc', 'Paysages', 15, ['t.macros'], [], ['dice', 'preset'], '✦ Nouveau paysage et presets par humeur.'),
 
     // Harmonie — chords, key, scale, progression
     N('h.pad', 'harmonie', 'Pad', 5, ['racine'], ['pad.on', 'pad.vol', 'pad.wave', 'pad.tone'], [], 'Des accords tenus au-dessus du drone.'),
-    N('h.drone', 'harmonie', 'Drone qui suit', 5, ['h.pad'], ['drone.follow'], [], 'Le drone change de note avec les accords.'),
+    N('h.drone', 'harmonie', 'Drone qui suit', 10, ['h.pad'], ['drone.follow'], [], 'Le drone change de note avec les accords.'),
     N('h.pad2', 'harmonie', 'Accords riches', 10, ['h.pad'], ['pad.attack', 'pad.voicing', 'pad.counter', 'pad.length'], [], 'Attaque, accords enrichis, voix intérieure, durée des accords.'),
     N('h.key', 'harmonie', 'Tonalité', 10, ['h.pad'], ['global.key', 'global.tuning'], [], 'Changer la note de départ de tout le morceau.'),
     N('h.scale', 'harmonie', 'Gammes', 15, ['h.key'], ['global.scale'], [], '11 couleurs harmoniques, du lumineux au mélancolique.', 'p.gamme'),
@@ -37,7 +37,7 @@
     // Espace — reverb, echo, tape, textures
     N('e.reverb', 'espace', 'Reverb', 5, ['racine'], ['fx.space', '*.send'], [], 'Une salle autour du son, et combien chaque couche y envoie.'),
     N('e.texture', 'espace', 'Texture', 10, ['e.reverb'], ['texture.*'], [], 'Pluie, vent, océan, feu, oiseaux…'),
-    N('e.salle', 'espace', 'Salles', 10, ['e.reverb'], ['fx.revType', 'fx.size', 'fx.predelay'], [], 'Hall, Plate ou Cloud, taille et pré-délai.'),
+    N('e.salle', 'espace', 'Salles', 15, ['e.reverb'], ['fx.revType', 'fx.size', 'fx.predelay'], [], 'Hall, Plate ou Cloud, taille et pré-délai.'),
     N('e.echo', 'espace', 'Écho', 10, ['e.reverb'], ['fx.echo', 'fx.echoTime', 'fx.feedback'], [], 'Des répétitions calées sur le tempo.'),
     N('e.halo', 'espace', 'Halo', 15, ['e.salle'], ['fx.shimmer'], [], 'Une octave qui scintille dans la reverb.'),
     N('e.tape', 'espace', 'Cassette', 15, ['e.echo'], ['fx.tape'], [], 'Pleurage, scintillement et saturation de bande.', 'p.espace'),
@@ -46,23 +46,23 @@
     // Mouvement — melody, time, drift, grains, slow movements, scenes
     N('m.bells', 'mouvement', 'Mélodie auto', 5, ['racine'], ['bells.on', 'bells.vol', 'bells.wave', 'bells.density', 'bells.tone', 'bells.decay', 'bells.range'], [], 'Des notes qui improvisent sur les accords.'),
     N('m.tempo', 'mouvement', 'Tempo', 10, ['m.bells'], ['global.tempo', 'global.time'], [], 'Vitesse, et rythme pulsé ou flottant.'),
-    N('m.phrase', 'mouvement', 'Phrases', 15, ['m.bells'], ['bells.mode', 'bells.phraseLen', 'bells.mutate'], [], 'Un motif qui se répète et varie lentement.'),
+    N('m.phrase', 'mouvement', 'Phrases', 20, ['m.bells'], ['bells.mode', 'bells.phraseLen', 'bells.mutate'], [], 'Un motif qui se répète et varie lentement.'),
     N('m.evolve', 'mouvement', 'Dérive', 15, ['m.tempo'], ['global.evolve'], [], 'Tes réglages dérivent tout seuls autour de leur valeur.'),
     N('m.grains', 'mouvement', 'Grains', 15, ['m.bells'], ['grains.on', 'grains.vol', 'grains.density', 'grains.size', 'grains.scan', 'grains.spray', 'grains.pitch'], [], 'Un nuage de minuscules fragments de son.'),
     N('m.grains2', 'mouvement', 'Matières', 25, ['m.grains'], ['grains.source', 'grains.reverse', 'grains.glide'], ['freeze'], 'Ton fichier, le micro, Figer le mix ; à l\'envers, glissando.'),
     N('m.lfo', 'mouvement', 'Mouvements lents', 25, ['m.evolve'], ['mod.*'], [], 'Faire bouger n\'importe quel réglage sur plusieurs minutes.', 'p.mouvement'),
-    N('m.scenes', 'mouvement', 'Scènes', 30, ['m.lfo'], [], ['scenes'], 'Deux états A/B et un fondu automatique entre eux.'),
+    N('m.scenes', 'mouvement', 'Scènes', 25, ['m.lfo'], [], ['scenes'], 'Deux états A/B et un fondu automatique entre eux.'),
 
     // Composer — written melody, bass, pulses, automation, song
     N('c.seq', 'composer', 'Mélodie écrite', 25, ['h.pad', 'm.bells'], ['seq.on', 'seq.wave', 'seq.vol', 'seq.steps', 'seq.octave', 'seq.tone', 'seq.decay', 'seq.send', 'seq.pattern'], ['pianoroll', 'mode-compose'], 'Dessiner ses notes dans le piano roll.', 'p.composer'),
     N('c.arp', 'composer', 'Arpège', 20, ['c.seq'], ['seq.mode', 'seq.arpDir', 'seq.arpRate', 'seq.arpOct'], [], 'Égrener l\'accord en cours.'),
-    N('c.motifs', 'composer', 'Motifs A–D', 30, ['c.seq'], ['seq.patB', 'seq.patC', 'seq.patD', 'seq.slot', 'seq.chain', 'seq.mutate', 'seq.follow'], ['motifs', 'reclive'], '4 motifs, une chaîne, la variation, l\'enregistrement live.'),
+    N('c.motifs', 'composer', 'Motifs A–D', 25, ['c.seq'], ['seq.patB', 'seq.patC', 'seq.patD', 'seq.slot', 'seq.chain', 'seq.mutate', 'seq.follow'], ['motifs', 'reclive'], '4 motifs, une chaîne, la variation, l\'enregistrement live.'),
     N('c.bass', 'composer', 'Basse', 25, ['c.seq'], ['bass.*'], [], 'Une ligne de basse qui suit les accords.'),
     N('c.perc', 'composer', 'Pulsations', 25, ['c.seq'], ['perc.*'], [], '4 pistes rythmiques douces.'),
     N('c.groove', 'composer', 'Groove', 15, ['c.perc'], ['global.swing', 'global.humanize', 'seq.swing'], [], 'Swing et imprécision humaine.'),
-    N('c.midi', 'composer', 'MIDI', 25, ['c.seq'], [], ['midi'], 'Jouer avec un clavier MIDI, importer et exporter des .mid.'),
+    N('c.midi', 'composer', 'MIDI', 20, ['c.seq'], [], ['midi'], 'Jouer avec un clavier MIDI, importer et exporter des .mid.'),
     N('c.auto', 'composer', 'Automation', 30, ['c.motifs'], ['auto.*'], ['automation'], 'Dessiner l\'évolution d\'un réglage sur plusieurs mesures.'),
-    N('c.song', 'composer', 'Morceau', 35, ['c.auto', 'h.prog'], [], ['song'], 'Enchaîner des sections pour faire un morceau entier.'),
+    N('c.song', 'composer', 'Morceau', 30, ['c.auto', 'h.prog'], [], ['song'], 'Enchaîner des sections pour faire un morceau entier.'),
   ];
 
   const byId = Object.fromEntries(NODES.map((n) => [n.id, n]));

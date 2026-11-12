@@ -1,50 +1,102 @@
 <!doctype html><html><head><meta charset="utf-8"></head><body>
-<script>
-// G6.1 — balance simulation: a scripted "typical player" runs through the path on the real data
-// (tree costs, discoveries, contracts, puzzles) with a time model per activity.
-const TAG=location.pathname.split('/').pop().replace('.html','');
-const log=(m)=>fetch('/__log?'+encodeURIComponent(TAG+'|'+m)).catch(()=>{});
-window.onerror=(m,s,l)=>log('ERROR '+m+' @'+s+':'+l);
-localStorage.removeItem('ambient.game.balance');
-</script>
+<!-- G11.3 — economy of the Parcours: scripted players run through the path on the REAL data (tree costs and gates,
+     discoveries, contracts drawn 3 at a time like contracts.refill, puzzles, secrets, placement) with a time model per
+     activity. The arcade, the daily challenge, the duel and the placement test pay no ✧ (checked below in the sources).
+     Targets (ROADMAP G11.3): typical full path 60–90 min, never more than 5 min without a purchase, margin between the
+     ✧ that can be earned and the tree cost 50–80 %, Découverte profile: first purchase in under 2 min. -->
+<script src="lib.js"></script>
+<script>localStorage.removeItem('ambient.game.balance');</script>
 <iframe id="f" src="../index.html?gamekey=ambient.game.balance&listen" style="width:800px;height:600px"></iframe>
 <script>
-const ok=(c,m)=>log((c?'ok ':'ERROR fail ')+m);
-// G8.2: discoveries now pay 1 ✧ each and only while the music plays (time per discovery unchanged:
-// the player explores while listening). Costs and contract rewards were retuned to keep ~80 min.
-// seconds per activity (a non-musician exploring at a calm pace)
-const TIME={ param:15, act:20, buy:20, contract:(d)=>40+12*Math.min(d.goal,8), puzzle:180, bonus:300 };
-document.getElementById('f').addEventListener('load', ()=>{
-  try{
-  const A=document.getElementById('f').contentWindow.AMB, T=A.tree, G=A.garden;
-  const nodes=T.NODES, cost=nodes.reduce((a,n)=>a+n.cost,0);
-  const inc=[];
-  for (const x of G.discoverables()) inc.push({ need:[x.node], n:x.id.startsWith('p:')?G.paramReward(x.id.slice(2)):G.ACTS[x.id.slice(2)][1], t:x.id.startsWith('p:')?TIME.param:TIME.act, kind:'découverte' });
-  for (const d of A.contracts.DEFS) inc.push({ need:d.need, n:d.reward, t:TIME.contract(d), kind:'contrat' });
-  for (const d of A.puzzles.DEFS) inc.push({ need:d.need, n:d.reward, t:d.bonus?TIME.bonus:TIME.puzzle, kind:d.bonus?'bonus':'porte', solves:d.id });
-  const total=inc.reduce((a,x)=>a+x.n,0), by={}; inc.forEach(x=>by[x.kind]=(by[x.kind]||0)+x.n);
-  log(`économie : coût ${cost} ✧, gains possibles ${total} ✧ (${JSON.stringify(by)}), marge ${Math.round(100*(total/cost-1))} %`);
-  // greedy player: buys the cheapest affordable node as soon as possible, otherwise does the
-  // quickest available activity (bonus puzzles last); gates need their puzzle solved
-  const own=new Set(['racine']), solved=new Set(), done=new Set();
-  let shards=0, t=0, gap=0, gapAt='', lastBuy=0; const steps=[];
-  const avail=(n)=>!own.has(n.id) && n.req.every(r=>own.has(r)) && (!n.gate || solved.has(n.gate));
-  for (let guard=0; guard<5000 && own.size<nodes.length; guard++) {
-    const buy=nodes.filter(n=>avail(n) && n.cost<=shards).sort((a,b)=>a.cost-b.cost)[0];
-    if (buy) { shards-=buy.cost; own.add(buy.id); t+=TIME.buy; if(t-lastBuy>gap){gap=t-lastBuy;gapAt=buy.id;} lastBuy=t; steps.push(`${Math.round(t/60)}′ ${buy.id}`); continue; }
-    const todo=inc.map((x,i)=>[x,i]).filter(([x,i])=>!done.has(i) && x.need.every(r=>own.has(r)))
-      .sort((a,b)=>(b[0].kind==='porte')-(a[0].kind==='porte') || (a[0].kind==='bonus')-(b[0].kind==='bonus') || a[0].t/a[0].n-b[0].t/b[0].n)[0];
-    if (!todo) break;
-    done.add(todo[1]); shards+=todo[0].n; t+=todo[0].t; if (todo[0].solves) solved.add(todo[0].solves);
-  }
-  const left=nodes.filter(n=>!own.has(n.id)).map(n=>n.id);
-  log(`parcours type : tout l'arbre en ${Math.round(t/60)} min, plus longue attente entre deux achats ${Math.round(gap/60)} min (avant ${gapAt}), activités faites ${done.size}/${inc.length}`);
-  log('jalons : '+steps.filter((s,i)=>i%6===5||i===steps.length-1).join(' · '));
-  ok(!left.length, 'aucun blocage, tout l\'arbre est atteignable '+left.join(','));
-  ok(total>=cost*1.2, 'au moins 20 % de marge (on ne doit pas tout faire)');
-  ok(t>=55*60 && t<=95*60, 'durée visée ~1 h – 1 h 30 : '+Math.round(t/60)+' min');
-  ok(gap<=8*60, 'jamais plus de 8 min sans rien acheter');
-  }catch(e){ log('EXC '+e.stack); }
-  log('DONE');
+// seconds per activity (a player exploring at a calm pace; `k` slows everything down for the Découverte profile)
+const TIME = { param: 15, act: 20, buy: 20, contract: (d) => 40 + 12 * Math.min(d.goal, 8), puzzle: 180, bonus: 300, secret: 240 };
+const MIDI_ONLY = ['velo', 'chroma']; // need a MIDI keyboard (raw velocity, chromatic notes)
+const mulberry = (a) => () => { a = (a + 0x6d2b79f5) >>> 0; let t = Math.imul(a ^ (a >>> 15), a | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+
+document.getElementById('f').addEventListener('load', async () => {
+  try {
+    const w = document.getElementById('f').contentWindow, A = w.AMB, T = A.tree, G = A.garden;
+    const nodes = T.NODES, cost = nodes.reduce((a, n) => a + n.cost, 0);
+    // --- the sources that pay: only discoveries, contracts, puzzles, secrets call game.earn / discover / complete / solve
+    const src = {};
+    for (const f of ['arcade', 'arcade-ui', 'daily', 'duel', 'placement', 'pacts', 'arcade/reponds', 'arcade/dictee', 'garden-visual']) src[f] = await (await fetch('../js/' + f + '.js')).text();
+    const payers = Object.keys(src).filter((f) => /\.(earn|discover|complete|solve)\(/.test(src[f].replace(/\/\/.*$/gm, '')));
+    ok(!payers.length, 'arcade, défi du jour, duel, placement, pactes, jardin : aucun ✧ versé ' + payers.join());
+
+    // --- every income, with its prerequisites
+    const inc = [];
+    for (const x of G.discoverables()) {
+      const isP = x.id.startsWith('p:');
+      inc.push({ id: x.id, need: [x.node], n: isP ? G.paramReward(x.id.slice(2)) : G.ACTS[x.id.slice(2)][1], t: isP ? TIME.param : TIME.act, kind: 'découverte' });
+    }
+    for (const d of A.contracts.DEFS) inc.push({ id: d.id, need: d.need, n: d.reward, t: TIME.contract(d), kind: 'contrat' });
+    for (const d of A.puzzles.DEFS) inc.push({ id: d.id, need: d.need, n: d.reward, t: d.bonus ? TIME.bonus : TIME.puzzle, kind: d.bonus ? 'bonus' : 'porte', solves: d.id });
+    for (const d of A.secrets.DEFS) inc.push({ id: 's:' + d.id, need: [d.node], n: d.reward.n, t: TIME.secret, kind: 'secret', midi: MIDI_ONLY.includes(d.id) });
+    const total = inc.reduce((a, x) => a + x.n, 0), by = {}; inc.forEach((x) => { by[x.kind] = (by[x.kind] || 0) + x.n; });
+    const margin = Math.round(100 * (total / cost - 1));
+    log(`économie : coût de l'arbre ${cost} ✧, gagnables ${total} ✧ (${JSON.stringify(by)}), marge ${margin} %`);
+
+    const fmt = (s) => (s / 60).toFixed(1);
+    // --- one scripted player. opts: {k (time factor), midi, bonus, secrets, placed: [branches], seed}
+    function sim(opts) {
+      const k = opts.k || 1, rnd = mulberry(opts.seed || 7);
+      const own = new Set(['racine']), solved = new Set(), done = new Set(), placedNodes = new Set();
+      if (opts.placed) {
+        const g = { has: (id) => own.has(id) };
+        for (const id of A.placement.plan(opts.placed, g).nodes) { own.add(id); placedNodes.add(id); const gt = T.byId[id].gate; if (gt) solved.add(gt); }
+      }
+      const pool = inc.filter((x) => (opts.bonus || x.kind !== 'bonus') && (opts.secrets !== false || x.kind !== 'secret') && (opts.midi || !x.midi));
+      // contracts: 3 active, drawn at random among the eligible ones (contracts.refill)
+      const active = [];
+      const refill = () => {
+        const cand = A.contracts.DEFS.filter((d) => !done.has(d.id) && !active.includes(d.id) && d.need.every((r) => own.has(r)));
+        while (active.length < 3 && cand.length) active.push(cand.splice(Math.floor(rnd() * cand.length), 1)[0].id);
+      };
+      let shards = 0, t = 0, gap = 0, gapAt = '', lastBuy = 0, firstBuy = null, earned = 0; const steps = [], waits = [];
+      const avail = (n) => !own.has(n.id) && n.req.every((r) => own.has(r)) && (!n.gate || solved.has(n.gate));
+      refill();
+      for (let guard = 0; guard < 5000 && own.size < nodes.length; guard++) {
+        const buy = nodes.filter((n) => avail(n) && n.cost <= shards).sort((a, b) => a.cost - b.cost)[0];
+        if (buy) {
+          shards -= buy.cost; own.add(buy.id); t += TIME.buy * k;
+          if (firstBuy == null) firstBuy = t;
+          if (t - lastBuy > 4 * 60) waits.push(`${fmt(t - lastBuy)}′→${buy.id}`);
+          if (t - lastBuy > gap) { gap = t - lastBuy; gapAt = buy.id; }
+          lastBuy = t; steps.push(`${Math.round(t / 60)}′ ${buy.id}`); refill(); continue;
+        }
+        const todo = pool.filter((x) => !done.has(x.id) && x.need.every((r) => own.has(r)) && (x.kind !== 'contrat' || active.includes(x.id))
+          && !(x.kind === 'découverte' && placedNodes.has(x.need[0]))) // placed nodes: their discoveries pay nothing (the player still explores, not counted)
+          .sort((a, b) => (b.kind === 'porte') - (a.kind === 'porte') || (a.kind === 'bonus') - (b.kind === 'bonus') || a.t / a.n - b.t / b.n)[0];
+        if (!todo) break;
+        done.add(todo.id); shards += todo.n; earned += todo.n; t += todo.t * k;
+        if (todo.solves) solved.add(todo.solves);
+        if (todo.kind === 'contrat') { active.splice(active.indexOf(todo.id), 1); refill(); }
+      }
+      return { t, gap, gapAt, firstBuy, steps, left: nodes.filter((n) => !own.has(n.id)).map((n) => n.id), earned, placed: placedNodes.size, waits };
+    }
+
+    // typical player (no MIDI, bonus puzzles last, secrets when the cheaper things are done), 5 contract draws
+    const runs = [1, 2, 3, 4, 5].map((seed) => sim({ seed, bonus: true }));
+    const tMin = Math.min(...runs.map((r) => r.t)), tMax = Math.max(...runs.map((r) => r.t)), gMax = Math.max(...runs.map((r) => r.gap));
+    const r1 = runs[0];
+    log(`parcours type (5 tirages de contrats) : tout l'arbre en ${fmt(tMin)}–${fmt(tMax)} min, plus longue attente sans achat ${fmt(gMax)} min (avant ${runs.find((r) => r.gap === gMax).gapAt} ; attentes > 4 min, tirage 1 : ${r1.waits.join(' ') || 'aucune'})`);
+    log('jalons (tirage 1) : ' + r1.steps.filter((s, i) => i % 6 === 5 || i === r1.steps.length - 1).join(' · '));
+    ok(runs.every((r) => !r.left.length), 'aucun blocage, tout l\'arbre est atteignable ' + runs.map((r) => r.left.join(',')).join(''));
+    ok(tMin >= 60 * 60 && tMax <= 90 * 60, 'cible : parcours type complet en 60–90 min (' + fmt(tMin) + '–' + fmt(tMax) + ')');
+    ok(gMax <= 5 * 60, 'cible : jamais plus de 5 min sans achat possible (' + fmt(gMax) + ' min)');
+    ok(margin >= 50 && margin <= 80, 'cible : marge gagnables / coût de 50 à 80 % (' + margin + ' %)');
+
+    // Découverte profile (the son): 1.3× slower, no MIDI, no bonus puzzle
+    const kid = sim({ seed: 3, k: 1.3 });
+    log(`profil découverte : 1er achat à ${Math.round(kid.firstBuy)} s, arbre en ${fmt(kid.t)} min, attente max ${fmt(kid.gap)} min (attentes > 4 min : ${kid.waits.join(' ') || 'aucune'})`);
+    ok(kid.firstBuy < 120, 'cible : profil découverte, premier achat en moins de 2 min (' + Math.round(kid.firstBuy) + ' s)');
+    ok(kid.gap <= 5 * 60 * 1.3, 'profil découverte : attente max ≤ 6,5 min (5 min × 1,3) (' + fmt(kid.gap) + ')');
+
+    // musician with a MIDI keyboard, after a placement test that opened 3 branches (their nodes cost 0, their discoveries pay 0)
+    const mus = sim({ seed: 2, midi: true, bonus: true, placed: ['harmonie', 'espace', 'mouvement'] });
+    log(`musicien placé (Harmonie, Espace, Mouvement : ${mus.placed} nœuds offerts) : reste de l'arbre en ${fmt(mus.t)} min, attente max ${fmt(mus.gap)} min (attentes > 4 min : ${mus.waits.join(' ') || 'aucune'})`);
+    ok(!mus.left.length && mus.gap <= 5 * 60, 'musicien placé : tout atteignable, jamais plus de 5 min sans achat (' + fmt(mus.gap) + ')');
+    done();
+  } catch (e) { fail(e); }
 });
 </script></body></html>

@@ -42,19 +42,19 @@
 
     // bonus puzzles (G5.5): harder, nothing to open, the controls involved stay secret until the last hint
     B('b.gamme', ['h.scale'], 'Quelle couleur ?', 'Retrouve la tonalité et la gamme de ce paysage, à l\'oreille.',
-      { 'global.key': 'A', 'global.scale': 'Dorien' }, 30),
+      { 'global.key': 'A', 'global.scale': 'Dorien' }, 25),
     B('b.progression', ['h.prog'], 'Suite connue', 'Une suite d\'accords très connue, deux mesures par accord. Laquelle ?',
-      { 'pad.prog': 'I–V–vi–IV', 'pad.length': 2 }, 30),
+      { 'pad.prog': 'I–V–vi–IV', 'pad.length': 2 }, 25),
     B('b.pad', ['h.pad2'], 'Cordes lentes', 'Un Pad de cordes qui arrive très lentement, accords larges, voix intérieure bien présente, plutôt sombre.',
-      { 'pad.wave': 'Cordes', 'pad.attack': 0.85, 'pad.voicing': 0.9, 'pad.counter': 0.6, 'pad.tone': 0.3 }, 35),
+      { 'pad.wave': 'Cordes', 'pad.attack': 0.85, 'pad.voicing': 0.9, 'pad.counter': 0.6, 'pad.tone': 0.3 }, 25),
     B('b.salle', ['e.halo'], 'Cathédrale de verre', 'Une salle immense qui gonfle lentement, un halo cristallin, un léger silence avant la réverbération.',
-      { 'fx.revType': 'Cloud', 'fx.size': 0.9, 'fx.shimmer': 0.7, 'fx.predelay': 0.4, 'fx.space': 0.8 }, 35),
+      { 'fx.revType': 'Cloud', 'fx.size': 0.9, 'fx.shimmer': 0.7, 'fx.predelay': 0.4, 'fx.space': 0.8 }, 25),
     B('b.radio', ['e.lofi', 'e.texture'], 'Vieille radio sous la pluie', 'Un son abîmé, une cassette fatiguée, et la pluie bien présente.',
-      { 'texture.type': 'Pluie', 'texture.vol': 0.7, 'fx.lofi': 0.7, 'fx.tape': 0.65 }, 35),
+      { 'texture.type': 'Pluie', 'texture.vol': 0.7, 'fx.lofi': 0.7, 'fx.tape': 0.65 }, 25),
     B('b.grains', ['m.grains2'], 'Nuage à l\'envers', 'Des grains longs, nombreux, presque tous à l\'envers, sur les octaves.',
-      { 'grains.reverse': 0.85, 'grains.density': 0.7, 'grains.size': 0.8, 'grains.pitch': 'Octaves' }, 35),
+      { 'grains.reverse': 0.85, 'grains.density': 0.7, 'grains.size': 0.8, 'grains.pitch': 'Octaves' }, 25),
     B('b.groove', ['c.groove', 'm.tempo'], 'Chaloupé', 'Un rythme organique, assez rapide, très chaloupé et un peu imprécis.',
-      { 'perc.kit': 'Organique', 'global.tempo': 92, 'global.swing': 0.5, 'global.humanize': 0.45 }, 35),
+      { 'perc.kit': 'Organique', 'global.tempo': 92, 'global.swing': 0.5, 'global.humanize': 0.45 }, 25),
   ];
   const byId = Object.fromEntries(DEFS.map((d) => [d.id, d]));
 
