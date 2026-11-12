@@ -397,25 +397,6 @@ body.game .is-locked { display: none !important; }
 .tree-grp { display: none !important; }
 body.game .tree-grp { display: flex !important; }
 
-.tree-card { max-width: 1100px; }
-.tree-shards { float: right; font: 26px var(--f-lcd); color: var(--lcd-fg); margin-right: 32px; }
-.tree-legend { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
-.tree-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line); margin-right: -8px; vertical-align: -2px; }
-.tree-map { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 12px; margin-top: 10px; overflow-x: auto; }
-.tree-col { display: flex; flex-direction: column; gap: 8px; padding: 8px; border-radius: 10px; background: #0003; border-top: 3px solid var(--c); }
-.tree-col h4 { color: var(--c); margin: 0 0 4px; display: flex; justify-content: space-between; }
-.tree-col h4 small { color: var(--muted); font-weight: 400; letter-spacing: 0; }
-.tree-row { display: flex; flex-wrap: wrap; gap: 6px; }
-.tree-node { flex: 1 1 120px; text-align: left; display: grid; gap: 2px; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: var(--muted); font: inherit; font-size: 12px; cursor: default; }
-.tree-node b { font-weight: 600; font-size: 13px; }
-.tree-node span { font-family: var(--f-mono, monospace); font-size: 11px; }
-.st-owned { background: color-mix(in srgb, var(--c, #8fe3a0) 22%, var(--panel2)) !important; border-color: var(--c, #8fe3a0) !important; color: var(--text, #eee) !important; }
-.st-available { border-color: var(--lcd-fg) !important; color: var(--lcd-fg) !important; cursor: pointer !important; box-shadow: 0 0 10px color-mix(in srgb, var(--lcd-fg) 35%, transparent); }
-.st-gated { border-style: dashed !important; color: #c4c9e0 !important; }
-.st-locked { opacity: .45; }
-.tree-legend .st-owned { --c: #8fe3a0; }
-@media (max-width: 760px) { .tree-map { grid-template-columns: repeat(5, 160px); } }
-.tree-node.shake { animation: tree-shake .35s; }
 @keyframes tree-shake { 0%,100% { transform: none; } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 .is-new { position: relative; animation: is-new-glow 1.2s ease-in-out 4; outline: 2px solid var(--lcd-fg); outline-offset: 3px; border-radius: 8px; }
 .is-new::after { content: 'NOUVEAU'; position: absolute; top: -9px; right: -6px; font: 11px var(--f-lcd); letter-spacing: .08em; padding: 0 4px; border-radius: 3px; background: var(--lcd-fg); color: #1a1408; pointer-events: none; z-index: 2; }
@@ -431,20 +412,11 @@ body.game .lcd-shards { display: block; }
 .tree-badge[hidden] { display: none; }
 @keyframes badge-pulse { 50% { transform: scale(1.15); } }
 @media (prefers-reduced-motion: reduce) { .tree-badge, .lcd-shards.bump { animation: none; } }
-.tree-node em { font-style: normal; font-size: 10.5px; color: var(--muted); }
-.tree-map:has(.is-focus) .tree-node:not(.is-focus):not(.is-req):not(.is-dep) { opacity: .3; }
-.tree-node.is-req { outline: 2px solid #8fe3a0; outline-offset: 1px; opacity: 1 !important; }
-.tree-node.is-dep { outline: 2px dashed var(--lcd-fg); outline-offset: 1px; opacity: 1 !important; }
-.tree-legend::after { content: 'Survole un nœud : vert = ce qu\'il demande, pointillés = ce qu\'il ouvre'; flex-basis: 100%; font-size: 11px; }
 body:not(.game) #lcdShards { display: none !important; }
 .gain-feed { position: fixed; top: 92px; right: 20px; z-index: 40; display: grid; gap: 4px; justify-items: start; pointer-events: none; }
 .gain { font: 18px var(--f-lcd); color: var(--lcd-fg); background: var(--lcd-bg, #120d05); border: 1px solid #000; box-shadow: var(--bevel-in, none); padding: 2px 10px; border-radius: 4px; text-shadow: 0 0 6px var(--lcd-glow, transparent); animation: gain-in 3.2s ease forwards; }
 @keyframes gain-in { 0% { opacity: 0; transform: translateY(-6px); } 10%, 75% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(4px); } }
 @media (prefers-reduced-motion: reduce) { .gain { animation: none; } }
-.tree-sub { margin: -4px 0 6px; font: 13px var(--f-mono, monospace); color: var(--muted); }
-.tree-nb { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; font-size: 11px; color: var(--muted); cursor: help; margin-bottom: 4px; }
-.tree-nb i { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--c) var(--p), #ffffff14 var(--p)); }
-.tree-nb em { font-style: normal; color: var(--lcd-fg); }
 .contracts { position: fixed; left: 16px; bottom: 16px; z-index: 30; width: 290px; max-width: calc(100vw - 32px); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius, 10px); box-shadow: var(--bevel, none), 0 12px 30px #000a; }
 .contracts[hidden], body.listen .contracts { display: none; }
 .ct-head { width: 100%; display: flex; justify-content: space-between; align-items: center; background: none; border: 0; color: var(--lcd-fg); font: 20px var(--f-lcd); padding: 6px 12px; cursor: pointer; letter-spacing: .05em; }
@@ -596,3 +568,112 @@ html[data-lcd="neon"] { --lcd-bg: #150a1c; --lcd-fg: #ff6fd8; --lcd-dim: #5a2160
 @keyframes arc-blink { 50% { opacity: .15; } }
 @media (prefers-reduced-motion: reduce) { .arc-star.on, .arc-record, .arc-time.low { animation: none; } }
 @media (max-width: 560px) { .arc-hud { grid-template-columns: auto 1fr auto; font-size: 24px; } .arc-game { display: none; } .arc-time, .arc-score { font-size: 36px; } .arc-choice { min-height: 80px; font-size: 28px; } .arc-choices { grid-template-columns: 1fr 1fr; } }
+
+/* G8.5–G11.1 — tree as a talent map (LED nodes, SVG links, pan/zoom) + unlock sequence */
+.tree-card { max-width: 1180px; height: calc(100vh - 32px); max-height: 960px; display: flex; flex-direction: column; padding: 18px 22px 16px; }
+.tree-card > * { flex: none; }
+.tree-shards { float: right; font: 26px var(--f-lcd); color: var(--lcd-fg); margin-right: 32px; }
+.tree-sub { margin: -4px 0 4px; font: 13px var(--f-num, monospace); color: var(--muted); }
+.tree-branches { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 2px 0 6px; }
+.tree-col { min-width: 0; padding: 6px 8px; border-radius: var(--radius, 4px); background: #0003; border-top: 3px solid var(--c); }
+.modal-card .tree-col h4 { color: var(--c); margin: 0 0 3px; display: flex; justify-content: space-between; gap: 4px; font-size: 11px; letter-spacing: .12em; white-space: nowrap; }
+.tree-col h4 small { color: var(--muted); font-weight: 400; letter-spacing: 0; }
+.tree-nb { display: grid; grid-template-columns: 1fr auto; gap: 2px 6px; font-size: 11px; color: var(--muted); cursor: help; white-space: nowrap; }
+.tree-nb span, .tree-nb em { overflow: hidden; text-overflow: ellipsis; }
+.tree-nb i { grid-column: 1 / -1; grid-row: 2; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--c) var(--p), #ffffff14 var(--p)); }
+.tree-nb em { font-style: normal; color: var(--lcd-fg); }
+.tree-legend { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 2px 14px; align-items: center; margin: 0; }
+.modal-card .tree-legend { font-size: 12px; }
+.tree-legend i { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: -9px; vertical-align: -1px; background: #121110; box-shadow: 0 0 0 1px #4a4844; }
+.tree-legend i.st-owned { background: #8fe3a0; box-shadow: 0 0 6px #8fe3a0; }
+.tree-legend i.st-available { background: var(--lcd-fg); box-shadow: 0 0 6px var(--lcd-fg); }
+.tree-legend i.st-gated { box-shadow: 0 0 0 1px #c4c9e0; outline: 1px dashed #c4c9e0; outline-offset: 1px; }
+.tree-legend::after { content: 'Survole ou touche un nœud : vert = ce qu\'il demande, pointillés = ce qu\'il ouvre · glisse pour te déplacer, pince ou molette pour zoomer'; flex-basis: 100%; font-size: 11px; }
+.tree-view { position: relative; flex: 1 1 auto; min-height: 340px; margin-top: 8px; border-radius: var(--radius, 4px); background: radial-gradient(ellipse 70% 60% at 50% 100%, #2b2414 0, #151412 75%); box-shadow: var(--bevel-in, inset 0 2px 3px #000a); overflow: hidden; }
+.tree-map { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.tree-map.panning { cursor: grabbing; }
+.tree-stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.tree-links { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.tree-bname { font: 600 13px var(--f-ui); letter-spacing: .22em; text-transform: uppercase; fill: var(--c); opacity: .75; }
+/* links: locked = dotted grey, available = amber flowing dashes, owned = branch colour */
+.tree-link { fill: none; stroke: #4a4844; stroke-width: 2.5; stroke-linecap: round; transition: stroke .3s, opacity .3s, stroke-width .2s; }
+.tree-link.locked { stroke: #45433f; stroke-dasharray: 2 6; }
+.tree-link.available { stroke: var(--lcd-fg); opacity: .6; stroke-dasharray: 7 6; animation: tree-flow 1.4s linear infinite; }
+.tree-link.owned { stroke: var(--c); opacity: .8; stroke-width: 3; }
+.tree-link.x { stroke-width: 2; }
+.tree-link.x.locked { opacity: .7; }
+.tree-link.is-hl { stroke-width: 4.5; opacity: 1; }
+.tree-map:has(.is-focus) .tree-link:not(.is-hl) { opacity: .18; }
+@keyframes tree-flow { to { stroke-dashoffset: -13; } }
+.tree-glow { fill: none; stroke: var(--c); stroke-width: 6; stroke-linecap: round; stroke-dasharray: 1 1; stroke-dashoffset: 1; opacity: 0; pointer-events: none; }
+.tree-glow.lit { opacity: 1; filter: drop-shadow(0 0 6px var(--c)); animation: tree-lit .38s ease-out forwards; }
+.tree-glow.hint { opacity: 1; stroke: var(--lcd-fg); stroke-width: 4; stroke-dasharray: none; animation: tree-hint .2s steps(2) 4 alternate; }
+@keyframes tree-lit { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes tree-hint { from { opacity: 1; } to { opacity: .15; } }
+/* nodes: round LEDs, name and cost on small plates so links never cover the text */
+.tree-node { position: absolute; width: 92px; margin: -15px 0 0 -46px; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: 0; color: var(--muted); font: 500 12px/1.15 var(--f-ui); text-align: center; cursor: pointer; transition: opacity .2s; }
+.tree-node .led { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 13px; line-height: 1;
+  background: radial-gradient(circle at 35% 30%, #3a3936, #121110 70%); box-shadow: inset 0 2px 4px #000c, 0 0 0 2px #0b0a09, 0 0 0 3px #4a4844; transition: transform .15s, box-shadow .3s, background .3s; }
+.tree-node.root { margin-top: -19px; }
+.tree-node.root .led { width: 38px; height: 38px; }
+.tree-node b, .tree-node span { background: #191816e6; border-radius: 3px; padding: 0 4px; max-width: 92px; }
+.tree-node b { font-weight: 600; font-size: 12.5px; line-height: 1.1; padding-top: 1px; }
+.tree-node span { font: 11px var(--f-num, monospace); }
+.tree-node.st-locked b, .tree-node.st-locked span { opacity: .6; }
+.tree-node.st-available { color: var(--lcd-fg); }
+.tree-node.st-available .led { background: radial-gradient(circle at 35% 30%, #fff0c8, var(--lcd-fg) 45%, #8a4d10); animation: led-breathe 2.6s ease-in-out infinite; }
+.tree-node.st-available.cant .led { filter: saturate(.6) brightness(.75); }
+.tree-node.st-available.cant span { color: var(--muted); }
+.tree-node.st-owned { color: var(--text); }
+.tree-node.st-owned .led { background: radial-gradient(circle at 35% 30%, #fff, var(--c) 42%, color-mix(in srgb, var(--c) 55%, #000)); box-shadow: inset 0 -2px 3px #0006, 0 0 0 2px #0b0a09, 0 0 14px color-mix(in srgb, var(--c) 70%, transparent); }
+.tree-node.st-owned span { color: var(--c); }
+.tree-node.st-gated { color: #c4c9e0; }
+.tree-node.st-gated .led { outline: 2px dashed #c4c9e0aa; outline-offset: 3px; }
+@keyframes led-breathe { 0%, 100% { box-shadow: inset 0 -2px 3px #0006, 0 0 0 2px #0b0a09, 0 0 4px color-mix(in srgb, var(--lcd-fg) 30%, transparent); }
+  50% { box-shadow: inset 0 -2px 3px #0006, 0 0 0 2px #0b0a09, 0 0 16px color-mix(in srgb, var(--lcd-fg) 75%, transparent); } }
+.tree-node:hover .led { transform: scale(1.1); }
+.tree-node:focus { outline: none; }
+.tree-node:focus-visible .led { outline: 2px solid #fff; outline-offset: 4px; }
+.tree-map:has(.is-focus) .tree-node:not(.is-focus):not(.is-req):not(.is-dep) { opacity: .35; }
+.tree-node.is-req .led { outline: 2px solid #8fe3a0; outline-offset: 3px; }
+.tree-node.is-dep .led { outline: 2px dashed var(--lcd-fg); outline-offset: 3px; }
+.tree-node.is-sel .led { outline: 2px solid #fff; outline-offset: 4px; }
+.tree-node.shake { animation: tree-shake .35s; }
+/* unlock sequence (G8.5) */
+.tree-node.is-buying .led { animation: led-charge .38s ease-in forwards; }
+.tree-node.is-born .led { animation: led-born .6s cubic-bezier(.2, 1.6, .4, 1); }
+.tree-node.is-blink .led { animation: led-blink .2s steps(2) 4 alternate; }
+@keyframes led-charge { to { transform: scale(.8); box-shadow: 0 0 0 2px #0b0a09, 0 0 24px var(--c); } }
+@keyframes led-born { 0% { transform: scale(.8); } 40% { transform: scale(1.5); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 50%, transparent), 0 0 44px var(--c); } 100% { transform: scale(1); } }
+@keyframes led-blink { from { filter: brightness(2.2); } to { filter: brightness(.6); } }
+.tree-zoom { position: absolute; bottom: 10px; right: 10px; z-index: 2; display: flex; flex-direction: column; gap: 4px; }
+.tree-zoom .btn { min-width: 30px; padding: 4px 8px; font-size: 15px; line-height: 1; }
+.tree-info { position: absolute; left: 10px; bottom: 10px; z-index: 3; width: min(310px, calc(100% - 20px)); padding: 9px 12px 10px; background: var(--panel); border-left: 3px solid var(--c); border-radius: var(--radius, 4px); box-shadow: var(--bevel, none), 0 10px 30px #000b; }
+.tree-info[hidden] { display: none; }
+.tree-info.right { left: auto; right: 54px; }
+.modal-card .tree-info p { margin: 0 0 4px; font-size: 12.5px; line-height: 1.35; color: var(--text); }
+.modal-card .tree-info .ti-h b { color: var(--c); font-size: 14px; }
+.modal-card .tree-info .ti-h small, .modal-card .tree-info .ti-g, .modal-card .tree-info .ti-r { color: var(--muted); font-size: 12px; }
+.tree-info .ti-r .ok { color: #8fe3a0; }
+.tree-info .tree-buy { margin-top: 4px; color: var(--lcd-fg); }
+.tree-info.st-locked .tree-buy { color: var(--muted); }
+@media (max-width: 760px) {
+  #treeDlg { padding: 6px; }
+  .tree-card { padding: 12px 10px 10px; height: calc(100vh - 12px); max-height: none; border-radius: 6px; }
+  .tree-card h3 { font-size: 24px; }
+  .tree-shards { margin-right: 26px; font-size: 22px; }
+  .tree-sub, .modal-card .tree-puzzles { font-size: 11.5px; }
+  .tree-branches { gap: 4px; }
+  .tree-col { padding: 4px 5px; }
+  .modal-card .tree-col h4 { font-size: 9.5px; letter-spacing: .02em; flex-wrap: wrap; }
+  .tree-nb { font-size: 9.5px; grid-template-columns: 1fr; }
+  .tree-nb span { display: none; }
+  .tree-nb i { grid-row: auto; }
+  .tree-legend::after { content: 'Touche un nœud pour sa fiche · glisse, pince pour zoomer'; }
+  .tree-view { min-height: 300px; }
+  .tree-info, .tree-info.right { left: 6px; right: 6px; bottom: 6px; width: auto; }
+  .tree-zoom { flex-direction: row; top: 6px; bottom: auto; right: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tree-node .led, .tree-node.st-available .led, .tree-node.is-buying .led, .tree-node.is-born .led, .tree-node.is-blink .led, .tree-link.available, .tree-glow.lit, .tree-glow.hint { animation: none; transition: none; }
+}

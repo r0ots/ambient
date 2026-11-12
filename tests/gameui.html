@@ -26,7 +26,11 @@ f.addEventListener('load', async ()=>{
   ok(shown('#treeBtn'), 'bouton Arbre visible en parcours'); d.getElementById('treeBtn').click(); await wait(50);
   const tn=(id)=>d.querySelector('.tree-node[data-id="'+id+'"]');
   ok(!d.getElementById('treeDlg').hidden && d.querySelectorAll('.tree-node').length===A.tree.NODES.length && d.querySelectorAll('.tree-col').length===5, 'écran Arbre : 5 branches, tous les nœuds');
-  ok(/Débloque : .*Pad/.test(tn('h.pad').title) && /← Pad, Mélodie auto/.test(tn('c.seq').textContent), 'infobulle « débloque » + prérequis d\'une autre branche');
+  ok(/Débloque : .*Pad/.test(tn('h.pad').title) && /demande Pad, Mélodie auto/.test(tn('c.seq').getAttribute('aria-label')), 'infobulle « débloque » + prérequis d\'une autre branche (aria-label)');
+  { const miss=A.tree.NODES.flatMap(n=>n.req.map(r=>[r,n.id])).filter(([r,n])=>!d.querySelector('#treeDlg .tree-link[data-from="'+r+'"][data-to="'+n+'"]'));
+    ok(!miss.length && d.querySelectorAll('#treeDlg .tree-link.x').length>0 && d.querySelector('#treeDlg svg.tree-links'), 'G11.1 : un lien SVG par prérequis, liens entre branches compris'+(miss.length?' manquants '+miss.join(' '):''));
+    ok(d.querySelector('.tree-link[data-from="racine"][data-to="h.pad"]').classList.contains('available') && d.querySelector('.tree-link[data-from="h.pad"][data-to="h.key"]').classList.contains('locked'), 'liens : disponible / verrouillé');
+    ok(tn('h.pad').tagName==='BUTTON' && /^Pad, Harmonie, disponible, coûte 5 éclats/.test(tn('h.pad').getAttribute('aria-label')) && /verrouillé/.test(tn('h.scale').getAttribute('aria-label')) && /porte d'énigme/.test(tn('t.macros').getAttribute('aria-label')||'')===false, 'nœuds : boutons, aria-label état + coût '+tn('h.pad').getAttribute('aria-label')); }
   tn('h.pad').dispatchEvent(new w.MouseEvent('mouseover',{bubbles:true})); ok(tn('racine').classList.contains('is-req') && tn('h.key').classList.contains('is-dep'), 'survol : prérequis et suites surlignés');
   ok(tn('racine').classList.contains('st-owned') && tn('h.pad').classList.contains('st-available') && tn('h.scale').classList.contains('st-locked'), 'états acquis / disponible / verrouillé');
   const badge=d.querySelector('#treeBtn .tree-badge'), lcdS=d.getElementById('lcdShards');
@@ -35,10 +39,39 @@ f.addEventListener('load', async ()=>{
   A.game.spend(5); await wait(20); ok(badge.hidden, 'plus rien d\'abordable → pas de pastille');
   tn('h.scale').click(); ok(!A.game.has('h.scale') && !d.getElementById('treeDlg').hidden, 'clic sur verrouillé : rien');
   tn('h.pad').click(); ok(!A.game.has('h.pad') && /manque/.test(d.getElementById('toast').textContent), 'pas assez d\'éclats : refus '+d.getElementById('toast').textContent);
-  A.game.earn(A.tree.byId['h.pad'].cost,'t'); A.perform.setMode('listen'); tn('h.pad').click(); await wait(80);
-  ok(A.game.has('h.pad') && A.game.s.shards===0 && d.getElementById('treeDlg').hidden, 'achat au clic, arbre fermé');
+  // touch: a tap selects (card + « Débloquer »), it does not buy
+  { const pe=(t,el,o)=>el.dispatchEvent(new w.PointerEvent(t,Object.assign({bubbles:true,pointerId:7,pointerType:'touch',isPrimary:true},o)));
+    pe('pointerdown',tn('h.pad')); pe('pointerup',tn('h.pad')); tn('h.pad').dispatchEvent(new w.MouseEvent('click',{bubbles:true,detail:1}));
+    const info=d.querySelector('#treeDlg .tree-info');
+    ok(!A.game.has('h.pad') && !info.hidden && /Pad/.test(info.textContent) && /Débloquer · ✧ 5/.test(info.querySelector('.tree-buy').textContent) && tn('h.pad').classList.contains('is-sel') && tn('racine').classList.contains('is-req'), 'toucher = sélection : fiche + bouton Débloquer');
+    // pan (drag) and wheel zoom move the stage; the click that ends a drag does nothing
+    const map=d.querySelector('#treeDlg .tree-map'), v=A.garden.view, k0=v.k;
+    map.dispatchEvent(new w.WheelEvent('wheel',{bubbles:true,cancelable:true,deltaY:-200,clientX:600,clientY:400})); ok(v.k>k0 && /scale/.test(d.querySelector('.tree-stage').style.transform), 'molette : zoom '+k0.toFixed(2)+' → '+v.k.toFixed(2));
+    const tx0=v.tx; pe('pointerdown',tn('h.key'),{clientX:300,clientY:300}); pe('pointermove',tn('h.key'),{clientX:380,clientY:330}); pe('pointerup',tn('h.key'),{clientX:380,clientY:330}); tn('h.key').dispatchEvent(new w.MouseEvent('click',{bubbles:true,detail:1}));
+    ok(v.tx>tx0+40 && A.garden.sel==='h.pad', 'glisser : la carte suit le doigt, pas de sélection en fin de glissé');
+    pe('pointerdown',map,{pointerType:'mouse',pointerId:1}); pe('pointerup',map,{pointerType:'mouse',pointerId:1}); A.garden.fitTree(); }
+  // unlock sequence (G8.5): the tree stays open, link lights up, node bought at the chime, children blink, then close + reveal
+  A.game.earn(A.tree.byId['h.pad'].cost,'t'); A.perform.setMode('listen'); A.garden.select(null); tn('h.pad').click(); await wait(60);
+  ok(A.garden.seq && !d.getElementById('treeDlg').hidden && d.querySelector('.tree-glow.lit[data-from="racine"][data-to="h.pad"]') && tn('h.pad').classList.contains('is-buying') && !A.game.has('h.pad'), 'séquence : arbre ouvert, lien racine→Pad qui s\'allume');
+  await wait(450);
+  ok(A.game.has('h.pad') && A.game.s.shards===0 && tn('h.pad').classList.contains('st-owned') && tn('h.pad').classList.contains('is-born') && tn('h.key').classList.contains('is-blink') && tn('h.drone').classList.contains('is-blink') && !d.getElementById('treeDlg').hidden, 'au carillon : nœud acquis, enfants devenus disponibles qui clignotent');
+  await wait(900);
+  ok(!A.garden.seq && A.game.has('h.pad') && d.getElementById('treeDlg').hidden, 'fin de séquence : achat fait, arbre fermé');
   ok(A.mode==='sculpt' && d.querySelector('.panel[data-sec=pad] .is-new'), 'révélé : mode Sculpter, réglages du Pad en surbrillance');
   d.getElementById('treeBtn').click(); await wait(30);
+  // a click during the sequence fast-forwards it; reduced motion = final state at once
+  { A.game.earn(20,'t'); tn('h.drone').click(); ok(A.garden.seq && !A.game.has('h.drone'), 'séquence lancée');
+    d.querySelector('#treeDlg .tree-card').click(); ok(!A.garden.seq && A.game.has('h.drone') && d.getElementById('treeDlg').hidden && !d.querySelector('#treeDlg .is-buying, #treeDlg .is-born, #treeDlg .tree-glow.lit'), 'clic pendant la séquence : accélérée jusqu\'à la fin');
+    A.garden.showTree(true); await wait(20); A.juice.reduced=true; tn('h.pad2').click();
+    ok(A.game.has('h.pad2') && tn('h.pad2').classList.contains('st-owned') && !tn('h.pad2').classList.contains('is-born') && !d.querySelector('#treeDlg .tree-glow.lit') && !d.getElementById('treeDlg').hidden, 'mouvement réduit : état final tout de suite, sans animation');
+    await wait(800); ok(d.getElementById('treeDlg').hidden && !A.garden.seq, 'mouvement réduit : puis fermeture'); A.juice.reduced=false;
+    A.game.reset(); A.game.earn(A.tree.byId['h.pad'].cost,'t'); A.tree.buy('h.pad'); A.game.spend(A.game.s.shards); }
+  // G11.1: at 390 px the map pans / zooms inside the card, nothing overflows horizontally
+  { f.style.width='390px'; f.style.height='844px'; await wait(200); A.garden.showTree(true); await wait(80);
+    const de=d.documentElement, card=d.querySelector('#treeDlg .tree-card'), map=d.querySelector('#treeDlg .tree-map');
+    ok(de.scrollWidth<=de.clientWidth && card.getBoundingClientRect().right<=de.clientWidth && map.clientWidth<=card.clientWidth && A.garden.view.k<1, '390 px : aucun débordement ('+de.scrollWidth+'/'+de.clientWidth+'), carte zoomée à '+A.garden.view.k.toFixed(2));
+    ok(d.querySelectorAll('#treeDlg .tree-nb').length===5 && /Énigmes \d+\/12/.test(d.querySelector('.tree-puzzles').textContent) && card.getBoundingClientRect().bottom<=de.clientHeight+1, '390 px : carnets et énigmes visibles, carte dans l\'écran');
+    A.garden.showTree(false); f.style.width='1300px'; f.style.height='900px'; await wait(200); A.garden.showTree(true); await wait(30); }
   d.querySelector('#treeDlg [data-close]').click(); ok(d.getElementById('treeDlg').hidden, 'fermeture');
   ok(!locked('#play') && !locked('[data-key="drone.vol"]') && !locked('[data-mode=sculpt]'), 'racine visible (lecture, drone, Sculpter)');
   ok(locked('#dice') && locked('[data-key="fx.echo"]') && locked('[data-mode=compose]') && locked('#scenes') && locked('.recgrp'), 'le reste caché');
@@ -214,7 +247,7 @@ f.addEventListener('load', async ()=>{
   Jz.pool.forEach(p=>p.on=false); Jz.alive=0;
   const fr=Jz.floatText({x:5,y:5},'+1'); ok(fr.classList.contains('still'), 'réduit : floatText sans montée'); fr.remove();
   const fx=Jz.flash(); ok(+fx.style.getPropertyValue('--fx-peak')<=0.1, 'réduit : flash ≤ 0,1'); fx.remove();
-  let anims=0; const sh=d.createElement('div'); d.body.append(sh); sh.animate=()=>{anims++}; Jz.shake(sh,5); Jz.hitstop(50); ok(anims===0 && Jz.hold<=0, 'réduit : shake et hitstop = rien');
+  let anims=0; const sh=d.createElement('div'); d.body.append(sh); sh.animate=()=>{anims++}; const h0=Jz.hold; Jz.shake(sh,5); Jz.hitstop(50); ok(anims===0 && Jz.hold===h0, 'réduit : shake et hitstop = rien');
   Jz.reduced=false; Jz.shake(sh,5); ok(anims===1, 'shake actif sinon'); sh.remove();
   A.garden.showTree(true); A.game.s.shards=0; tn('t.rec').click(); ok(true, 'refus sans erreur'); A.garden.showTree(false);
   A.game.earn(200,'t'); A.garden.showTree(true); await wait(20); const jnb=Jz.alive, av=A.tree.NODES.find(n=>n.cost&&A.tree.status(n.id)==='available'); A.tree.buy(av.id); ok(Jz.alive>jnb && !!d.querySelector('.fx-flash'), 'achat de nœud → burst + flash'); A.garden.showTree(false);
