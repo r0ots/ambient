@@ -1,22 +1,77 @@
-// « Jardin sonore » : the tree screen — layout, buying, reveal, shard counter and badge.
+// « Jardin sonore » : the tree screen — talent map (G11.1), buying + unlock sequence (G8.5),
+// reveal, shard counter and badge.
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const $ = (s) => document.querySelector(s);
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  // fan order, left to right: the trunk in the middle, Composer between its two parents
+  const FAN = ['espace', 'harmonie', 'tronc', 'composer', 'mouvement'];
+  const STATE_TXT = { owned: 'acquis', available: 'disponible', gated: 'porte d\'énigme', locked: 'verrouillé' };
+  const L = { W: 1220, ROW: 98, TOP: 60, BOT: 66, MIN: 94, GAP: 94, A: 46, B: 50, M: 50 };
+  const SEQ = { link: 380, end: 1200, reduced: 650 }; // unlock sequence timing (ms)
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
   Object.assign(AMB.garden, {
-    // ---- tree screen (G2.1) ----
     depth(id, memo = {}) {
       if (memo[id] != null) return memo[id];
       const n = AMB.tree.byId[id];
       return (memo[id] = n.req.length ? 1 + Math.max(...n.req.map((r) => this.depth(r, memo))) : 0);
     },
-    showTree(on) { const d = $('#treeDlg'); if (!d) return; d.hidden = !on; if (on) this.renderTree(); },
+    fanOrder() {
+      const bs = Object.keys(AMB.tree.BRANCHES);
+      return FAN.filter((b) => bs.includes(b)).concat(bs.filter((b) => !FAN.includes(b)));
+    },
+    // ---- layout (G11.1): rows by level from the bottom, branch bands spreading out like a fan ----
+    // A branch holds at most 2 nodes per row (3 for the trunk and big branches), so rows stay readable
+    // and the outer branches climb into the upper corners.
+    treeLayout() {
+      const T = AMB.tree;
+      if (this._lay && this._lay.n === T.NODES.length) return this._lay;
+      const memo = {}, order = this.fanOrder(), mid = (order.length - 1) / 2;
+      const slot = Object.fromEntries(order.map((b, i) => [b, i - mid]));
+      const count = {}; T.NODES.forEach((n) => { count[n.branch] = (count[n.branch] || 0) + 1; });
+      const lvl = {}, used = {};
+      const sorted = T.NODES.map((n, i) => [n, i]).sort((a, b) => this.depth(a[0].id, memo) - this.depth(b[0].id, memo) || a[1] - b[1]).map((x) => x[0]);
+      for (const n of sorted) {
+        let l = n.req.length ? 1 + Math.max(...n.req.map((r) => lvl[r])) : 0;
+        const cap = slot[n.branch] === 0 || count[n.branch] > 8 ? 3 : 2;
+        while ((used[n.branch + '|' + l] || 0) >= cap) l++;
+        used[n.branch + '|' + l] = (used[n.branch + '|' + l] || 0) + 1;
+        lvl[n.id] = l;
+      }
+      const maxL = Math.max(...Object.values(lvl)), H = L.TOP + maxL * L.ROW + L.BOT, CX = L.W / 2;
+      const pos = {};
+      for (let l = 0; l <= maxL; l++) {
+        const row = [];
+        for (const b of order) {
+          const sib = T.NODES.filter((n) => n.branch === b && lvl[n.id] === l);
+          sib.forEach((n, i) => row.push({ n, want: CX + slot[b] * (L.A + L.B * l) + (i - (sib.length - 1) / 2) * L.GAP }));
+        }
+        if (!row.length) continue;
+        // (rows are built branch by branch in fan order: branches never interleave)
+        // sweep: keep a minimum gap, then shift the row back to where it wanted to be, inside the stage
+        row.forEach((r, i) => { r.x = i ? Math.max(r.want, row[i - 1].x + L.MIN) : r.want; });
+        const shift = row.reduce((s, r) => s + r.want - r.x, 0) / row.length;
+        let lo = row[0].x + shift, hi = row[row.length - 1].x + shift, d = shift;
+        if (lo < L.M) d += L.M - lo; else if (hi > L.W - L.M) d -= hi - (L.W - L.M);
+        lo = row[0].x + d; if (lo < L.M) d += L.M - lo; // too wide: pin to the left edge
+        row.forEach((r) => { pos[r.n.id] = { x: Math.round(r.x + d), y: L.TOP + (maxL - l) * L.ROW, l }; });
+      }
+      return (this._lay = { n: T.NODES.length, pos, W: L.W, H, maxL });
+    },
+    showTree(on) {
+      const d = $('#treeDlg'); if (!d) return;
+      if (!on && this.seq) { this.seqFinish(); return; } // closing during the unlock sequence = finish it now
+      d.hidden = !on;
+      if (on) { this.select(null); this.renderTree(); this.fitTree(); }
+    },
+    // ---- the screen: header (shards, puzzles, branches) + the map, built once and repainted ----
     renderTree() {
       const map = $('#treeDlg .tree-map'); if (!map) return;
-      const T = AMB.tree, g = AMB.game, memo = {};
+      const T = AMB.tree, g = AMB.game;
       const all = this.notebook();
       $('#treeDlg .tree-shards').textContent = `✧ ${g.s.shards}`;
       const sub = $('#treeDlg .tree-sub'); if (sub) sub.textContent = `${this.complete() ? '✦ Jardin complet · ' : ''}${g.s.nodes.length}/${T.NODES.length} nœuds · ${all.done}/${all.total} découvertes · ✧ ${g.s.earned} gagnés en tout`;
-      map.innerHTML = '';
       // puzzles: bonus ones you can try now, and how many are solved
       const pzEl = $('#treeDlg .tree-puzzles');
       if (pzEl && AMB.puzzles) {
@@ -35,44 +90,258 @@
         if (replay.length) pzEl.append(' · à rejouer :');
         for (const x of replay) add(x, `↻ ${x.title} ${this.starText(P.best(x.id))}`, `${x.intro}\n\nRejouer pour les étoiles (moins d'essais, moins d'écoutes).`);
       }
-      for (const [bid, br] of Object.entries(T.BRANCHES)) {
-        const col = document.createElement('div');
-        col.className = 'tree-col'; col.style.setProperty('--c', br.color);
-        const nodes = T.NODES.filter((n) => n.branch === bid);
-        const owned = nodes.filter((n) => g.has(n.id)).length;
-        col.innerHTML = `<h4>${br.name} <small>${owned}/${nodes.length}</small></h4>`;
-        const nb = this.notebook(bid), pct = nb.total ? Math.round((nb.done / nb.total) * 100) : 0;
-        const nbEl = document.createElement('div');
-        nbEl.className = 'tree-nb';
-        nbEl.innerHTML = `<span>Découvertes ${nb.done}/${nb.total}</span><i style="--p:${pct}%"></i>`
-          + (nb.todo.length ? `<em>${nb.todo.length} à essayer</em>` : '');
-        nbEl.title = nb.todo.length ? `À essayer (déjà débloqué) :\n${nb.todo.map((x) => '· ' + x.label).join('\n')}` : 'Rien à essayer pour l\'instant : débloque d\'autres nœuds';
-        col.append(nbEl);
-        const rows = {};
-        for (const n of nodes) (rows[this.depth(n.id, memo)] = rows[this.depth(n.id, memo)] || []).push(n);
-        for (const d of Object.keys(rows).sort((a, b) => a - b)) {
-          const row = document.createElement('div'); row.className = 'tree-row';
-          for (const n of rows[d]) {
-            const st = T.status(n.id);
-            const b = document.createElement('button');
-            b.className = `tree-node st-${st}`; b.dataset.id = n.id;
-            // prerequisites from another branch are spelled out under the name
-            const ext = n.req.filter((r) => T.byId[r].branch !== n.branch).map((r) => T.byId[r].name);
-            b.innerHTML = `<b>${n.name}</b><span>${st === 'owned' ? '✓' : n.cost ? `✧ ${n.cost}` : 'offert'}${n.gate && st !== 'owned' ? ' · 🔒 énigme' : ''}</span>`
-              + (ext.length && st !== 'owned' ? `<em>← ${ext.join(', ')}</em>` : '');
-            b.title = `${n.desc}\n\nDébloque : ${T.grants(n.id).join(', ') || '—'}`
-              + (n.req.length ? `\nDemande : ${n.req.map((r) => T.byId[r].name).join(', ')}` : '')
-              + (n.gate ? `\nPorte : une énigme d'écoute à résoudre` : '');
-            row.append(b);
-          }
-          col.append(row);
+      // one small card per branch: owned count + notebook (discoveries left to try)
+      const brEl = $('#treeDlg .tree-branches');
+      if (brEl) {
+        brEl.innerHTML = '';
+        for (const bid of this.fanOrder()) {
+          const br = T.BRANCHES[bid], col = document.createElement('div');
+          col.className = 'tree-col'; col.dataset.branch = bid; col.style.setProperty('--c', br.color);
+          const nodes = T.NODES.filter((n) => n.branch === bid);
+          const owned = nodes.filter((n) => g.has(n.id)).length;
+          const nb = this.notebook(bid), pct = nb.total ? Math.round((nb.done / nb.total) * 100) : 0;
+          col.innerHTML = `<h4>${br.name} <small>${owned}/${nodes.length}</small></h4>`;
+          const nbEl = document.createElement('div');
+          nbEl.className = 'tree-nb';
+          nbEl.innerHTML = `<span>Découvertes ${nb.done}/${nb.total}</span><i style="--p:${pct}%"></i>`
+            + (nb.todo.length ? `<em>${nb.todo.length} à essayer</em>` : '');
+          nbEl.title = nb.todo.length ? `À essayer (déjà débloqué) :\n${nb.todo.map((x) => '· ' + x.label).join('\n')}` : 'Rien à essayer pour l\'instant : débloque d\'autres nœuds';
+          col.append(nbEl);
+          brEl.append(col);
         }
-        map.append(col);
       }
+      if (!map.querySelector('.tree-stage') || map.dataset.n !== String(T.NODES.length)) this.buildMap(map);
+      this.paintTree();
     },
-    // ---- buying (G2.2) ----
+    // the stage: SVG links under absolutely placed LED buttons, in layout units (pan/zoom = one transform)
+    buildMap(map) {
+      const T = AMB.tree, lay = this.treeLayout();
+      map.innerHTML = ''; map.dataset.n = T.NODES.length;
+      const stage = document.createElement('div');
+      stage.className = 'tree-stage'; stage.style.width = lay.W + 'px'; stage.style.height = lay.H + 'px';
+      const svg = document.createElementNS(SVGNS, 'svg');
+      svg.setAttribute('class', 'tree-links'); svg.setAttribute('viewBox', `0 0 ${lay.W} ${lay.H}`);
+      svg.setAttribute('width', lay.W); svg.setAttribute('height', lay.H); svg.setAttribute('aria-hidden', 'true');
+      // branch names at the tip of each band
+      for (const bid of this.fanOrder()) {
+        const ps = T.NODES.filter((n) => n.branch === bid).map((n) => lay.pos[n.id]); if (!ps.length) continue;
+        const top = Math.min(...ps.map((p) => p.y)), xs = ps.filter((p) => p.y === top).map((p) => p.x);
+        const t = document.createElementNS(SVGNS, 'text');
+        t.setAttribute('class', 'tree-bname'); t.setAttribute('x', xs.reduce((a, b) => a + b, 0) / xs.length); t.setAttribute('y', top - 30);
+        t.setAttribute('text-anchor', 'middle'); t.style.setProperty('--c', T.BRANCHES[bid].color); t.textContent = T.BRANCHES[bid].name;
+        if (bid !== 'tronc') svg.append(t);
+      }
+      const gl = document.createElementNS(SVGNS, 'g');
+      for (const n of T.NODES) for (const r of n.req) {
+        const a = lay.pos[r], b = lay.pos[n.id], dy = a.y - b.y;
+        const d = `M${a.x} ${a.y}C${a.x} ${a.y - dy * 0.55} ${b.x} ${b.y + dy * 0.45} ${b.x} ${b.y}`;
+        const cross = T.byId[r].branch !== n.branch;
+        for (const glow of [false, true]) {
+          const p = document.createElementNS(SVGNS, 'path');
+          p.setAttribute('d', d); if (glow) p.setAttribute('pathLength', '1');
+          p.setAttribute('class', glow ? 'tree-glow' : 'tree-link' + (cross ? ' x' : ''));
+          p.dataset.from = r; p.dataset.to = n.id; p.style.setProperty('--c', T.BRANCHES[n.branch].color);
+          gl.append(p);
+        }
+      }
+      svg.append(gl);
+      stage.append(svg);
+      // buttons in reading order: branch by branch (fan order), bottom to top
+      const ord = this.fanOrder();
+      const nodes = [...T.NODES].sort((a, b) => (a.id === 'racine' ? -1 : b.id === 'racine' ? 1 : 0)
+        || ord.indexOf(a.branch) - ord.indexOf(b.branch) || lay.pos[a.id].l - lay.pos[b.id].l || lay.pos[a.id].x - lay.pos[b.id].x);
+      for (const n of nodes) {
+        const p = lay.pos[n.id], b = document.createElement('button');
+        b.type = 'button'; b.className = 'tree-node'; b.dataset.id = n.id;
+        if (!n.req.length) b.classList.add('root');
+        b.style.left = p.x + 'px'; b.style.top = p.y + 'px'; b.style.setProperty('--c', T.BRANCHES[n.branch].color);
+        b.innerHTML = `<i class="led" aria-hidden="true"></i><b>${n.name}</b><span></span>`;
+        b.title = `${n.desc}\n\nDébloque : ${T.grants(n.id).join(', ') || '—'}`
+          + (n.req.length ? `\nDemande : ${n.req.map((r) => T.byId[r].name).join(', ')}` : '')
+          + (n.gate ? `\nPorte : une énigme d'écoute à résoudre` : '');
+        stage.append(b);
+      }
+      map.append(stage);
+    },
+    // states only (classes, cost line, aria-label): never rebuilds, so the unlock animation survives
+    paintTree() {
+      const map = $('#treeDlg .tree-map'); if (!map) return;
+      const T = AMB.tree, g = AMB.game;
+      map.querySelectorAll('.tree-node').forEach((b) => {
+        const n = T.byId[b.dataset.id]; if (!n) return;
+        const st = T.status(n.id);
+        for (const s of Object.keys(STATE_TXT)) b.classList.toggle('st-' + s, s === st);
+        b.querySelector('.led').textContent = st === 'gated' ? '🔒' : '';
+        b.querySelector('span').textContent = st === 'owned' ? '✓' : (n.cost ? `✧ ${n.cost}` : 'offert') + (st === 'gated' ? ' · énigme' : '');
+        b.classList.toggle('cant', st === 'available' && !g.canAfford(n.cost));
+        const ext = n.req.filter((r) => T.byId[r].branch !== n.branch);
+        b.setAttribute('aria-label', `${n.name}, ${T.BRANCHES[n.branch].name}, ${STATE_TXT[st]}`
+          + (st === 'owned' ? '' : n.cost ? `, coûte ${n.cost} éclats` : ', offert')
+          + (n.req.length && st !== 'owned' ? `, demande ${n.req.map((r) => T.byId[r].name).join(', ')}` : '')
+          + (ext.length && st === 'owned' ? `, relié à ${ext.map((r) => T.byId[r].name).join(', ')}` : ''));
+      });
+      map.querySelectorAll('.tree-link').forEach((p) => {
+        const st = g.has(p.dataset.to) ? 'owned' : g.has(p.dataset.from) ? 'available' : 'locked';
+        p.classList.toggle('owned', st === 'owned'); p.classList.toggle('available', st === 'available'); p.classList.toggle('locked', st === 'locked');
+      });
+      if (this.sel) this.showInfo(this.sel);
+    },
+
+    // ---- pan / zoom (pointer events: drag, pinch, wheel; buttons) ----
+    view: { k: 1, tx: 0, ty: 0 },
+    kLimits() {
+      const map = $('#treeDlg .tree-map'), lay = this.treeLayout();
+      const fit = Math.min(map.clientWidth / lay.W, map.clientHeight / lay.H) || 1;
+      return { fit, min: Math.min(fit, 1) * 0.9, max: 2 };
+    },
+    applyView() {
+      const map = $('#treeDlg .tree-map'), stage = map && map.querySelector('.tree-stage'); if (!stage) return;
+      const v = this.view, lay = this.treeLayout(), vw = map.clientWidth, vh = map.clientHeight, pad = 40;
+      const w = lay.W * v.k, h = lay.H * v.k;
+      v.tx = w <= vw ? (vw - w) / 2 : clamp(v.tx, vw - w - pad, pad);
+      v.ty = h <= vh ? (vh - h) / 2 : clamp(v.ty, vh - h - pad, pad);
+      stage.style.transform = `translate(${v.tx}px, ${v.ty}px) scale(${v.k})`;
+      map.classList.toggle('zoomed', w > vw + 1 || h > vh + 1);
+    },
+    // whole map when it is readable, else a closer look on the trunk (mobile): pan and pinch for the rest
+    fitTree(whole) {
+      const map = $('#treeDlg .tree-map'); if (!map || !map.clientWidth) return;
+      const lay = this.treeLayout(), lim = this.kLimits(), v = this.view;
+      v.k = whole || lim.fit >= 0.6 ? Math.min(lim.fit, 1.15) : Math.min(0.75, lim.max);
+      const root = lay.pos.racine || { x: lay.W / 2, y: lay.H };
+      v.tx = map.clientWidth / 2 - root.x * v.k;
+      v.ty = map.clientHeight - (lay.H - L.BOT / 3) * v.k; // root (bottom) in view
+      this.applyView();
+    },
+    zoomAt(cx, cy, f) {
+      const map = $('#treeDlg .tree-map'), r = map.getBoundingClientRect(), v = this.view, lim = this.kLimits();
+      const k = clamp(v.k * f, lim.min, lim.max), px = cx - r.left, py = cy - r.top;
+      v.tx = px - (px - v.tx) * (k / v.k); v.ty = py - (py - v.ty) * (k / v.k); v.k = k;
+      this.applyView();
+    },
+    panToNode(id, below = 0) { // bring a node into the view (keyboard focus, touch selection under the card)
+      const map = $('#treeDlg .tree-map'), el = map && map.querySelector(`.tree-node[data-id="${id}"]`); if (!el) return;
+      const r = map.getBoundingClientRect(), e = el.getBoundingClientRect(), m = 16;
+      let dx = 0, dy = 0;
+      if (e.left < r.left + m) dx = r.left + m - e.left; else if (e.right > r.right - m) dx = r.right - m - e.right;
+      if (e.top < r.top + m) dy = r.top + m - e.top; else if (e.bottom > r.bottom - m - below) dy = r.bottom - m - below - e.bottom;
+      if (dx || dy) { this.view.tx += dx; this.view.ty += dy; this.applyView(); }
+    },
+
+    // ---- hover / focus / touch selection: prerequisites & what follows lit, node card ----
+    sel: null,
+    mark(id) {
+      const map = $('#treeDlg .tree-map'); if (!map) return;
+      map.querySelectorAll('.is-req, .is-dep, .is-focus, .is-hl').forEach((e) => e.classList.remove('is-req', 'is-dep', 'is-focus', 'is-hl'));
+      if (!id || !AMB.tree.byId[id]) return;
+      const q = (x) => map.querySelector(`.tree-node[data-id="${x}"]`);
+      const me = q(id); if (me) me.classList.add('is-focus');
+      AMB.tree.byId[id].req.forEach((r) => { const e = q(r); if (e) e.classList.add('is-req'); });
+      AMB.tree.dependents(id).forEach((r) => { const e = q(r); if (e) e.classList.add('is-dep'); });
+      map.querySelectorAll(`.tree-link[data-to="${id}"], .tree-link[data-from="${id}"]`).forEach((p) => p.classList.add('is-hl'));
+    },
+    select(id) {
+      this.sel = id || null;
+      const map = $('#treeDlg .tree-map');
+      if (map) map.querySelectorAll('.is-sel').forEach((e) => e.classList.remove('is-sel'));
+      if (id && map) { const b = map.querySelector(`.tree-node[data-id="${id}"]`); if (b) b.classList.add('is-sel'); }
+      this.mark(id); this.showInfo(id);
+    },
+    showInfo(id) {
+      const box = $('#treeDlg .tree-info'); if (!box) return;
+      const T = AMB.tree, g = AMB.game, n = id && T.byId[id];
+      if (!n) { box.hidden = true; box.dataset.id = ''; return; }
+      const st = T.status(id), br = T.BRANCHES[n.branch];
+      const req = n.req.map((r) => `<span class="${g.has(r) ? 'ok' : ''}">${g.has(r) ? '✓' : '·'} ${T.byId[r].name}</span>`).join(' ');
+      const act = st === 'owned' ? '' : st === 'gated' ? '◈ Résoudre l\'énigme' : `Débloquer · ${n.cost ? '✧ ' + n.cost : 'offert'}`;
+      box.style.setProperty('--c', br.color);
+      box.dataset.id = id; box.className = `tree-info st-${st}`;
+      box.innerHTML = `<p class="ti-h"><b>${n.name}</b> <small>${br.name} · ${STATE_TXT[st]}${st !== 'owned' && n.cost ? ` · ✧ ${n.cost}` : ''}</small></p>`
+        + `<p class="ti-d">${n.desc}</p>`
+        + `<p class="ti-g">Débloque : ${T.grants(id).join(', ') || '—'}</p>`
+        + (n.req.length ? `<p class="ti-r">Demande : ${req}</p>` : '')
+        + (n.gate && st !== 'owned' ? '<p class="ti-r">Porte : une énigme d\'écoute à résoudre</p>' : '')
+        + (act ? `<button type="button" class="btn small tree-buy">${act}</button>` : '');
+      // the card sits in the empty corner opposite to the node (the fan leaves both bottom corners free)
+      const map = $('#treeDlg .tree-map'), el = map && map.querySelector(`.tree-node[data-id="${id}"]`);
+      if (el && map) { const r = map.getBoundingClientRect(), e = el.getBoundingClientRect(); box.classList.toggle('right', e.left + e.width / 2 < r.left + r.width / 2); }
+      box.hidden = false;
+    },
+    // all map interaction, wired once from garden.build()
+    wireTree() {
+      const map = $('#treeDlg .tree-map'), dlg = $('#treeDlg'); if (!map || this._wired) return; this._wired = true;
+      let ptype = 'mouse', drag = null, pinch = null, suppress = false;
+      const pts = new Map();
+      const touchy = () => ptype === 'touch' || ptype === 'pen';
+      map.addEventListener('pointerdown', (e) => {
+        ptype = e.pointerType || 'mouse';
+        pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (pts.size === 1) drag = { x0: e.clientX, y0: e.clientY, tx: this.view.tx, ty: this.view.ty, moved: false };
+        if (pts.size === 2) {
+          const [a, b] = [...pts.values()];
+          pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1 };
+          if (drag) drag.moved = true;
+        }
+      });
+      map.addEventListener('pointermove', (e) => {
+        if (!pts.has(e.pointerId)) return;
+        pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (pts.size >= 2 && pinch) {
+          const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+          this.zoomAt((a.x + b.x) / 2, (a.y + b.y) / 2, d / pinch.d); pinch.d = d;
+          return;
+        }
+        if (!drag) return;
+        const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
+        if (!drag.moved && Math.hypot(dx, dy) > 6) { drag.moved = true; try { map.setPointerCapture(e.pointerId); } catch (er) {} }
+        if (drag.moved && !pinch) { this.view.tx = drag.tx + dx; this.view.ty = drag.ty + dy; this.applyView(); map.classList.add('panning'); }
+      });
+      const up = (e) => {
+        if (!pts.has(e.pointerId)) return;
+        pts.delete(e.pointerId);
+        if (drag && drag.moved) suppress = true;
+        if (pts.size < 2) pinch = null;
+        if (!pts.size) { drag = null; map.classList.remove('panning'); setTimeout(() => { suppress = false; }, 0); }
+        else { const [a] = [...pts.values()]; drag = { x0: a.x, y0: a.y, tx: this.view.tx, ty: this.view.ty, moved: true }; }
+      };
+      map.addEventListener('pointerup', up); map.addEventListener('pointercancel', up);
+      map.addEventListener('click', (e) => { if (suppress) { e.stopPropagation(); e.preventDefault(); suppress = false; } }, true);
+      map.addEventListener('wheel', (e) => { e.preventDefault(); this.zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015))); }, { passive: false });
+      // a focused button off-screen must not scroll the clipped map: pan instead
+      map.addEventListener('scroll', () => { map.scrollLeft = 0; map.scrollTop = 0; });
+      // hovering / focusing a node lights its prerequisites and what it leads to, and shows its card
+      map.addEventListener('mouseover', (e) => { if (touchy()) return; const b = e.target.closest('.tree-node'); if (b) { this.mark(b.dataset.id); this.showInfo(b.dataset.id); } });
+      map.addEventListener('mouseleave', () => { this.mark(this.sel); this.showInfo(this.sel); });
+      map.addEventListener('focusin', (e) => { const b = e.target.closest('.tree-node'); if (!b) return; this.mark(b.dataset.id); this.showInfo(b.dataset.id); this.panToNode(b.dataset.id); });
+      // click: mouse / keyboard buy at once; a finger selects (card with a « Débloquer » button)
+      map.addEventListener('click', (e) => {
+        const b = e.target.closest('.tree-node');
+        if (!b) { if (touchy()) this.select(null); return; }
+        if (touchy() && e.detail !== 0) {
+          this.select(b.dataset.id);
+          const box = $('#treeDlg .tree-info'), view = $('#treeDlg .tree-view');
+          if (box && view && getComputedStyle(box).position === 'absolute') this.panToNode(b.dataset.id, box.offsetHeight + 8);
+          return;
+        }
+        this.tryBuy(b.dataset.id);
+      });
+      const info = $('#treeDlg .tree-info');
+      if (info) info.addEventListener('click', (e) => { if (e.target.closest('.tree-buy') && info.dataset.id) this.tryBuy(info.dataset.id); });
+      const zm = $('#treeDlg .tree-zoom');
+      if (zm) zm.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-zoom]'); if (!b) return;
+        const r = map.getBoundingClientRect();
+        if (b.dataset.zoom === 'fit') this.fitTree(true); else this.zoomAt(r.left + r.width / 2, r.top + r.height / 2, b.dataset.zoom === 'in' ? 1.3 : 1 / 1.3);
+      });
+      // any click during the unlock sequence fast-forwards it
+      if (dlg) dlg.addEventListener('click', (e) => { if (this.seq) { e.stopPropagation(); e.preventDefault(); this.seqFinish(); } }, true);
+      window.addEventListener('resize', () => { if (dlg && !dlg.hidden) this.fitTree(); });
+    },
+
+    // ---- buying (G2.2) + unlock sequence (G8.5) ----
     tryBuy(id) {
       const T = AMB.tree, g = AMB.game, n = T.byId[id], st = T.status(id);
+      if (this.seq) { this.seqFinish(); return false; }
       const el = document.querySelector(`.tree-node[data-id="${id}"]`);
       const shake = () => { this.shake(el); if (AMB.juice) AMB.juice.shake(el, 5); };
       if (st === 'owned') return false;
@@ -84,11 +353,60 @@
         return false;
       }
       if (!g.canAfford(n.cost)) { shake(); AMB.ui.toast(`Il te manque ✧ ${n.cost - g.s.shards}`); return false; }
-      T.buy(id);
-      AMB.ui.toast(`🌱 ${n.name} débloqué`);
-      this.showTree(false);
-      this.reveal(id);
+      this.unlockSeq(id);
       return true;
+    },
+    // ~1.2 s: hitstop, the parent→node links light up, the node is bought (chime + burst in its branch
+    // colour), newly available children blink, then the tree closes and reveal() shows what opened.
+    // Reduced motion: final state + chime at once, short pause, close.
+    seq: null,
+    unlockSeq(id) {
+      const J = AMB.juice, dlg = $('#treeDlg');
+      const el = document.querySelector(`#treeDlg .tree-node[data-id="${id}"]`);
+      const reduced = !!(J && J.reduced), still = reduced || !el || !dlg || dlg.hidden;
+      const s = (this.seq = { id, t: [], hit: false, failed: false });
+      if (still) {
+        this.seqImpact();
+        s.t.push(setTimeout(() => this.seqFinish(), el && dlg && !dlg.hidden ? SEQ.reduced : 0));
+        return;
+      }
+      this.select(null);
+      if (J) J.hitstop(90);
+      el.classList.add('is-buying');
+      document.querySelectorAll(`#treeDlg .tree-glow[data-to="${id}"]`).forEach((p) => { p.classList.remove('lit'); void p.getBoundingClientRect(); p.classList.add('lit'); });
+      s.t.push(setTimeout(() => this.seqImpact(), SEQ.link));
+      s.t.push(setTimeout(() => this.seqFinish(), SEQ.end));
+    },
+    seqImpact() {
+      const s = this.seq; if (!s || s.hit) return; s.hit = true;
+      const T = AMB.tree, n = T.byId[s.id], J = AMB.juice;
+      const kids = T.dependents(s.id), before = Object.fromEntries(kids.map((k) => [k, T.status(k)]));
+      if (!T.buy(s.id)) { // shards spent meanwhile: explain, nothing else
+        s.failed = true;
+        AMB.ui.toast(AMB.game.has(s.id) ? `${n.name} est déjà là` : `Il te manque ✧ ${n.cost - AMB.game.s.shards}`);
+        return;
+      }
+      AMB.ui.toast(`🌱 ${n.name} débloqué`);
+      this.paintTree();
+      const el = document.querySelector(`#treeDlg .tree-node[data-id="${s.id}"]`);
+      if (!el || (J && J.reduced)) return;
+      el.classList.remove('is-buying'); el.classList.add('is-born');
+      if (J) J.burstAt(el, { n: 36, color: T.BRANCHES[n.branch].color, kind: 'shard', speed: 260 });
+      for (const k of kids) {
+        const st = T.status(k); if (st === before[k] || (st !== 'available' && st !== 'gated')) continue;
+        const c = document.querySelector(`#treeDlg .tree-node[data-id="${k}"]`); if (c) c.classList.add('is-blink');
+        document.querySelectorAll(`#treeDlg .tree-glow[data-from="${s.id}"][data-to="${k}"]`).forEach((p) => p.classList.add('hint'));
+      }
+    },
+    seqFinish() {
+      const s = this.seq; if (!s) return;
+      this.seqImpact();
+      s.t.forEach(clearTimeout); this.seq = null;
+      document.querySelectorAll('#treeDlg .is-buying, #treeDlg .is-born, #treeDlg .is-blink, #treeDlg .tree-glow.lit, #treeDlg .tree-glow.hint')
+        .forEach((e) => e.classList.remove('is-buying', 'is-born', 'is-blink', 'lit', 'hint'));
+      if (s.failed) { this.renderTree(); return; }
+      this.showTree(false);
+      this.reveal(s.id);
     },
     // show what a node just opened: go to the right mode, scroll to it, make it glow for a while
     revealTargets(id) {

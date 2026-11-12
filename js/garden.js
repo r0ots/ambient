@@ -223,22 +223,7 @@
       }
       if (AMB.contracts) AMB.contracts.refill();
       this.renderContracts();
-      const tmap = $('#treeDlg .tree-map');
-      // hovering a node lights up its prerequisites and what it leads to
-      const mark = (id) => {
-        tmap.querySelectorAll('.is-req, .is-dep, .is-focus').forEach((e) => e.classList.remove('is-req', 'is-dep', 'is-focus'));
-        if (!id) return;
-        const q = (x) => tmap.querySelector(`.tree-node[data-id="${x}"]`);
-        const me = q(id); if (me) me.classList.add('is-focus');
-        AMB.tree.byId[id].req.forEach((r) => { const e = q(r); if (e) e.classList.add('is-req'); });
-        AMB.tree.dependents(id).forEach((r) => { const e = q(r); if (e) e.classList.add('is-dep'); });
-      };
-      if (tmap) {
-        tmap.addEventListener('mouseover', (e) => { const b = e.target.closest('.tree-node'); mark(b && b.dataset.id); });
-        tmap.addEventListener('mouseleave', () => mark(null));
-        tmap.addEventListener('focusin', (e) => { const b = e.target.closest('.tree-node'); mark(b && b.dataset.id); });
-      }
-      if (tmap) tmap.addEventListener('click', (e) => { const b = e.target.closest('.tree-node'); if (b) this.tryBuy(b.dataset.id); });
+      this.wireTree(); // map: hover / focus / touch selection, pan & zoom, buying (garden-tree.js)
       const tb = $('#treeBtn'); if (tb) tb.addEventListener('click', () => this.showTree(true));
       const td = $('#treeDlg');
       if (td) td.addEventListener('click', (e) => { if (e.target === td || e.target.hasAttribute('data-close')) this.showTree(false); });

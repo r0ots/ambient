@@ -167,8 +167,13 @@
         <h3>Arbre du jardin <span class="tree-shards"></span></h3>
         <p class="tree-sub"></p>
         <p class="tree-puzzles"></p>
+        <div class="tree-branches"></div>
         <p class="tree-legend"><i class="st-owned"></i> acquis <i class="st-available"></i> disponible <i class="st-gated"></i> énigme à résoudre <i class="st-locked"></i> pas encore accessible</p>
-        <div class="tree-map"></div>
+        <div class="tree-view">
+          <div class="tree-map" role="group" aria-label="Carte des talents : glisse pour te déplacer, pince ou molette pour zoomer"></div>
+          <div class="tree-zoom"><button type="button" class="btn small" data-zoom="in" aria-label="Zoomer">+</button><button type="button" class="btn small" data-zoom="out" aria-label="Dézoomer">−</button><button type="button" class="btn small" data-zoom="fit" aria-label="Voir tout l'arbre">⤢</button></div>
+          <div class="tree-info" aria-live="polite" hidden></div>
+        </div>
       </div>
     </div>
 
