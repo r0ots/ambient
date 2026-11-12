@@ -29,7 +29,7 @@ window.addEventListener('load', async ()=>{
   document.querySelector('[data-s=play]').click();
   await new Promise(r=>setTimeout(r,500));
   log('section0 space='+st.get('fx.space').toFixed(2)+' wave='+st.get('pad.wave'));
-  await new Promise(r=>setTimeout(r,2600));
+  await new Promise(r=>setTimeout(r,1900)); // one bar at 140 bpm = 1.7 s
   log('section1 space='+st.get('fx.space').toFixed(2)+' wave='+st.get('pad.wave')+' sections='+secs.join(','));
   // shared motifs: a motif edited after capture is used by every section
   st.set('seq.pattern','0.7.2','user'); log('section snaps have pattern='+SG.sections.some(s=>'seq.pattern' in s.snap)+' origin='+AMB.seq.origin);
@@ -38,7 +38,8 @@ window.addEventListener('load', async ()=>{
   // one-gesture recording: plays the song once from the top, stops by itself, offers a WAV
   const ctx=AMB.engine.ctx, untilAudio=async(sec,cond)=>{const t=ctx.currentTime+sec; while(ctx.currentTime<t&&!(cond&&cond())) await wait(50);};
   const files=[], done=[]; AMB.rec.download=(b,ext)=>files.push({b,ext}); AMB.bus.on('rec:done',x=>done.push(x));
-  SG.pending=null; SG.stop(); SG.sections.forEach(s=>s.bars=1); SG.render();
+  // a short song (one bar, a short tail) keeps the page quick
+  SG.pending=null; SG.stop(); SG.sections.splice(1); SG.sections[0].bars=1; SG.render(); AMB.rec.SONG_TAIL=0.6;
   const bar=16*AMB.seq.stepDur(), want=SG.sections.length*bar+AMB.rec.SONG_TAIL;
   recB.click(); await untilAudio(0.3);
   ok(SG.playing && SG.idx===0 && AMB.rec.songRecording() && recB.classList.contains('rec'), 'clic : le morceau part de la 1re section et s\'enregistre ('+recB.textContent+')');

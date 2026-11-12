@@ -63,7 +63,7 @@
   // fixed SONG_TAIL fade (the reverb rings into it), like the fade of a timed recording, after
   // which the sound comes back. Every wait runs on the audio clock (the WAV is audio frames).
   // A second click cancels: no file and no rec:done (a cut-off take is not a recording).
-  const SONG_TAIL = 2;
+  const SONG_TAIL = 2; // seconds (api.SONG_TAIL: a test may shorten it)
   let songRec = null; // {btn, t0, end, iv}
   const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   async function toggleSongRec(btn) {
@@ -74,11 +74,11 @@
     if (recState) { AMB.ui.toast('Arrête d\'abord l\'enregistrement en cours (● Rec de la barre)'); return; }
     if (song.playing) song.stop();
     const ctx = AMB.engine.ctx;
-    const total = song.sections.reduce((a, s) => a + s.bars, 0) * 16 * AMB.seq.stepDur() + SONG_TAIL;
+    const total = song.sections.reduce((a, s) => a + s.bars, 0) * 16 * AMB.seq.stepDur() + api.SONG_TAIL;
     songRec = { btn, t0: ctx.currentTime, end: null };
     AMB.engine.startCapture();
     song.start((t) => {
-      songRec.end = t + SONG_TAIL;
+      songRec.end = t + api.SONG_TAIL;
       AMB.engine.fadeOut(Math.max(0.1, songRec.end - ctx.currentTime));
     });
     if (!song.playing) { songRec = null; AMB.engine.stopCapture(); return; }

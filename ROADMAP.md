@@ -277,14 +277,14 @@ Préparation V3 (v0.99) : refactors du point d'architecture — coquilles des 5 
 Décision (utilisateur) : pour le neveu, « à terme il a juste une appli de musique complète avec laquelle il peut créer » ; pas de gameplay long sans accroche forte. Le Parcours est une rampe courte qui finit par la remise de l'instrument complet. Le fils doit s'amuser plus longtemps, avec ses mains et ses oreilles. Toujours : tout dans l'instrument, supprimer plutôt qu'empiler, jamais idle, mode libre intact. Écarté : morceau « jugé » par l'appli (juger le goût), entraînement d'oreille ou niveaux (arcade retirée en v1.05), secrets profonds pour la rejouabilité, toute récompense au temps.
 
 Vague 1 (en parallèle)
-- [ ] S3.1 Moteur « Écho » : l'instrument joue une courte phrase (voix Mélodie), le joueur la rejoue aux touches A–L / MIDI, pions ✓ ⬆ ⬇ par note sur la carte d'énigme existante ; nouvelle cible à chaque essai ; rien en mode libre
-- [ ] S3.2 Secrets-clés : un secret trouvé ouvre son nœud de l'arbre sans ✧ (ex. II-V-I → Progression) ; l'indice 2 se débloque par les secrets trouvés, plus par le temps (suppression du minuteur)
-- [ ] S3.3 MIDI de musicien : note-off, sustain (CC64), durée réelle des notes en Rec live
-- [ ] S3.4 Enregistrer le morceau en un geste : « ● Rec » du panneau Morceau joue le morceau depuis le début et l'enregistre en WAV jusqu'à la fin
+- [x] S3.1 (v1.07) Moteur « Écho » : l'instrument joue une courte phrase (voix Mélodie), le joueur la rejoue aux touches A–L / MIDI, pions ✓ ⬆ ⬇ par note sur la carte d'énigme existante ; nouvelle cible à chaque essai ; rien en mode libre. Décision : un kind `echo` dans `puzzles.js` (même carte, même règle des 6 essais, jugé à la dernière note, sans Valider ni jauge) ; aucun secret détecté pendant un Écho ; au MIDI l'octave est libre (classe de hauteur jugée)
+- [x] S3.2 (v1.07) Secrets-clés : un secret trouvé ouvre son nœud de l'arbre sans ✧ (ex. II-V-I → Progression) ; l'indice 2 se débloque par les secrets trouvés, plus par le temps (suppression du minuteur). Décision : table unique `OPENS` (9 secrets → 9 nœuds), prérequis ouverts aussi, nœud déjà acheté = ✧ remboursés ; indice 2 après 2 secrets ; plus aucun ✧ propre aux secrets, l'économie suppose zéro secret
+- [x] S3.3 (v1.07) MIDI de musicien : note-off, sustain (CC64), durée réelle des notes en Rec live. Décision : poignée de note `{id, midi, release}` ; seule la voix « Doux » tient la note, les voix frappées gardent leur résonance ; `panic` à l'arrêt, au débranchement et à la perte de focus
+- [x] S3.4 (v1.07) Enregistrer le morceau en un geste : « ● Rec » du panneau Morceau joue le morceau depuis le début et l'enregistre en WAV jusqu'à la fin. Décision : fin = dernière mesure + 2 s de queue en fondu (le drone ne se tait jamais, pas de détection de silence) ; 2e clic = annulé, sans fichier ni `rec:done` ; les mesures comptent depuis le début de la section (`seq.origin`)
 
 Vague 2
 - [ ] S3.5 Composer resserré en 3 nœuds (Mélodie écrite + arpège + motifs + Rec live ; Rythme = basse + pulsations + groove ; Morceau + automation) ; contrats de dessin remplacés par des contrats joués (Rec live) ; le dernier contrat = « enregistre ton morceau » ; équilibrage recalé
-- [ ] S3.6 Écho branché dans le Parcours : remplace les premières portes « à boutons » (Premier reflet, Suite connue) pour le fils
+- [x] S3.6 (v1.07) Écho branché dans le Parcours : remplace les premières portes « à boutons » (Premier reflet, Suite connue) pour le fils. Décision : Premier reflet (3 notes) garde Grands réglages, Suite connue (4 notes) devient la porte de Phrases ; les nœuds-portes demandent la Mélodie, donc A–L et le MIDI jouent dès que la porte est atteinte ; 9 pastilles A–L sur la carte pour le téléphone ; équilibrage : parcours type 51,8 min, attente max 3,9 min, marge 58 %
 
 Vague 3
 - [ ] S3.7 Remise de l'instrument : arbre complet → ligne de contrat et ✧ disparaissent, le son reste ; l'appli devient l'outil de création
