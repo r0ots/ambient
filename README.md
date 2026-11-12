@@ -10,7 +10,7 @@ python3 -m http.server 8765    # puis http://localhost:8765
 ```
 (ou double-cliquer `index.html` : tout marche sauf l'installation en appli / hors-ligne)
 
-Clique **▶ Lecture** ou **✦ Nouveau paysage**, puis laisse tourner. `?` ouvre l'aide (deux niveaux dans le Parcours).
+Clique **▶ Lecture** ou **✦ Nouveau paysage**, puis laisse tourner. `?` ouvre l'aide (une page Parcours en plus dans le Parcours).
 
 Trois modes (en haut) :
 - **Écouter** — l'écran (glisse dessus : sombre ↔ clair, plus ou moins de notes), 5 grands réglages, les couches.
@@ -18,8 +18,8 @@ Trois modes (en haut) :
 - **Composer** — progression d'accords, mélodie écrite (piano roll), basse, pulsations, automation, morceau.
 
 **Mode libre vs Parcours.** Au premier lancement l'appli propose le **Parcours** (le « Jardin sonore ») ou le **mode libre** (menu ⋯, à tout moment, sans perdre son parcours).
-- **Mode libre** : tout est ouvert, aucune interface de jeu ; seule la borne d'arcade reste offerte. Rien du jeu n'écrit dans les réglages, le journal, l'annulation ni les liens de partage (testé par `tests/free-intact.html`).
-- **Parcours** : on commence avec une seule note et on débloque l'outil dans un arbre de 38 nœuds (5 branches). Les ✧ éclats se gagnent en jouant : découvrir un réglage, remplir un **contrat** d'usage, résoudre une **énigme d'écoute** (reproduire un son cible en 6 validations, 0 à 3 ★ ; après 6 échecs la porte s'ouvre quand même), trouver des **secrets**. S'y ajoutent l'**arcade** (7 mini-jeux d'oreille, pactes, défi du jour, défie ton cousin par lien, classement), un **profil** (musicien / découverte) avec test de placement, et la **sauvegarde** (fichier ou lien). Environ 1 h 30 pour tout l'arbre. On juge l'usage ou la cible, jamais le goût.
+- **Mode libre** : tout est ouvert, aucune interface de jeu. Rien du jeu n'écrit dans les réglages, le journal, l'annulation ni les liens de partage (testé par `tests/free-intact.html`).
+- **Parcours** : on commence avec une seule note et on débloque l'outil dans un arbre de 38 nœuds (5 branches). Les ✧ éclats se gagnent en jouant : découvrir un réglage, remplir un **contrat** d'usage, résoudre une **énigme d'écoute** (reproduire un son cible en 6 validations, 0 à 3 ★ ; après 6 échecs la porte s'ouvre quand même), trouver des **secrets** en jouant. Tout se joue sur l'instrument lui-même ; le visuel **Jardin** montre ce qui a poussé. **Sauvegarde** en fichier ou en lien. Environ 1 h 20 pour tout l'arbre. On juge l'usage ou la cible, jamais le goût.
 
 Look : façade de synthé japonais fin 80 (version nuit), écran LCD d'état en haut à droite.
 
@@ -40,14 +40,14 @@ Lien « kiosque » : `?mood=Contemplatif&viz=Horizon&listen=1&autoplay=1`
 
 ## MIDI
 
-Branche un clavier ou des pads (Chrome, Edge, Opera ; Web MIDI) : ils jouent l'appli (notes graves = accords, CC1 densité, CC74 brillance) et les jeux d'arcade (Réponds, Dictée). Import/export de fichiers `.mid` dans le piano roll. **⟲ Latence** (menu de l'arcade) calibre le retard de chaque entrée (clavier, écran, MIDI) pour les jeux de rythme.
+Branche un clavier ou des pads (Chrome, Edge, Opera ; Web MIDI) : ils jouent l'appli (notes graves = accords, CC1 densité, CC74 brillance). Import/export de fichiers `.mid` dans le piano roll.
 
 ## Développement
 
 - **Lancer en local** : `python3 -m http.server 8765`, puis http://localhost:8765.
-- **Structure** : `js/` (un fichier par domaine ; `js/arcade/` = un fichier par mini-jeu), `css/`, `tests/`. Où mettre quoi, bus, store, contrat d'un mini-jeu : voir [ARCHITECTURE.md](ARCHITECTURE.md).
+- **Structure** : `js/` (un fichier par domaine), `css/`, `tests/`. Où mettre quoi, bus, store : voir [ARCHITECTURE.md](ARCHITECTURE.md).
 - **Tests** (Chrome headless, sans audio réel) : serveur `python3 -u -m http.server 8765 2> /tmp/srv.log`, puis
-  - une page : `LOG=/tmp/srv.log tests/run.sh daily.html 0.4` (une page par module : `tests/<module>.html`, ≤ 10 s ; `PORT=…` pour un autre port) ;
-  - tout : `LOG=/tmp/srv.log tests/run-all.sh` (~2 min, `ALL OK` attendu ; `balance.html` simule l'équilibrage du parcours) ;
+  - une page : `LOG=/tmp/srv.log tests/run.sh save.html 0.4` (une page par module : `tests/<module>.html`, ≤ 10 s ; `PORT=…` pour un autre port) ;
+  - tout : `LOG=/tmp/srv.log tests/run-all.sh` (~1 min, `ALL OK` attendu ; `balance.html` simule l'équilibrage du parcours) ;
   - endurance : `tests/run.sh endurance.html 1`. `tests/game.html` vérifie aussi que `sw.js` précache tout `index.html`, dans l'ordre.
 - Feuille de route et journal des versions : `ROADMAP.md`.
