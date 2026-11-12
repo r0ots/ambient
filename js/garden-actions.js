@@ -60,7 +60,7 @@
       }, true);
       const pre = $('#preset'); if (pre) pre.addEventListener('change', () => emit('preset'));
       if (AMB.bus) AMB.bus.on('act', (id) => this.act(id));
-      AMB.store.on((k, v, src) => { if (src === 'xy') emit('xy'); });
+      AMB.store.on((k, v, src) => { if (src === 'xy' && AMB.game.path) emit('xy'); });
     },
     // ---- discovery notebook (G3.3) ----
     // every discoverable thing: visible controls and actions, each tied to a node (hence a branch)
