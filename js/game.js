@@ -1,5 +1,5 @@
 // « Jardin sonore » : progression state for the gamified path.
-// Shards (✧) are earned by discoveries, usage contracts and target puzzles — never by waiting —
+// Shards (✧) are earned by contracts, target puzzles and secrets — never by waiting —
 // and spent to unlock nodes of the tree. "Free mode" unlocks everything (the classic app).
 (function () {
   const AMB = (window.AMB = window.AMB || {});
@@ -11,11 +11,10 @@
     mode: null, // null = not chosen yet (behaves as free until asked), 'path' or 'free'
     shards: 0, earned: 0, // current balance, lifetime total
     nodes: [], // unlocked node ids
-    found: [], // discovery ids
     contracts: [], // completed contract ids
     puzzles: [], // solved puzzle ids
-    stars: {}, opened: [], runs: {}, pzHelp: false, // puzzles (G8.1): best stars per puzzle, gates opened after 6 failures, attempts in progress, live gauge
-    active: [], prog: {}, // active contracts and their progress (contracts.js)
+    opened: [], runs: {}, pzHelp: false, // puzzles: gates opened after 6 failures, attempts in progress (target + tries), live gauge
+    active: [], prog: {}, // the active contract (one at a time) and its progress (contracts.js)
     skipped: [], // contracts passed (back of the queue)
     rng: null, // contract draw seed (contracts.js)
     secrets: null, // secrets state (secrets.js)
@@ -78,7 +77,7 @@
       return true;
     },
 
-    // one-shot records: discoveries, contracts, puzzles — each only ever counts once
+    // one-shot records: contracts, puzzles — each only ever pays once
     mark(list, id, reward, reason) {
       const arr = this.s[list];
       if (!arr || arr.includes(id)) return false;
@@ -87,7 +86,6 @@
       if (reward) this.earn(reward, reason || list, id);
       return true;
     },
-    discover(id, reward) { return this.mark('found', id, reward, 'découverte'); },
     complete(id, reward) { return this.mark('contracts', id, reward, 'contrat'); },
     solve(id, reward) { return this.mark('puzzles', id, reward, 'énigme'); },
   };

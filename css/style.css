@@ -482,7 +482,7 @@ body.pz-veil .pz-veiled { filter: blur(4px) grayscale(.6); opacity: .55; }
 .pz-help { display: flex; gap: 6px; align-items: center; font-size: 11.5px; color: var(--muted); cursor: pointer; }
 .pz-help input { margin: 0; accent-color: var(--lcd-fg); }
 
-/* G10.1 secrets: folded panel inside the tree screen (path only) + alternative LCD themes (gifts, path only) */
+/* G10.1 secrets: folded panel inside the tree screen (path only) */
 .secrets { margin: 0 0 4px; border-radius: var(--radius, 4px); background: #0003; }
 .secrets[hidden] { display: none; }
 .sc-head { width: 100%; text-align: left; background: none; border: 0; color: var(--lcd-fg); font: 18px var(--f-lcd); padding: 3px 8px; cursor: pointer; letter-spacing: .05em; }
@@ -493,24 +493,11 @@ body.pz-veil .pz-veiled { filter: blur(4px) grayscale(.6); opacity: .55; }
 .modal-card .sc-item, .sc-item { margin: 0; display: grid; gap: 2px; font-size: 12px; line-height: 1.35; color: var(--muted); }
 .sc-item b { font: 15px var(--f-lcd); color: var(--lcd-dim); letter-spacing: .05em; }
 .sc-item.found b { color: var(--lcd-fg); }
-.sc-btn { background: var(--lcd-bg); color: var(--lcd-dim); border: 1px solid #000; border-radius: var(--radius-btn); box-shadow: var(--bevel-in, none); font: 16px var(--f-lcd); padding: 3px 8px; cursor: pointer; text-align: left; }
-.sc-btn.on { color: var(--lcd-fg); text-shadow: 0 0 6px var(--lcd-glow); }
-html[data-lcd="aurore"] { --lcd-bg: #07161a; --lcd-fg: #6ff0d0; --lcd-dim: #1f5a55; --lcd-glow: #6ff0d055; }
-html[data-lcd="neon"] { --lcd-bg: #150a1c; --lcd-fg: #ff6fd8; --lcd-dim: #5a2160; --lcd-glow: #ff6fd855; }
 
 /* G8.5–G11.1 — tree as a talent map (LED nodes, SVG links, pan/zoom) + unlock sequence */
 .tree-card { max-width: 1180px; height: calc(100vh - 32px); max-height: 960px; display: flex; flex-direction: column; padding: 18px 22px 16px; }
 .tree-card > * { flex: none; }
 .tree-shards { float: right; font: 26px var(--f-lcd); color: var(--lcd-fg); margin-right: 32px; }
-.tree-sub { margin: -4px 0 4px; font: 13px var(--f-num, monospace); color: var(--muted); }
-.tree-branches { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 2px 0 6px; }
-.tree-col { min-width: 0; padding: 6px 8px; border-radius: var(--radius, 4px); background: #0003; border-top: 3px solid var(--c); }
-.modal-card .tree-col h4 { color: var(--c); margin: 0 0 3px; display: flex; justify-content: space-between; gap: 4px; font-size: 11px; letter-spacing: .12em; white-space: nowrap; }
-.tree-col h4 small { color: var(--muted); font-weight: 400; letter-spacing: 0; }
-.tree-nb { display: grid; grid-template-columns: 1fr auto; gap: 2px 6px; font-size: 11px; color: var(--muted); cursor: help; white-space: nowrap; }
-.tree-nb span, .tree-nb em { overflow: hidden; text-overflow: ellipsis; }
-.tree-nb i { grid-column: 1 / -1; grid-row: 2; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--c) var(--p), #ffffff14 var(--p)); }
-.tree-nb em { font-style: normal; color: var(--lcd-fg); }
 .tree-legend { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 2px 14px; align-items: center; margin: 0; }
 .modal-card .tree-legend { font-size: 12px; }
 .tree-legend > span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
@@ -593,13 +580,7 @@ html[data-lcd="neon"] { --lcd-bg: #150a1c; --lcd-fg: #ff6fd8; --lcd-dim: #5a2160
   .tree-card { padding: 12px 10px 10px; height: calc(100vh - 12px); max-height: none; border-radius: 6px; }
   .tree-card h3 { font-size: 24px; }
   .tree-shards { margin-right: 26px; font-size: 22px; }
-  .tree-sub, .modal-card .tree-puzzles { font-size: 11.5px; }
-  .tree-branches { gap: 4px; }
-  .tree-col { padding: 4px 5px; }
-  .modal-card .tree-col h4 { font-size: 9.5px; letter-spacing: .02em; flex-wrap: wrap; }
-  .tree-nb { font-size: 9.5px; grid-template-columns: 1fr; }
-  .tree-nb span { display: none; }
-  .tree-nb i { grid-row: auto; }
+  .modal-card .tree-puzzles { font-size: 11.5px; }
   .tree-legend::after { content: 'Touche un nœud pour sa fiche · glisse, pince pour zoomer'; }
   .tree-view { min-height: 300px; }
   .tree-info, .tree-info.right { left: 6px; right: 6px; bottom: 6px; width: auto; }

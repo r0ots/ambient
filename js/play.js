@@ -18,9 +18,8 @@
     const g = AMB.game, can = (id) => !g || g.isUnlocked(id);
     if ((MELODY_LOW.includes(e.code) || MELODY_HIGH.includes(e.code)) && !can('m.bells')) return;
     if (CHORDS.includes(e.code) && !can('h.pad')) return;
-    const mir = AMB.secrets && AMB.secrets.mirrorOn(), md = (d) => (mir ? AMB.secrets.mirrorDeg(d) : d); // G10.1 mirror keyboard (a found gift)
-    if ((i = MELODY_LOW.indexOf(e.code)) >= 0) AMB.seq.playDegree(md(i), e.shiftKey ? 0.5 : 0.85);
-    else if ((i = MELODY_HIGH.indexOf(e.code)) >= 0) AMB.seq.playDegree(md(i + 7), e.shiftKey ? 0.5 : 0.85);
+    if ((i = MELODY_LOW.indexOf(e.code)) >= 0) AMB.seq.playDegree(i, e.shiftKey ? 0.5 : 0.85);
+    else if ((i = MELODY_HIGH.indexOf(e.code)) >= 0) AMB.seq.playDegree(i + 7, e.shiftKey ? 0.5 : 0.85);
     else if ((i = CHORDS.indexOf(e.code)) >= 0) AMB.seq.forceChord(i);
     else return;
     e.preventDefault();
@@ -41,9 +40,11 @@
     const type = st & 0xf0;
     if (type === 0x90 && d2 > 0) {
       if (!AMB.seq.playing) return;
+      // in the path, like the computer keyboard: notes need the Melody, low notes (chords) the Pad
+      const g = AMB.game, can = (id) => !g || g.isUnlocked(id);
       // the heard velocity is remapped to 0.25–1 (soft notes stay audible); the raw one (0..1) rides along on 'live'
-      if (d1 < 48) AMB.seq.forceChord(degreeForPitch(d1));
-      else AMB.seq.playMidi(AMB.secrets && AMB.secrets.mirrorOn() ? AMB.secrets.mirrorMidi(d1) : d1, 0.25 + (d2 / 127) * 0.75, d2 / 127);
+      if (d1 < 48) { if (can('h.pad')) AMB.seq.forceChord(degreeForPitch(d1)); }
+      else if (can('m.bells')) AMB.seq.playMidi(d1, 0.25 + (d2 / 127) * 0.75, d2 / 127);
     } else if (type === 0xb0) {
       const v = d2 / 127;
       // CCs drive the same macros as the XY pad: mod wheel = Densité, CC74 = Lumière, CC91 = Espace, CC93 = Nostalgie
@@ -56,12 +57,12 @@
     if (!navigator.requestMIDIAccess) { AMB.ui.toast('Web MIDI non supporté par ce navigateur'); return; }
     try {
       midiAccess = midiAccess || (await navigator.requestMIDIAccess());
-      if (AMB.bus) AMB.bus.emit('act', 'midiConnect');
       const bind = () => {
         let n = 0;
         midiAccess.inputs.forEach((inp) => { inp.onmidimessage = onMidi; n++; });
         btn.classList.toggle('on', n > 0);
         btn.textContent = n ? `MIDI · ${n}` : 'MIDI';
+        if (n && AMB.bus) AMB.bus.emit('act', 'midiConnect'); // a keyboard is there (the MIDI secrets show their hints)
         return n;
       };
       midiAccess.onstatechange = bind;

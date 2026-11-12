@@ -1,11 +1,11 @@
 // « Jardin sonore » G10.1 : secrets — surprises found by playing, never listed in the tree (shown as « ??? »).
-// Detection runs on bus events (live notes, forced chords, acts) and user changes of the store; only in the
+// Detection runs on bus events (live notes, forced chords) and user changes of the store; only in the
 // path (free mode: nothing is detected nor shown). Rewards persist in game.s.secrets:
-//   found {id: time}, secs (play time), gifts {timbres [{sec,opt}], themes [], mirror}, mirrorOn, theme.
-// Three secrets (Sur le battement, Mesure de silence, Funambule) are trophies: their ✧ only, no gift.
-// Gifts policy (decided, v0.99): found timbres stay in the Melody / Pad « Son » list whatever the mode; the
-// mirror keyboard and the gift LCD themes apply only in the path (off in free mode, back on return). Until a gift
-// is found the classic app is untouched, and free mode never detects nor shows anything.
+//   found {id: time}, secs (play time), midi (a MIDI keyboard was connected), gifts {timbres [{sec,opt}]}.
+// Two secrets give a timbre (Givre, Aube); the others are trophies: their ✧ only (v1.06: no LCD theme, no
+// mirror keyboard). Found timbres stay in the Melody / Pad « Son » list whatever the mode; until one is found
+// the classic app is untouched, and free mode never detects nor shows anything.
+// The MIDI-only secrets (Funambule, Entre les touches) show their hints once a MIDI keyboard has been connected.
 // The panel lives inside the tree screen (#treeDlg), folded by default; free mode: hidden.
 (function () {
   const AMB = (window.AMB = window.AMB || {});
@@ -13,14 +13,11 @@
 
   // ---- definitions: S(id, title, hint1, hint2, reward, detect, node) ----
   // reward { n: shards, gift? }; node = tree node that makes the secret reachable (hint 1 shows once owned)
-  // detect = { live(note, X), chord(c, X), act(id, X), param(k, v, X) } -> true when the gesture is complete
-  const S = (id, title, hint1, hint2, reward, detect, node) => ({ id, title, hint1, hint2, reward, detect, node });
+  // detect = { live(note, X), chord(c, X), param(k, v, X) } -> true when the gesture is complete; midi: needs a MIDI keyboard
+  const S = (id, title, hint1, hint2, reward, detect, node, midi) => ({ id, title, hint1, hint2, reward, detect, node, midi: !!midi });
   const GIFT = {
     givre: { type: 'timbre', sec: 'bells', opt: 'Givre', label: 'timbre « Givre » (Mélodie)' },
     aube: { type: 'timbre', sec: 'pad', opt: 'Aube', label: 'timbre « Aube » (Pad)' },
-    miroir: { type: 'mirror', label: 'clavier miroir' },
-    aurore: { type: 'theme', id: 'aurore', label: 'écran « Aurore »' },
-    neon: { type: 'theme', id: 'neon', label: 'écran « Néon »' },
   };
   const DEFS = [
     S('tons', 'Par tons', 'Cinq notes qui montent sans jamais se presser, un ton à chaque pas.',
@@ -30,37 +27,33 @@
       'Joue 4 notes d\'un arpège diminué : 3 demi-tons à chaque pas (en montant ou en descendant).', { n: 10, gift: GIFT.aube },
       { live: (m, X) => !!X.tail(4) && (X.ivs(4).every((i) => i === 3) || X.ivs(4).every((i) => i === -3)) }, 'm.bells'),
     S('jazz', 'Deux, cinq, un', 'Trois accords qui se tiennent par la main et retombent sur leurs pieds.',
-      'Force trois accords à la suite : II, V puis I (touches X, B puis Z).', { n: 10, gift: GIFT.miroir },
+      'Force trois accords à la suite : II, V puis I (touches X, B puis Z).', { n: 10 },
       { chord: (c, X) => X.chordsEnd([1, 4, 0]) }, 'h.pad'),
     S('lent', 'Lenteur céleste', 'Plus lent qu\'une marée, plus clair qu\'un matin, sans aucune pulsation.',
-      'Tempo à 36 bpm ou moins, Halo à 95 % ou plus, Rythme en Flottant, tout en même temps.', { n: 10, gift: GIFT.aurore },
+      'Tempo à 36 bpm ou moins, Halo à 95 % ou plus, Rythme en Flottant, tout en même temps.', { n: 10 },
       { param: (k) => ['global.tempo', 'fx.shimmer', 'global.time'].includes(k) && store.get('global.tempo') <= 36 && store.get('fx.shimmer') >= 0.95 && store.get('global.time') === 'Flottant' }, 'e.halo'),
     S('pulse', 'Sur le battement', 'Huit pas, et pas un de travers.',
       'Joue 8 notes, une exactement sur chaque temps, pendant que la musique tourne.', { n: 10 },
       { live: (m, X) => X.onBeat(8) }, 'm.bells'),
-    S('gele', 'Cloche gelée', 'Le carillon s\'est tu, mais son écho peut encore s\'attraper.',
-      'Fige le son (❄ ou Entrée) dans les 3 secondes qui suivent un carillon du jeu.', { n: 10 },
-      { act: (id, X) => id === 'freeze' && X.now() - X.lastChime < 3000 }, 'm.grains2'),
     S('silence', 'Mesure de silence', 'Écouter, c\'est aussi savoir tout éteindre, puis tout rallumer.',
       'Coupe toutes les couches pendant une mesure entière (la lecture continue), puis rallume-en une.', { n: 10 },
       { param: (k, v, X) => X.silenceDone(k) }, 'm.bells'),
     S('velo', 'Funambule', 'Du plus fort au presque rien, puis encore tout en haut. Il faut des touches qui sentent la main.',
       'Au clavier MIDI : une note très forte, une note très douce, puis une très forte, à la suite.', { n: 10 },
-      { live: (m, X) => !!X.tail(3) && X.w[X.w.length - 3].raw >= 0.9 && X.w[X.w.length - 2].raw <= 0.35 && m.raw >= 0.9 }, 'm.bells'), // raw MIDI velocity (null from the computer keyboard)
+      { live: (m, X) => !!X.tail(3) && X.w[X.w.length - 3].raw >= 0.9 && X.w[X.w.length - 2].raw <= 0.35 && m.raw >= 0.9 }, 'm.bells', true), // raw MIDI velocity (null from the computer keyboard)
     S('chroma', 'Entre les touches', 'Il y a des notes entre les notes, et elles se laissent descendre ou monter.',
-      'Au clavier MIDI : 6 notes de suite, une par demi-ton, en montant ou en descendant.', { n: 10, gift: GIFT.neon },
-      { live: (m, X) => !!X.tail(6) && (X.ivs(6).every((i) => i === 1) || X.ivs(6).every((i) => i === -1)) && X.out(6) >= 2 }, 'm.bells'),
+      'Au clavier MIDI : 6 notes de suite, une par demi-ton, en montant ou en descendant.', { n: 10 },
+      { live: (m, X) => !!X.tail(6) && (X.ivs(6).every((i) => i === 1) || X.ivs(6).every((i) => i === -1)) && X.out(6) >= 2 }, 'm.bells', true),
     S('cinq', 'Petite phrase', 'Une main qui se promène sans se presser.',
       'Joue 5 notes de suite au clavier (A à L), sans t\'arrêter plus de 2 secondes.', { n: 5 },
       { live: (m, X) => !!X.tail(5) && X.gapsOk(5, 2) }, 'm.bells'),
   ];
   const byId = Object.fromEntries(DEFS.map((d) => [d.id, d]));
   const HINT2 = { mins: 15, found: 3 }; // hint 2 opens after this many minutes of play, or this many secrets found
-  const THEMES = { aurore: 'Aurore', neon: 'Néon' };
 
   const secrets = {
-    DEFS, byId, GIFT, HINT2, THEMES,
-    w: [], chords: [], lastChime: 0, mem: {}, BASE: {},
+    DEFS, byId, GIFT, HINT2,
+    w: [], chords: [], mem: {}, BASE: {},
     now: () => Date.now(), // overridable by tests
 
     // ---- persistent state (inside the game state; older saves get it lazily) ----
@@ -68,10 +61,8 @@
       const s = g.s;
       if (!s.secrets) s.secrets = {};
       const q = s.secrets;
-      q.found = q.found || {}; q.secs = q.secs || 0; q.mirrorOn = !!q.mirrorOn; q.theme = q.theme || '';
-      q.gifts = q.gifts || {};
-      ['timbres', 'themes'].forEach((k) => { q.gifts[k] = q.gifts[k] || []; });
-      q.gifts.mirror = !!q.gifts.mirror;
+      q.found = q.found || {}; q.secs = q.secs || 0; q.midi = !!q.midi;
+      q.gifts = q.gifts || {}; q.gifts.timbres = q.gifts.timbres || []; // older saves: themes / mirror ignored
       return q;
     },
     // detection runs only in the path, never while a puzzle's target is heard
@@ -80,15 +71,15 @@
     has(id) { return !!this.state().found[id]; },
 
     // ---- list for the (future) tree: [{id, found, title|'???', hint, level, node, reward}] ----
-    // level 0 = hidden (node not owned), 1 = cryptic hint, 2 = clear hint, 3 = found
+    // level 0 = hidden (node not owned, or a MIDI secret before any MIDI keyboard), 1 = cryptic hint, 2 = clear hint, 3 = found
     hint2Open() { return this.state().secs >= HINT2.mins * 60 || this.foundCount() >= HINT2.found; },
     list() {
       const g = AMB.game, q = this.state(), two = this.hint2Open();
       return DEFS.map((d) => {
-        const found = !!q.found[d.id], reach = !g.path || g.has(d.node);
+        const found = !!q.found[d.id], reach = (!g.path || g.has(d.node)) && (!d.midi || q.midi);
         const level = found ? 3 : !reach ? 0 : two ? 2 : 1;
         return {
-          id: d.id, found, title: found ? d.title : '???', node: d.node, level,
+          id: d.id, found, title: found ? d.title : '???', node: d.node, level, midi: d.midi,
           hint: level === 3 || level === 2 ? d.hint2 : level === 1 ? d.hint1 : '',
           reward: found ? (d.reward.gift ? d.reward.gift.label : `${d.reward.n} ✧`) : '',
         };
@@ -144,7 +135,6 @@
       m.since = 0;
       return !!long;
     },
-    chimed() { this.lastChime = this.now(); },
 
     // ---- event routing ----
     run(ev, ...a) {
@@ -174,7 +164,7 @@
     find(id) {
       const d = byId[id], g = AMB.game; if (!d || !g.path || this.has(id)) return false;
       this.state().found[id] = this.now();
-      this.giveGift(d.reward.gift, true);
+      this.giveGift(d.reward.gift);
       g.save();
       g.earn(d.reward.n, 'secret', id);
       g.emit('secret', { id });
@@ -188,15 +178,13 @@
       if (AMB.ui && AMB.ui.toast) AMB.ui.toast(`✦ Secret trouvé : ${d.title} · +${d.reward.n} ✧${gift ? ' · ' + gift.label : ''}`);
       this.render();
     },
-    giveGift(gift, announce) {
+    giveGift(gift) {
       if (!gift) return;
       const q = this.state(), gf = q.gifts;
-      if (gift.type === 'timbre') { if (!gf.timbres.some((t) => t.opt === gift.opt)) gf.timbres.push({ sec: gift.sec, opt: gift.opt }); }
-      else if (gift.type === 'theme') { if (!gf.themes.includes(gift.id)) gf.themes.push(gift.id); if (announce) q.theme = gift.id; }
-      else if (gift.type === 'mirror') gf.mirror = true;
+      if (!gf.timbres.some((t) => t.opt === gift.opt)) gf.timbres.push({ sec: gift.sec, opt: gift.opt });
       this.applyGifts();
     },
-    // make the stored gifts real: extra timbre options in the schema (+ live selects), LCD theme on <html>
+    // make the stored gifts real: extra timbre options in the schema (+ live selects)
     applyGifts() {
       const gf = this.state().gifts;
       for (const t of gf.timbres) {
@@ -216,27 +204,12 @@
           if (store.get(`${sec}.wave`) === o) store.set(`${sec}.wave`, sp.def, 'game');
         }
       }
-      const th = this.state().theme;
-      if (th && gf.themes.includes(th) && AMB.game.path) document.documentElement.dataset.lcd = th; // path only
-      else delete document.documentElement.dataset.lcd;
-    },
-    // mirror keyboard (reward): intervals reversed around the tonic (axis = the tonic an octave above the first key)
-    mirrorOn() { const q = this.state(); return !!(q.gifts.mirror && q.mirrorOn && AMB.game.path); }, // path only
-    mirrorDeg(d) { return 2 * ((AMB.seq && AMB.seq.scale) || [0]).length - d; },
-    mirrorMidi(m) {
-      const q = AMB.seq, axis = T.degreeToMidi(q.scale.length, q.root, q.scale, 4);
-      return Math.max(24, Math.min(108, 2 * axis - m));
-    },
-    setMirror(on) { const q = this.state(); if (!q.gifts.mirror) return false; q.mirrorOn = !!on; AMB.game.save(); this.render(); return true; },
-    setTheme(id) {
-      const q = this.state(); if (id && !q.gifts.themes.includes(id)) return false;
-      q.theme = id || ''; AMB.game.save(); this.applyGifts(); this.render(); return true;
     },
 
-    // ---- panel in the tree screen: « Secrets n/N » + gift switches (path only), folded by default ----
+    // ---- panel in the tree screen: « Secrets n/N » (path only), folded by default ----
     render() {
       const box = this.box; if (!box) return;
-      const g = AMB.game, q = this.state(), gf = q.gifts;
+      const g = AMB.game;
       box.hidden = !g.path;
       if (box.hidden) return;
       const head = box.querySelector('.sc-head');
@@ -248,16 +221,8 @@
         const p = el('p', 'sc-item' + (it.found ? ' found' : '')); p.dataset.id = it.id;
         const b = document.createElement('b'), s = document.createElement('span');
         b.textContent = it.found ? `✦ ${it.title}` : '???';
-        s.textContent = it.found ? `${it.hint} → ${it.reward}` : it.hint || 'Débloque d\'abord le nœud lié.';
+        s.textContent = it.found ? `${it.hint} → ${it.reward}` : it.hint || (it.midi && AMB.game.has(it.node) ? 'Au clavier MIDI : branche-en un (🎹 MIDI dans ⋯).' : 'Débloque d\'abord le nœud lié.');
         p.append(b, s);
-      }
-      if (gf.mirror) {
-        const b = el('button', 'sc-btn' + (q.mirrorOn ? ' on' : ''), `Clavier miroir : ${q.mirrorOn ? 'oui' : 'non'}`);
-        b.addEventListener('click', () => this.setMirror(!q.mirrorOn));
-      }
-      for (const id of gf.themes.length ? [''].concat(gf.themes) : []) {
-        const b = el('button', 'sc-btn' + (q.theme === id ? ' on' : ''), id ? `Écran ${THEMES[id] || id}` : 'Écran classique');
-        b.addEventListener('click', () => this.setTheme(id));
       }
     },
     build() {
@@ -277,11 +242,10 @@
   // ---- sources ----
   if (AMB.bus) {
     AMB.bus.on('live', (n) => secrets.onLive(n));
-    AMB.bus.on('act', (id) => secrets.run('act', id));
+    AMB.bus.on('act', (id) => { if (id === 'midiConnect' && AMB.game.path && !secrets.state().midi) { secrets.state().midi = true; AMB.game.save(); secrets.render(); } });
     AMB.bus.on('chord', (c) => secrets.onChord(c));
     ['reset', 'mode'].forEach((e) => AMB.bus.on('game:' + e, () => { secrets.reset(); secrets.applyGifts(); secrets.render(); }));
     ['unlock', 'earn'].forEach((e) => AMB.bus.on('game:' + e, () => secrets.render()));
-    AMB.bus.on('game:chime', () => secrets.chimed()); // « figer le carillon » needs to know when the game chimed
   }
   store.on((k, v, src) => { if (src === 'user') secrets.run('param', k, v); });
   // play time (hint 2): counted only while the music plays in the path

@@ -68,49 +68,23 @@
       if (this.resetPointers) this.resetPointers(); // no finger left over from the last visit
       if (on) { this.select(null); this.renderTree(); this.fitTree(); if (AMB.secrets) AMB.secrets.render(); }
     },
-    // ---- the screen: header (shards, puzzles, branches) + the map, built once and repainted ----
+    // ---- the screen: header (shards, puzzles, secrets) + the map, built once and repainted ----
     renderTree() {
       const map = $('#treeDlg .tree-map'); if (!map) return;
       const T = AMB.tree, g = AMB.game;
-      const all = this.notebook();
-      $('#treeDlg .tree-shards').textContent = `✧ ${g.s.shards}`;
-      const sub = $('#treeDlg .tree-sub'); if (sub) sub.textContent = `${this.complete() ? '✦ Jardin complet · ' : ''}${g.s.nodes.length}/${T.NODES.length} nœuds · ${all.done}/${all.total} découvertes · ✧ ${g.s.earned} gagnés en tout`;
-      // puzzles: bonus ones you can try now, and how many are solved
+      $('#treeDlg .tree-shards').textContent = `${this.complete() ? '✦ Jardin complet · ' : ''}✧ ${g.s.shards}`;
+      // puzzles within reach: each one replayable with a new target; ✧ until solved once
       const pzEl = $('#treeDlg .tree-puzzles');
       if (pzEl && AMB.puzzles) {
-        const P = AMB.puzzles, solved = P.DEFS.filter((x) => g.s.puzzles.includes(x.id)).length;
-        const open = P.available().filter((x) => x.bonus);
-        // G8.1: solved puzzles (or gates opened after 6 failures) can be replayed for the stars
-        const replay = P.DEFS.filter((x) => (g.s.puzzles.includes(x.id) || P.given(x.id)) && P.best(x.id) < 3 && x.need.every((n) => g.has(n)));
-        const stars = P.DEFS.reduce((a, x) => a + P.best(x.id), 0);
-        pzEl.innerHTML = `<span>Énigmes ${solved}/${P.DEFS.length} · ★ ${stars}/${P.DEFS.length * 3}</span>` + (open.length ? ' · bonus :' : '');
-        const add = (x, text, tip) => {
-          const b = document.createElement('button'); b.className = 'btn small'; b.dataset.pz = x.id; b.textContent = text;
-          b.title = tip; b.addEventListener('click', () => this.openPuzzle(x.id));
+        const P = AMB.puzzles, open = P.available();
+        pzEl.innerHTML = `<span>Énigmes ${P.DEFS.filter((x) => g.s.puzzles.includes(x.id)).length}/${P.DEFS.length}</span>`;
+        for (const x of open) {
+          const done = g.s.puzzles.includes(x.id), b = document.createElement('button');
+          b.className = 'btn small' + (done ? ' done' : ''); b.dataset.pz = x.id;
+          b.textContent = `◈ ${x.title}${done ? ' ✓' : ` · ✧ ${x.reward}`}`;
+          b.title = `${x.intro}${x.opens && !done ? `\nOuvre « ${T.byId[x.opens].name} »` : ''}\nChaque essai tire une nouvelle cible.`;
+          b.addEventListener('click', () => this.openPuzzle(x.id));
           pzEl.append(b);
-        };
-        for (const x of open) add(x, `◈ ${x.title} · ✧ ${x.reward}`, x.intro);
-        if (replay.length) pzEl.append(' · à rejouer :');
-        for (const x of replay) add(x, `↻ ${x.title} ${this.starText(P.best(x.id))}`, `${x.intro}\n\nRejouer pour les étoiles (moins d'essais, moins d'écoutes).`);
-      }
-      // one small card per branch: owned count + notebook (discoveries left to try)
-      const brEl = $('#treeDlg .tree-branches');
-      if (brEl) {
-        brEl.innerHTML = '';
-        for (const bid of this.fanOrder()) {
-          const br = T.BRANCHES[bid], col = document.createElement('div');
-          col.className = 'tree-col'; col.dataset.branch = bid; col.style.setProperty('--c', br.color);
-          const nodes = T.NODES.filter((n) => n.branch === bid);
-          const owned = nodes.filter((n) => g.has(n.id)).length;
-          const nb = this.notebook(bid), pct = nb.total ? Math.round((nb.done / nb.total) * 100) : 0;
-          col.innerHTML = `<h4>${br.name} <small>${owned}/${nodes.length}</small></h4>`;
-          const nbEl = document.createElement('div');
-          nbEl.className = 'tree-nb';
-          nbEl.innerHTML = `<span>Découvertes ${nb.done}/${nb.total}</span><i style="--p:${pct}%"></i>`
-            + (nb.todo.length ? `<em>${nb.todo.length} à essayer</em>` : '');
-          nbEl.title = nb.todo.length ? `À essayer (déjà débloqué) :\n${nb.todo.map((x) => '· ' + x.label).join('\n')}` : 'Rien à essayer pour l\'instant : débloque d\'autres nœuds';
-          col.append(nbEl);
-          brEl.append(col);
         }
       }
       if (!map.querySelector('.tree-stage') || map.dataset.n !== String(T.NODES.length)) this.buildMap(map);
@@ -417,7 +391,7 @@
       const n = AMB.tree.byId[id]; if (!n) return [];
       const els = [...document.querySelectorAll(`[data-node="${id}"]`)];
       for (const u of n.ui) document.querySelectorAll(`[data-ui="${u}"]`).forEach((e) => { if (!els.includes(e)) els.push(e); });
-      return els.filter((e) => !e.closest('.is-locked') && !e.closest('.menu'));
+      return els.filter((e) => !e.closest('.is-locked') && !e.closest('.menu') && !e.matches('.stage .hint')); // the keys line just appears
     },
     reveal(id) {
       const els = this.revealTargets(id); if (!els.length) return;

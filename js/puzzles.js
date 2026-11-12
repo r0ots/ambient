@@ -1,7 +1,7 @@
-// « Jardin sonore » : target puzzles — "make your sound match this one". A puzzle is a target
-// value for a few parameters; the score compares the current values to the target (knobs by
-// distance, lists and switches by equality). Judged on reaching the target, never on taste.
-// Puzzles only use parameters that are already unlocked when they become available.
+// « Jardin sonore » : target puzzles — "make your sound match this one". A puzzle names a few controls;
+// each attempt draws a target for them, the score compares the player's values to it (knobs by distance,
+// lists and switches by equality). Judged on reaching the target, never on taste. One kind of puzzle:
+// some guard a node of the tree (gate), all pay their ✧ once and stay replayable with a new target.
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const store = AMB.store;
@@ -20,41 +20,36 @@
     return Math.max(0, 1 - (d / TOL) ** 2);
   }
 
-  // puzzle: { id, title, intro, need: [node ids to attempt], target: {key: value}, reward, opens }
-  const P = (id, need, title, intro, target, reward, opens) => ({ id, need, title, intro, target, reward, opens: opens || null });
-  const B = (id, need, title, intro, target, reward) => ({ ...P(id, need, title, intro, target, reward), bonus: true });
+  // puzzle: { id, title, intro, need: [node ids to attempt], keys: {key: range}, reward, opens (gate node) }
+  // range: null = the whole control; [lo, hi] for a knob; a list of options for a list. Every new attempt draws
+  // a fresh target for the same controls: nothing to learn by heart, always replayable.
+  const P = (id, need, title, intro, keys, reward, opens) => ({ id, need, title, intro, keys, reward, opens: opens || null });
+  const TONE = [0.05, 0.95];
   const DEFS = [
-    P('p.premier', ['t.son', 'h.pad'], 'Premier reflet',
-      'Un drone d\'orgue clair sous un Pad de verre très sombre. Retrouve ce son.',
-      { 'drone.wave': 'Orgue', 'drone.tone': 0.75, 'pad.wave': 'Verre', 'pad.tone': 0.2 }, 15, 't.macros'),
-    P('p.gamme', ['h.key'], 'Autre lumière',
-      'Le même paysage, transposé ailleurs : un chœur assez brillant au-dessus d\'un drone sombre. Trouve la bonne tonalité : un peu plus haut que celle de départ.',
-      { 'global.key': 'F', 'pad.wave': 'Chœur', 'pad.tone': 0.65, 'drone.tone': 0.25 }, 20, 'h.scale'),
-    P('p.espace', ['e.echo', 'h.pad'], 'La grotte',
-      'Un grand espace où le Pad se noie, et un écho un peu boiteux qui revient longtemps.',
-      { 'fx.space': 0.85, 'pad.send': 0.9, 'fx.echo': 0.6, 'fx.echoTime': '1/8.', 'fx.feedback': 0.75 }, 25, 'e.tape'),
-    P('p.mouvement', ['m.evolve'], 'Pluie de notes',
-      'Des cloches nombreuses, sans pulsation, lentes, qui dérivent toutes seules.',
-      { 'bells.wave': 'Cloche', 'bells.density': 0.75, 'global.time': 'Flottant', 'global.tempo': 50, 'global.evolve': 0.6 }, 25, 'm.lfo'),
-    P('p.composer', ['h.pad', 'm.bells'], 'Boîte à musique',
-      'Pas de Pad : une mélodie pincée, aiguë et claire, posée sur un drone très sombre.',
-      { 'pad.on': false, 'bells.wave': 'Pluck', 'bells.range': 0.85, 'bells.tone': 0.75, 'drone.tone': 0.12 }, 25, 'c.seq'),
-
-    // bonus puzzles (G5.5): harder, nothing to open, the controls involved stay secret until the last hint
-    B('b.gamme', ['h.scale'], 'Quelle couleur ?', 'Retrouve la tonalité et la gamme de ce paysage, à l\'oreille.',
-      { 'global.key': 'A', 'global.scale': 'Dorien' }, 25),
-    B('b.progression', ['h.prog'], 'Suite connue', 'Une suite d\'accords très connue, deux mesures par accord. Laquelle ?',
-      { 'pad.prog': 'I–V–vi–IV', 'pad.length': 2 }, 25),
-    B('b.pad', ['h.pad2'], 'Cordes lentes', 'Un Pad de cordes qui arrive très lentement, accords larges, voix intérieure bien présente, plutôt sombre.',
-      { 'pad.wave': 'Cordes', 'pad.attack': 0.85, 'pad.voicing': 0.9, 'pad.counter': 0.6, 'pad.tone': 0.3 }, 25),
-    B('b.salle', ['e.halo'], 'Cathédrale de verre', 'Une salle immense qui gonfle lentement, un halo cristallin, un léger silence avant la réverbération.',
-      { 'fx.revType': 'Cloud', 'fx.size': 0.9, 'fx.shimmer': 0.7, 'fx.predelay': 0.4, 'fx.space': 0.8 }, 25),
-    B('b.radio', ['e.lofi', 'e.texture'], 'Vieille radio sous la pluie', 'Un son abîmé, une cassette fatiguée, et la pluie bien présente.',
-      { 'texture.type': 'Pluie', 'texture.vol': 0.7, 'fx.lofi': 0.7, 'fx.tape': 0.65 }, 25),
-    B('b.grains', ['m.grains2'], 'Nuage à l\'envers', 'Des grains longs, nombreux, presque tous à l\'envers, sur les octaves.',
-      { 'grains.reverse': 0.85, 'grains.density': 0.7, 'grains.size': 0.8, 'grains.pitch': 'Octaves' }, 25),
-    B('b.groove', ['c.groove', 'm.tempo'], 'Chaloupé', 'Un rythme organique, assez rapide, très chaloupé et un peu imprécis.',
-      { 'perc.kit': 'Organique', 'global.tempo': 92, 'global.swing': 0.5, 'global.humanize': 0.45 }, 25),
+    P('p.premier', ['t.son', 'h.pad'], 'Premier reflet', 'Le son et la couleur du drone, le son et la brillance du Pad.',
+      { 'drone.wave': null, 'drone.tone': TONE, 'pad.wave': null, 'pad.tone': TONE }, 15, 't.macros'),
+    P('p.gamme', ['h.key'], 'Autre lumière', 'Le même paysage ailleurs : la tonalité, le son et la brillance du Pad, la couleur du drone.',
+      { 'global.key': null, 'pad.wave': null, 'pad.tone': TONE, 'drone.tone': TONE }, 20, 'h.scale'),
+    P('p.espace', ['e.echo', 'h.pad'], 'La grotte', 'La taille de l\'espace, la part du Pad qui s\'y noie, l\'écho : quantité, vitesse, répétitions.',
+      { 'fx.space': [0.1, 1], 'pad.send': [0.1, 1], 'fx.echo': [0, 0.9], 'fx.echoTime': null, 'fx.feedback': [0.1, 0.9] }, 25, 'e.tape'),
+    P('p.mouvement', ['m.evolve'], 'Pluie de notes', 'Les notes de la mélodie : leur son, leur nombre, la pulsation, le tempo et la dérive.',
+      { 'bells.wave': null, 'bells.density': TONE, 'global.time': null, 'global.tempo': [40, 110], 'global.evolve': [0, 1] }, 25, 'm.lfo'),
+    P('p.composer', ['h.pad', 'm.bells'], 'Boîte à musique', 'La mélodie : son, registre et brillance, et la couleur du drone dessous.',
+      { 'bells.wave': null, 'bells.range': [0.1, 0.9], 'bells.tone': TONE, 'drone.tone': TONE }, 25, 'c.seq'),
+    P('b.gamme', ['h.scale'], 'Quelle couleur ?', 'La tonalité et la gamme de ce paysage, à l\'oreille.',
+      { 'global.key': null, 'global.scale': null }, 25),
+    P('b.progression', ['h.prog'], 'Suite connue', 'Une suite d\'accords connue, et combien de mesures dure chaque accord.',
+      { 'pad.prog': ['Plane (I)', 'Pendule I–IV', 'I–V–vi–IV', 'i–VI–III–VII', 'Montée I–ii–iii–IV'], 'pad.length': [1, 4] }, 25),
+    P('b.pad', ['h.pad2'], 'Cordes lentes', 'Le Pad en détail : son, attaque, accords riches, voix intérieure, brillance.',
+      { 'pad.wave': null, 'pad.attack': TONE, 'pad.voicing': TONE, 'pad.counter': [0, 0.9], 'pad.tone': TONE }, 25),
+    P('b.salle', ['e.halo'], 'Cathédrale de verre', 'La salle : son caractère, sa taille, le halo, le silence avant la réverbération, la quantité.',
+      { 'fx.revType': null, 'fx.size': [0.1, 1], 'fx.shimmer': [0, 0.9], 'fx.predelay': [0, 0.9], 'fx.space': [0.1, 1] }, 25),
+    P('b.radio', ['e.lofi', 'e.texture'], 'Vieille radio', 'La texture de fond et son volume, l\'usure et la cassette.',
+      { 'texture.type': null, 'texture.vol': [0.2, 0.9], 'fx.lofi': [0, 0.9], 'fx.tape': [0, 0.9] }, 25),
+    P('b.grains', ['m.grains2'], 'Nuage de grains', 'Les grains : à l\'envers ou non, combien, quelle taille, quelles hauteurs.',
+      { 'grains.reverse': [0, 1], 'grains.density': [0.1, 0.9], 'grains.size': [0.1, 0.9], 'grains.pitch': null }, 25),
+    P('b.groove', ['c.groove', 'm.tempo'], 'Chaloupé', 'Le rythme : le kit des pulsations, le tempo, le swing et l\'imprécision.',
+      { 'perc.kit': null, 'global.tempo': [50, 120], 'global.swing': [0, 0.8], 'global.humanize': [0, 0.8] }, 25),
   ];
   const byId = Object.fromEntries(DEFS.map((d) => [d.id, d]));
 
@@ -70,46 +65,55 @@
     }
     return { key, state, dir };
   }
-  // stars for a solved puzzle: fewer validations and fewer listens to the target score more;
-  // solved with the live gauge (help) gives none
-  function stars(tries, listens, help) {
-    if (help) return 0;
-    let n = tries <= 1 ? 3 : tries <= 3 ? 2 : 1;
-    if (listens > 3) n--;
-    if (listens > 6) n--;
-    return Math.max(1, n);
+  // a value drawn for one control: an option of the list, or a knob value on a 0.05 grid (its own step if it has one)
+  function drawValue(key, range, rnd) {
+    const sp = store.spec(key); if (!sp) return undefined;
+    if (sp.type === 'select') { const o = Array.isArray(range) && typeof range[0] === 'string' ? range : sp.options; return o[Math.floor(rnd() * o.length)]; }
+    if (sp.type === 'toggle') return rnd() < 0.5;
+    const [lo, hi] = range || [sp.min, sp.max], q = sp.step || (sp.max - sp.min) * 0.05;
+    return Math.min(sp.max, Math.max(sp.min, +(Math.round((lo + rnd() * (hi - lo)) / q) * q).toFixed(4)));
   }
 
   const puzzles = {
-    DEFS, byId, PASS, TRIES, NEAR, keyScore, peg, stars,
-    // per-key detail and overall score of the current sound against a puzzle
-    score(id, values = store.stableSnapshot()) {
-      const d = byId[id]; if (!d) return { total: 0, keys: [] };
-      const keys = Object.entries(d.target).map(([k, t]) => ({ key: k, target: t, value: values[k], s: keyScore(k, values[k], t) }));
+    DEFS, byId, PASS, TRIES, NEAR, keyScore, peg, drawValue,
+    rnd: Math.random, // overridable by tests
+    // a new target for a puzzle: same controls, values drawn anew, never already reached by `values`
+    draw(id, values = store.stableSnapshot()) {
+      const d = byId[id]; let t = null;
+      for (let i = 0; i < 30; i++) {
+        t = {}; for (const [k, r] of Object.entries(d.keys)) t[k] = drawValue(k, r, this.rnd);
+        if (this.score(id, values, t).total < 0.75) break;
+      }
+      return t;
+    },
+    // per-key detail and overall score of a sound against a target (the attempt's own by default)
+    score(id, values = store.stableSnapshot(), target = this.target(id)) {
+      if (!byId[id] || !target) return { total: 0, keys: [] };
+      const keys = Object.entries(target).map(([k, t]) => ({ key: k, target: t, value: values[k], s: keyScore(k, values[k], t) }));
       const total = keys.reduce((a, x) => a + x.s, 0) / keys.length;
       return { total, keys };
     },
-    // puzzles that can be attempted now (prerequisite nodes owned, not solved yet)
-    available(g = AMB.game) { return DEFS.filter((d) => !g.s.puzzles.includes(d.id) && d.need.every((n) => g.has(n))); },
+    target(id = this.current) { const r = this.run(id); return r && r.target; },
+    // puzzles that can be attempted now (prerequisite nodes owned), solved or not: they are always replayable
+    available(g = AMB.game) { return DEFS.filter((d) => d.need.every((n) => g.has(n))); },
     // the puzzle guarding a node (tree gate)
     forNode(nodeId) { return DEFS.find((d) => d.opens === nodeId) || null; },
     current: null,
-    // the attempt in progress for a puzzle (kept in the game state until solved or given up:
-    // closing the card and coming back does not give the 6 validations back)
+    // the attempt in progress (kept in the game state until solved or out of validations: closing the card and
+    // coming back gives neither the 6 validations nor a new target); a new attempt draws a new target
     run(id = this.current, g = AMB.game) {
       if (!id || !byId[id]) return null;
       const runs = g.s.runs || (g.s.runs = {});
-      return runs[id] || (runs[id] = { tries: [], listens: 0, help: !!g.s.pzHelp });
+      const r = runs[id] || (runs[id] = { tries: [] });
+      if (!r.target) { r.target = this.draw(id, this.values()); g.save(); } // older saves: no target yet
+      return r;
     },
-    best(id, g = AMB.game) { return (g.s.stars && g.s.stars[id]) || 0; },
-    // a gate opened after 6 failed validations (no ✧, no star; the puzzle stays playable)
+    // a gate opened after 6 failed validations (no ✧; the puzzle stays playable)
     given(id, g = AMB.game) { return (g.s.opened || []).includes(id); },
-    // the live gauge for players who want it (sticky for the attempt: no stars)
+    // the live gauge for players who want it
     setHelp(on, g = AMB.game) {
-      g.s.pzHelp = !!on;
-      const r = this.current && this.run();
-      if (r && on) r.help = true;
-      g.save(); g.emit('puzzle', { id: this.current, side: this.side(), ...this.currentScore() });
+      g.s.pzHelp = !!on; g.save();
+      g.emit('puzzle', { id: this.current, side: this.side(), ...this.currentScore() });
     },
     // A/B listening (G5.2): `mine` holds the player's own values while the target is heard
     ab: null,
@@ -118,12 +122,11 @@
     values() { return this.ab ? { ...store.stableSnapshot(), ...this.ab.mine } : store.stableSnapshot(); },
     currentScore() { return this.current ? this.score(this.current, this.values()) : { total: 0, keys: [] }; },
     listen(side) {
-      const d = byId[this.current]; if (!d) return false;
+      const target = this.target(); if (!target) return false;
       if (side === 'target' && !this.ab) {
-        const r = this.run(); if (r) { r.listens++; AMB.game.save(); }
         // the target is played on the real ambience (source 'game'); ab.mine = the player's own values of those keys
-        const mine = {}; for (const k of Object.keys(d.target)) if (store.spec(k)) mine[k] = store.get(k);
-        store.setMany(d.target, 'game');
+        const mine = {}; for (const k of Object.keys(target)) if (store.spec(k)) mine[k] = store.get(k);
+        store.setMany(target, 'game');
         this.ab = { mine };
         this.veil(true);
       } else if (side === 'mine' && this.ab) {
@@ -140,42 +143,32 @@
       document.body.classList.toggle('pz-veil', on);
       document.querySelectorAll('.pz-veiled').forEach((e) => e.classList.remove('pz-veiled'));
       const d = byId[this.current];
-      if (on && d) for (const k of Object.keys(d.target)) document.querySelectorAll(`[data-key="${k}"]`).forEach((e) => e.classList.add('pz-veiled'));
+      if (on && d) for (const k of Object.keys(d.keys)) document.querySelectorAll(`[data-key="${k}"]`).forEach((e) => e.classList.add('pz-veiled'));
     },
     start(id) {
       if (!byId[id]) return false;
       if (this.current && this.current !== id) this.stop();
-      this.current = id;
+      this.current = id; this.run(id);
       AMB.game.emit('puzzle', { id, side: 'mine', ...this.currentScore() });
       return true;
     },
     stop() { if (this.ab) this.listen('mine'); this.current = null; AMB.game.emit('puzzle', { id: null }); },
     // validate (G8.1): one of the 6 validations, judged on the player's own sound (never while
-    // the target is playing). Returns { ok, row, tries, left, stars, first, out } or null.
+    // the target is playing). Returns { ok, row, tries, left, first, out } or null.
     attempt(id = this.current) {
       if (!id || !byId[id] || this.ab) return null;
-      const g = AMB.game, d = byId[id], sc = this.score(id), r = this.run(id, g);
-      if (g.s.pzHelp) r.help = true; // validated while the gauge is shown
+      const g = AMB.game, d = byId[id], r = this.run(id, g), sc = this.score(id);
       const row = { total: sc.total, pegs: sc.keys.map((k) => peg(k.key, k.value, k.target)) };
       r.tries.push(row);
-      const res = { ok: sc.total >= PASS, row, tries: r.tries.length, left: TRIES - r.tries.length, listens: r.listens, help: r.help };
-      if (res.ok || res.left <= 0) delete g.s.runs[id];
-      if (res.ok) {
-        res.stars = stars(r.tries.length, r.listens, r.help);
-        g.s.stars = g.s.stars || {};
-        res.record = res.stars > (g.s.stars[id] || 0);
-        if (res.record) g.s.stars[id] = res.stars;
-        g.save();
-        res.first = g.solve(id, d.reward); // first resolution only: emits game:puzzles + game:earn
-        g.emit('stars', { id, stars: res.stars, record: res.record });
-        if (this.current === id) this.current = null;
-      } else if (res.left <= 0) {
-        // out of validations: never a dead end — the gate opens anyway, without ✧ nor star
+      const res = { ok: sc.total >= PASS, row, tries: r.tries.length, left: TRIES - r.tries.length };
+      if (res.ok || res.left <= 0) { delete g.s.runs[id]; if (this.current === id) this.current = null; }
+      if (res.ok) res.first = g.solve(id, d.reward); // first resolution only: emits game:puzzles + game:earn (saves)
+      else if (res.left <= 0) {
+        // out of validations: never a dead end — the gate opens anyway, without ✧
         res.out = true;
         g.s.opened = g.s.opened || [];
         if (!g.s.opened.includes(id) && !g.s.puzzles.includes(id)) g.s.opened.push(id);
         g.save(); g.emit('opened', { id });
-        if (this.current === id) this.current = null;
       } else g.save();
       return res;
     },

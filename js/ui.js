@@ -448,7 +448,6 @@
   async function sharePatch() {
     const url = location.href.split('#')[0] + '#p=' + encodePatch();
     history.replaceState(null, '', url);
-    if (AMB.bus) AMB.bus.emit('act', 'share');
     try { await navigator.clipboard.writeText(url); toast('Lien du patch copié ✓'); }
     catch (e) { toast('Lien dans la barre d\'adresse'); }
   }

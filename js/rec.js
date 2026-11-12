@@ -43,7 +43,6 @@
       recState.endT = setTimeout(() => { finishRec(btn); setTimeout(() => AMB.seq.playing && AMB.engine.fadeIn(2), 300); }, mins * 60 * 1000);
     }
     btn.textContent = '■ 0:00';
-    if (AMB.bus) AMB.bus.emit('act', 'rec');
   }
   function finishRec(btn) {
     if (!recState) return;

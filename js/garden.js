@@ -42,6 +42,24 @@
       }
       if (flashId) { const el = list.querySelector(`[data-id="${flashId}"]`); if (el) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); } }
     },
+    paramLabel(key) {
+      const [sec, k] = key.split('.'); const S = AMB.SCHEMA[sec]; if (!S) return key;
+      const sp = S.params[k];
+      return k === 'on' ? S.label : sp ? `${S.label} · ${sp.label}` : S.label;
+    },
+    // clicks that always succeed go on the bus as actions (contracts count them); actions that can fail or be
+    // cancelled (save, journal, chords, freeze) are emitted by their own code once they really happened
+    CLICKS: [['#dice', 'dice'], ['.sc-store', 'sceneStore'], ['[data-s=add]', 'section'], ['[data-s=play]', 'song']],
+    hookActions() {
+      const emit = (id) => AMB.bus.emit('act', id);
+      document.addEventListener('click', (e) => {
+        if (!AMB.game.path) return;
+        const t = e.target.closest && e.target.closest('button, label'); if (!t) return;
+        if (t.matches('.sc-slot')) return emit(e.shiftKey ? 'sceneStore' : 'sceneRecall');
+        for (const [sel, id] of this.CLICKS) if (t.matches(sel)) return emit(id);
+      }, true);
+      AMB.store.on((k, v, src) => { if (src === 'xy' && AMB.game.path) emit('xy'); });
+    },
     // ---- game feedback (G6.2): « +n ✧ » notes under the LCD, a chime tuned to the key, LCD messages ----
     pop(text) {
       let feed = $('#gainFeed');
@@ -96,25 +114,19 @@
     },
 
     // ---- puzzle card (G5.3, « Mastermind » G8.1) ----
-    pz: null, // { id }
-    starText(n) { return '★'.repeat(n) + '☆'.repeat(3 - n); },
-    // bonus puzzles keep their controls secret until the last validation
-    pzReveal() {
-      const P = AMB.puzzles, d = this.pz && P.byId[this.pz.id]; if (!d) return true;
-      const r = P.run(d.id);
-      return !d.bonus || (r && r.tries.length >= P.TRIES - 1);
-    },
-    pzKeys() {
-      const P = AMB.puzzles, d = P.byId[this.pz.id], n = Object.keys(d.target).length, best = P.best(d.id);
-      const rec = best ? ` · record ${this.starText(best)}` : '';
-      return (this.pzReveal() ? `Joue sur : ${Object.keys(d.target).map((k) => this.paramLabel(k)).join(', ')}`
-        : `Énigme bonus : ${n} réglages en jeu, à toi de trouver lesquels`) + rec;
-    },
+    pz: null, // { id, mode: the screen mode to come back to }
+    pzKeys() { return `Joue sur : ${Object.keys(AMB.puzzles.byId[this.pz.id].keys).map((k) => this.paramLabel(k)).join(', ')}`; },
+    // the controls of a puzzle live in Sculpter, except the progression and the pulses (Composer)
+    pzMode(id) { return Object.keys(AMB.puzzles.byId[id].keys).some((k) => /^(pad\.prog|perc\.)/.test(k)) ? 'compose' : 'sculpt'; },
     openPuzzle(id) {
       const P = AMB.puzzles; if (!P || !P.byId[id]) return;
       this.showTree(false);
-      this.pz = { id };
-      P.start(id); P.run(id);
+      const back = this.pz ? this.pz.mode : AMB.mode;
+      this.pz = { id, mode: back };
+      P.start(id);
+      // show the controls in play (the screen goes back to its mode when the card closes)
+      const want = this.pzMode(id);
+      if (AMB.perform && AMB.mode !== want && AMB.tree.uiUnlocked('mode-' + want)) AMB.perform.setMode(want);
       const card = $('#puzzle'); card.hidden = false;
       const d = P.byId[id];
       card.querySelector('.pz-title').textContent = `Énigme · ${d.title}`;
@@ -122,30 +134,26 @@
       this.renderPuzzle();
     },
     closePuzzle() {
-      if (AMB.puzzles) AMB.puzzles.stop(); this.pz = null;
+      if (AMB.puzzles) AMB.puzzles.stop();
+      const back = this.pz && this.pz.mode; this.pz = null;
       const c = $('#puzzle'); if (c) c.hidden = true;
+      if (back && AMB.perform && AMB.mode !== back && AMB.game.path && (back === 'listen' || AMB.tree.uiUnlocked('mode-' + back))) AMB.perform.setMode(back);
     },
     // one validation = one row of pegs: ✓ right, ≈ close, ✗ far, plus ⬆ / ⬇ or « autre » (another option)
     PEG: { ok: ['✓', 'juste'], near: ['≈', 'proche'], far: ['✗', 'loin'] },
     DIR: { up: ['⬆', 'plus haut'], down: ['⬇', 'plus bas'], other: [' autre', 'autre option'] },
-    pegHTML(p, named) {
-      const [sym, word] = this.PEG[p.state], dir = named && p.dir ? this.DIR[p.dir] : null;
-      const tip = named ? `${this.paramLabel(p.key)} : ${word}${dir ? `, ${dir[1]}` : ''}` : word;
-      return `<span class="pz-peg ${p.state}"${named ? ` data-k="${p.key}"` : ''} title="${tip}">${sym}${dir ? dir[0] : ''}</span>`;
+    pegHTML(p) {
+      const [sym, word] = this.PEG[p.state], dir = p.dir ? this.DIR[p.dir] : null;
+      return `<span class="pz-peg ${p.state}" data-k="${p.key}" title="${this.paramLabel(p.key)} : ${word}${dir ? `, ${dir[1]}` : ''}">${sym}${dir ? dir[0] : ''}</span>`;
     },
     renderBoard() {
       const card = $('#puzzle'), P = AMB.puzzles, d = P.byId[this.pz.id], r = P.run(d.id);
-      const board = card.querySelector('.pz-board'), keys = Object.keys(d.target), named = this.pzReveal();
+      const board = card.querySelector('.pz-board'), keys = Object.keys(d.keys);
       board.style.setProperty('--n', keys.length);
       if (!r.tries.length) { board.innerHTML = ''; return; }
       const short = (k) => { const l = this.paramLabel(k); return l.includes(' · ') ? l.split(' · ').pop() : l; };
-      const rank = { ok: 0, near: 1, far: 2 };
-      board.innerHTML = (named ? `<div class="pz-row pz-head"><span></span>${keys.map((k) => `<span title="${this.paramLabel(k)}">${short(k)}</span>`).join('')}</div>` : '')
-        + r.tries.map((t, i) => {
-          // unnamed (bonus) pegs are sorted by state: their position says nothing about the control
-          const pegs = named ? t.pegs : [...t.pegs].sort((a, b) => rank[a.state] - rank[b.state]);
-          return `<div class="pz-row"><span class="pz-n">${i + 1}</span>${pegs.map((p) => this.pegHTML(p, named)).join('')}</div>`;
-        }).join('');
+      board.innerHTML = `<div class="pz-row pz-head"><span></span>${keys.map((k) => `<span title="${this.paramLabel(k)}">${short(k)}</span>`).join('')}</div>`
+        + r.tries.map((t, i) => `<div class="pz-row"><span class="pz-n">${i + 1}</span>${t.pegs.map((p) => this.pegHTML(p)).join('')}</div>`).join('');
     },
     statusText(r) {
       const P = AMB.puzzles, left = P.TRIES - r.tries.length, last = r.tries[r.tries.length - 1];
@@ -174,8 +182,7 @@
       okb.textContent = `Valider (${r.tries.length + 1}/${P.TRIES})`;
       card.querySelector('.pz-keys').textContent = this.pzKeys();
       this.renderBoard();
-      card.querySelector('.pz-hint').textContent = target ? 'Tu entends la cible. Touche un réglage ou reviens à ton son pour continuer.'
-        : this.statusText(r) + (r.help ? ' Aide utilisée : pas d\'étoiles cette fois.' : '');
+      card.querySelector('.pz-hint').textContent = target ? 'Tu entends la cible. Touche un réglage ou reviens à ton son pour continuer.' : this.statusText(r);
     },
     validatePuzzle() {
       const P = AMB.puzzles; if (!this.pz || !P) return;
@@ -183,25 +190,21 @@
       const res = P.attempt(id); if (!res) return;
       if (res.ok) {
         this.closePuzzle();
-        const st = res.help ? 'avec l\'aide' : `${this.starText(res.stars)}${res.record && !res.first ? ' · record !' : ''}`;
-        AMB.ui.toast(`✓ Énigme résolue en ${res.tries} essai${res.tries > 1 ? 's' : ''} : ${d.title} · ${st}${res.first && d.opens ? ` · « ${AMB.tree.byId[d.opens].name} » peut s'acheter` : ''}`);
-        if (!res.first && AMB.game.path) { this.chime('solve'); this.lcd(`◈ ${res.help ? 'résolue' : this.starText(res.stars)}`); }
+        AMB.ui.toast(`✓ Énigme résolue en ${res.tries} essai${res.tries > 1 ? 's' : ''} : ${d.title}${res.first && d.opens ? ` · « ${AMB.tree.byId[d.opens].name} » peut s'acheter` : ''}`);
+        if (!res.first && AMB.game.path) { this.chime('solve'); this.lcd(`◈ résolue en ${res.tries}`); }
         if (res.first && d.opens) this.showTree(true);
       } else if (res.out) {
-        // never a dead end: the gate opens anyway (no ✧, no star), the puzzle can be replayed later
+        // never a dead end: the gate opens anyway (no ✧), the puzzle can be replayed later with a new target
         this.closePuzzle();
         const gate = d.opens && !AMB.game.s.puzzles.includes(id);
-        AMB.ui.toast(gate ? `Pas cette fois, mais la porte s'ouvre quand même : « ${AMB.tree.byId[d.opens].name} » peut s'acheter. Reviens tenter les étoiles quand tu veux.`
-          : 'Pas cette fois : elle était dure. Elle t\'attend dans l\'arbre, reviens tenter les étoiles quand tu veux.');
+        AMB.ui.toast(gate ? `Pas cette fois, mais la porte s'ouvre quand même : « ${AMB.tree.byId[d.opens].name} » peut s'acheter. L'énigme reste à rejouer.`
+          : 'Pas cette fois : elle était dure. Rejoue-la depuis l\'arbre, avec une nouvelle cible.');
         if (AMB.game.path) this.lcd(gate ? '◈ porte ouverte' : '◈ à rejouer', 3000);
         if (gate) this.showTree(true);
-      } else {
-        this.renderPuzzle();
-      }
+      } else this.renderPuzzle();
     },
 
     build() {
-      AMB.store.on((k, v, src) => this.onParam(k, v, src));
       this.hookActions();
       if (AMB.bus) AMB.bus.on('game:earn', (d) => { if (AMB.game.path) this.pop(this.gainText(d)); });
       if (AMB.bus) {
@@ -248,7 +251,7 @@
       const td = $('#treeDlg');
       if (td) td.addEventListener('click', (e) => { if (e.target === td || e.target.hasAttribute('data-close')) this.showTree(false); });
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && td && !td.hidden) this.showTree(false); });
-      if (AMB.bus) ['earn', 'spend', 'unlock', 'reset', 'puzzles', 'opened', 'stars'].forEach((ev) => AMB.bus.on('game:' + ev, () => { if (td && !td.hidden) this.renderTree(); }));
+      if (AMB.bus) ['earn', 'spend', 'unlock', 'reset', 'puzzles', 'opened'].forEach((ev) => AMB.bus.on('game:' + ev, () => { if (td && !td.hidden) this.renderTree(); }));
       document.querySelectorAll('[data-choose]').forEach((b) => b.addEventListener('click', () => this.choose(b.dataset.choose)));
       const sw = $('#gameMode');
       if (sw) sw.addEventListener('click', () => this.choose(AMB.game.path ? 'free' : 'path'));

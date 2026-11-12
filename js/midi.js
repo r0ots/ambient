@@ -206,7 +206,6 @@
   function exportMidi() {
     const { bytes, bars, song } = build();
     AMB.rec.download(new Blob([bytes], { type: 'audio/midi' }), 'mid');
-    if (AMB.bus) AMB.bus.emit('act', 'midiExport');
     AMB.ui.toast(`MIDI exporté · ${song ? 'morceau entier, ' : ''}${bars} mesures`);
   }
 

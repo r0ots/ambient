@@ -156,7 +156,6 @@
     // raw = MIDI velocity 0..1 as played (null from the computer keyboard), carried by the 'live' event
     playMidi(midi, vel = 0.85, raw = null) {
       if (!AMB.engine.ctx) return;
-      if (AMB.bus) AMB.bus.emit('act', 'note');
       const L = AMB.layers;
       const wasOn = store.get('bells.on');
       // the melody voice is used as the instrument even if its generative part is muted

@@ -44,7 +44,7 @@
     N('e.lofi', 'espace', 'Usure', 20, ['e.tape'], ['fx.lofi'], [], 'Un son abîmé, filtré, granuleux.'),
 
     // Mouvement — melody, time, drift, grains, slow movements, scenes
-    N('m.bells', 'mouvement', 'Mélodie auto', 5, ['racine'], ['bells.on', 'bells.vol', 'bells.wave', 'bells.density', 'bells.tone', 'bells.decay', 'bells.range'], [], 'Des notes qui improvisent sur les accords.'),
+    N('m.bells', 'mouvement', 'Mélodie auto', 5, ['racine'], ['bells.on', 'bells.vol', 'bells.wave', 'bells.density', 'bells.tone', 'bells.decay', 'bells.range'], ['keys', 'midi'], 'Des notes qui improvisent sur les accords ; les jouer toi-même au clavier (A–L) ou au clavier MIDI.'),
     N('m.tempo', 'mouvement', 'Tempo', 10, ['m.bells'], ['global.tempo', 'global.time'], [], 'Vitesse, et rythme pulsé ou flottant.'),
     N('m.phrase', 'mouvement', 'Phrases', 20, ['m.bells'], ['bells.mode', 'bells.phraseLen', 'bells.mutate'], [], 'Un motif qui se répète et varie lentement.'),
     N('m.evolve', 'mouvement', 'Dérive', 15, ['m.tempo'], ['global.evolve'], [], 'Tes réglages dérivent tout seuls autour de leur valeur.'),
@@ -54,13 +54,12 @@
     N('m.scenes', 'mouvement', 'Scènes', 25, ['m.lfo'], [], ['scenes'], 'Deux états A/B et un fondu automatique entre eux.'),
 
     // Composer — written melody, bass, pulses, automation, song
-    N('c.seq', 'composer', 'Mélodie écrite', 25, ['h.pad', 'm.bells'], ['seq.on', 'seq.wave', 'seq.vol', 'seq.steps', 'seq.octave', 'seq.tone', 'seq.decay', 'seq.send', 'seq.pattern'], ['pianoroll', 'mode-compose'], 'Dessiner ses notes dans le piano roll.', 'p.composer'),
+    N('c.seq', 'composer', 'Mélodie écrite', 25, ['h.pad', 'm.bells'], ['seq.on', 'seq.wave', 'seq.vol', 'seq.steps', 'seq.octave', 'seq.tone', 'seq.decay', 'seq.send', 'seq.pattern'], ['pianoroll', 'mode-compose', 'midiFile'], 'Dessiner ses notes dans le piano roll ; importer et exporter des .mid.', 'p.composer'),
     N('c.arp', 'composer', 'Arpège', 20, ['c.seq'], ['seq.mode', 'seq.arpDir', 'seq.arpRate', 'seq.arpOct'], [], 'Égrener l\'accord en cours.'),
     N('c.motifs', 'composer', 'Motifs A–D', 25, ['c.seq'], ['seq.patB', 'seq.patC', 'seq.patD', 'seq.slot', 'seq.chain', 'seq.mutate', 'seq.follow'], ['motifs', 'reclive'], '4 motifs, une chaîne, la variation, l\'enregistrement live.'),
     N('c.bass', 'composer', 'Basse', 25, ['c.seq'], ['bass.*'], [], 'Une ligne de basse qui suit les accords.'),
     N('c.perc', 'composer', 'Pulsations', 25, ['c.seq'], ['perc.*'], [], '4 pistes rythmiques douces.'),
     N('c.groove', 'composer', 'Groove', 15, ['c.perc'], ['global.swing', 'global.humanize', 'seq.swing'], [], 'Swing et imprécision humaine.'),
-    N('c.midi', 'composer', 'MIDI', 20, ['c.seq'], [], ['midi'], 'Jouer avec un clavier MIDI, importer et exporter des .mid.'),
     N('c.auto', 'composer', 'Automation', 30, ['c.motifs'], ['auto.*'], ['automation'], 'Dessiner l\'évolution d\'un réglage sur plusieurs mesures.'),
     N('c.song', 'composer', 'Morceau', 30, ['c.auto', 'h.prog'], [], ['song'], 'Enchaîner des sections pour faire un morceau entier.'),
   ];
@@ -86,7 +85,7 @@
     chords: '.chords-panel', song: '.song-panel', pianoroll: '.roll-wrap',
     motifs: '.slot-tabs, .roll-wrap [data-act=dup]',
     reclive: '.roll-wrap [data-act=liverec], .roll-wrap label:has([data-metro])',
-    midi: '#midi, #exportMidi, .roll-wrap label:has([data-midi-in]), .roll-wrap [data-act=midi]',
+    keys: '.stage .hint', midi: '#midi', midiFile: '#exportMidi, .roll-wrap label:has([data-midi-in]), .roll-wrap [data-act=midi]',
     'mode-sculpt': '[data-mode=sculpt]', 'mode-compose': '[data-mode=compose]',
   };
 
@@ -95,7 +94,7 @@
     rec: 'Enregistrement', share: 'Lien de partage', patches: 'Export / import des patchs', dice: '✦ Nouveau paysage',
     preset: 'Presets', xy: 'Pad XY', freeze: 'Échantillon, micro, Figer', scenes: 'Scènes A/B', automation: 'Automation',
     chords: 'Panneau Progression', song: 'Morceau', pianoroll: 'Piano roll', motifs: 'Motifs A–D', reclive: 'Rec live',
-    midi: 'MIDI (clavier, import, export)', 'mode-sculpt': 'Mode Sculpter', 'mode-compose': 'Mode Composer',
+    keys: 'Jouer au clavier (A–L)', midi: 'Clavier MIDI', midiFile: 'Import / export .mid', 'mode-sculpt': 'Mode Sculpter', 'mode-compose': 'Mode Composer',
   };
 
   const tree = {
