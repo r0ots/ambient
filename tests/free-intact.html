@@ -1,0 +1,100 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
+<!-- Mode libre intact (G11.4): in free mode, open/close the arcade, start and abandon rounds, open the #dj / #df / #save links;
+     afterwards the store (all settings), journal, undo history, share link, body classes and visible UI are identical to the
+     snapshot taken before, no game element is visible, and localStorage got no new game key (only the harmless ones listed in HARMLESS). -->
+<script src="lib.js"></script>
+<script>['game','arcade','daily','duel'].forEach(k=>localStorage.removeItem('ambient.'+k+'.fri'));</script>
+<iframe id="f" src="../index.html?gamekey=ambient.game.fri&arcadekey=ambient.arcade.fri&dailykey=ambient.daily.fri&duelkey=ambient.duel.fri" style="width:1200px;height:800px;border:0"></iframe>
+<script>
+// Keys the base app may write in free mode, none of them game state (UI preferences, user presets, scenes, "last visit" date):
+// Written because the cabinet (offered in free mode) was used: its own records/play counters, nothing else of the game.
+const CABINET = ['ambient.arcade.fri'];
+const HARMLESS = ['ambient.seenHelp', 'ambient.xyTip', 'ambient.mode', 'ambient.view', 'ambient.vizMode', 'ambient.visit.v1', 'ambient.userPresets.v1', 'ambient.scenes.v1', 'ambient.contracts.min'];
+const QS = 'gamekey=ambient.game.fri&arcadekey=ambient.arcade.fri&dailykey=ambient.daily.fri&duelkey=ambient.duel.fri';
+const f = document.getElementById('f');
+f.addEventListener('load', async () => {
+  try {
+    const w = f.contentWindow, d = f.contentDocument, A = w.AMB, AR = A.arcade, dlg = d.getElementById('arcadeDlg');
+    w.addEventListener('error', e => log('ERROR ' + e.message + ' @' + e.filename + ':' + e.lineno));
+    const until = async (fn, n = 60) => { for (let i = 0; i < n && !fn(); i++) await wait(50); return fn(); };
+    const key = (k) => d.dispatchEvent(new w.KeyboardEvent('keydown', { key: k, code: k, bubbles: true }));
+    A.game.setMode('free'); A.garden.welcome(false); await wait(300);
+    const LS = () => { const o = {}; for (let i = 0; i < w.localStorage.length; i++) { const k = w.localStorage.key(i); o[k] = w.localStorage.getItem(k); } return o; };
+    const vis = (e) => { const r = e.getBoundingClientRect(), cs = w.getComputedStyle(e); return !e.hidden && cs.display !== 'none' && cs.visibility !== 'hidden' && (r.width > 0 || r.height > 0); };
+    const share = () => { d.getElementById('share').click(); return w.location.hash; };
+    const shot = () => ({
+      store: JSON.stringify(A.store.stableSnapshot()),
+      journal: JSON.stringify(A.journal ? A.journal.items.map(i => [i.label, i.state]) : []),
+      history: A.history.past.length + '/' + A.history.future.length + '/' + JSON.stringify(A.history.past.slice(-3)),
+      bodyClasses: [...d.body.classList].sort().join(' '),
+      visibleUI: [...d.querySelectorAll('[id]:not(#fx)')].filter(vis)  // #fx = transparent aria-hidden canvas of the juice, created on demand in the cabinet
+      .map(e => e.id).sort().join(','),
+      game: JSON.stringify(A.game.s), playing: String(A.seq.playing),
+    });
+    const before = shot(), shareBefore = share(), ls0 = LS();
+    ok(A.game.s.mode === 'free' && !A.game.path && shareBefore.startsWith('#p='), 'départ : mode libre, lien de partage lu (' + shareBefore.length + ' car.)');
+    const undoBefore = A.history.past.length;
+
+    // --- arcade: open, round, abandon (Échap), close
+    d.getElementById('arcadeBtn').click(); await wait(60);
+    ok(AR.open && !dlg.hidden, 'borne ouverte en libre');
+    d.querySelector('.arc-cart[data-game=hautbas]').click();
+    ok(await until(() => AR.active), 'manche lancée');
+    AR.answer(AR.round.ch.answer); await wait(30);
+    key('Escape'); await wait(60);
+    ok(!AR.active && !A.audition.active && !dlg.hidden, 'manche abandonnée (Échap) : retour au menu');
+    key('Escape'); await wait(60);
+    ok(dlg.hidden && !AR.open, 'borne fermée (Échap)');
+    d.getElementById('arcadeBtn').click(); await wait(40);
+    d.querySelector('.arc-cart[data-game=hautbas]').click(); await until(() => AR.active);
+    AR.end({ abort: true }); await wait(40); dlg.querySelector('[data-close]').click(); await wait(40);
+    ok(dlg.hidden && !AR.active && !AR.open, 'seconde manche abandonnée, borne fermée par ✕');
+
+    // --- #dj / #df: valid links only propose the Parcours; « Plus tard » stores nothing
+    const DY = A.daily, L = DY.link;
+    w.location.hash = '#dj=' + L.encode({ v: 1, day: DY.today(), n: 'Léo', s: 12400, p: 'm', z: 0, r: DY.rel(12400, 'm') }); await wait(150);
+    const cz = d.getElementById('cousinDlg');
+    ok(cz && !cz.hidden && cz.querySelector('[data-cz=path]') && A.game.s.mode === 'free', '#dj en libre : simple proposition, le mode ne change pas');
+    cz.querySelector('[data-cz=no]').click(); await wait(40);
+    ok(cz.hidden && !/dj=/.test(w.location.hash) && A.game.s.mode === 'free' && !Object.keys(DY.s.board).length && !Object.keys(DY.s.days).length, '#dj : « Plus tard » → rien stocké, lien effacé');
+    const duelUrl = A.duel.url({ k: 'r', sd: 1234, d: 0.5 }, { s: 3200, p: 'm' });
+    w.location.hash = duelUrl.slice(duelUrl.indexOf('#')); await wait(150);
+    ok(!cz.hidden && A.game.s.mode === 'free' && !A.duel.incoming, '#df en libre : simple proposition, aucun défi chargé (hidden=' + cz.hidden + ' mode=' + A.game.s.mode + ' incoming=' + JSON.stringify(A.duel.incoming) + ' hash=' + w.location.hash.slice(0, 20) + ')');
+    cz.querySelector('[data-cz=no]').click(); await wait(40);
+    ok(cz.hidden && !/df=/.test(w.location.hash) && !A.duel.incoming && AR.open === false, '#df : « Plus tard » → rien chargé, borne fermée');
+    for (const bad of ['#df=%%%~1', '#dj=abc~1', '#dj=', '#df=e30~0']) { w.location.hash = bad; await wait(100); }
+    ok(cz.hidden && A.game.s.mode === 'free' && !AR.open, 'liens abîmés : au plus un message, mode libre intact');
+    w.history.replaceState(null, '', w.location.pathname + w.location.search); await wait(40);
+
+    // --- afterwards: identical to the snapshot
+    d.querySelectorAll('.fx-flash,.fx-float').forEach(e => e.remove()); await wait(300);
+    const after = shot(), shareAfter = share();
+    for (const k of Object.keys(before)) ok(before[k] === after[k], 'identique : ' + k + (before[k] === after[k] ? '' : '\n  avant ' + String(before[k]).slice(0, 300) + '\n  après ' + String(after[k]).slice(0, 300)));
+    ok(shareAfter === shareBefore, 'lien de partage identique');
+    ok(A.history.past.length === undoBefore, 'annulation : aucune entrée ajoutée');
+    const GAMEUI = ['treeBtn', 'lcdShards', 'contracts', 'saveBtn', 'cousinDlg', 'saveDlg', 'puzzle', 'treeDlg', 'welcomeDlg', 'endDlg', 'arcadeDlg'];
+    const showing = GAMEUI.filter(id => { const e = d.getElementById(id); return e && vis(e); });
+    ok(!showing.length && !d.querySelector('.fx-flash,.fx-float,.tree-badge:not([hidden])'), 'aucun élément de jeu visible (arbre, éclats, contrats, sauvegarde, énigme, défis, borne) ' + showing.join());
+    ok(vis(d.getElementById('arcadeBtn')), 'seul le bouton Arcade reste visible (la borne est offerte en libre)');
+
+    // --- localStorage: no new game key
+    const ls1 = LS(), added = Object.keys(ls1).filter(k => !(k in ls0)), changed = Object.keys(ls0).filter(k => ls1[k] !== ls0[k]);
+    const bad = added.concat(changed).filter(k => !HARMLESS.includes(k) && !CABINET.includes(k));
+    ok(!bad.length, 'localStorage : aucune clé de jeu nouvelle ni modifiée (nouvelles : ' + (added.join(', ') || 'aucune') + ' ; modifiées : ' + (changed.join(', ') || 'aucune') + ')');
+    log('info clé de la borne tolérée (records et parties, la borne est offerte en libre) : ' + CABINET.join(', '));
+    log('info clés inoffensives tolérées : ' + HARMLESS.join(', '));
+
+    // --- #save=… at load, in free mode: a second page load with the same keys
+    const g2 = document.createElement('iframe'); g2.style.cssText = 'width:1200px;height:800px;border:0';
+    g2.src = '../index.html?' + QS + '#save=bnVsbA';
+    const loaded = new Promise(r => g2.addEventListener('load', r)); document.body.append(g2); await loaded; await wait(600);
+    const w2 = g2.contentWindow, d2 = g2.contentDocument, A2 = w2.AMB, sd = d2.getElementById('saveDlg');
+    ok(A2.game.s.mode === 'free' && !A2.game.path, '#save au chargement : mode libre gardé');
+    const sdOpen = !!(sd && !sd.hidden); if (sdOpen) sd.querySelector('.modal-x').click();
+    ok(!(sd && !sd.hidden), '#save illisible : au plus un message d\'erreur, fermé ensuite (' + (sdOpen ? 'dialogue affiché' : 'rien') + ')');
+    ok(JSON.stringify(A2.store.stableSnapshot()) === before.store && JSON.stringify(A2.game.s) === before.game, '#save en libre : réglages et état du jeu inchangés');
+    ['game', 'arcade', 'daily', 'duel'].forEach(k => localStorage.removeItem('ambient.' + k + '.fri'));
+    done();
+  } catch (e) { fail(e); }
+});
+</script></body></html>

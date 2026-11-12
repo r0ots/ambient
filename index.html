@@ -224,6 +224,62 @@
       <div class="modal-card" role="dialog" aria-label="Aide">
         <button class="modal-x" data-close>✕</button>
         <h3>Comment ça marche</h3>
+        <div class="help-path" hidden>
+          <div class="help-tabs"><button class="btn primary" data-help-tab="start">Pour commencer</button> <button class="btn" data-help-tab="far">Pour aller loin</button> <button class="btn" data-help-tab="basics">Les bases du son</button></div>
+          <div class="help-lvl" data-help-lvl="start">
+            <div class="help-grid">
+              <div><h4>Le principe</h4><ul>
+                <li>Tu pars avec <b>une seule note</b>. Chaque réglage s'ouvre quand tu le mérites.</li>
+                <li>Joue, touche, essaie : tu gagnes des <b>✧ éclats</b>.</li>
+                <li>Ouvre l'<b>🌱 Arbre</b> et dépense-les pour débloquer la suite.</li></ul></div>
+              <div><h4>Gagner des éclats</h4><ul>
+                <li><b>Découvrir</b> un réglage en le touchant</li>
+                <li><b>Contrats</b> : un petit défi d'usage (« coupe le drone, rallume-le »)</li>
+                <li><b>Énigmes</b> : retrouve un son cible à l'oreille, en 6 essais. ▶ cible / ◀ mon son</li></ul></div>
+              <div><h4>Arcade</h4><ul>
+                <li>Bouton <b>Arcade</b> : des mini-jeux d'oreille de 2 minutes, sans pression</li>
+                <li>Commence par <b>Plus haut ou plus bas ?</b></li>
+                <li>Les records et les ★ restent sur ton appareil</li></ul></div>
+              <div><h4>Si tu bloques</h4><ul>
+                <li>Une énigme trop dure : après 6 essais la porte s'ouvre quand même</li>
+                <li>Un contrat qui ne vient pas : passe-le</li>
+                <li><b>Mode libre</b> (menu ⋯) : tout est ouvert, ton parcours est gardé</li></ul></div>
+            </div>
+          </div>
+          <div class="help-lvl" data-help-lvl="far" hidden>
+            <div class="help-grid">
+              <div><h4>Énigmes</h4><ul>
+                <li>Chaque validation dit, réglage par réglage : ✓ juste, ≈ proche, ✗ loin, et le sens ⬆ ⬇</li>
+                <li>0 à 3 ★ selon les essais et les écoutes. <b>Aide</b> = jauge en direct, sans étoile</li></ul></div>
+              <div><h4>Secrets</h4><ul>
+                <li>Des surprises cachées dans le jardin, affichées « ??? » dans l'arbre</li>
+                <li>Elles se trouvent en jouant ; deux indices s'ouvrent avec le temps</li></ul></div>
+              <div><h4>Les mini-jeux</h4><ul>
+                <li><b>Plus haut ou plus bas ?</b> : hauteur de deux notes</li>
+                <li><b>Accordeur</b> : plus haut, plus bas ou juste (jusqu'à 2 cents)</li>
+                <li><b>L'intrus</b> : X est-il A ou B ?</li>
+                <li><b>Qu'est-ce qui a bougé ?</b> : quel réglage a changé dans la boucle</li>
+                <li><b>Chasseur de modes</b> : la couleur d'un mode sur un bourdon</li>
+                <li><b>Réponds en jouant</b> : rejoue la mesure, juste et en place (clavier, MIDI, pads)</li>
+                <li><b>Dictée d'accords</b> : majeur, mineur, 7e, sus, dim, fonction</li></ul></div>
+              <div><h4>Pactes, défis, classement</h4><ul>
+                <li><b>Pactes</b> : des contraintes cochées sur la cartouche (une écoute, transposé, leurres proches…) pour un score multiplié. Certains sont secrets.</li>
+                <li><b>Défi du jour</b> : les mêmes 3 jeux pour tout le monde, au classement du jour</li>
+                <li><b>Défie ton cousin</b> : réussis ton défi, envoie le lien ; le score compare vos niveaux</li>
+                <li>Pas de pacte dans le défi du jour ni les duels : les scores restent comparables</li></ul></div>
+              <div><h4>Profil et placement</h4><ul>
+                <li>Menu ⋯ → <b>🌱 Mon Parcours</b> → <b>👤 Profil</b> : musicien ou découverte (départ plus doux, libellés simples)</li>
+                <li><b>Test de placement</b> : 5 courtes manches, une par branche, pour régler tes niveaux et te proposer des nœuds</li></ul></div>
+              <div><h4>Sauvegarde</h4><ul>
+                <li>Menu ⋯ → <b>🌱 Mon Parcours</b> → <b>Sauvegarde du Parcours</b> : fichier ou lien, import avec confirmation</li>
+                <li>Contient progression, records, profil, pactes et classement ; pas la latence ni le mode libre</li></ul></div>
+              <div><h4>MIDI et latence</h4><ul>
+                <li>Branche un clavier ou des pads : ils jouent l'appli, et les jeux d'écoute et de rythme</li>
+                <li><b>⟲ Latence</b> (menu de l'Arcade) : tape en rythme pour compenser le retard de l'appareil ; une calibration par entrée (clavier, écran, MIDI)</li></ul></div>
+            </div>
+          </div>
+        </div>
+        <div class="help-free">
         <p><b>Écouter</b> pour profiter, <b>Sculpter</b> pour régler le son, <b>Composer</b> pour écrire accords, mélodies et morceau. Ambient joue tout seul : cinq couches (Drone, Pad, Mélodie, Grains, Texture) improvisent dans la gamme choisie, et la <b>Dérive</b> fait bouger lentement les réglages autour des tiens.</p>
         <div class="help-grid">
           <div><h4>Démarrer</h4><ul>
@@ -252,6 +308,7 @@
             <li><b>Rec</b> WAV ou compressé, durée fixe avec fondu</li>
             <li><b>Partager</b> : lien qui contient tout le patch</li>
             <li><b>☾</b> minuteur de sommeil · <b>⤢ Écoute</b> plein écran</li></ul></div>
+        </div>
         </div>
         <p class="muted"><kbd>Espace</kbd> lecture/stop · <kbd>⌘Z</kbd> annuler · <kbd>⇧⌘Z</kbd> rétablir · <kbd>?</kbd> cette aide · <kbd>Échap</kbd> fermer</p>
       </div>

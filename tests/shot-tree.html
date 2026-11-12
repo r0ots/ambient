@@ -3,6 +3,7 @@
   #arcade (menu), #arcade-pacts (menu with pacts ticked, secret pacts shown), #arcade-play=<id> (round; &d=0.7 sets the level and skips the latency calibration, &mut=miroir|retro|transpose forces a Réponds mutator), #arcade-end (end screen), #arcade-daily (défi du jour + classement), #arcade-duel (lien de défi reçu);
   #pf-profile (who plays?), #pf-end (placement result), #pf-kid (« Jouer 2 min » button), #pf-joy (its end);
   #save-open / #save-confirm (sauvegarde), #save-back (encart « depuis ta dernière visite » dans le menu ⋯);
+  #help-start / #help-far / #help-basics / #help-free (aide du Parcours : onglets ; libre),
   #more (menu ⋯ en Parcours : encart compact, sous-section « Parcours » dépliée, panneau Contrats dessous),
   #arcade-kid (menu de la borne en profil Découverte : pas de pactes),
   #garden (Jardin visuel débutant : 3 couches), #garden-adv (8 couches, niveaux d'arcade, pactes, secrets) — notes simulées sur le bus.
@@ -18,10 +19,12 @@ document.getElementById('f').addEventListener('load', () => {
     ['burst', 'floatText', 'flash', 'shake', 'hitstop', 'pulseCombo', 'chime'].forEach(k => { J[k] = () => 0; });
     const fx = doc.getElementById('fx'); if (fx) fx.style.display = 'none';
   }
+  if (h.includes('help-free')) { A.game.setMode('free'); A.garden.welcome(false); doc.getElementById('help').click(); return; }
   if (h.includes('free')) { A.game.setMode('free'); A.garden.welcome(false); return; }
   A.game.setMode('path'); A.game.earn(200, 'x');
   ['t.son', 'h.pad', 'e.reverb', 'm.bells', 't.viz'].forEach(i => A.tree.buy(i));
   A.game.solve('p.gamme'); A.garden.welcome(false);
+  if (h.includes('help-')) { doc.getElementById('help').click(); const t = h.slice(6); const b = doc.querySelector('[data-help-tab=' + t + ']'); if (b) b.click(); return; }
   if (h.includes('#more')) {
     A.garden.showTree(false); A.garden.renderSwitch(); A.game.setProfile('musicien'); A.save.refreshCard(Date.now() - 26 * 3600e3);
     doc.querySelector('.more').open = true; const pm = doc.querySelector('#pathMenu'); if (pm) pm.open = true;
