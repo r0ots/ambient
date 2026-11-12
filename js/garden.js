@@ -193,7 +193,7 @@
       g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(1, t + 0.3);
       g.gain.setValueAtTime(1, t + w.len - fo); g.gain.linearRampToValueAtTime(0, t + w.len);
       src.start(t, w.from, w.len);
-      this.playback = { src, live, t, len: w.len };
+      this.playback = { src, g, live, t, len: w.len };
       if (GV) GV.replayStart({ t0: t - w.from, from: w.from, len: w.len, ev: s.ev });
       this.lcd('♪ Ton morceau', (t - ctx.currentTime + w.len) * 1000);
       src.onended = () => this.finaleEnd();
@@ -202,7 +202,8 @@
     finaleEnd() {
       const p = this.playback; if (!p) return;
       this.playback = null; clearTimeout(p.timer);
-      try { p.src.stop(); } catch (e) {}
+      const ctx = AMB.engine.ctx, n = ctx ? ctx.currentTime : 0;
+      try { p.g.gain.cancelScheduledValues(n); p.g.gain.setValueAtTime(p.g.gain.value, n); p.g.gain.linearRampToValueAtTime(0, n + 0.15); p.src.stop(n + 0.2); } catch (e) {} // ■ Stop: a short fade, no click
       if (AMB.gardenVisual) AMB.gardenVisual.replayStop();
       if (p.live && AMB.seq && AMB.seq.playing) AMB.engine.fadeIn(2);
       this.offer = this.song && this.song.blob; this.song = null;
@@ -242,6 +243,8 @@
           this.chime('small'); this.lcd('✓ défi réussi', 2500);
         });
         AMB.bus.on('game:puzzle', (e) => this.reponse(e));
+        AMB.bus.on('panic', () => this.finaleEnd()); // ■ Stop also stops the replay of the finale (then the handover)
+        AMB.bus.on('game:reset', () => { this.offer = null; }); // a new path: no song from the old one offered
         // S4.5w: what each layer plays while the song is being recorded (the finale lights the plants with it)
         AMB.bus.on('note', (n) => n && this.tape(n.layer, n.time, n.vel));
         AMB.bus.on('perc', (n) => n && this.tape('perc', n.time, n.vel));

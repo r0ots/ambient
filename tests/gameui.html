@@ -266,7 +266,14 @@ f.addEventListener('load', async ()=>{
     ok(shown('#lcdTask') && task.dataset.id==='wav' && /Garde ton morceau/.test(task.querySelector('.lcd-task-txt').textContent) && GV.dawnLevel(GV.clock())===1, 'le WAV est proposé sur la ligne du LCD ; le jardin reste à l\'aube');
     task.querySelector('.lcd-task-txt').click(); await wait(20);
     ok(dl.length===1 && dl[0][0]===blob && dl[0][1]==='wav' && !shown('#lcdTask') && !lline.hidden, 'toucher : le WAV est téléchargé, la ligne redevient l\'état du son');
-    A.rec.download=od; A.game.reset(); A.perform.setMode('listen'); }
+    // ■ Stop during the replay: it stops (short fade), then the handover
+    A.game.reset(); buyAll(); await wait(100); A.garden.songTape={t0:5,ev:[{layer:'pad',t:0.3,vel:0.8}]};
+    A.bus.emit('act','songRec'); A.garden.keepSong(blob);
+    for (let i=0;i<80 && !GV.replay;i++) await wait(50);
+    const had=!!GV.replay; A.ui.stop(); await wait(50);
+    for (let i=0;i<20 && !/INSTRUMENT/.test(top.textContent);i++) await wait(50);
+    ok(had && !GV.replay && !A.garden.playback && /INSTRUMENT EST À TOI/.test(top.textContent), '■ Stop pendant la relecture de fin : elle s\'arrête, puis la remise');
+    await wait(2100); A.rec.download=od; A.game.reset(); A.perform.setMode('listen'); }
   // --- sound locking (G1.5)
   const St=A.store, g=A.game;
   g.setMode('free'); St.set('fx.echo',0.6,'user'); St.set('pad.on',true,'user');
