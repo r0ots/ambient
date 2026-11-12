@@ -40,7 +40,7 @@ Lien « kiosque » : `?mood=Contemplatif&viz=Horizon&listen=1&autoplay=1`
 
 ## MIDI
 
-Branche un clavier ou des pads (Chrome, Edge, Opera ; Web MIDI) : ils jouent l'appli (notes graves = accords, CC1 densité, CC74 brillance). Import/export de fichiers `.mid` dans le piano roll. Dans le Parcours, le clavier MIDI s'ouvre avec la Mélodie auto (comme les touches A–L), l'import/export avec la Mélodie écrite.
+Branche un clavier ou des pads (Chrome, Edge, Opera ; Web MIDI), puis le bouton **MIDI** de la barre (connexion automatique ensuite). Les notes graves (sous le do 3, MIDI 48) forment un accord reconnu dans la tonalité, tenu tant que les touches ou la pédale (CC64) le sont ; au-dessus, les notes jouent la Mélodie, même lecture arrêtée, la vélocité règle la force et l'éclat. Les CC pilotent les grandes commandes : CC1 Densité, CC74 Lumière, CC91 Espace, CC93 Nostalgie. Import/export de fichiers `.mid` dans le piano roll. Dans le Parcours, le clavier MIDI s'ouvre avec la Mélodie auto (comme les touches A–L), l'import/export avec la Mélodie écrite.
 
 ## Développement
 

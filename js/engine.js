@@ -84,7 +84,7 @@
 
     init() {
       if (this.ctx) return;
-      const ctx = (this.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'playback' }));
+      const ctx = (this.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' }));
       const g = (v = 1) => { const n = ctx.createGain(); n.gain.value = v; return n; };
       this.g = g;
 
@@ -192,6 +192,15 @@
       this._setupTap();
       this.recDest = ctx.createMediaStreamDestination();
       this.out.connect(this.recDest);
+      // live notes played while stopped (js/play.js): the stop fade (`out`) silences the whole mix, so they take a
+      // small parallel path after it (dry + the same reverb impulse, limited) into the analyser and the recorder
+      {
+        const input = g(0), wet = g(0), conv = ctx.createConvolver(), lim = ctx.createDynamicsCompressor();
+        lim.threshold.value = -3; lim.ratio.value = 20; lim.knee.value = 0; lim.attack.value = 0.002; lim.release.value = 0.15;
+        input.connect(lim); input.connect(wet); wet.connect(conv); conv.connect(lim);
+        lim.connect(this.analyser); lim.connect(this.recDest);
+        this.live = { input, wet, conv };
+      }
 
       this._revSize = -1;
       this.applyAll();
@@ -330,6 +339,7 @@
             if (Math.abs(secs - this._revSize) < 0.6) return; // avoid reloading the IR on tiny moves (evolve/morph)
             this._revSize = secs;
             this.conv.buffer = makeImpulse(this.ctx, secs, 2.2 + (1 - sz) * 2, store.get('fx.revType'));
+            this.live.conv.buffer = this.conv.buffer;
           }, 120);
           break;
         }
@@ -379,6 +389,16 @@
         setLevel: (v) => level.gain.setTargetAtTime(v, ctx.currentTime, 0.15),
         setSend: (v) => send.gain.setTargetAtTime(v, ctx.currentTime, 0.15),
       };
+    }
+
+    // where a player's note goes while stopped (js/sequencer.js liveDest): sets the live path's level and reverb
+    liveInput(level, send) {
+      const L = this.live, t = this.ctx.currentTime, first = !L.used;
+      const set = (p, v) => (first ? p.setValueAtTime(v, t) : p.setTargetAtTime(v, t, 0.02)); // glide later level changes
+      set(L.input.gain, level * this.master.gain.value);
+      set(L.wet.gain, send * store.get('fx.space') * 0.66);
+      L.used = true;
+      return L.input;
     }
 
     fadeOut(seconds) {

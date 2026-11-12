@@ -12,6 +12,8 @@ f.addEventListener('load', async () => {
     w.addEventListener('error', (e) => log('ERROR ' + e.message + ' @' + e.filename + ':' + e.lineno));
     const until = async (fn, n = 80) => { for (let i = 0; i < n && !fn(); i++) await wait(25); return fn(); };
     A.game.setMode('free'); A.garden.welcome(false);
+    const mb = d.getElementById('midi'), visible = (e) => { const r = e.getBoundingClientRect(); return !e.hidden && r.width > 0 && r.height > 0; };
+    ok(visible(mb) && !mb.closest('.more') && mb.closest('.transport'), 'S4.1 bouton MIDI visible dans la barre (hors du menu ⋯), MIDI disponible');
     const kb = fakeMidi(w);
     ok(await kb.connect() && kb.asked === 1 && /MIDI · 1/.test(d.getElementById('midi').textContent), 'faux clavier branché par le bouton MIDI (onmidimessage = ' + (kb.input.onmidimessage === A.play.onMidi ? 'AMB.play.onMidi' : '?') + ')');
     // spies on the app side (they call through)
@@ -26,10 +28,41 @@ f.addEventListener('load', async () => {
 
     // --- free mode, playing: the app plays the note (velocity remapped, raw velocity on 'live')
     await A.ui.play(); await until(() => A.seq.playing);
-    kb.on(72, 100); kb.off(72); kb.on(40, 90); kb.off(40, undefined, { zero: true }); kb.cc(74, 127);
+    kb.on(72, 100); kb.off(72); kb.on(40, 90); kb.off(40, undefined, { zero: true }); kb.cc(74, 127); await wait(60);
     const n = app.notes[0], raw = 100 / 127;
     ok(A.seq.playing && app.notes.length === 1 && n[0] === 72 && Math.abs(n[1] - (0.25 + 0.75 * raw)) < 1e-9 && Math.abs(n[2] - raw) < 1e-9, 'mode libre : note 72 jouée par l\'appli (vélocité entendue ' + n[1].toFixed(2) + ', brute ' + n[2].toFixed(2) + ')');
     ok(app.live.length === 1 && app.live[0].midi === 72 && Math.abs(app.live[0].raw - raw) < 1e-9 && app.chords.length === 1 && app.macros.length === 1 && app.macros[0][0] === 'macro.light', 'mode libre : événement live (vélocité brute), note grave → accord, CC74 → Lumière');
+
+    // --- S4.1 left hand: notes pressed together (≤ 40 ms) = one chord, recognised in the key (any inversion), forced once
+    const st0 = A.store; st0.set('global.key', 'C'); st0.set('global.scale', 'Ionien (majeur)'); st0.set('global.tempo', 140); st0.set('pad.length', 1);
+    const chordOf = async (notes) => { reset(); notes.forEach((m) => kb.on(m, 90)); await wait(70); notes.forEach((m) => kb.off(m)); return app.chords.map((c) => c[0]).join(','); };
+    const cases = [[[36, 40, 43], '0', 'do-mi-sol → I'], [[28, 31, 36], '0', 'mi-sol-do (renversement) → I'], [[33, 36, 40], '5', 'la-do-mi → vi'], [[38, 43, 35], '4', 'ré-sol-si → V'], [[38, 42, 45], '1', 'ré-fa#-la (hors gamme) → ii, le plus proche'], [[41], '3', 'fa seul → IV']];
+    const got = []; for (const [n, want, label] of cases) { const g = await chordOf(n); got.push(label + ' : ' + g); ok(g === want, 'accord main gauche ' + label + ' (forcé ' + (g || 'jamais') + ', attendu une fois ' + want + ')'); }
+    // held: the chord stays past its length while a key (or the pedal) is down, re-struck at each boundary; let go → the progression resumes
+    const padSpy = []; const pc0 = A.layers.pad.playChord; A.layers.pad.playChord = function (...a) { padSpy.push(a[0].slice()); return pc0.apply(this, a); };
+    const audioUntil = async (fn) => { for (let i = 0; i < 2500 && !fn(); i++) await wait(4); return fn(); };
+    st0.set('pad.prog', 'I–V–vi–IV'); reset();
+    kb.on(33, 90); kb.on(36, 90); kb.on(40, 90); await wait(70);
+    const b1 = A.seq.nextChordAt; padSpy.length = 0;
+    await audioUntil(() => A.seq.step > b1 + 2);
+    const heldOk = A.seq.chordDeg === 5 && A.seq.chordHold && padSpy.length >= 1 && app.chords.length === 1;
+    kb.cc(64, 127); kb.off(33); kb.off(36); kb.off(40); const b2 = A.seq.nextChordAt; await audioUntil(() => A.seq.step > b2 + 2);
+    const pedalOk = A.seq.chordDeg === 5 && A.seq.chordHold;
+    kb.cc(64, 0); const b3 = A.seq.nextChordAt; await audioUntil(() => A.seq.step > b3 + 2);
+    ok(heldOk && pedalOk && !A.seq.chordHold && A.seq.chordDeg !== 5, 'accord tenu : la-do-mi reste vi après sa durée, touches enfoncées (' + padSpy.length + ' frappes du Pad), puis pédale seule, puis repart (degré ' + A.seq.chordDeg + ')');
+    A.layers.pad.playChord = pc0; st0.set('pad.prog', 'Plane (I)');
+    // velocity → brightness (lowpass of the played note), centred, no random pan
+    const hs = handles.length; kb.on(72, 20); kb.on(74, 127); kb.off(72); kb.off(74);
+    const soft = handles[hs], hard = handles[hs + 1];
+    ok(soft && hard && hard.cutoff > soft.cutoff * 3, 'vélocité → brillance : coupure ' + Math.round(soft && soft.cutoff) + ' Hz (vél. 20) → ' + Math.round(hard && hard.cutoff) + ' Hz (vél. 127)');
+    // stopped (fade to silence done): a MIDI note still sounds, on the engine's live path, in free mode
+    const peak = async (ms) => { const an = A.engine.analyser, b = new Float32Array(an.fftSize); let p = 0; const t = A.engine.ctx.currentTime + ms / 1000; while (A.engine.ctx.currentTime < t) { an.getFloatTimeDomainData(b); for (const v of b) p = Math.max(p, Math.abs(v)); await wait(10); } return p; };
+    const hush = () => { const g = A.engine.out.gain, t = A.engine.ctx.currentTime; g.cancelScheduledValues(t); g.setValueAtTime(0, t); };
+    A.ui.stop(); hush(); await wait(60); reset();
+    const quiet = await peak(150); kb.on(72, 110); const loud = await peak(250); kb.off(72);
+    ok(!A.seq.playing && app.notes.length === 1 && quiet < 0.01 && loud > 0.02, 'mode libre, lecture arrêtée : la note MIDI sonne (crête ' + quiet.toFixed(3) + ' → ' + loud.toFixed(3) + ')');
+    kb.on(40, 90); await wait(60); ok(!app.chords.length, 'arrêté : les notes graves ne forcent pas d\'accord (comme Z–M)');
+    await A.ui.play(); await until(() => A.seq.playing); st0.set('global.tempo', 66); st0.set('pad.length', 4);
 
     // --- S3.3 a musician's MIDI: held notes, sustain pedal, velocity-0 note-off, Rec live lengths, panic
     const ctx = A.engine.ctx, st = A.store, PR = A.pianoRoll;
@@ -87,13 +120,13 @@ f.addEventListener('load', async () => {
     A.game.earn(20, 't'); A.tree.buy('m.bells'); await wait(20);
     kb.on(67, 64); kb.off(67); kb.on(40, 90);
     ok(app.notes.length === 1 && app.notes[0][0] === 67 && app.live.length === 1 && !app.chords.length && !d.getElementById('midi').closest('.is-locked'), 'Parcours, Mélodie achetée : le clavier MIDI joue l\'instrument (accords avec le Pad)');
-    A.tree.buy('h.pad'); kb.on(40, 90); ok(app.chords.length === 1, 'Pad acheté : notes graves → accords');
-    // S3.8: an Écho opened while stopped is played back on MIDI too (like the A–L keys); a plain note while stopped is still ignored
-    A.ui.stop(); await wait(20); reset(); kb.on(67, 64); kb.off(67);
-    const ignored = !app.notes.length;
+    A.tree.buy('h.pad'); kb.on(40, 90); kb.off(40); await wait(60); ok(app.chords.length === 1, 'Pad acheté : notes graves → accords');
+    // S4.1: stopped, a MIDI note sounds in the path too; S3.8: an Écho opened while stopped is played back on MIDI
+    A.ui.stop(); hush(); await wait(20); reset(); kb.on(67, 100); const pk = await peak(250); kb.off(67);
+    const ignored = app.notes.length === 1 && pk > 0.02; reset();
     A.game.earn(50, 't'); A.tree.buy('t.son'); A.garden.openPuzzle('p.premier'); A.puzzles.echoUntil = 0;
     kb.on(A.puzzles.echoMidis()[0] + 12, 90); kb.off(A.puzzles.echoMidis()[0] + 12);
-    ok(ignored && !A.seq.playing && app.notes.length === 1 && A.puzzles.echoRow.length === 1 && A.puzzles.echoRow[0].state === 'ok', 'à l\'arrêt : une note MIDI seule ne joue rien, mais un Écho ouvert se rejoue au MIDI (1re note juste, une octave au-dessus)');
+    ok(ignored && !A.seq.playing && app.notes.length === 1 && A.puzzles.echoRow.length === 1 && A.puzzles.echoRow[0].state === 'ok', 'Parcours, à l\'arrêt : une note MIDI sonne (crête ' + pk.toFixed(3) + ') et un Écho ouvert se rejoue au MIDI (1re note juste, une octave au-dessus)');
     A.garden.closePuzzle();
     A.seq.playMidi = pm; A.seq.forceChord = fc; A.perform.setMacro = sm; A.ui.stop();
     localStorage.removeItem('ambient.game.midipath');

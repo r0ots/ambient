@@ -41,6 +41,7 @@
       this.nextChordAt = null;
       this.origin = 0; // step where the current song section started (bars count from here)
       this.lockUntil = 0;
+      this.chordHold = false;
       this.nextTime = ctx.currentTime + 0.1;
       this.chordDeg = 0;
       this.timer = setInterval(() => this.tick(), 50);
@@ -133,8 +134,10 @@
       return (cs.length && cs[((i % cs.length) + cs.length) % cs.length].bars) || def;
     }
 
-    // Player-forced chord (keyboard / MIDI): plays now and holds for one chord length
-    forceChord(deg) {
+    // Player-forced chord (keyboard / MIDI): plays now and holds for one chord length.
+    // hold (MIDI keys or sustain pedal down): the chord also stays past that, re-struck at each chord boundary like a
+    // natural chord, until releaseChord() (keys and pedal up); then the progression resumes at the next boundary.
+    forceChord(deg, hold = false) {
       if (!this.playing) return;
       if (AMB.bus) AMB.bus.emit('act', 'chord');
       const ctx = AMB.engine.ctx, t = ctx.currentTime + 0.03;
@@ -148,6 +151,13 @@
       const span = 16 * barLen;
       this.lockUntil = Math.ceil((this.step + span * 0.5) / span) * span;
       this.nextChordAt = this.lockUntil;
+      this.chordHold = hold;
+    }
+    // the player let go of a held chord: it lasts at least its first chord length, then the progression resumes
+    releaseChord() {
+      if (!this.chordHold) return;
+      this.chordHold = false;
+      this.lockUntil = this.nextChordAt;
     }
     // Player note: scale degree (quantized) or raw midi
     playDegree(deg, vel = 0.85, held = false) {
@@ -167,10 +177,18 @@
       // while the piano roll records, live notes are heard on the sequencer voice (what gets recorded)
       const rec = AMB.pianoRoll && AMB.pianoRoll.roll.recording;
       const len = held ? 30 : rec ? this.stepDur() * 2 : 0; // 30 s: safety cap if a release never comes
-      const v = (rec ? L.seq : L.bells).note(midi, t, vel, true, len);
+      const voice = rec ? L.seq : L.bells;
+      // MIDI velocity also opens the timbre (raw); stopped, the note skips the stop fade (engine.liveInput)
+      const live = { bright: raw, dest: this.playing ? null : this.liveDest(voice) };
+      const v = voice.note(midi, t, vel, true, len, live);
       const id = (this.liveId = (this.liveId || 0) + 1);
       AMB.bus.emit('live', { midi, time: t, vel, raw, id });
-      return { id, midi, release: v && v.release };
+      return { id, midi, release: v && v.release, cutoff: v ? v.cutoff : 0 };
+    }
+    // where a player's note goes while stopped: the engine's live path, at the voice's level and reverb send
+    liveDest(voice) {
+      const E = AMB.engine, n = voice.name;
+      return E.liveInput ? E.liveInput(0.6 * Math.pow(store.get(n + '.vol'), 1.6), store.get(n + '.send')) : null;
     }
     // end of a held live note: the voice releases, the piano roll gets the real length ('liveOff')
     endLive(h) {
@@ -206,6 +224,12 @@
       const forced = this.forceChordChange; this.forceChordChange = false;
       // a chord lasts chordBars() bars (per-slot durations in the chord panel), counted from its own start
       const due = this.nextChordAt == null || step >= this.nextChordAt;
+      // a held forced chord (MIDI keys / pedal down) is struck again at each boundary, so it never fades out
+      if (due && this.chordHold) {
+        const span = 16 * barLen;
+        this.lockUntil = this.nextChordAt = step + span;
+        L.pad.playChord(this.chord, time, sd * span + 0.5);
+      }
       if ((forced || due) && !(this.lockUntil > step)) {
         if (step > 0) {
           const seq = this.progression();

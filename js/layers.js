@@ -247,8 +247,10 @@
       this.bus = this.ctx.createGain(); this.bus.gain.value = 0.6;
       this.bus.connect(this.out);
     }
-    // len (seconds, optional): sustain length for held voices (« Doux »), used by the step sequencer
-    note(midi, time, vel = 0.8, force = false, len = 0) {
+    // len (seconds, optional): sustain length for held voices (« Doux »), used by the step sequencer.
+    // live (a note played by the player, js/sequencer.js playMidi): {bright: MIDI velocity 0..1 (a lowpass opens with
+    // it; such a note stays centred, no random pan), dest: node replacing the layer's bus (while stopped)}.
+    note(midi, time, vel = 0.8, force = false, len = 0, live = null) {
       if (!this.active && !force) return;
       const ctx = this.ctx;
       const type = P(this.name, 'wave');
@@ -256,8 +258,15 @@
       const decay = 0.6 + Math.pow(P(this.name, 'decay'), 1.4) * 7;
       const f = mtof(midi);
       const env = ctx.createGain(); env.gain.value = 0;
-      const pan = ctx.createStereoPanner(); pan.pan.value = rand(-0.7, 0.7);
-      env.connect(pan); pan.connect(this.bus);
+      const pan = ctx.createStereoPanner(); pan.pan.value = live && live.bright != null ? 0 : rand(-0.7, 0.7);
+      let cutoff = 0;
+      if (live && live.bright != null) { // soft = dark, hard = open: f × 1.5 at velocity 0 up to the whole spectrum
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.5;
+        cutoff = Math.min(18000, f * (1.5 + 40 * live.bright * live.bright));
+        lp.frequency.value = cutoff;
+        env.connect(lp); lp.connect(pan);
+      } else env.connect(pan);
+      pan.connect((live && live.dest) || this.bus);
       const nodes = [];
       const amp = 0.5 * vel * ({ 'Verre': 1.6, 'Pluck': 1.7 }[type] || 1);
       let dur = decay;
@@ -306,7 +315,7 @@
         nodes[0].onended = () => { env.disconnect(); pan.disconnect(); };
         AMB.bus.emit('note', { layer: this.name, midi, time, vel, dur: hold });
         // a held live note (play.js) ends on release: same release curve, from the release time
-        return { release(t) {
+        return { cutoff, release(t) {
           if (t >= time + hold) return;
           const at = Math.max(t, time + 0.07), tau = 0.15 + decay * 0.08;
           env.gain.cancelScheduledValues(at); env.gain.setValueAtTime(amp * 0.7, at); env.gain.setTargetAtTime(0, at, tau);
@@ -327,6 +336,7 @@
       nodes.forEach((n) => { n.start(time); n.stop(stopAt); });
       nodes[0].onended = () => { env.disconnect(); pan.disconnect(); };
       AMB.bus.emit('note', { layer: this.name, midi, time, vel, dur });
+      return { cutoff };
     }
   }
 

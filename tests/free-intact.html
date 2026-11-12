@@ -2,7 +2,7 @@
 <!-- Mode libre intact (G11.4, v1.06): in free mode, play notes, open old #dj / #df / #save links (removed features: ignored);
      afterwards the store (all settings), journal, undo history, share link, body classes and visible UI are identical to the
      snapshot taken before, no game element is visible, and localStorage got no new game key (only the harmless ones listed in HARMLESS). -->
-<script src="lib.js"></script>
+<script src="lib.js"></script><script src="fake-midi.js"></script>
 <script>localStorage.removeItem('ambient.game.fri');</script>
 <iframe id="f" src="../index.html?gamekey=ambient.game.fri" style="width:1200px;height:800px;border:0"></iframe>
 <script>
@@ -35,6 +35,10 @@ f.addEventListener('load', async () => {
     // --- playing the instrument from the keyboard: sound only, no game
     const g0 = JSON.stringify(A.game.s); key('KeyA'); key('KeyZ'); await wait(60);
     ok(JSON.stringify(A.game.s) === g0 && A.game.s.shards === 0, 'notes et accords joués au clavier : rien du jeu ne bouge');
+    // --- S4.1 the only change allowed in free mode: MIDI (button in the bar, notes heard while stopped); still no game
+    const kb = fakeMidi(w), notes = []; A.bus.on('live', (x) => notes.push(x.midi));
+    const midiOk = await kb.connect(); kb.on(72, 100); kb.off(72); kb.on(36, 90); kb.on(40, 90); kb.off(36); kb.off(40); await wait(80);
+    ok(midiOk && !A.seq.playing && notes.includes(72) && JSON.stringify(A.game.s) === g0, 'MIDI en libre : bouton de la barre, note jouée lecture arrêtée, rien du jeu ne bouge' + (midiOk && notes.includes(72) ? '' : ' (branché ' + midiOk + ', notes ' + notes + ', audio ' + !!A.engine.ctx + ')'));
 
     // --- old links of removed features (#dj score of the day, #df cousin challenge): ignored, no exception, nothing stored
     for (const h of ['#dj=eyJ2IjoxfQ~1a2b', '#df=eyJ2IjoxLCJrIjoibSJ9~3c4d', '#dj=', '#df=%%%~1']) { w.location.hash = h; await wait(80); }
