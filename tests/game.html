@@ -87,7 +87,13 @@ window.addEventListener('load', ()=>{
   ok(Pz.available().some(d=>d.id==='p.premier') && Pz.forNode('t.macros').id==='p.premier', 'énigme disponible et liée à sa porte');
   Pz.start('p.premier'); let last=null; AMB.bus.on('game:puzzle',e=>last=e);
   AMB.store.setMany({'drone.wave':'Chaud','drone.tone':0.35,'pad.wave':'Nappe','pad.tone':0.4},'user');
-  const s0=Pz.score('p.premier').total; ok(s0<0.5 && !Pz.check(), 'loin de la cible : '+s0.toFixed(2)+', refus');
+  const s0=Pz.score('p.premier').total; const a0=Pz.attempt();
+  ok(s0<0.5 && a0 && !a0.ok && a0.tries===1 && a0.left===Pz.TRIES-1, 'loin de la cible : '+s0.toFixed(2)+', refus (1 essai sur 6)');
+  // pegs (G8.1): one per key, right/near/far + which way
+  { const pg=Object.fromEntries(a0.row.pegs.map(p=>[p.key,p]));
+    ok(a0.row.pegs.length===4 && pg['drone.wave'].state==='far' && pg['drone.wave'].dir==='other' && pg['drone.tone'].state==='far' && pg['drone.tone'].dir==='up' && pg['pad.tone'].dir==='down', 'pions : loin + autre option / plus haut / plus bas');
+    const n=Pz.peg('drone.tone',0.6,0.75), j=Pz.peg('drone.tone',0.72,0.75), k=Pz.peg('global.key','D','F'), e=Pz.peg('fx.echoTime','1/2','1/8.');
+    ok(n.state==='near' && n.dir==='up' && j.state==='ok' && j.dir===null && k.dir==='up' && e.dir==='down', 'pions : proche, juste, tonalité/écho ⬆⬇'); }
   AMB.store.setMany({'drone.wave':'Orgue','pad.wave':'Verre','drone.tone':0.72,'pad.tone':0.24},'user');
   const s1=Pz.score('p.premier').total; ok(s1>0.9 && last && last.total===s1, 'proche : '+s1.toFixed(2)+', jauge en direct');
   // A/B (G5.2)
@@ -97,7 +103,25 @@ window.addEventListener('load', ()=>{
   Pz.listen('target'); AMB.store.set('drone.tone',0.6,'user'); ok(Pz.side()==='mine' && AMB.store.get('pad.wave')==='Nappe' && AMB.store.get('drone.tone')===0.6, 'toucher pendant la cible : mon son revient + mon geste');
   ok(!g.s.found.includes('p:pad.wave') || true, '');
   AMB.store.setMany({'drone.wave':'Orgue','pad.wave':'Verre','drone.tone':0.72,'pad.tone':0.24},'user');
-  const shP=g.s.shards; ok(Pz.check() && g.s.puzzles.includes('p.premier') && g.s.shards===shP+15 && T.status('t.macros')==='available', 'résolue → porte ouverte, +15');
+  const shP=g.s.shards; const aw=Pz.attempt();
+  ok(aw && aw.ok && aw.first && g.s.puzzles.includes('p.premier') && g.s.shards===shP+15 && T.status('t.macros')==='available', 'résolue → porte ouverte, +15');
+  ok(aw.tries===2 && aw.listens===2 && aw.stars===2 && g.s.stars['p.premier']===2 && !g.s.runs['p.premier'], 'étoiles : 2 essais, 2 écoutes → ★★ mémorisées');
+  // replay: 1 try, no listen → 3 stars, no ✧ again
+  { const sh=g.s.shards; Pz.start('p.premier'); const r=Pz.attempt(); ok(r.ok && r.stars===3 && !r.first && g.s.shards===sh && Pz.best('p.premier')===3, 'rejouée en 1 essai sans écoute → ★★★, pas de ✧ en plus');
+    Pz.start('p.premier'); Pz.listen('target'); Pz.listen('mine'); const r2=Pz.attempt(); ok(r2.stars===3 && r2.record===false && Pz.best('p.premier')===3, 'meilleur score gardé');
+    ok(Pz.stars(1,0,false)===3 && Pz.stars(1,5,false)===2 && Pz.stars(5,8,false)===1 && Pz.stars(1,0,true)===0, 'barème des étoiles'); }
+  // 6 failures → the gate opens anyway, no ✧, no star, replayable
+  { g.earn(200,'test'); T.buy('h.key'); const pe=[]; AMB.bus.on('game:earn',d=>{ if(d.reason==='énigme') pe.push(d.n); }); Pz.start('p.gamme'); AMB.store.set('global.key','D','user');
+    let r; for(let i=0;i<6;i++) r=Pz.attempt();
+    ok(r.out && !r.ok && r.left===0 && !g.s.puzzles.includes('p.gamme') && Pz.given('p.gamme') && T.status('h.scale')==='available' && !pe.length && !Pz.best('p.gamme') && Pz.current===null, '6 échecs → porte ouverte, sans ✧ ni étoile');
+    T.buy('h.scale'); Pz.start('p.gamme'); ok(Pz.run().tries.length===0 && g.has('h.scale'), 'rejouable (essais remis à zéro), nœud acheté');
+    AMB.store.setMany(Pz.byId['p.gamme'].target,'user'); const r3=Pz.attempt(); ok(r3.ok && r3.first && pe.join()==='20', 'résolue plus tard : ✧ de la 1re résolution'); }
+  // help (live gauge) → no star; attempts survive closing the card; old saves load
+  { Pz.start('b.gamme'); Pz.attempt(); Pz.stop(); Pz.start('b.gamme'); ok(Pz.run().tries.length===1, 'fermer puis rouvrir ne rend pas les essais');
+    Pz.setHelp(true); AMB.store.setMany(Pz.byId['b.gamme'].target,'user'); const r=Pz.attempt(); ok(r.ok && r.stars===0 && !Pz.best('b.gamme') && g.s.puzzles.includes('b.gamme'), 'aide → résolue sans étoile');
+    Pz.setHelp(false);
+    localStorage.setItem('ambient.game.test', JSON.stringify({v:1,mode:'path',shards:3,earned:3,nodes:['racine'],found:[],contracts:[],puzzles:['p.premier'],active:[],prog:{},ended:false}));
+    g.load(); ok(g.s.puzzles.includes('p.premier') && !Pz.best('p.premier') && Array.isArray(g.s.opened) && Pz.run('p.premier').tries.length===0, 'ancienne sauvegarde : chargée sans étoiles'); }
   ok(Pz.keyScore('drone.tone',0.5,0.5)===1 && Pz.keyScore('drone.tone',0,1)===0 && Pz.keyScore('pad.wave','Verre','Nappe')===0, 'score par réglage');
   g.reset();
   g.setMode('free'); ok(T.paramUnlocked('fx.echo') && T.uiUnlocked('song'), 'mode libre : tout ouvert');

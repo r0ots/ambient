@@ -17,7 +17,7 @@ Trois modes (en haut) :
 - **Sculpter** — tous les réglages du son (couches, espace, mouvements lents, scènes, journal).
 - **Composer** — progression d'accords, mélodie écrite (piano roll), basse, pulsations, automation, morceau.
 
-**Jardin sonore** (au premier lancement, ou menu ⋯) : un parcours pour découvrir l'outil. On commence avec une seule note et on débloque le reste dans un arbre de 38 nœuds (5 branches : Tronc, Harmonie, Espace, Mouvement, Composer). Les ✧ éclats se gagnent en jouant, jamais en attendant : découvrir un réglage, remplir un contrat (« coupe le drone puis rallume-le »), résoudre une énigme d'écoute (reproduire un son cible, jauge de ressemblance, indices progressifs). On juge l'usage ou la cible, jamais le goût. Environ 1 h 30 pour tout l'arbre. Le **mode libre** ouvre tout, à tout moment, sans perdre son parcours.
+**Jardin sonore** (au premier lancement, ou menu ⋯) : un parcours pour découvrir l'outil. On commence avec une seule note et on débloque le reste dans un arbre de 38 nœuds (5 branches : Tronc, Harmonie, Espace, Mouvement, Composer). Les ✧ éclats se gagnent en jouant, jamais en attendant : découvrir un réglage, remplir un contrat (« coupe le drone puis rallume-le »), résoudre une énigme d'écoute (reproduire un son cible en 6 validations au plus, chacune dit réglage par réglage juste, proche ou loin et dans quel sens ; 0 à 3 étoiles selon les essais et les écoutes ; une aide affiche une jauge en direct, sans étoiles ; après 6 échecs la porte s'ouvre quand même, sans ✧). On juge l'usage ou la cible, jamais le goût. Environ 1 h 30 pour tout l'arbre. Le **mode libre** ouvre tout, à tout moment, sans perdre son parcours.
 
 Look : façade de synthé japonais fin 80 (version nuit), écran LCD d'état en haut à droite.
 

@@ -6,6 +6,9 @@
   const AMB = (window.AMB = window.AMB || {});
   const store = AMB.store;
   const PASS = 0.9;
+  // G8.1 « Mastermind »: a limited number of validations, each one answered key by key
+  const TRIES = 6, NEAR = 0.6;
+  const ORDERED = /^(global\.key|fx\.echoTime)$/; // lists where « higher / lower » makes sense
 
   // knob closeness, forgiving near the target (what an ear can do): ±0.05 → 98 %, ±0.1 → 92 %,
   // ±0.2 → 67 %, 0 from 35 % of the range away
@@ -55,8 +58,30 @@
   ];
   const byId = Object.fromEntries(DEFS.map((d) => [d.id, d]));
 
+  // one peg per key: state ok / near / far, and which way to go (up / down / other option)
+  function peg(key, value, target) {
+    const s = keyScore(key, value, target), sp = store.spec(key) || {};
+    const state = s >= PASS ? 'ok' : s >= NEAR ? 'near' : 'far';
+    let dir = null;
+    if (state !== 'ok') {
+      if (sp.type === 'select' && ORDERED.test(key) && sp.options.indexOf(value) >= 0) dir = sp.options.indexOf(value) < sp.options.indexOf(target) ? 'up' : 'down';
+      else if (sp.type) dir = 'other';
+      else dir = Number(value) < Number(target) ? 'up' : 'down';
+    }
+    return { key, state, dir };
+  }
+  // stars for a solved puzzle: fewer validations and fewer listens to the target score more;
+  // solved with the live gauge (help) gives none
+  function stars(tries, listens, help) {
+    if (help) return 0;
+    let n = tries <= 1 ? 3 : tries <= 3 ? 2 : 1;
+    if (listens > 3) n--;
+    if (listens > 6) n--;
+    return Math.max(1, n);
+  }
+
   const puzzles = {
-    DEFS, byId, PASS, keyScore,
+    DEFS, byId, PASS, TRIES, NEAR, keyScore, peg, stars,
     // per-key detail and overall score of the current sound against a puzzle
     score(id, values = store.stableSnapshot()) {
       const d = byId[id]; if (!d) return { total: 0, keys: [] };
@@ -69,6 +94,23 @@
     // the puzzle guarding a node (tree gate)
     forNode(nodeId) { return DEFS.find((d) => d.opens === nodeId) || null; },
     current: null,
+    // the attempt in progress for a puzzle (kept in the game state until solved or given up:
+    // closing the card and coming back does not give the 6 validations back)
+    run(id = this.current, g = AMB.game) {
+      if (!id || !byId[id]) return null;
+      const runs = g.s.runs || (g.s.runs = {});
+      return runs[id] || (runs[id] = { tries: [], listens: 0, help: !!g.s.pzHelp });
+    },
+    best(id, g = AMB.game) { return (g.s.stars && g.s.stars[id]) || 0; },
+    // a gate opened after 6 failed validations (no ✧, no star; the puzzle stays playable)
+    given(id, g = AMB.game) { return (g.s.opened || []).includes(id); },
+    // the live gauge for players who want it (sticky for the attempt: no stars)
+    setHelp(on, g = AMB.game) {
+      g.s.pzHelp = !!on;
+      const r = this.current && this.run();
+      if (r && on) r.help = true;
+      g.save(); g.emit('puzzle', { id: this.current, side: this.side(), ...this.currentScore() });
+    },
     // A/B listening (G5.2): `mine` holds the player's own values while the target is heard
     ab: null,
     side() { return this.ab ? 'target' : 'mine'; },
@@ -81,6 +123,7 @@
         const mine = {};
         for (const k of Object.keys(d.target)) mine[k] = store.get(k);
         this.ab = { mine };
+        const r = this.run(); if (r) { r.listens++; AMB.game.save(); }
         this.applying = true; store.setMany(d.target, 'game'); this.applying = false;
         this.veil(true);
       } else if (side === 'mine' && this.ab) {
@@ -107,15 +150,37 @@
       return true;
     },
     stop() { if (this.ab) this.listen('mine'); this.current = null; AMB.game.emit('puzzle', { id: null }); },
-    // validate: solved when the player's own sound reaches PASS (never while the target is playing)
-    check(id = this.current) {
-      if (!id || !byId[id] || this.ab) return false;
-      const { total } = this.score(id);
-      if (total < PASS) return false;
-      AMB.game.solve(id, byId[id].reward); // emits game:puzzles + game:earn
-      if (this.current === id) this.current = null;
-      return true;
+    // validate (G8.1): one of the 6 validations, judged on the player's own sound (never while
+    // the target is playing). Returns { ok, row, tries, left, stars, first, out } or null.
+    attempt(id = this.current) {
+      if (!id || !byId[id] || this.ab) return null;
+      const g = AMB.game, d = byId[id], sc = this.score(id), r = this.run(id, g);
+      if (g.s.pzHelp) r.help = true; // validated while the gauge is shown
+      const row = { total: sc.total, pegs: sc.keys.map((k) => peg(k.key, k.value, k.target)) };
+      r.tries.push(row);
+      const res = { ok: sc.total >= PASS, row, tries: r.tries.length, left: TRIES - r.tries.length, listens: r.listens, help: r.help };
+      if (res.ok || res.left <= 0) delete g.s.runs[id];
+      if (res.ok) {
+        res.stars = stars(r.tries.length, r.listens, r.help);
+        g.s.stars = g.s.stars || {};
+        res.record = res.stars > (g.s.stars[id] || 0);
+        if (res.record) g.s.stars[id] = res.stars;
+        g.save();
+        res.first = g.solve(id, d.reward); // first resolution only: emits game:puzzles + game:earn
+        g.emit('stars', { id, stars: res.stars, record: res.record });
+        if (this.current === id) this.current = null;
+      } else if (res.left <= 0) {
+        // out of validations: never a dead end — the gate opens anyway, without ✧ nor star
+        res.out = true;
+        g.s.opened = g.s.opened || [];
+        if (!g.s.opened.includes(id) && !g.s.puzzles.includes(id)) g.s.opened.push(id);
+        g.save(); g.emit('opened', { id });
+        if (this.current === id) this.current = null;
+      } else g.save();
+      return res;
     },
+    // true when solved (kept for older callers)
+    check(id = this.current) { const r = this.attempt(id); return !!(r && r.ok); },
   };
 
   // live score while a puzzle is open; touching a control while hearing the target brings your

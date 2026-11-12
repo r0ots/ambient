@@ -74,68 +74,107 @@
       return true;
     },
 
-    // ---- puzzle card (G5.3) ----
-    pz: null, // { id, fails, t0 }
+    // ---- puzzle card (G5.3, « Mastermind » G8.1) ----
+    pz: null, // { id }
+    starText(n) { return '★'.repeat(n) + '☆'.repeat(3 - n); },
+    // bonus puzzles keep their controls secret until the last validation
+    pzReveal() {
+      const P = AMB.puzzles, d = this.pz && P.byId[this.pz.id]; if (!d) return true;
+      const r = P.run(d.id);
+      return !d.bonus || (r && r.tries.length >= P.TRIES - 1);
+    },
+    pzKeys() {
+      const P = AMB.puzzles, d = P.byId[this.pz.id], n = Object.keys(d.target).length, best = P.best(d.id);
+      const rec = best ? ` · record ${this.starText(best)}` : '';
+      return (this.pzReveal() ? `Joue sur : ${Object.keys(d.target).map((k) => this.paramLabel(k)).join(', ')}`
+        : `Énigme bonus : ${n} réglages en jeu, à toi de trouver lesquels`) + rec;
+    },
     openPuzzle(id) {
       const P = AMB.puzzles; if (!P || !P.byId[id]) return;
       this.showTree(false);
-      this.pz = { id, fails: 0, t0: Date.now() };
-      P.start(id);
+      this.pz = { id };
+      P.start(id); P.run(id);
       const card = $('#puzzle'); card.hidden = false;
       const d = P.byId[id];
       card.querySelector('.pz-title').textContent = `Énigme · ${d.title}`;
       card.querySelector('.pz-intro').textContent = d.intro;
-      this.pzKeys = () => (d.bonus && this.hintLevel() < 2 ? `Énigme bonus : ${Object.keys(d.target).length} réglages en jeu, à toi de trouver lesquels`
-        : `Joue sur : ${Object.keys(d.target).map((k) => this.paramLabel(k)).join(', ')}`);
-      card.querySelector('.pz-keys').textContent = this.pzKeys();
       this.renderPuzzle();
-      if (!this.pzTimer) this.pzTimer = setInterval(() => { if (this.pz) this.renderPuzzle(); }, 5000);
     },
     closePuzzle() {
       if (AMB.puzzles) AMB.puzzles.stop(); this.pz = null;
-      if (this.pzTimer) { clearInterval(this.pzTimer); this.pzTimer = null; }
       const c = $('#puzzle'); if (c) c.hidden = true;
     },
-    // hints grow with failed validations and time spent
-    hintLevel() { const p = this.pz; if (!p) return 0; const t = (Date.now() - p.t0) / 1000; return p.fails >= 3 || t > 120 ? 2 : p.fails >= 1 || t > 45 ? 1 : 0; },
-    hintText(sc) {
-      const lvl = this.hintLevel(), off = sc.keys.filter((k) => k.s < 0.9).sort((a, b) => a.s - b.s);
-      if (!off.length) return 'Tout y est : valide !';
-      if (lvl === 0) return 'Écoute la cible, reviens à ton son, ajuste.';
-      const word = (k) => {
-        const sp = AMB.store.spec(k.key);
-        if (sp.type === 'select' && sp.options && sp.options.indexOf(k.value) >= 0 && /^(global\.key|fx\.echoTime)$/.test(k.key))
-          return sp.options.indexOf(k.value) < sp.options.indexOf(k.target) ? 'plus haut' : 'plus bas';
-        if (sp.type) return 'essaie une autre option';
-        return Number(k.value) < Number(k.target) ? 'plus haut' : 'plus bas';
-      };
-      const bonus = AMB.puzzles && AMB.puzzles.byId[this.pz.id] && AMB.puzzles.byId[this.pz.id].bonus;
-      if (lvl === 1) return bonus ? `Un réglage est encore loin (${off.length} à revoir)` : `Le plus éloigné : ${this.paramLabel(off[0].key)}`;
-      return off.map((k) => `${this.paramLabel(k.key)} : ${word(k)}`).join(' · ');
+    // one validation = one row of pegs: ✓ right, ≈ close, ✗ far, plus ⬆ / ⬇ or « autre » (another option)
+    PEG: { ok: ['✓', 'juste'], near: ['≈', 'proche'], far: ['✗', 'loin'] },
+    DIR: { up: ['⬆', 'plus haut'], down: ['⬇', 'plus bas'], other: [' autre', 'autre option'] },
+    pegHTML(p, named) {
+      const [sym, word] = this.PEG[p.state], dir = named && p.dir ? this.DIR[p.dir] : null;
+      const tip = named ? `${this.paramLabel(p.key)} : ${word}${dir ? `, ${dir[1]}` : ''}` : word;
+      return `<span class="pz-peg ${p.state}"${named ? ` data-k="${p.key}"` : ''} title="${tip}">${sym}${dir ? dir[0] : ''}</span>`;
+    },
+    renderBoard() {
+      const card = $('#puzzle'), P = AMB.puzzles, d = P.byId[this.pz.id], r = P.run(d.id);
+      const board = card.querySelector('.pz-board'), keys = Object.keys(d.target), named = this.pzReveal();
+      board.style.setProperty('--n', keys.length);
+      if (!r.tries.length) { board.innerHTML = ''; return; }
+      const short = (k) => { const l = this.paramLabel(k); return l.includes(' · ') ? l.split(' · ').pop() : l; };
+      const rank = { ok: 0, near: 1, far: 2 };
+      board.innerHTML = (named ? `<div class="pz-row pz-head"><span></span>${keys.map((k) => `<span title="${this.paramLabel(k)}">${short(k)}</span>`).join('')}</div>` : '')
+        + r.tries.map((t, i) => {
+          // unnamed (bonus) pegs are sorted by state: their position says nothing about the control
+          const pegs = named ? t.pegs : [...t.pegs].sort((a, b) => rank[a.state] - rank[b.state]);
+          return `<div class="pz-row"><span class="pz-n">${i + 1}</span>${pegs.map((p) => this.pegHTML(p, named)).join('')}</div>`;
+        }).join('');
+    },
+    statusText(r) {
+      const P = AMB.puzzles, left = P.TRIES - r.tries.length, last = r.tries[r.tries.length - 1];
+      const leftTxt = `${left} essai${left > 1 ? 's' : ''} restant${left > 1 ? 's' : ''} sur ${P.TRIES}`;
+      if (!last) return `Écoute la cible, reviens à ton son, règle, valide. ${leftTxt}.`;
+      const n = (s) => last.pegs.filter((p) => p.state === s).length;
+      return `Pas encore : ${n('ok')} juste${n('ok') > 1 ? 's' : ''}, ${n('near')} proche${n('near') > 1 ? 's' : ''}. ${leftTxt}.`;
     },
     renderPuzzle() {
       const card = $('#puzzle'), P = AMB.puzzles; if (!card || !this.pz || !P) return;
-      const sc = P.currentScore(), pct = Math.round(sc.total * 100), ready = sc.total >= P.PASS;
-      card.querySelector('.pz-gauge i').style.width = pct + '%';
-      card.querySelector('.pz-gauge').classList.toggle('ready', ready);
-      card.querySelector('.pz-pct').textContent = `${pct} %`;
+      const r = P.run(this.pz.id), help = !!AMB.game.s.pzHelp;
+      const sc = P.currentScore(), pct = Math.round(sc.total * 100), ready = help && sc.total >= P.PASS;
+      const gauge = card.querySelector('.pz-gauge');
+      gauge.hidden = !help;
+      if (help) {
+        gauge.querySelector('i').style.width = pct + '%';
+        gauge.classList.toggle('ready', ready);
+        card.querySelector('.pz-pct').textContent = `${pct} %`;
+      }
+      const cb = card.querySelector('.pz-help input'); if (cb) cb.checked = help;
       const target = P.side() === 'target';
       const ab = card.querySelector('.pz-ab');
       ab.textContent = target ? '◀ Revenir à mon son' : '▶ Écouter la cible';
       ab.classList.toggle('on', target);
       const okb = card.querySelector('.pz-ok'); okb.classList.toggle('ready', ready && !target); okb.disabled = target;
-      if (this.pzKeys) card.querySelector('.pz-keys').textContent = this.pzKeys();
-      card.querySelector('.pz-hint').textContent = target ? 'Tu entends la cible. Touche un réglage ou reviens à ton son pour continuer.' : this.hintText(sc);
+      okb.textContent = `Valider (${r.tries.length + 1}/${P.TRIES})`;
+      card.querySelector('.pz-keys').textContent = this.pzKeys();
+      this.renderBoard();
+      card.querySelector('.pz-hint').textContent = target ? 'Tu entends la cible. Touche un réglage ou reviens à ton son pour continuer.'
+        : this.statusText(r) + (r.help ? ' Aide utilisée : pas d\'étoiles cette fois.' : '');
     },
     validatePuzzle() {
       const P = AMB.puzzles; if (!this.pz || !P) return;
       const id = this.pz.id, d = P.byId[id];
-      if (P.check(id)) {
+      const res = P.attempt(id); if (!res) return;
+      if (res.ok) {
         this.closePuzzle();
-        AMB.ui.toast(`✓ Énigme résolue : ${d.title}${d.opens ? ` · « ${AMB.tree.byId[d.opens].name} » peut s'acheter` : ''}`);
-        if (d.opens) this.showTree(true);
+        const st = res.help ? 'avec l\'aide' : `${this.starText(res.stars)}${res.record && !res.first ? ' · record !' : ''}`;
+        AMB.ui.toast(`✓ Énigme résolue en ${res.tries} essai${res.tries > 1 ? 's' : ''} : ${d.title} · ${st}${res.first && d.opens ? ` · « ${AMB.tree.byId[d.opens].name} » peut s'acheter` : ''}`);
+        if (!res.first && AMB.game.path) { this.chime('solve'); this.lcd(`◈ ${res.help ? 'résolue' : this.starText(res.stars)}`); }
+        if (res.first && d.opens) this.showTree(true);
+      } else if (res.out) {
+        // never a dead end: the gate opens anyway (no ✧, no star), the puzzle can be replayed later
+        this.closePuzzle();
+        const gate = d.opens && !AMB.game.s.puzzles.includes(id);
+        AMB.ui.toast(gate ? `Pas cette fois, mais la porte s'ouvre quand même : « ${AMB.tree.byId[d.opens].name} » peut s'acheter. Reviens tenter les étoiles quand tu veux.`
+          : 'Pas cette fois : elle était dure. Elle t\'attend dans l\'arbre, reviens tenter les étoiles quand tu veux.');
+        if (AMB.game.path) this.lcd(gate ? '◈ porte ouverte' : '◈ à rejouer', 3000);
+        if (gate) this.showTree(true);
       } else {
-        this.pz.fails++;
         this.shake($('#puzzle'));
         this.renderPuzzle();
       }
@@ -147,7 +186,7 @@
       if (AMB.bus) AMB.bus.on('game:earn', (d) => { if (AMB.game.path && d.reason !== 'test') this.pop(this.gainText(d)); });
       if (AMB.bus) {
         AMB.bus.on('game:earn', () => this.renderCounter(true));
-        ['spend', 'unlock', 'reset', 'mode', 'puzzles'].forEach((ev) => AMB.bus.on('game:' + ev, () => this.renderCounter()));
+        ['spend', 'unlock', 'reset', 'mode', 'puzzles', 'opened'].forEach((ev) => AMB.bus.on('game:' + ev, () => this.renderCounter()));
       }
       this.renderCounter();
       const pzc = $('#puzzle');
@@ -155,6 +194,7 @@
         pzc.querySelector('.pz-x').addEventListener('click', () => this.closePuzzle());
         pzc.querySelector('.pz-ab').addEventListener('click', () => AMB.puzzles.listen(AMB.puzzles.side() === 'target' ? 'mine' : 'target'));
         pzc.querySelector('.pz-ok').addEventListener('click', () => this.validatePuzzle());
+        const hb = pzc.querySelector('.pz-help input'); if (hb) hb.addEventListener('change', () => AMB.puzzles.setHelp(hb.checked));
       }
       if (AMB.bus) {
         AMB.bus.on('game:unlock', (d) => {
@@ -203,7 +243,7 @@
       const td = $('#treeDlg');
       if (td) td.addEventListener('click', (e) => { if (e.target === td || e.target.hasAttribute('data-close')) this.showTree(false); });
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && td && !td.hidden) this.showTree(false); });
-      if (AMB.bus) ['earn', 'spend', 'unlock', 'reset', 'puzzles'].forEach((ev) => AMB.bus.on('game:' + ev, () => { if (td && !td.hidden) this.renderTree(); }));
+      if (AMB.bus) ['earn', 'spend', 'unlock', 'reset', 'puzzles', 'opened', 'stars'].forEach((ev) => AMB.bus.on('game:' + ev, () => { if (td && !td.hidden) this.renderTree(); }));
       document.querySelectorAll('[data-end]').forEach((b) => b.addEventListener('click', () => { this.showEnd(false); if (b.dataset.end === 'tree') this.showTree(true); }));
       document.querySelectorAll('[data-choose]').forEach((b) => b.addEventListener('click', () => this.choose(b.dataset.choose)));
       const sw = $('#gameMode');
