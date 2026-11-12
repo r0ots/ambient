@@ -39,6 +39,11 @@
   function onMidi(msg) {
     const [st, d1, d2] = msg.data;
     const type = st & 0xf0;
+    // during an arcade round the app stays silent: notes go to the mini-game (if it listens), the rest is ignored
+    if (AMB.arcade && AMB.arcade.active) {
+      if (type === 0x90 && d2 > 0) AMB.arcade.midi({ midi: d1, vel: d2 / 127, time: msg.timeStamp });
+      return;
+    }
     if (type === 0x90 && d2 > 0) {
       if (!AMB.seq.playing) return;
       if (d1 < 48) AMB.seq.forceChord(degreeForPitch(d1));

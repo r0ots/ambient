@@ -57,7 +57,9 @@
         lo = row[0].x + d; if (lo < L.M) d += L.M - lo; // too wide: pin to the left edge
         row.forEach((r) => { pos[r.n.id] = { x: Math.round(r.x + d), y: L.TOP + (maxL - l) * L.ROW, l }; });
       }
-      return (this._lay = { n: T.NODES.length, pos, W: L.W, H, maxL });
+      // a row too wide for the stage is pinned left and spills right: widen the stage so "see all" really shows all
+      const W = Math.max(L.W, ...Object.values(pos).map((p) => p.x + L.M));
+      return (this._lay = { n: T.NODES.length, pos, W, H, maxL });
     },
     showTree(on) {
       const d = $('#treeDlg'); if (!d) return;
@@ -203,11 +205,11 @@
       stage.style.transform = `translate(${v.tx}px, ${v.ty}px) scale(${v.k})`;
       map.classList.toggle('zoomed', w > vw + 1 || h > vh + 1);
     },
-    // whole map when it is readable, else a closer look on the trunk (mobile): pan and pinch for the rest
-    fitTree(whole) {
+    // always opens on the whole map ("see all", mobile included): the player zooms in afterwards
+    fitTree() {
       const map = $('#treeDlg .tree-map'); if (!map || !map.clientWidth) return;
       const lay = this.treeLayout(), lim = this.kLimits(), v = this.view;
-      v.k = whole || lim.fit >= 0.6 ? Math.min(lim.fit, 1.15) : Math.min(0.75, lim.max);
+      v.k = Math.min(lim.fit, 1.15);
       const root = lay.pos.racine || { x: lay.W / 2, y: lay.H };
       v.tx = map.clientWidth / 2 - root.x * v.k;
       v.ty = map.clientHeight - (lay.H - L.BOT / 3) * v.k; // root (bottom) in view
@@ -331,7 +333,7 @@
       if (zm) zm.addEventListener('click', (e) => {
         const b = e.target.closest('[data-zoom]'); if (!b) return;
         const r = map.getBoundingClientRect();
-        if (b.dataset.zoom === 'fit') this.fitTree(true); else this.zoomAt(r.left + r.width / 2, r.top + r.height / 2, b.dataset.zoom === 'in' ? 1.3 : 1 / 1.3);
+        if (b.dataset.zoom === 'fit') this.fitTree(); else this.zoomAt(r.left + r.width / 2, r.top + r.height / 2, b.dataset.zoom === 'in' ? 1.3 : 1 / 1.3);
       });
       // any click during the unlock sequence fast-forwards it
       if (dlg) dlg.addEventListener('click', (e) => { if (this.seq) { e.stopPropagation(); e.preventDefault(); this.seqFinish(); } }, true);

@@ -69,7 +69,7 @@ f.addEventListener('load', async ()=>{
   // G11.1: at 390 px the map pans / zooms inside the card, nothing overflows horizontally
   { f.style.width='390px'; f.style.height='844px'; await wait(200); A.garden.showTree(true); await wait(80);
     const de=d.documentElement, card=d.querySelector('#treeDlg .tree-card'), map=d.querySelector('#treeDlg .tree-map');
-    ok(de.scrollWidth<=de.clientWidth && card.getBoundingClientRect().right<=de.clientWidth && map.clientWidth<=card.clientWidth && A.garden.view.k<1, '390 px : aucun débordement ('+de.scrollWidth+'/'+de.clientWidth+'), carte zoomée à '+A.garden.view.k.toFixed(2));
+    ok(de.scrollWidth<=de.clientWidth && card.getBoundingClientRect().right<=de.clientWidth && map.clientWidth<=card.clientWidth && A.garden.view.k<1 && A.garden.treeLayout().W*A.garden.view.k<=map.clientWidth+1 && A.garden.treeLayout().H*A.garden.view.k<=map.clientHeight+1, '390 px : aucun débordement ('+de.scrollWidth+'/'+de.clientWidth+'), ouvre sur toute la carte (zoom '+A.garden.view.k.toFixed(2)+')');
     ok(d.querySelectorAll('#treeDlg .tree-nb').length===5 && /Énigmes \d+\/12/.test(d.querySelector('.tree-puzzles').textContent) && card.getBoundingClientRect().bottom<=de.clientHeight+1, '390 px : carnets et énigmes visibles, carte dans l\'écran');
     A.garden.showTree(false); f.style.width='1300px'; f.style.height='900px'; await wait(200); A.garden.showTree(true); await wait(30); }
   d.querySelector('#treeDlg [data-close]').click(); ok(d.getElementById('treeDlg').hidden, 'fermeture');

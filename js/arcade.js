@@ -15,6 +15,9 @@
 //   render?(ch, el, api)               optional custom UI inside the round's stage element
 //   onKey?(ch, e, api) -> true if handled     keys reach the plugin during a round (the app's are muted)
 //   passKeys?: ['KeyA', …]             e.code values let through to the app's own shortcuts
+//   onMidi?(ch, {midi, vel, time}, api) MIDI note-on during a round (vel 0..1, time = performance.now ms);
+//                                      the app never plays MIDI notes while a round runs (js/play.js):
+//                                      without this hook they are simply ignored
 // })
 // api = {answer(x), replay(), play(events), stop(), ch, d, rng}
 (function () {
@@ -139,6 +142,12 @@
       const r = this.round; if (!r || r.over) return 0;
       r.replays++; r.chReplays++;
       return this.listen();
+    },
+    // incoming MIDI note-on while a round runs (called by js/play.js): routed to the plugin, if it listens
+    midi(note) {
+      const r = this.round; if (!r || r.over || !r.ch || typeof r.game.onMidi !== 'function') return false;
+      r.game.onMidi(r.ch, { midi: note.midi, vel: note.vel, time: note.time != null ? note.time : this.clock.now() }, this.api());
+      return true;
     },
     choices() { const r = this.round; return r && r.ch && typeof r.game.choices === 'function' ? r.game.choices(r.ch) : null; },
     answer(x) {
