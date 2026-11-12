@@ -34,6 +34,67 @@
       box.querySelector('.lcd-task-n').textContent = `${d.goal > 1 ? `${n}/${d.goal}` : n ? '✓' : '·'} ✧${d.reward}`;
       if (flashId === id) { box.classList.remove('bump'); void box.offsetWidth; box.classList.add('bump'); }
     },
+    paramLabel(key) {
+      const [sec, k] = key.split('.'); const S = AMB.SCHEMA[sec]; if (!S) return key;
+      const sp = S.params[k];
+      return k === 'on' ? S.label : sp ? `${S.label} · ${sp.label}` : S.label;
+    },
+    // clicks that always succeed go on the bus as actions (contracts count them); actions that can fail or be
+    // cancelled (save, journal, chords, freeze) are emitted by their own code once they really happened
+    CLICKS: [['#dice', 'dice'], ['.sc-store', 'sceneStore'], ['[data-s=add]', 'section'], ['[data-s=play]', 'song']],
+    hookActions() {
+      const emit = (id) => AMB.bus.emit('act', id);
+      document.addEventListener('click', (e) => {
+        if (!AMB.game.path) return;
+        const t = e.target.closest && e.target.closest('button, label'); if (!t) return;
+        if (t.matches('.sc-slot')) return emit(e.shiftKey ? 'sceneStore' : 'sceneRecall');
+        for (const [sel, id] of this.CLICKS) if (t.matches(sel)) return emit(id);
+      }, true);
+      AMB.store.on((k, v, src) => { if (src === 'xy' && AMB.game.path) emit('xy'); });
+    },
+    // ---- game feedback (G6.2): « +n ✧ » notes under the LCD, a chime tuned to the key, LCD messages ----
+    pop(text) {
+      let feed = $('#gainFeed');
+      if (!feed) { feed = document.createElement('div'); feed.id = 'gainFeed'; feed.className = 'gain-feed'; feed.setAttribute('aria-live', 'polite'); document.body.append(feed); }
+      const lcd = $('#lcd'); // float just under the LCD (wherever the header layout puts it)
+      if (lcd) { const r = lcd.getBoundingClientRect(); feed.style.top = `${Math.round(r.bottom + 6)}px`; feed.style.left = `${Math.round(r.left)}px`; feed.style.right = 'auto'; }
+      const it = document.createElement('div'); it.className = 'gain'; it.textContent = text;
+      feed.append(it);
+      while (feed.children.length > 4) feed.firstChild.remove();
+      setTimeout(() => it.remove(), 3200);
+    },
+    gainText(d) {
+      const P = AMB.puzzles, K = AMB.contracts;
+      if (d.reason === 'énigme' && P && P.byId[d.id]) return `+${d.n} ✧ énigme résolue : ${P.byId[d.id].title}`;
+      if (d.reason === 'contrat' && K && K.byId[d.id]) return `+${d.n} ✧ contrat rempli : ${K.byId[d.id].title}`;
+      if (d.reason === 'secret' && AMB.secrets && AMB.secrets.byId[d.id]) return `+${d.n} ✧ secret : ${AMB.secrets.byId[d.id].title}`;
+      return `+${d.n} ✧ ${d.reason || ''}`;
+    },
+    // kind: 'unlock' (rising arpeggio), 'solve' (two chords), 'small' (one soft note); straight to the speakers
+    chime(kind = 'unlock') {
+      const E = AMB.engine, ctx = E && E.ctx;
+      if (!ctx || ctx.state !== 'running' || !AMB.game.path) return 0;
+      const Th = AMB.theory, root = Th.NOTE_NAMES.indexOf(AMB.store.get('global.key'));
+      const scale = Th.SCALES[AMB.store.get('global.scale')] || Th.SCALES['Ionien (majeur)'];
+      const degs = kind === 'small' ? [4] : kind === 'solve' ? [0, 2, 4, 7, 9, 11] : [0, 2, 4, 7];
+      const out = ctx.createGain(); out.gain.value = 0.16;
+      out.connect(ctx.destination); // never recorded nor frozen
+      const t0 = ctx.currentTime + 0.02;
+      degs.forEach((dg, i) => {
+        const f = Th.mtof(Th.degreeToMidi(dg, root, scale, 5));
+        const at = t0 + (kind === 'solve' ? (i < 3 ? 0 : 0.35) + i % 3 * 0.02 : i * 0.09);
+        for (const [mul, amp] of [[1, 1], [2.76, 0.25], [5.4, 0.08]]) { // bell-ish partials
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = 'sine'; o.frequency.value = f * mul;
+          g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(amp * 0.5, at + 0.008);
+          g.gain.exponentialRampToValueAtTime(0.0001, at + 1.6 / mul);
+          o.connect(g); g.connect(out); o.start(at); o.stop(at + 1.7);
+        }
+      });
+      setTimeout(() => out.disconnect(), 3000);
+      return degs.length;
+    },
+    lcd(text, ms = 3500) { AMB.lcdMsg = { text, until: Date.now() + ms }; },
     // ---- end of the path (G6.3) ----
     complete() { const T = AMB.tree; return T.NODES.every((n) => AMB.game.has(n.id)); },
     checkEnd() {
