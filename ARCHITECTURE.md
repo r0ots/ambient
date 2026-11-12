@@ -7,7 +7,7 @@ Règle de produit (v1.05) : le jeu se joue SUR l'instrument (ses commandes, son 
 ## Où mettre quoi
 - Instrument : `engine.js` (graphe audio), `layers.js` (5 couches), `sequencer.js` (horloge, accords, Dérive, LFO), `ui.js` / `widgets.js` / `perform.js` (interface), `play.js` (clavier d'ordinateur et MIDI), `pianoroll.js`, `bass.js`, `pulses.js`, `chords.js`, `automation.js`, `song.js`, `scenes.js`, `journal.js`, `history.js`, `rec.js`, `visual.js`.
 - Parcours (« Jardin sonore ») : `game.js` (état, ✧, nœuds), `tree.js` (arbre en données, verrous), `garden.js` (accueil, contrats, énigme, fin), `garden-tree.js` (écran Arbre), `garden-actions.js` (découvertes), `contracts.js`, `puzzles.js` (énigmes Mastermind), `secrets.js`, `juice.js` (carillon, LCD, particules), `garden-visual.js` (visuel Jardin), `save.js` (sauvegarde).
-- Nouveau module = sa page `tests/<module>.html` (≤ 10 s) avec l'en-tête `tests/lib.js` (log, ok, wait, done, fail, testBus, OLD_SAVE). Une CSS par module (`css/<module>.css`). `tests/game.html` vérifie que `sw.js` précache tout `index.html`, dans l'ordre (ASSETS + CACHE à mettre à jour).
+- Nouveau module = sa page `tests/<module>.html` (≤ 10 s) avec l'en-tête commun `tests/lib.js` (log, ok, wait, done, fail, testBus, OLD_SAVE), repris par toutes les pages sauf les captures (`mobile.html`, `shot-tree.html`). CSS : tout dans `css/style.css`, seule `css/save.css` (dialogue de sauvegarde) est à part. `tests/game.html` vérifie que `sw.js` précache tout `index.html`, dans l'ordre (ASSETS + CACHE à mettre à jour).
 
 ## Bus (événements)
 - `live` {midi, time, vel (entendue), raw (vélocité MIDI brute 0..1, null au clavier)} · `chord` {time, deg, midis, forced (accord joué par le joueur)} · `phrase` {i, len, time} · `section` {index, name}
@@ -30,5 +30,5 @@ Règle de produit (v1.05) : le jeu se joue SUR l'instrument (ses commandes, son 
 - Les liens `#dj` / `#df` et les clés localStorage des fonctions retirées en v1.05 sont ignorés. Une ancienne sauvegarde s'importe : ses champs retirés sont ignorés (`tests/save.html`, fixture `OLD_SAVE`).
 
 ## Tester
-- Serveur : `python3 -u -m http.server 8765 2> $LOG`, puis `LOG=… tests/run.sh <page>.html 0.4` ; suite : `LOG=… tests/run-all.sh` (ALL OK, ~1 min).
+- Serveur : `python3 -u -m http.server 8765 2> $LOG`, puis `LOG=… tests/run.sh <page>.html 0.4` ; suite : `LOG=… tests/run-all.sh` (ALL OK, ~1 min ; `ALL=1 LOG=… tests/run-all.sh` ajoute les pages de démo audio lentes `engines`, `smoke`, `spectrum`, sans `ok()`).
 - Captures regardées (bureau + 390 px) : `tests/shot-tree.html?w=390&h=780#<mode>` (Chrome headless impose ≥ 500 px). Modes : `#bar`, `#free`, `#sel=<nœud>`, `#pz`, `#more`, `#save-open`, `#save-confirm`, `#help-path`, `#help-free`, `#garden`, `#garden-adv`.

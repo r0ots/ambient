@@ -45,9 +45,9 @@ Branche un clavier ou des pads (Chrome, Edge, Opera ; Web MIDI) : ils jouent l'a
 ## Développement
 
 - **Lancer en local** : `python3 -m http.server 8765`, puis http://localhost:8765.
-- **Structure** : `js/` (un fichier par domaine), `css/`, `tests/`. Où mettre quoi, bus, store : voir [ARCHITECTURE.md](ARCHITECTURE.md).
+- **Structure** : `js/` (un fichier par domaine), `css/` (`style.css` + `save.css`), `tests/` (en-tête commun `lib.js`). Où mettre quoi, bus, store : voir [ARCHITECTURE.md](ARCHITECTURE.md).
 - **Tests** (Chrome headless, sans audio réel) : serveur `python3 -u -m http.server 8765 2> /tmp/srv.log`, puis
   - une page : `LOG=/tmp/srv.log tests/run.sh save.html 0.4` (une page par module : `tests/<module>.html`, ≤ 10 s ; `PORT=…` pour un autre port) ;
-  - tout : `LOG=/tmp/srv.log tests/run-all.sh` (~1 min, `ALL OK` attendu ; `balance.html` simule l'équilibrage du parcours) ;
+  - tout : `LOG=/tmp/srv.log tests/run-all.sh` (~1 min, `ALL OK` attendu ; `balance.html` simule l'équilibrage du parcours ; `ALL=1` ajoute les pages de démo audio lentes `engines`, `smoke`, `spectrum`) ;
   - endurance : `tests/run.sh endurance.html 1`. `tests/game.html` vérifie aussi que `sw.js` précache tout `index.html`, dans l'ordre.
 - Feuille de route et journal des versions : `ROADMAP.md`.

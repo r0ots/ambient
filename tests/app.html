@@ -1,9 +1,5 @@
 <!doctype html><html><head><meta charset="utf-8"></head><body>
-<script>
-const TAG='app'; const S=+(new URLSearchParams(location.search).get('s')||0.4);
-const log=(m)=>fetch('/__log?'+encodeURIComponent(TAG+'|'+m)).catch(()=>{});
-const wait=(ms)=>new Promise(r=>setTimeout(r,ms));
-</script>
+<script src="lib.js"></script>
 <script>localStorage.removeItem('ambient.game.apptest');</script>
 <iframe id="f" src="../index.html?autoplay=1&view=expert&gamekey=ambient.game.apptest" style="width:1300px;height:900px"></iframe>
 <script>
