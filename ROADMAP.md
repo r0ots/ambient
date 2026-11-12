@@ -296,3 +296,22 @@ Vague 3
 - Pour le fils : les Échos et la jauge d'énigme tiennent ; sur téléphone, les contrats « joue des notes » (A–L, Rec live, écho) n'ont pas de touches : pastilles à prévoir ou contrats à écarter.
 - À trancher : retirer les 6 énigmes sans porte (150 ✧ à rééquilibrer) et la note flottante « +n ✧ », redondante avec le compteur, le carillon et le LCD.
 - Rien n'a été mesuré sur de vrais joueurs : la prochaine étape est une séance chronométrée avec chacun des deux.
+
+## Saison 4 — regards neufs : jouer pour de vrai, progresser en sachant
+
+Origine : 4 revues « regard neuf » (game designer, musicien producteur, UX enfant, direction artistique). Décisions de l'utilisateur : supprimer les éclats ✧ (chaque défi / Écho / secret ouvre directement son nœud ; l'arbre devient une carte, plus une boutique) ; le mode libre peut changer pour le MIDI seulement (notes MIDI audibles lecture arrêtée, latence « jeu en direct ») ; les 7 chantiers sont validés. Écarté pour l'instant : voix de jeu séparée, progression par section du Morceau, fusion des systèmes de mouvement (empilent ou touchent trop le mode libre).
+
+Vague 1 (en parallèle)
+- [ ] S4.1 Clavier MIDI jouable pour de vrai : accord reconnu sur une fenêtre (~40 ms) au lieu d'un accord par note grave ; notes MIDI audibles lecture arrêtée (aussi en mode libre) ; latence `interactive` ; vélocité → brillance ; pas de panoramique aléatoire sur les notes jouées ; bouton MIDI visible (plus caché dans ⋯) ; CC documentés
+- [ ] S4.4 Pastilles tactiles permanentes (dès la Mélodie auto, téléphone surtout), colorées du grave à l'aigu, qui jouent l'instrument comme A–L
+- [ ] S4.6 Capture rétroactive : « Garder les 4 dernières mesures » → motif ; piano roll chromatique ; latence compensée à l'enregistrement
+
+Vague 2
+- [ ] S4.3 Progression sans ✧ : chaque défi / Écho / secret ouvre son nœud ; arbre = carte ; suppression des énigmes « régler des boutons sur une cible » (portes → Écho ou défis joués) ; début simple (premier défi = glisser sur l'écran, jargon masqué au début)
+
+Vague 3 (en parallèle)
+- [ ] S4.2 « Réponse » : l'Écho joué dans la musique en cours, phrase marquée par la plante Mélodie, réponse dans la mesure suivante, phrases qui s'allongent, puis le rythme compte
+- [ ] S4.5w Le wow calé sur la musique : couche achetée qui entre sur le temps fort, plante qui pousse avec le carillon ; vraie fin (le Jardin passe de la nuit à l'aube pendant la lecture du morceau enregistré)
+
+Vague 4
+- [ ] S4.5 Un mot par concept (lexique unique dans l'interface et l'aide) + revue finale « quoi supprimer »
