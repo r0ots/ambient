@@ -106,11 +106,13 @@
       }
       const tok = ++this.startTok;
       // the round must be heard: start / resume the audio first (a click on a cartridge is a user gesture)
-      try {
+      // (bounded: a browser that never resumes without a gesture must not freeze the cabinet)
+      const audio = (async () => {
         if (AMB.ui && AMB.ui.ensureStarted) await AMB.ui.ensureStarted();
         const ctx = AMB.engine && AMB.engine.ctx;
         if (ctx && ctx.state === 'suspended') await ctx.resume();
-      } catch (e) { /* no audio: the round still runs (silent) */ }
+      })().catch(() => {}); // no audio: the round still runs (silent)
+      await Promise.race([audio, new Promise((r) => setTimeout(r, 1500))]);
       if (tok !== this.startTok || !this.dlg || this.dlg.hidden) return; // closed (or another start) meanwhile
       this.say('');
       this.gameId = id; this.lastPick = null; this.lockUntil = 0;
