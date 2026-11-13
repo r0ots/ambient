@@ -424,6 +424,9 @@
         const shape = store.get(`mod.l${n}shape`);
         let y;
         if (shape === 'Triangle') y = 1 - 4 * Math.abs(st.phase - 0.5);
+        // a wave that climbs slowly (80 % of the period) then falls back quickly; the Montée LFOs share one clock,
+        // so a filter and an intensity rise together
+        else if (shape === 'Montée') { const ph = this.riseClock(t, store.get(`mod.l${n}rate`)); y = ph < 0.8 ? -1 + 2 * Math.pow(ph / 0.8, 1.6) : 1 - 2 * ((ph - 0.8) / 0.2); }
         else if (shape === 'Dérive') {
           if (st.phase < st.prevPhase) st.driftTarget = Math.random() * 2 - 1;
           st.drift += (st.driftTarget - st.drift) * Math.min(1, dt * 4 / AMB.periodSecs(store.get(`mod.l${n}rate`)));
@@ -435,6 +438,12 @@
         const range = sp.max - sp.min;
         store.set(target, clamp(home + y * store.get(`mod.l${n}depth`) * range * 0.5, sp.min, sp.max), 'lfo');
       }
+    }
+
+    // shared phase (0..1) of the Montée shape, counted from its first use: a rise starts from the bottom
+    riseClock(t, rate) {
+      if (this.rise0 == null) this.rise0 = t;
+      return ((t - this.rise0) / AMB.periodSecs(rate)) % 1;
     }
 
     evolve() {

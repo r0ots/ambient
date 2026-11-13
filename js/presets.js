@@ -72,5 +72,47 @@
       'fx.space': 0.9, 'fx.size': 1, 'fx.revType': 'Cloud', 'fx.shimmer': 0.6, 'fx.echo': 0.35, 'fx.feedback': 0.75,
       'grains.reverse': 0.5, 'grains.glide': 0.4, 'pad.counter': 0.5, 'mod.l1target': 'fx.shimmer', 'mod.l1rate': 0.2, 'mod.l1depth': 0.5, 'mod.l2target': 'drone.tone', 'mod.l2rate': 0.15, 'mod.l2depth': 0.5, 'mod.l2shape': 'Dérive',
     },
+    // ---- dark landscapes (v1.14 sound prototype) ----
+    // detuned saw brass whose filter opens slowly, a gliding brass lead, spaced iron bells, rain, a sub drone, a huge dark hall
+    'Pluie sur la ville': {
+      'global.tempo': 42, 'global.key': 'D', 'global.scale': 'Éolien (mineur)', 'global.evolve': 0.25, 'global.swing': 0,
+      'drone.wave': 'Sub', 'drone.vol': 0.55, 'drone.tone': 0.12, 'drone.motion': 0.2, 'drone.send': 0.4,
+      'pad.wave': 'Cuivres', 'pad.vol': 0.6, 'pad.tone': 0.32, 'pad.attack': 0.75, 'pad.length': 4, 'pad.prog': 'i–VI–III–VII', 'pad.voicing': 0.25, 'pad.counter': 0.1, 'pad.send': 0.75,
+      'bells.wave': 'Lame', 'bells.vol': 0.5, 'bells.density': 0.16, 'bells.range': 0.3, 'bells.decay': 0.8, 'bells.tone': 0.35, 'bells.send': 0.8,
+      'grains.on': false,
+      'texture.type': 'Pluie', 'texture.vol': 0.5, 'texture.tone': 0.3, 'texture.motion': 0.35, 'texture.send': 0.2,
+      'perc.on': true, 'perc.kit': 'Métal', 'perc.steps': '32', 'perc.vol': 0.5, 'perc.prob': 0.75, 'perc.send': 0.9, 'perc.tone': 0.3,
+      'perc.pattern': '00000000000000000000000000000000.00000000000000000000000000000000.00000000000000000000000000000000.30000000000000000000200000000000',
+      'fx.space': 0.85, 'fx.size': 1, 'fx.revType': 'Hall', 'fx.predelay': 0.4, 'fx.shimmer': 0, 'fx.echo': 0.2, 'fx.echoTime': '1/4.', 'fx.feedback': 0.5, 'fx.tape': 0.2, 'fx.lofi': 0.2,
+      'mod.l1target': 'pad.tone', 'mod.l1rate': 0.3, 'mod.l1depth': 0.4, 'mod.l2target': 'texture.vol', 'mod.l2rate': 0.25, 'mod.l2depth': 0.3, 'mod.l2shape': 'Dérive',
+    },
+    // damaged drone (distortion + few bits), a pad that wears out, silences, rare heavy impacts, wind and tape hiss
+    'Ruines': {
+      'global.tempo': 46, 'global.key': 'F', 'global.scale': 'Phrygien', 'global.time': 'Flottant', 'global.evolve': 0.45,
+      'drone.wave': 'Abîmé', 'drone.vol': 0.55, 'drone.tone': 0.3, 'drone.motion': 0.55, 'drone.follow': false, 'drone.send': 0.5,
+      'pad.wave': 'Cendre', 'pad.vol': 0.5, 'pad.tone': 0.3, 'pad.attack': 0.85, 'pad.length': 8, 'pad.prog': 'Pendule I–IV', 'pad.voicing': 0.15, 'pad.counter': 0,
+      'bells.wave': 'Cloche', 'bells.density': 0.05, 'bells.tone': 0.15, 'bells.range': 0.2, 'bells.decay': 0.9,
+      'grains.density': 0.15, 'grains.size': 0.9, 'grains.reverse': 0.6, 'grains.pitch': 'Octaves', 'grains.vol': 0.25, 'grains.spray': 0.6, 'grains.scan': 0.1,
+      'texture.type': 'Vent', 'texture.vol': 0.35, 'texture.tone': 0.15, 'texture.motion': 0.6,
+      'perc.on': true, 'perc.kit': 'Métal', 'perc.steps': '32', 'perc.vol': 0.6, 'perc.prob': 0.4, 'perc.send': 0.7, 'perc.tone': 0.1,
+      'perc.pattern': '30000000000000000000000000000000.00000000000000000000000000000000.00000000000000000000001000000000.00000000000000000000000000000000',
+      'fx.space': 0.7, 'fx.size': 0.85, 'fx.revType': 'Cloud', 'fx.predelay': 0.2, 'fx.shimmer': 0, 'fx.echo': 0.15, 'fx.tape': 0.6, 'fx.lofi': 0.5,
+      'mod.l1target': 'drone.tone', 'mod.l1rate': 0.2, 'mod.l1depth': 0.5, 'mod.l1shape': 'Dérive', 'mod.l2target': 'pad.vol', 'mod.l2rate': 0.3, 'mod.l2depth': 0.6, 'mod.l2shape': 'Dérive',
+    },
+    // pulsed distorted sub, metal and industrial percussion, waves that climb (filter + intensity) then fall back
+    'Menace': {
+      'global.tempo': 76, 'global.key': 'C', 'global.scale': 'Phrygien', 'global.swing': 0, 'global.evolve': 0.2,
+      'drone.wave': 'Abîmé', 'drone.vol': 0.85, 'drone.tone': 0.35, 'drone.motion': 0.25, 'drone.follow': false,
+      'pad.wave': 'Cendre', 'pad.vol': 0.35, 'pad.tone': 0.2, 'pad.length': 4, 'pad.prog': 'Pendule I–IV', 'pad.voicing': 0.1, 'pad.counter': 0,
+      'bells.on': false, 'bells.wave': 'Lame', 'grains.on': false,
+      'bass.on': true, 'bass.wave': 'Saturée', 'bass.vol': 0.75, 'bass.tone': 0.3, 'bass.decay': 0.35, 'bass.send': 0.1,
+      'bass.pattern': '1010101010101010.0000000000000000.0000000000000000.0000000000000000',
+      'texture.type': 'Ville', 'texture.vol': 0.3, 'texture.tone': 0.2,
+      'perc.on': true, 'perc.kit': 'Métal', 'perc.vol': 0.6, 'perc.prob': 0.75, 'perc.send': 0.35, 'perc.tone': 0.35,
+      'perc.pattern': '3000000000300000.0020002000200022.0000100000001010.0000000000000000',
+      'fx.space': 0.5, 'fx.size': 0.6, 'fx.revType': 'Plate', 'fx.shimmer': 0, 'fx.echo': 0.25, 'fx.echoTime': '1/8.', 'fx.feedback': 0.4, 'fx.tape': 0.7, 'fx.lofi': 0.2,
+      'mod.l1target': 'drone.tone', 'mod.l1shape': 'Montée', 'mod.l1rate': 0.62, 'mod.l1depth': 0.85,
+      'mod.l2target': 'perc.prob', 'mod.l2shape': 'Montée', 'mod.l2rate': 0.62, 'mod.l2depth': 0.8,
+    },
   };
 })();

@@ -11,6 +11,25 @@
   const HANN = new Float32Array(128);
   for (let i = 0; i < HANN.length; i++) HANN[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (HANN.length - 1));
 
+  // ---- Dark bricks (v1.14): built only by the dark timbres (drone Abîmé, pad Cuivres / Cendre, melody Lame,
+  // bass Saturée, kit Métal), so the other sounds never pass through them ----
+  const CURVES = {};
+  // distortion: tanh at drive k, normalised so full scale stays full scale
+  function driveCurve(k) {
+    const key = 'd' + k;
+    if (!CURVES[key]) { const n = 1024, c = new Float32Array(n), m = Math.tanh(k); for (let i = 0; i < n; i++) c[i] = Math.tanh(k * ((i / (n - 1)) * 2 - 1)) / m; CURVES[key] = c; }
+    return CURVES[key];
+  }
+  // bitcrusher (bit depth only: a staircase transfer curve; a sample-rate reduction would need a worklet)
+  function crushCurve(bits) {
+    const key = 'c' + bits;
+    if (!CURVES[key]) { const n = 4096, c = new Float32Array(n), q = Math.pow(2, bits - 1); for (let i = 0; i < n; i++) c[i] = Math.round(((i / (n - 1)) * 2 - 1) * q) / q; CURVES[key] = c; }
+    return CURVES[key];
+  }
+  function shaper(ctx, curve) { const w = ctx.createWaveShaper(); w.curve = curve; w.oversample = 'none'; return w; }
+  // metallic partials (inharmonic square cluster, the classic cymbal recipe), scaled by a base frequency
+  const METAL = [1, 1.4826, 1.8004, 2.546, 2.6303, 3.8968];
+
   class Layer {
     constructor(name) {
       this.name = name;
@@ -71,7 +90,16 @@
         'Creux': [[0, 'square', 0.12, -4], [12, 'triangle', 0.2, 3], [7, 'square', 0.07, 0], [-12, 'triangle', 0.35, 0]],
         'Orgue': [[0, 'sine', 0.35, 0], [12, 'sine', 0.2, 1], [19, 'sine', 0.12, -1], [24, 'sine', 0.08, 2], [-12, 'sine', 0.25, 0]],
         'Sub': [[-12, 'sine', 0.6, 0], [0, 'sine', 0.3, 0], [7, 'triangle', 0.08, 4]],
+        'Abîmé': [[0, 'sawtooth', 0.22, -11], [0, 'sawtooth', 0.22, 13], [-12, 'square', 0.3, 0], [7, 'sawtooth', 0.08, 6]],
       }[type] || [];
+      let dirt = null;
+      if (type === 'Abîmé') { // damaged drone: driven into a distortion, then crushed to a few bits
+        bus.disconnect();
+        const pre = ctx.createGain(), sat = shaper(ctx, driveCurve(3)), crush = shaper(ctx, crushCurve(5)), post = ctx.createGain();
+        post.gain.value = 0.55;
+        bus.connect(pre); pre.connect(sat); sat.connect(crush); crush.connect(post); post.connect(this.filter);
+        dirt = { pre, post };
+      }
       const oscs = defs.map(([semi, wave, gain, det]) => {
         const osc = ctx.createOscillator();
         osc.type = wave; osc.detune.value = det;
@@ -81,7 +109,8 @@
         osc.start();
         return { osc, semi };
       });
-      this.voices = { bus, oscs };
+      this.voices = { bus, oscs, dirt };
+      if (dirt) this.setTone();
     }
     setRoot(midi, time) {
       this.root = midi;
@@ -97,6 +126,8 @@
       this.lfo.frequency.setTargetAtTime(0.02 + motion * 0.15, t, 0.3);
       this.panAmt.gain.setTargetAtTime(motion * 0.5, t, 0.3);
       this.tremAmt.gain.setTargetAtTime(motion * 0.25, t, 0.3);
+      // Abîmé: more light = more drive (a rising filter also roars)
+      if (this.voices && this.voices.dirt) this.voices.dirt.pre.gain.setTargetAtTime(0.6 + tone * 5, t, 0.3);
     }
     onParam(k) {
       super.onParam(k);
@@ -217,6 +248,28 @@
       } else if (type === 'Aube') { // secret timbre (G10.1): two sines and a fifth, slow swell
         add('sine', 1, 0.6, -det * 0.5); add('sine', 2, 0.28, det * 0.5); add('triangle', 1.5, 0.12, 0);
         filt.Q.value = 1.4; level = 0.3;
+      } else if (type === 'Cuivres') { // detuned saw brass: the filter opens slowly over the attack, then sinks back
+        add('sawtooth', 1, 0.45, -det * 1.3); add('sawtooth', 1, 0.45, det * 1.3); add('sawtooth', 0.5, 0.25, det * 0.4);
+        filt.Q.value = 2.2;
+        const open = Math.min(9000, cutoff * 1.3), rise = Math.max(0.5, atk * 1.4);
+        filt.frequency.cancelScheduledValues(time);
+        filt.frequency.setValueAtTime(Math.min(open, Math.max(90, f * 0.8)), time);
+        filt.frequency.exponentialRampToValueAtTime(open, time + rise);
+        filt.frequency.setTargetAtTime(cutoff * 0.45, time + rise, dur * 0.35 + 0.1);
+        level = 0.16;
+      } else if (type === 'Cendre') { // a pad that wears out: its pitch sags and it sinks into a bitcrusher over the note
+        const mix = ctx.createGain(), clean = ctx.createGain(), dirty = ctx.createGain(), cr = shaper(ctx, crushCurve(4));
+        const life = Math.max(dur, 1);
+        [[1, 0.5, -det], [1, 0.5, det], [0.5, 0.35, 0]].forEach(([m, gn, d]) => {
+          const o = ctx.createOscillator(); o.type = m === 1 ? 'sawtooth' : 'triangle'; o.frequency.value = f * m;
+          o.detune.setValueAtTime(d, time); o.detune.linearRampToValueAtTime(d - 35, time + life * 1.2);
+          const og = ctx.createGain(); og.gain.value = gn; o.connect(og); og.connect(mix); oscs.push(o);
+        });
+        clean.gain.setValueAtTime(1, time); clean.gain.linearRampToValueAtTime(0.25, time + life);
+        dirty.gain.setValueAtTime(0, time); dirty.gain.linearRampToValueAtTime(0.9, time + life);
+        mix.connect(clean); clean.connect(filt); mix.connect(cr); cr.connect(dirty); dirty.connect(filt);
+        filt.frequency.setTargetAtTime(cutoff * 0.3, time + atk, life * 0.4);
+        level = 0.17;
       } else { // Cordes
         add('sawtooth', 1, 0.4, -det); add('sawtooth', 1, 0.4, 0); add('sawtooth', 1, 0.4, det);
         const vib = ctx.createOscillator(); vib.frequency.value = rand(4.8, 5.8);
@@ -321,6 +374,37 @@
           env.gain.cancelScheduledValues(at); env.gain.setValueAtTime(amp * 0.7, at); env.gain.setTargetAtTime(0, at, tau);
           nodes.forEach((n) => { try { n.stop(at + 1 + decay * 0.4); } catch (e) {} });
         } };
+      } else if (type === 'Lame') {
+        // brass lead: detuned saws, a filter that opens slowly, and a glide (portamento) from the previous note
+        const prev = this.lastLame, glide = prev && time - prev.t < 8 ? 0.16 + 0.2 * tone : 0;
+        this.lastLame = { f, t: time };
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 2.5;
+        [[-9, 0.5, 'sawtooth', 1], [9, 0.5, 'sawtooth', 1], [0, 0.25, 'square', 0.5]].forEach(([d, gn, w, m]) => {
+          const o = ctx.createOscillator(); o.type = w; o.detune.value = d;
+          if (glide) { o.frequency.setValueAtTime(prev.f * m, time); o.frequency.exponentialRampToValueAtTime(f * m, time + glide); } else o.frequency.value = f * m;
+          const og = ctx.createGain(); og.gain.value = gn; o.connect(og); og.connect(lp); nodes.push(o);
+        });
+        const vib = ctx.createOscillator(); vib.frequency.value = 5.2;
+        const va = ctx.createGain(); va.gain.setValueAtTime(0, time); va.gain.linearRampToValueAtTime(9, time + 1.2);
+        vib.connect(va); nodes.forEach((o) => va.connect(o.detune)); nodes.push(vib);
+        const hold = Math.max(0.3, len || decay * 0.45), top = f * (2 + tone * 7), peakAt = time + 0.25 + hold * 0.5;
+        lp.frequency.setValueAtTime(f * 0.9, time); lp.frequency.exponentialRampToValueAtTime(top, peakAt);
+        lp.frequency.setTargetAtTime(f * 1.2, peakAt, 0.4 + decay * 0.1);
+        lp.connect(env);
+        const a = amp * 0.42, tau = 0.25 + decay * 0.1;
+        env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(a, time + 0.09);
+        env.gain.setValueAtTime(a, time + hold); env.gain.setTargetAtTime(0, time + hold, tau);
+        const stopAt = time + hold + tau * 6;
+        nodes.forEach((n) => { n.start(time); n.stop(stopAt); });
+        nodes[0].onended = () => { env.disconnect(); pan.disconnect(); };
+        AMB.bus.emit('note', { layer: this.name, midi, time, vel, dur: hold, live: !!live });
+        // a held live note (play.js) ends on release, like « Doux »
+        return { cutoff, release(t) {
+          if (t >= time + hold) return;
+          const at = Math.max(t, time + 0.1);
+          env.gain.cancelScheduledValues(at); env.gain.setValueAtTime(a, at); env.gain.setTargetAtTime(0, at, tau);
+          nodes.forEach((n) => { try { n.stop(at + tau * 6); } catch (e) {} });
+        } };
       } else { // Pluck: filtered saw with fast filter env
         const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
         const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 3;
@@ -361,6 +445,12 @@
       const osc = (wave, mult, gain) => { const o = ctx.createOscillator(); o.type = wave; o.frequency.value = f * mult; const g = ctx.createGain(); g.gain.value = gain; o.connect(g); g.connect(lp); nodes.push(o); };
       if (type === 'Sub') { osc('sine', 1, 1); osc('sine', 2, 0.15); }
       else if (type === 'Ronde') { osc('triangle', 1, 0.8); osc('sine', 1, 0.6); osc('sawtooth', 1, 0.08 + tone * 0.2); }
+      else if (type === 'Saturée') { // pulsed sub driven into a distortion: the low end growls
+        osc('sine', 1, 1); osc('sawtooth', 1, 0.35);
+        const pre = ctx.createGain(); pre.gain.value = 1.5 + tone * 4;
+        const sat = shaper(ctx, driveCurve(2.5)), post = ctx.createGain(); post.gain.value = 0.75;
+        lp.disconnect(); lp.connect(pre); pre.connect(sat); sat.connect(post); post.connect(env);
+      }
       else { osc('sawtooth', 1, 0.6); lp.frequency.setValueAtTime(200 + tone * 3000, time); lp.frequency.setTargetAtTime(150, time, 0.08); }
       const hold = Math.max(0.12, len * (0.3 + P('bass', 'decay') * 0.7));
       env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(0.55, time + 0.012);
@@ -413,6 +503,49 @@
     AMB.bus.emit('perc', { track, time, vel });
   }
 
+  // Metal kit (dark landscapes): heavy impact, scrap metal, sheet-metal clank, iron bell
+  function hitMetal(track, time, vel) {
+    const ctx = this.ctx, tone = P('perc', 'tone');
+    const env = ctx.createGain(); env.gain.value = 0;
+    const pan = ctx.createStereoPanner(); env.connect(pan); pan.connect(this.bus);
+    const nodes = []; let stopAt;
+    const metal = (base, dest) => METAL.forEach((r) => { const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = base * r; o.connect(dest); nodes.push(o); });
+    if (track === 0) { // impact: a falling sub boom and a driven noise burst
+      const o = ctx.createOscillator(); o.frequency.setValueAtTime(70 + tone * 30, time); o.frequency.exponentialRampToValueAtTime(30, time + 0.5);
+      const og = ctx.createGain(); og.gain.value = 1; o.connect(og); og.connect(env); nodes.push(o);
+      const n = ctx.createBufferSource(); n.buffer = this.noise;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500 + tone * 1500;
+      const pre = ctx.createGain(); pre.gain.setValueAtTime(3, time); pre.gain.setTargetAtTime(0, time, 0.08);
+      const sat = shaper(ctx, driveCurve(4)); n.connect(lp); lp.connect(pre); pre.connect(sat); sat.connect(og); nodes.push(n);
+      env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(1.1 * vel, time + 0.004);
+      env.gain.setTargetAtTime(0, time + 0.01, 0.35); stopAt = time + 2.2;
+    } else if (track === 1) { // scrap metal: a short bright square cluster
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 6000 + tone * 3000;
+      const mix = ctx.createGain(); mix.gain.value = 0.6; metal(300 + tone * 120, mix); mix.connect(hp); hp.connect(env);
+      env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(0.35 * vel, time + 0.002);
+      env.gain.setTargetAtTime(0, time + 0.003, 0.035 + Math.random() * 0.04); pan.pan.value = (Math.random() - 0.5) * 0.9; stopAt = time + 0.4;
+    } else if (track === 2) { // sheet-metal clank: lower cluster through a resonant band, driven
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400 + tone * 1800; bp.Q.value = 3;
+      const mix = ctx.createGain(); mix.gain.value = 0.5; metal(140 + Math.random() * 40, mix);
+      const sat = shaper(ctx, driveCurve(3)); mix.connect(bp); bp.connect(sat); sat.connect(env);
+      env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(0.3 * vel, time + 0.002);
+      env.gain.setTargetAtTime(0, time + 0.003, 0.12); pan.pan.value = (Math.random() - 0.5) * 1.2; stopAt = time + 0.9;
+    } else { // iron bell: inharmonic sines on a chord tone, long ring with slow beating
+      const chord = (AMB.seq && AMB.seq.chord && AMB.seq.chord.length) ? AMB.seq.chord : [62];
+      const f = mtof(chord[Math.floor(Math.random() * chord.length)] + 12);
+      [[1, 1, 9], [2.32, 0.5, 5], [4.25, 0.32, 3], [6.63, 0.2, 1.6], [9.38, 0.12, 0.9]].forEach(([r, gn, d]) => {
+        const o = ctx.createOscillator(); o.frequency.value = f * r * (1 + (r - 1) * 0.0015);
+        const og = ctx.createGain(); og.gain.setValueAtTime(gn * (r > 2 ? 0.5 + tone : 1), time); og.gain.setTargetAtTime(0, time, d * 0.35);
+        o.connect(og); og.connect(env); nodes.push(o);
+      });
+      env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(0.16 * vel, time + 0.003);
+      env.gain.setTargetAtTime(0, time + 0.004, 2.5); pan.pan.value = (Math.random() - 0.5) * 1.2; stopAt = time + 9;
+    }
+    nodes.forEach((n) => { n.start(time); n.stop(stopAt); });
+    nodes[0].onended = () => { env.disconnect(); pan.disconnect(); };
+    AMB.bus.emit('perc', { track, time, vel });
+  }
+
   // ===================== PULSATIONS (soft percussion) =====================
   class Perc extends Layer {
     constructor() {
@@ -424,6 +557,7 @@
     // track: 0 kick feutré, 1 shaker, 2 bois, 3 clochette
     hit(track, time, vel = 0.8) {
       if (P('perc', 'kit') === 'Organique') return this.hitOrganic(track, time, vel);
+      if (P('perc', 'kit') === 'Métal') return this.hitMetal(track, time, vel);
       const ctx = this.ctx, tone = P('perc', 'tone');
       const env = ctx.createGain(); env.gain.value = 0;
       const pan = ctx.createStereoPanner();
@@ -777,5 +911,6 @@
   }
 
   Perc.prototype.hitOrganic = hitOrganic;
+  Perc.prototype.hitMetal = hitMetal;
   AMB.layers = { Drone, Pad, Bells, SeqVoice, Perc, Bass, Grains, Texture };
 })();

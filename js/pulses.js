@@ -3,7 +3,7 @@
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const store = AMB.store;
-  const TRACK_NAMES = { 'Feutré': ['Feutre', 'Shaker', 'Bois', 'Clochette'], 'Organique': ['Tambour', 'Bâton de pluie', 'Goutte', 'Kalimba'] };
+  const TRACK_NAMES = { 'Feutré': ['Feutre', 'Shaker', 'Bois', 'Clochette'], 'Organique': ['Tambour', 'Bâton de pluie', 'Goutte', 'Kalimba'], 'Métal': ['Impact', 'Ferraille', 'Tôle', 'Cloche de fer'] };
   const TRACKS = TRACK_NAMES['Feutré'];
   const nSteps = () => parseInt(store.get('perc.steps'), 10) || 16;
   const LEVEL_VEL = [0, 0.45, 0.75, 1];
