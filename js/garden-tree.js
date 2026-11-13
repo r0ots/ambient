@@ -340,7 +340,7 @@
     seqImpact() {
       const s = this.seq; if (!s || s.hit) return; s.hit = true;
       const T = AMB.tree;
-      this.chime('unlock', this.beatOf(s.id));
+      // (the chime and the rest of the juice: garden.fx('open'), on the same strong beat)
       this.paintTree();
       const el = document.querySelector(`#treeDlg .tree-node[data-id="${s.id}"]`);
       if (!el || this.reduced) return;

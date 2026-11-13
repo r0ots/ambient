@@ -204,10 +204,8 @@
     },
     // node null = the instrument was handed over (or the whole tree owned): the LCD names the secret, the toast its gift
     celebrate(d, node) {
-      const G = AMB.garden;
-      if (G) { if (G.chime) G.chime('solve'); if (G.lcd) G.lcd(`✦ Secret : ${d.title}`, 6000); } // its node waits on « ✦ Ouvrir » (garden.js)
-      const gift = d.reward.gift;
-      if (AMB.ui && AMB.ui.toast) AMB.ui.toast(`✦ Secret trouvé : ${d.title}${node ? ` · ${node.name} prêt à ouvrir` : ''}${gift ? ' · ' + gift.label : ''}`);
+      const G = AMB.garden, gift = d.reward.gift; // the juice table (S5.9 FX.secret): LCD, toast, jingle, confetti…; its node waits on « ✦ Ouvrir »
+      if (G && G.fx) G.fx('secret', { say: `✦ Secret : ${d.title}`, ms: 6000, toast: `✦ Secret trouvé : ${d.title}${node ? ` · ${node.name} prêt à ouvrir` : ''}${gift ? ' · ' + gift.label : ''}` });
       this.render();
     },
     giveGift(gift) {

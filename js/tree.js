@@ -256,9 +256,10 @@
   tree.clearNew = function (el) {
     (el ? [el] : [...document.querySelectorAll('.is-new')]).forEach((e) => e.classList.remove('is-new', 'is-new-first', 'is-new-rel'));
   };
-  // the first touch on a highlighted control ends its highlight
+  // the first touch on a highlighted control ends its highlight, with a little juice (S5.9 garden.FX.first)
   if (typeof document !== 'undefined') ['pointerdown', 'change'].forEach((t) => document.addEventListener(t, (e) => {
-    const el = e.target && e.target.closest && e.target.closest('.is-new'); if (el) tree.clearNew(el);
+    const el = e.target && e.target.closest && e.target.closest('.is-new'); if (!el) return;
+    tree.clearNew(el); if (AMB.garden && AMB.garden.fx) AMB.garden.fx('first', { el });
   }, true));
 
   // ---- sound locking (G1.5) ----
