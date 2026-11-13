@@ -67,8 +67,11 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
     const st=A.contracts.state(); st.active=['p.premier']; st.prog['p.premier']={n:0}; A.garden.renderContracts();
     const sd=0.05, snap=JSON.stringify(A.store.stableSnapshot());
     ok(P.launch(ctx.currentTime+0.05, sd) && P.cur.len===3 && P.view().phase==='call' && shown('#pads') && d.body.classList.contains('game'), 'une phrase marquée pendant le jeu : pas de carte, les pastilles restent');
-    const c=P.cur; for(let i=0;i<60 && !/À TOI/.test(d.getElementById('lcdTop').textContent);i++) await wait(25);
+    const c=P.cur; let lit=0; for(let i=0;i<60 && !/À TOI/.test(d.getElementById('lcdTop').textContent);i++){ lit=Math.max(lit, d.querySelectorAll('#pads .pad.call').length); await wait(25); }
+    ok(lit>0, 'S6.7 : pendant la phrase, les pastilles de ses notes s\'allument franchement (classe call, comme un Simon)');
     ok(/↺ À TOI/.test(d.getElementById('lcdTop').textContent) && P.view().phase==='answer', 'mesure suivante : « ↺ À toi » sur le LCD');
+    ok(A.lcdMsg && A.lcdMsg.until-Date.now()>=4000, 'S6.7 : « À toi » reste tant que la réponse est attendue ('+((A.lcdMsg.until-Date.now())/1000).toFixed(1)+' s), pas 2,5 s');
+    const fxr=[], fx0=A.garden.fx; A.garden.fx=function(k,o){ fxr.push([k,o]); return fx0.apply(this,arguments); };
     const cv=d.createElement('canvas'); cv.width=480; cv.height=320; const g2=cv.getContext('2d');
     gv.refresh(480,320,true); A.bus.emit('live',{midi:c.midis[0],time:0,vel:0.85,raw:null,played:c.ans+0.1}); A.bus.emit('live',{midi:c.midis[1]+2,time:0,vel:0.85,raw:null,played:c.ans+0.6});
     const leaves=gv.drawAnswer(g2, P.view()), px=g2.getImageData(0,0,480,320).data; let green=0, red=0;
@@ -78,8 +81,10 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
       pb.gy=0; const none=gv.drawAnswer(g2, P.view()); pb.gy=0.5; const half=gv.drawAnswer(g2, P.view()); pb.gy=gy0;
       ok(none===0 && half===3 && green>=81, 'S4.5w + S4.2 : une plante Mélodie auto qui pousse porte ses feuilles de Réponse (aucune avant de sortir, toutes à mi-hauteur) ; une feuille ≥ 4 px par carreau ('+green+' px verts)'); }
     A.bus.emit('live',{midi:c.midis[2],time:0,vel:0.85,raw:null,played:c.ans+1}); await wait(350);
-    ok(!P.cur && /PRESQUE/.test(d.getElementById('lcdTop').textContent) && !A.game.has('t.macros'), 'réponse fausse : « Presque » sur le LCD, porte fermée');
-    P.launch(ctx.currentTime+0.05, sd); const c2=P.cur; c2.midis.forEach((m,i)=>A.bus.emit('live',{midi:m+12,time:0,vel:0.85,raw:null,played:c2.ans+0.5+i})); await wait(30);
+    A.garden.fx=fx0;
+    ok(!P.cur && /RATÉ/.test(d.getElementById('lcdTop').textContent) && fxr.some(([k])=>k==='rate') && A.garden.FX.rate.boom==='BZZT!' && !A.game.has('t.macros'), 'S6.7 réponse fausse : « '+d.getElementById('lcdTop').textContent.trim()+' » sur le LCD avec la bulle BZZT! (garden.FX.rate), porte fermée');
+    P.launch(ctx.currentTime+0.05, sd); const c2=P.cur;
+    ok(c2.again && c2.degs.join()===c.degs.join(), 'la même phrase est rejouée'); c2.midis.forEach((m,i)=>A.bus.emit('live',{midi:m+12,time:0,vel:0.85,raw:null,played:c2.ans+0.5+i})); await wait(30);
     ok(A.game.isReady('t.macros') && !A.game.has('t.macros') && A.game.s.contracts.includes('p.premier') && A.lcdMsg.text==='↺ ✓ Juste !' && JSON.stringify(A.store.stableSnapshot())===snap, 'réponse juste : « Juste ! », Grands réglages prêt, l\'ambiance est intacte');
     A.garden.openNode('t.macros'); ok(A.game.has('t.macros'), 'puis le joueur l\'ouvre');
     await settle(300); A.garden.showTree(false);

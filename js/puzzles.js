@@ -10,12 +10,24 @@
 // 3 or 4 notes, never timed, never a tier), or after 6 misses (never a dead end). Nothing in free mode nor once the
 // instrument is handed over. The ambience is never touched: only the Melody auto yields during the phrase and its answer.
 // Bus (S5.3, for the juice): 'resp:streak' {streak}, 'resp:record' {best}, 'resp:tier' {tier, name, lvl};
-// S5.4 'resp:place' {id, name, nodes} (placement, PLACE below).
+// S5.4 'resp:place' {id, name, nodes} (placement, PLACE below); S6.7 'resp:call' {notes: [{midis, time, dur}]} (the pads
+// light up on the machine's phrase, like a Simon: js/play.js).
+// S6.7: « À toi » leaves at least START s for the first note; a timed answer is judged from the beat its first note comes
+// on; a wrong answer says « RATÉ » (BZZT!, garden.FX) and the phrase is played once more. ONE table of timing windows
+// (TOL), in absolute seconds: tight at the MIDI keyboard, a child's at the pads and keys. At the MIDI keyboard (or after a
+// first long answer right and tight), the ladder skips the Phrases and starts at the Octaves.
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const store = AMB.store;
   const MIN = 3, MAX = 8, RHYTHM = 5, TRIES = 6, DEGS = 9; // A–L = degrees 0..8 of octave 4
-  const GAP = { gate: 1, free: 4 }; // bars of plain music between two phrases (a gate to open: right away)
+  const GAP = { gate: 1, free: 4, hot: 2 }; // bars of plain music between two phrases (a gate to open, a replay: right away; after a right answer: soon)
+  const START = 5; // s: the least the player has after « À toi » to play the first note
+  // S6.7 THE timing windows (± s, absolute, after latency compensation: 'live'.played), one row per hand.
+  // parfait / bien: the live asks (js/demands.js; beyond bien, RATÉ up to two beats); juste: a timed note of the Réponse.
+  const TOL = {
+    midi: { parfait: 0.06, bien: 0.13, juste: 0.13 }, // a MIDI keyboard: a musician's timing
+    doigt: { parfait: 0.25, bien: 0.6, juste: 0.25 }, // the pads, the A–L keys, the knobs: a child's
+  };
   const SHOW = 3; // seconds the leaves of the last answer stay on the plant
   const GROUP = 0.35; // s: the notes of a chord played by hand (MIDI, keys) come within this
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -47,6 +59,7 @@
   // next node instead). Never by chance: Syncopes are 5–6 timed notes with off-beats, reached after ≥ 8 right answers
   // climbing (a miss = one level down); the son's 3 slow notes stay at Phrases.
   const RUN = 2;
+  const OCT = TIERS[0].lens.length; // S6.7: the first level of the Octaves, where a musician starts
   const PLACE = [ // what a musician already masters: harmony, melody and time, his studio tools; then composition and classic effects.
     // Left to discover by playing: the instrument's own sound (Grands réglages, Paysages, Écran, Texture, Halo, Usure, Grains).
     // Musicien: Syncopes (5–6 timed notes, off-beats) ×2; Virtuose: Quinte (answered a fifth higher) ×2.
@@ -98,7 +111,9 @@
   const pcOf = (m) => ((m % 12) + 12) % 12;
 
   const R = {
-    MIN, MAX, RHYTHM, TRIES, GAP, TIERS, RUN, PLACE, placeOf, respLen, phrase, rhythm, syncs, leap, level, tierName,
+    MIN, MAX, RHYTHM, TRIES, GAP, START, TOL, OCT, TIERS, RUN, PLACE, placeOf, respLen, phrase, rhythm, syncs, leap, level, tierName,
+    midi: false, // S6.7: a MIDI keyboard was played this session (its notes carry a raw velocity)
+    again: null, // S6.7: the phrase just missed, played once more
     cur: null, // the phrase waiting for its answer: { gate, lvl, degs, midis, want, steps, len, timed, chord, sd, t0, from, ans, until, row }
     last: null, // the phrase just answered (its leaves stay a moment on the plant)
     wait: GAP.free, // bar lines to let pass before the next phrase (the music first)
@@ -132,7 +147,11 @@
     busy() { return !!this.cur; },
     // the Melody auto keeps quiet from the phrase to the end of its answer (js/sequencer.js melodyNote)
     hush(time) { const c = this.cur; return !!c && time >= c.t0 - 0.05 && time <= c.until; },
-    tol(sd, f = 1) { return Math.max(0.09 * f, sd * 1.2 * f); }, // timing tolerance of a timed note (seconds)
+    // S6.7 the hand of a gesture ('midi' | 'doigt') and its windows: a note, by its raw velocity (MIDI only); a gesture
+    // without one (raw undefined: a chord, a knob), by the session (a MIDI keyboard played)
+    hand(raw) { return raw != null || (raw === undefined && this.midi) ? 'midi' : 'doigt'; },
+    win(hand) { return TOL[hand] || TOL.doigt; },
+    tol(hand, f = 1) { return this.win(hand).juste * f; }, // timing tolerance of a timed note of the Réponse (seconds)
 
     // at each step of the sequencer: an answer window that ran out closes; on a bar line, maybe a new phrase
     onStep(step, time, sd) {
@@ -156,34 +175,43 @@
     launch(time, sd, gate = this.gate()) {
       const L = AMB.layers, S = AMB.seq, g = AMB.game; if (!L || !L.bells || !S || !AMB.contracts) return false;
       const s = this.st(g), rnd = AMB.contracts.rng(g), Th = AMB.theory, sc = S.scale, Ls = sc.length;
+      const a = this.again; this.again = null;
+      const re = !!a && a.gate === (gate ? gate.id : null); // S6.7: the phrase just missed, once more (same notes, same places)
+      // S6.7: a musician at the MIDI keyboard skips the Phrases (once; his first scales and arpeggios already told)
+      if (!gate && !re && this.midi && !s.skip && s.lvl < OCT) { s.lvl = OCT; s.skip = true; s.len = level(s.lvl).len; }
       // a gate: a plain phrase, its length capped (never a tier); otherwise the level reached
-      const lv = gate ? level(Math.min(s.lvl, MAX - MIN, this.need(gate) - MIN)) : level(s.lvl), len = lv.len;
+      const lv = re ? a.lv : gate ? level(Math.min(s.lvl, MAX - MIN, this.need(gate) - MIN)) : level(s.lvl), len = lv.len;
       const tr = lv.tr ? fifth(sc) : 0, chord = !!lv.chord, timed = !chord && len >= RHYTHM;
       const mid = (dg) => Th.degreeToMidi(dg, S.root, sc, 4);
-      let degs, steps, midis, want, cdeg = null, pcs = null;
+      let degs, steps, midis, want, cdeg = null, pcs = null, tri = null;
       if (chord) { // 1 or 2 chords on the beats 1 and 3 (triads of the key), any inversion accepted
-        cdeg = []; while (cdeg.length < len) { const d = Math.floor(rnd() * Ls); if (d !== cdeg[cdeg.length - 1]) cdeg.push(d); }
+        if (re) cdeg = a.cdeg; else { cdeg = []; while (cdeg.length < len) { const d = Math.floor(rnd() * Ls); if (d !== cdeg[cdeg.length - 1]) cdeg.push(d); } }
         steps = cdeg.map((_, i) => i * 8);
-        const tri = cdeg.map((d) => [0, 2, 4].map((k) => mid(d + k)));
+        tri = cdeg.map((d) => [0, 2, 4].map((k) => mid(d + k)));
         pcs = tri.map((t) => t.map(pcOf)); degs = cdeg; midis = [].concat(...tri); want = tri.map((t) => t[0]);
         tri.forEach((t, i) => t.forEach((m) => L.bells.note(m, time + steps[i] * sd, 0.7, true)));
       } else {
-        degs = lv.oct ? leap(len, rnd, Ls) : tr ? walk(len, rnd, Math.floor(rnd() * 5), DEGS - tr) : phrase(len, rnd);
-        steps = lv.sync ? syncs(len, rnd) : rhythm(len, rnd);
+        degs = re ? a.degs : lv.oct ? leap(len, rnd, Ls) : tr ? walk(len, rnd, Math.floor(rnd() * 5), DEGS - tr) : phrase(len, rnd);
+        steps = re ? a.steps : lv.sync ? syncs(len, rnd) : rhythm(len, rnd);
         midis = degs.map(mid); want = degs.map((dg) => mid(dg + tr));
         midis.forEach((m, i) => L.bells.note(m, time + steps[i] * sd, 0.85, true));
       }
       if (!store.get('bells.on') && L.bells.ch) L.bells.ch.setLevel(Math.pow(store.get('bells.vol'), 1.6)); // a gate: heard anyway
-      const bar = 16 * sd, end = time + steps[len - 1] * sd, f = lv.f || 1;
+      const bar = 16 * sd, end = time + steps[len - 1] * sd, f = lv.f || 1, ans = time + bar;
       this.cur = {
-        gate: gate ? gate.id : null, lvl: gate ? len - MIN : s.lvl, tier: lv.id, degs, midis, want, steps, len, timed, sd, f,
-        oct: !!lv.oct, sync: !!lv.sync, tr, chord, cdeg, pcs, grp: null, off: null, t0: time, row: [],
+        gate: gate ? gate.id : null, lvl: re ? a.lvl : gate ? len - MIN : s.lvl, tier: lv.id, lv, degs, midis, want, steps, len, timed, sd, f,
+        oct: !!lv.oct, sync: !!lv.sync, tr, chord, cdeg, pcs, grp: null, off: null, t0: time, row: [], again: re,
         from: end + Math.min(0.15, sd), // notes played along with the phrase are not an answer
-        ans: time + bar, // the answer bar
-        until: timed ? time + 2 * bar + this.tol(sd, f) : time + bar + Math.max(2 * bar, 6), // untimed: take your time
+        ans, // the answer bar (timed: moved to the beat of the first note played, input)
+        // S6.7: the first note may come up to START s (at least a bar) after « À toi »; a timed answer then has its bar
+        until: timed ? ans + Math.max(START, bar) + bar + this.tol('doigt', f) : ans + Math.max(2 * bar, 6, START), // untimed: take your time
       };
       this.last = null;
-      g.emit('puzzle', { phase: 'call', len, ans: this.cur.ans, tier: lv.id, tr: !!tr, chord });
+      // S6.7: the pads light up on the phrase, each note until the next one (a Simon: the child sees where to play)
+      if (AMB.bus) AMB.bus.emit('resp:call', { notes: steps.map((st, i) => ({
+        midis: chord ? tri[i] : [midis[i]], time: time + st * sd,
+        dur: clamp(((i + 1 < len ? steps[i + 1] : st + 4) - st) * sd * 0.85, 0.25, 0.7) })) });
+      g.emit('puzzle', { phase: 'call', len, ans, until: this.cur.until, tier: lv.id, tr: !!tr, chord, again: re });
       return true;
     },
     // one answered note (or chord) of the current answer: a leaf; the last one closes the answer
@@ -194,11 +222,16 @@
       return c.row.length === c.len ? this.close() : { row: c.row };
     },
     // a note played by the player ('live', path only): one leaf. Returns null (not an answer), { row } or the result.
-    input(midi, played = this.now()) {
+    // raw: the MIDI velocity (null: pads, keys) — the hand whose window judges it
+    input(midi, played = this.now(), raw = null) {
       const c = this.cur; if (!c || !this.can()) return null;
       if (played > c.until) { this.close(); return null; }
       if (played < c.from) return null;
       const i = c.row.length, t = (c.want || c.midis)[i];
+      if (!i && c.timed) { // S6.7: the answer starts on the beat of its first note (the downbeat, or a later beat)
+        c.ans += Math.max(0, Math.round((played - c.ans) / (4 * c.sd))) * 4 * c.sd;
+        c.until = Math.min(c.until, c.ans + 16 * c.sd + this.tol('doigt', c.f));
+      } else if (!c.timed) c.until = Math.max(c.until, played + 4); // untimed: never cut in the middle of an answer
       if (c.chord) { // by hand: its notes within GROUP s, in any order and octave; a foreign note = wrong
         const want = c.pcs[i], pc = pcOf(midi);
         if (!want.includes(pc)) return this.peg({ state: 'far', dir: null });
@@ -212,8 +245,8 @@
       let peg;
       if (m !== t) peg = { state: 'far', dir: m < t ? 'up' : 'down' };
       else if (c.timed) {
-        const dt = played - (c.ans + c.steps[i] * c.sd);
-        peg = Math.abs(dt) <= this.tol(c.sd, c.f) ? { state: 'ok', dir: null } : { state: 'off', dir: dt < 0 ? 'early' : 'late' };
+        const dt = played - (c.ans + c.steps[i] * c.sd), h = this.hand(raw);
+        peg = Math.abs(dt) <= this.tol(h, c.f) ? { state: 'ok', dir: null, dt } : { state: 'off', dir: dt < 0 ? 'early' : 'late', dt };
       } else peg = { state: 'ok', dir: null };
       return this.peg(peg);
     },
@@ -240,22 +273,28 @@
       const was = level(s.lvl), best0 = s.best;
       s.streak = ok ? s.streak + 1 : 0;
       s.best = Math.max(s.best, s.streak);
-      s.lvl = ok ? Math.max(s.lvl, c.lvl + 1) : Math.max(0, s.lvl - 1); // one level up, or one down
+      // one level up, or one down (a replay missed, S6.7: not one more)
+      s.lvl = ok ? Math.max(s.lvl, c.lvl + 1) : c.again ? s.lvl : Math.max(0, s.lvl - 1);
+      // S6.7: a first long answer right and tight (a musician's, whatever the hand): the Phrases are skipped, the Octaves now
+      if (ok && !c.gate && !s.skip && c.timed && s.lvl < OCT && c.row.every((p) => Math.abs(p.dt) <= TOL.midi.juste)) { s.lvl = OCT; s.skip = true; }
       const lv = level(s.lvl); s.len = lv.len;
-      const res = { ok, len: c.len, row: c.row, next: s.len, lvl: s.lvl, name: tierName(lv), streak: s.streak, best: s.best, gate: c.gate };
+      const res = { ok, len: c.len, row: c.row, next: s.len, lvl: s.lvl, name: tierName(lv), streak: s.streak, best: s.best, gate: c.gate, again: c.again };
       if (ok && lv.id !== was.id && lv.tier > was.tier) res.tier = lv.name; // a new tier reached
       if (!ok) s.beat = false; else if (best0 > 0 && s.streak > best0 && !s.beat) { s.beat = true; res.record = s.best; } // the record beaten (once per series)
-      if (!c.gate) { // S5.4 placement: the run of the last answers
+      if (!c.gate && !c.again) { // S5.4 placement: the run of the last answers (a replay, heard twice, does not count)
         s.pt = (s.pt || []).concat(ok ? level(c.lvl).tier : -1).slice(-RUN);
         const p = placeOf(s.pt); if (p > (s.place != null ? s.place : -1)) res.place = this.place(p, g);
       }
       this.last = Object.assign(c, { ok, at: this.now() });
-      this.wait = gate ? GAP.gate : GAP.free;
+      // S6.7: missed the first time: the same phrase once more, right away
+      if (!ok && !c.again) { this.again = { gate: c.gate, lv: c.lv, lvl: c.lvl, degs: c.degs, steps: c.steps, cdeg: c.cdeg }; res.replay = true; }
+      const asks = AMB.demands && AMB.demands.gate(g); // a challenge asked in the music waits its turn: no hurry then
+      this.wait = gate || res.replay ? GAP.gate : ok && !asks ? GAP.hot : GAP.free;
       if (gate && c.gate === gate.id) {
         const miss = ok ? 0 : (s.miss[gate.id] || 0) + 1;
         if (ok && c.len >= this.need(gate)) res.open = gate.id;
         else if (!ok) { s.miss[gate.id] = miss; res.left = TRIES - miss; if (miss >= TRIES) { res.open = gate.id; res.out = true; } }
-        if (res.open) { delete s.miss[gate.id]; this.outGate = res.out ? gate.id : null; AMB.contracts.finish(gate.id, g); this.outGate = null; } // outGate: the juice knows it was « prêt quand même »
+        if (res.open) { this.again = null; res.replay = false; delete s.miss[gate.id]; this.outGate = res.out ? gate.id : null; AMB.contracts.finish(gate.id, g); this.outGate = null; } // outGate: the juice knows it was « prêt quand même »
       }
       g.save();
       g.emit('puzzle', { phase: 'end', res });
@@ -277,7 +316,7 @@
     },
     // playback stopped, free mode, path restarted: the phrase goes, nothing is judged
     cancel() {
-      const was = this.cur || this.last; this.cur = null; this.last = null; this.wait = GAP.free; this.ignored = 0;
+      const was = this.cur || this.last; this.cur = null; this.last = null; this.again = null; this.wait = GAP.free; this.ignored = 0;
       if (was && AMB.game) AMB.game.emit('puzzle', { phase: 'end', res: null });
     },
     // what the Melody plant shows (js/garden-visual.js): 'call' (the phrase is played: it blinks), 'answer' (lit, one leaf
@@ -293,7 +332,10 @@
 
   if (AMB.bus) {
     // the player's notes (keys, pads or MIDI, already heard on the Melody voice), at the moment they were played
-    AMB.bus.on('live', (n) => { if (n && R.cur) R.input(n.midi, n.played != null ? n.played : n.time != null ? n.time : R.now()); });
+    AMB.bus.on('live', (n) => {
+      if (n && n.raw != null) R.midi = true; // S6.7: a MIDI keyboard is played (its velocity rides along)
+      if (n && R.cur) R.input(n.midi, n.played != null ? n.played : n.time != null ? n.time : R.now(), n.raw != null ? n.raw : null);
+    });
     AMB.bus.on('chord', (c) => { if (c && c.forced && R.cur) R.chordIn(c.deg, R.now()); }); // a chord forced by the player
     AMB.bus.on('panic', () => R.cancel()); // playback stopped
     ['game:mode', 'game:reset'].forEach((e) => AMB.bus.on(e, () => R.cancel()));
