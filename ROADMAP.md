@@ -327,18 +327,32 @@ Vague 4
 - [x] Ouvrir est le geste du joueur : un défi, une Réponse ou un secret réussi rend le nœud « prêt » ; le joueur l'ouvre (LCD « ✦ Ouvrir : X », carte qui explique ce qu'il apporte, file d'attente), ses contrôles entrent animés avec un halo et l'étiquette « Nouveau » Décision : rien ne s'ouvre ni ne disparaît sans geste du joueur ; la cible de 45 min de `tests/balance.html` porte sur le temps de jeu seul (43,0–44,8 min) : l'ouverture ajoute environ 4 min de lecture (47,1–48,9 min en tout), choix assumé.
 - [x] Les plantes reflètent les réglages : Niveau → taille, Lumière → couleur et fleurs ouvertes, Timbre → forme, Espace → halo, mouvement → ondulation, densité → fleurs ; le toucher d'un contrôle fait rebondir sa plante Décision : une seule table (`LOOK` / `LOOK_ALL`) ; au réglage par défaut, la taille d'avant (on grandit et rétrécit autour, ×0,5 à ×1,3) ; hauteur plafonnée sous le HUD, largeur limitée par l'espacement des plantes (plus de chevauchement à 390 px).
 
-## Saison 5 — interactivité : toucher, voir, être jugé en jouant
+## Saison 5 — interactivité, juice, visuel à combos
 
-Demande de l'utilisateur (après v1.14) : « continue d'améliorer l'interactivité », gamifié à fond y compris pour le neveu musicien. Décisions prises sans attendre (l'utilisateur a dit « vas-y ») : score et record visibles en Parcours ; rien de nouveau en mode libre (sauf ce que le retour visuel du Jardin y montre déjà) ; tout reste indépendant du dessin, car le passage à une esthétique sombre (prototype sonore en attente d'écoute) pourra remplacer les sprites. Supprimer plutôt qu'empiler : chaque chantier dit ce qu'il retire. Règle de l'utilisateur : la visualisation (plantes, Jardin) n'est PAS interactive, c'est seulement le reflet de ce que l'on joue ; toute l'interaction passe par les commandes, les pastilles, le clavier et le MIDI.
+Buts complets posés par l'utilisateur (ils priment sur les décisions antérieures, notamment la sobriété de v1.06) :
+1. in fine, une fois tout débloqué : une application de création ambient futuriste très très complète ;
+2. débloquer les fonctionnalités de façon fun, progressive, interactive et variée — expérimenter, deviner (énigmes), achievements, juice (« beaucoup beaucoup de juice, même trop, un peu goofy ») ;
+3. une visualisation réactive : chaque bouton a un impact visuel, les effets se combinent (combos) et débloquent des achievements ou des points de l'arbre, comme des énigmes.
+
+Règles : la visualisation reste un REFLET, jamais une surface de contrôle (toute l'interaction passe par commandes, pastilles, clavier, MIDI) ; les énigmes se résolvent en expérimentant la musique, pas en réglant des boutons sur une cible ; score et record visibles en Parcours ; mode libre : son et commandes intacts ; tout est indépendant du dessin (une esthétique sombre / futuriste pourra remplacer les sprites, prototype sonore en attente d'écoute) ; supprimer la complexité d'interface, pas la richesse du retour.
 
 Vague 1 (en parallèle)
-- [ ] S5.2 Chaque note se voit : touche A–L, pastille ou note MIDI → onde qui part de la plante qui joue, pastille qui s'allume au rythme de la Mélodie auto (on voit ce que joue la machine), sans particules envahissantes
-- [ ] S5.3 Réponse sans plafond : niveaux au-delà de 8 notes (accords à la main gauche, sauts d'octave, syncopes, phrase transposée), série et record sur le LCD, palier visible sur la plante Mélodie
+- [ ] S5.2 Chaque note se voit, avec beaucoup de juice : particules, flash, squash & stretch, secousse sur les accords ; notes de la machine plus discrètes ; pastilles qui s'allument sur la Mélodie auto ; constante JUICE
+- [ ] S5.3 Réponse sans plafond : paliers (sauts d'octave, syncopes, transposition, accords), série, record, palier sur le LCD ; passages fêtés ; événements `resp:*`
 
 Vague 2 (en parallèle)
-- [ ] S5.4 Placement façon Rocksmith : la première Réponse sert de test ; une réponse longue et en rythme met toute une branche « prête » d'un coup (file d'ouverture existante)
-- [ ] S5.5 Demandes en direct façon Fuser : pendant la lecture, le paysage lance des demandes musicales jugées sur le temps (« fais entrer la basse sur le 1 », « coupe tout sauf le drone, 4 mesures », « passe en mineur au prochain tour ») ; elles remplacent les défis d'interface statiques restants
+- [ ] S5.8 Chaque bouton → un effet visuel : audit de toutes les commandes (grands réglages, effets, modes, séquenceur, Morceau, CC MIDI) ; chaque commande sans reflet visuel en reçoit un (ciel, sol, météo, lumières, filtres plein écran), dans une table unique
+- [ ] S5.9 Juice central : un seul système événement → effets (défi réussi, nœud prêt et ouvert, secret, palier, record) — flashs, confettis pixel, secousse, LCD glitch, jingles calés sur le temps ; goofy assumé ; intensité réglable en un point ; reduced-motion
 
 Vague 3
-- [ ] S5.6 Finitions d'interaction : supprimer « ▶ Lancer le paysage » en Parcours (doublon, cache les plantes), pastille de couche cachée quand elle est seule, retours de pression sur boutons et potentiomètres, Mélodie / Mélodie auto et « Espace » désambiguïsés
-- [ ] S5.7 Revue regards neufs (enfant non musicien sur téléphone, ado musicien au MIDI) puis corrections ; fin de la saison 5
+- [ ] S5.10 Combos et découvertes : table COMBOS (conditions musicales → effet visuel émergent nommé, ex. « Brume néon ») ; provoquer un combo = achievement avec grosse fête ; carnet des découvertes dans l'Arbre (silhouettes « ??? » et indices = énigmes) ; certains combos ouvrent des nœuds ; les secrets existants fusionnent dans ce système unique
+
+Vague 4 (en parallèle)
+- [ ] S5.4 Placement façon Rocksmith : une première Réponse longue et en rythme met toute une branche « prête »
+- [ ] S5.5 Demandes en direct façon Fuser : le paysage réclame des gestes musicaux jugés sur le temps ; elles remplacent les défis d'interface statiques restants
+
+Vague 5
+- [ ] S5.6 Finitions : « ▶ Lancer le paysage » retiré en Parcours, pastille seule cachée, retours de pression sur commandes, « Espace » et « Mélodie / Mélodie auto » désambiguïsés
+- [ ] S5.7 Revue regards neufs (enfant sur téléphone, ado au MIDI) puis corrections ; fin de la saison 5
+
+En suspens, à l'utilisateur : supprimer le geste « glisser sur l'écran » (contredit « la visualisation n'est pas interactive », touche le mode libre) ; écoute du prototype sonore sombre (branche worktree-agent-afda84e5ef2575437).
