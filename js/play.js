@@ -138,6 +138,7 @@
   // the first glide does; free mode unchanged
   function firstNote() {
     const g = AMB.game;
+    if (AMB.garden && AMB.garden.coin && AMB.garden.coin()) return; // S6.6: « INSERT COIN » — the first press starts the music
     if (g && g.path && !g.has('m.bells') && AMB.seq && !AMB.seq.playing && AMB.ui && AMB.ui.play) Promise.resolve(AMB.ui.play()).catch(() => {});
   }
   function padsRefresh() {

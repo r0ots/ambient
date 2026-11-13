@@ -67,7 +67,7 @@
           </div>
         </div>
         <div class="tgrp tree-grp"><small>Parcours</small>
-          <div class="tgrp-row"><button id="treeBtn" class="btn tree-btn" title="L'arbre du Parcours : ce qui est ouvert et ce qui t'attend">🌱 Arbre</button></div>
+          <div class="tgrp-row"><button id="treeBtn" class="btn tree-btn" title="L'arbre du Parcours : ce qui est ouvert et ce qui t'attend">🕹 Arbre</button></div>
         </div>
         <span id="sleepLeft" class="sleep-left" title="Minuteur de sommeil"></span>
         <details class="more">
@@ -89,7 +89,7 @@
                 <option value="120">2 h</option>
               </select>
             </label>
-            <button id="gameMode" class="btn" title="Parcours (ouvrir l'instrument pièce par pièce) ou mode libre (tout ouvert)">🌱 Parcours</button>
+            <button id="gameMode" class="btn" title="Parcours (ouvrir l'instrument pièce par pièce) ou mode libre (tout ouvert)">🕹 Parcours</button>
             <button id="help" class="btn" title="Aide et raccourcis (?)">? Aide &amp; raccourcis</button>
           </div>
         </details>
@@ -103,6 +103,7 @@
         <div id="hudInfo" class="hud-info"></div>
       </div>
       <button id="bigPlay" class="big-play" aria-label="Lecture">▶<span>Lancer le paysage</span></button>
+      <button id="coin" class="coin" type="button" aria-label="Insert coin : appuie pour jouer"><b>INSERT COIN</b><span>APPUIE POUR JOUER</span><small></small></button>
       <div id="toast" class="toast"></div>
       <div class="stage-tools">
         <button id="vizMode" class="chip" title="Changer de visuel">Orbes</button>
@@ -126,7 +127,7 @@
         <h3>Ambient</h3>
         <p>Une machine à paysages sonores qui joue toute seule. Comment veux-tu la découvrir ?</p>
         <div class="welcome-choices">
-          <button class="welcome-choice" data-choose="path"><b>🌱 Parcours</b><span>Commence avec une seule note. Relève des défis musicaux, rejoue des phrases à l'oreille : chaque réussite ouvre une pièce de l'instrument.</span></button>
+          <button class="welcome-choice" data-choose="path"><b>🕹 Parcours</b><span>Commence avec une seule note. Relève des défis musicaux, rejoue des phrases à l'oreille : chaque réussite ouvre une pièce de l'instrument.</span></button>
           <button class="welcome-choice" data-choose="free"><b>◎ Mode libre</b><span>Tout est ouvert tout de suite : couches, effets, composition. Tu pourras commencer le parcours plus tard (menu ⋯).</span></button>
         </div>
       </div>
@@ -166,12 +167,13 @@
             <div class="help-grid">
               <div><h4>Le principe</h4><ul>
                 <li>Tu pars d'<b>une seule note</b> : touche une <b>pastille</b> sous l'écran (ou A–L, ou ton clavier MIDI). Chaque <b>défi</b> réussi rend un nœud <b>prêt</b> : l'écran dit « <b>✦ Ouvrir</b> », touche-le pour savoir ce qu'il t'apporte, puis <b>Ouvrir</b>. Ce qui arrive brille un moment, avec « Nouveau ». Le défi suivant vient après.</li>
-                <li>L'<b>🌱 Arbre</b> est la carte : touche un nœud pour voir ce qui l'ouvre.</li>
+                <li>L'<b>🕹 Arbre</b> est la carte : touche un nœud pour voir ce qui l'ouvre.</li>
                 <li>Les <b>pastilles</b> (au doigt), les touches A–L et le clavier MIDI jouent dès le début ; avec le Pad, un <b>appui long</b> sur une pastille force son accord. <b>Composer</b> s'ouvre en 3 nœuds : Mélodie écrite, Rythme, Morceau.</li>
                 <li>Arbre complet (« ✦ Tout ouvrir » quand beaucoup de nœuds attendent), puis « Enregistre ton morceau » : <b>l'instrument est à toi</b>. La ligne de défi s'efface, le son reste.</li></ul></div>
               <div><h4>Les défis</h4><ul>
                 <li>Un à la fois, sur la 2e ligne de l'écran. <b>Touche-le</b> pour savoir comment faire, <b>↷</b> pour passer.</li>
-                <li><b>Réponse</b> : pendant la lecture, l'enseigne Mélodie auto s'allume et l'écran dit « ↺ À toi » : rejoue la phrase juste après (A–L, pastilles ou MIDI). Un voyant par note, rouge s'il est faux. Les réussites allongent les phrases ; à 5 notes, le rythme compte. Tu peux laisser passer : la musique continue.</li></ul></div>
+                <li><b>Réponse</b> : pendant la lecture, l'enseigne Mélodie auto s'allume et l'écran dit « ↺ À toi » : rejoue la phrase juste après (A–L, pastilles ou MIDI). Un voyant par note, rouge s'il est faux. Les réussites allongent les phrases ; à 5 notes, le rythme compte. Tu peux laisser passer : la musique continue.</li>
+                <li><b>HIGH SCORES</b> : une belle série de Réponses entre au tableau (Arbre) ; signe de 3 initiales (lettres, ▲ ▼, ou le nom de 3 notes au clavier MIDI).</li></ul></div>
               <div><h4>Découvertes</h4><ul>
                 <li>Des combos (une musique tenue deux mesures : la Ville invente un effet rien que pour elle) et des gestes musicaux cachés. Le carnet est dans l'Arbre : « ??? » et un indice pour chacune.</li>
                 <li>Une découverte allume un hologramme dans la Ville ; certaines rendent un nœud <b>prêt</b> (« ✦ Ouvrir »). L'indice clair des gestes s'ouvre après 2 découvertes ; deux se jouent au clavier MIDI.</li></ul></div>
@@ -203,7 +205,7 @@
             <li><b>Boucles</b> (Morceau) : <kbd>0</kbd> / ● Boucle = décompte puis 1–8 mesures jouées (pastilles, clavier, MIDI) qui tournent ; <kbd>9</kbd> / ⊕ Overdub = ajouter dessus ; ⤓ Garder = ce que tu viens de jouer ; 4 couches par section (toucher = muet, ✕, ↶) · MIDI CC80 / CC81</li>
             <li>⬇/⬆ <b>MIDI</b> pour passer dans ton logiciel de musique</li></ul></div>
           <div><h4>Parcours</h4><ul>
-            <li><b>🌱 Parcours</b> (menu ⋯) : commence avec une seule note et ouvre l'instrument pièce par pièce en jouant ; ton mode libre n'est pas touché</li></ul></div>
+            <li><b>🕹 Parcours</b> (menu ⋯) : commence avec une seule note et ouvre l'instrument pièce par pièce en jouant ; ton mode libre n'est pas touché</li></ul></div>
           <div><h4>Garder</h4><ul>
             <li><b>Rec</b> WAV ou compressé, durée fixe avec fondu</li>
             <li><b>Partager</b> : lien qui contient tout le paysage</li>

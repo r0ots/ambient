@@ -556,17 +556,27 @@
     // height in cells + 4 (heads, caps), hence `hMax`; heights stay comparable between plants (same scale for all).
     cellPx(W, H, n, avail = H * 0.52) { return Math.max(2, Math.min(Math.floor(avail / 68), Math.floor((W * 0.9) / Math.max(1, n) / 22))); },
     heightCells(p) { if (p.rare) return 9; const M = this.hMax || 58, m = Math.min(16, Math.round(M * 0.35)); return Math.round(m + (M - m) * p.level); },
+    // S6.6: the HUD and the chips only cover the top corners — `zones` = their boxes (fractions of the canvas); `ceil` is the
+    // free middle sky (SKY), which sizes the city; an element under a corner shrinks to stay under it (ceilAt)
+    SKY: 0.1, zones: [],
     ceilFrac() {
+      this.zones = [];
       try {
-        const c = this.observed, ch = document.getElementById('chordName'), info = document.getElementById('hudInfo'), tools = document.querySelector('.stage-tools');
+        const c = this.observed, ch = document.getElementById('chordName'), info = document.getElementById('hudInfo'), tools = document.querySelector('.stage-tools'), hud = ch && ch.parentElement;
         const r = c && c.getBoundingClientRect();
         if (!r || !r.height || !ch) return 0.3;
+        const fy = (y) => Math.max(this.SKY, Math.min(0.5, (y - r.top) / r.height + 0.03)), up = (x) => Math.min(1, Math.ceil(x * 20) / 20), dn = (x) => Math.max(0, Math.floor(x * 20) / 20);
         let b = ch.getBoundingClientRect().bottom;
         if (info) { const cs = getComputedStyle(info); b += (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.fontSize) || 12) * 1.3; } // even while empty
-        if (tools) b = Math.max(b, tools.getBoundingClientRect().bottom);
-        return Math.max(0.12, Math.min(0.5, (b - r.top) / r.height + 0.03));
-      } catch (e) { return 0.3; }
+        const hr = hud.getBoundingClientRect();
+        this.zones.push({ l: 0, r: up((Math.max(hr.right, hr.left + 160) - r.left) / r.width + 0.02), b: fy(b) });
+        const tr = tools && tools.getBoundingClientRect();
+        if (tr && tr.height) this.zones.push({ l: dn((tr.left - r.left) / r.width - 0.02), r: 1, b: fy(tr.bottom) });
+        return this.SKY;
+      } catch (e) { this.zones = []; return 0.3; }
     },
+    // the ceiling (fraction of H) over an element at x, half-width hw (canvas px)
+    ceilAt(x, hw) { let c = this.ceil || 0; const W = this.W || 1; for (const z of this.zones) if (x + hw > z.l * W && x - hw < z.r * W) c = Math.max(c, z.b); return c; },
 
     // S4.6: the sprite of a look, quantized (5 shapes × 5 lights × 1–4 flowers) so a slider glides through a few
     // cached sprites; size, halo and sway are drawn continuously on top (transform, glow), never in the sprite
@@ -630,9 +640,12 @@
       const full = p.label.toUpperCase(), key = full + '|' + fs + '|' + Math.round(maxW) + '|' + p.col.join();
       let s = this.labels.get(key);
       if (s) return s;
-      const cv = document.createElement('canvas'), g = cv.getContext('2d'), font = `${fs}px VT323, "IBM Plex Mono", monospace`;
-      g.font = font;
-      const lines = [g.measureText(full).width + 4 <= maxW ? full : p.short.toUpperCase()], pad = Math.ceil(fs * 0.4);
+      const cv = document.createElement('canvas'), g = cv.getContext('2d'), pad = Math.ceil(fs * 0.4);
+      // S6.6: the whole caption (its glow pad included) fits the room between the neighbours, else the short one, else smaller
+      let font = `${fs}px VT323, "IBM Plex Mono", monospace`; g.font = font;
+      const fits = (t) => g.measureText(t).width + 4 + 2 * pad <= maxW, short = p.short.toUpperCase();
+      const lines = [fits(full) ? full : short];
+      if (!fits(lines[0])) { const f2 = Math.max(Math.round(fs * 0.7), Math.floor(fs * (maxW - 4 - 2 * pad) / g.measureText(short).width)); font = `${f2}px VT323, "IBM Plex Mono", monospace`; g.font = font; }
       const w = Math.ceil(Math.max(...lines.map((t) => g.measureText(t).width))) + 4 + 2 * pad;
       cv.width = w; cv.height = Math.ceil(fs * 1.05 * lines.length + fs * 0.2) + pad;
       g.font = font; g.textBaseline = 'top'; g.textAlign = 'center';
@@ -788,7 +801,7 @@
 
     // ---- state refresh (events + a cheap 1 s signature check, e.g. after a save import) ----
     refresh(W, H, force) {
-      const st = this.readState(), ceil = this.ceilFrac(), sig = this.signature(st) + W + 'x' + H + '|' + ceil.toFixed(3);
+      const st = this.readState(), ceil = this.ceilFrac(), sig = this.signature(st) + W + 'x' + H + '|' + ceil.toFixed(3) + JSON.stringify(this.zones);
       if (!force && sig === this.sig) { this.lastCheck = this.now(); return false; }
       this.sig = sig; this.state = st;
       const L = layout(st, W, H);
@@ -1285,8 +1298,8 @@
           } else sway = (Math.sin(this.t * 0.7 + p.phase) * 0.05 + Math.sin(this.t * 1.9 + p.phase * 2) * 0.015) * (1 + e * 1.5);
         }
         const k = red ? 1 : 1 + e * 0.05, wide = p.rare ? 1e9 : Math.min(p.roomL / s.l, p.roomR / s.r); // never over a neighbour (phone)
-        const tall = p.rare ? 1e9 : (p.y - (this.H || 0) * (this.ceil || 0)) / s.h; // never into the stage HUD
-        const szc = (p.sz = Math.min(sz, Math.max(1, tall / k))), kx = (p.kx = Math.min(k * szc * (1 - 0.6 * bounce), wide)), ky = (p.ky = k * szc * (1 + bounce));
+        const cz = p.rare ? 0 : this.ceilAt(p.x, s.w * 0.35), under = cz > (this.ceil || 0), tall = p.rare ? 1e9 : (p.y - (this.H || 0) * cz) / s.h; // never into the stage HUD (S6.6: shrinks under a corner)
+        const szc = (p.sz = Math.min(sz, under ? Math.max(0.35, tall / k) : Math.max(1, tall / k))), kx = (p.kx = Math.min(k * szc * (1 - 0.6 * bounce), wide)), ky = (p.ky = k * szc * (1 + bounce));
         p.sway = sway; p.k = k; p.gy = gy; // the Réponse leaves follow the plant (drawAnswer)
         if (a && a.halo > 0.03 && gy > 0.01) { // S4.6 halo (Espace): a soft aura, radius in 8 cached steps
           const Rg = Math.round(px * (8 + 18 * Math.round(a.halo * 7) / 7)), gl = this.glow(p.col, Rg);
@@ -1305,7 +1318,7 @@
           if (hot > 0.02) this.energy[p.id] = Math.max(this.energy[p.id] || 0, 0.55 * hot);
         }
         g.globalAlpha = 1;
-        if (!p.rare) { const lb = this.label(p, fs, this.slotW * 0.96); g.setTransform(1, 0, 0, 1, ox, oy); g.globalAlpha = Math.min(1, 0.85 + 0.15 * hot) * Math.min(1, gy * 2); g.drawImage(lb, Math.round(p.x - lb.width / 2), Math.round(p.y + px * 1.5)); if (hot > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = hot; g.drawImage(lb, Math.round(p.x - lb.width / 2), Math.round(p.y + px * 1.5)); g.globalCompositeOperation = 'source-over'; } g.globalAlpha = 1; }
+        if (!p.rare) { const lb = this.label(p, fs, Math.min(this.slotW * 0.96, 2 * Math.min(p.roomL, p.roomR) - 2)); g.setTransform(1, 0, 0, 1, ox, oy); g.globalAlpha = Math.min(1, 0.85 + 0.15 * hot) * Math.min(1, gy * 2); g.drawImage(lb, Math.round(p.x - lb.width / 2), Math.round(p.y + px * 1.5)); if (hot > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = hot; g.drawImage(lb, Math.round(p.x - lb.width / 2), Math.round(p.y + px * 1.5)); g.globalCompositeOperation = 'source-over'; } g.globalAlpha = 1; }
       }
       if (ans) this.drawAnswer(g, ans);
       this.drawMark(g, fs);
@@ -1357,7 +1370,7 @@
       const p = this.plants.find((q) => q.id === 'bells'); if (!p) return 0;
       const gy = p.gy == null ? 1 : p.gy; if (gy < 0.05) return 0; // S4.5w: a plant still growing carries its leaves up
       const px = this.px, lp = Math.max(px, Math.round(4 * (this.dpr || 1))), gap = lp >= 4 ? 1 : 0, k = p.k || 1;
-      const h = this.heightCells(p) * px * gy * (p.sz || 1), room = Math.max(h, p.y - (this.H || 0) * (this.ceil || 0) - 3 * lp);
+      const h = this.heightCells(p) * px * gy * (p.sz || 1), room = Math.max(h, p.y - (this.H || 0) * this.ceilAt(p.x, 0) - 3 * lp);
       const y0 = Math.max(h * 0.2, 2 * lp), top = Math.min(room, Math.max(h * 0.88, y0 + (v.len - 1) * 2.4 * lp));
       g.setTransform(k, 0, -(p.sway || 0) * k * gy, k, p.x + (this.ox || 0), p.y + (this.oy || 0)); // bends with the plant
       if (top > h * 0.9) { g.fillStyle = rgb(p.col, 0.7, 0.6); g.fillRect(-Math.floor(lp / 4), -Math.round(top), Math.max(1, Math.round(lp / 2)), Math.round(top - h * 0.85)); }

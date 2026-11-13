@@ -17,7 +17,7 @@
   const N = (id, branch, name, req, params, ui, desc) => ({ id, branch, name, req, params, ui, desc });
   const NODES = [
     // Tronc — the starting point and the tools to keep / share a sound
-    N('racine', 'tronc', 'Graine', [], ['drone.on', 'drone.vol', 'drone.tone', 'global.volume'], ['play', 'mode-sculpt', 'keys', 'midi'], 'Une note tenue et sa lumière ; tes premières notes (pastilles, A–L, MIDI). Tout part de là.'),
+    N('racine', 'tronc', 'Allumage', [], ['drone.on', 'drone.vol', 'drone.tone', 'global.volume'], ['play', 'mode-sculpt', 'keys', 'midi'], 'Une note tenue et sa lumière ; tes premières notes (pastilles, A–L, MIDI). Tout part de là.'),
     N('t.son', 'tronc', 'Timbre du drone', ['racine'], ['drone.wave', 'drone.motion'], [], 'Choisir le son du drone et le faire respirer.'),
     N('t.viz', 'tronc', 'Écran', ['racine'], [], ['viz', 'listen'], 'Changer de visuel, passer en plein écran.'),
     N('t.journal', 'tronc', 'Journal', ['t.son'], [], ['journal', 'save'], 'Revenir à un moment passé, garder un paysage.'),
