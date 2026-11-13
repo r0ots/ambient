@@ -370,7 +370,7 @@ Demande de l'utilisateur (après v1.20) : « go pour tout », il écoutera plus 
 
 Vague 1 (en parallèle)
 - [x] S6.1 (v1.21) « Arpège 1983 » : 4e paysage sombre, arpège analogique qui tourne et basse ronde (Stranger Things), avec son WAV d'écoute Décision : aucune brique nouvelle (arpégiateur de la Mélodie écrite + timbre Pluck, filtre ouvert par un Mouvement en Montée) ; 88 bpm, mi mineur, i–VI–III–VII ; WAV vérifié par analyse (double croche régulière, filtre qui s’ouvre).
-- [ ] S6.2 Supprimer le geste « glisser sur l'écran » partout, mode libre compris (le visuel n'est pas une commande) ; les défis et demandes qui l'acceptaient passent par les commandes
+- [x] S6.2 (v1.21) Supprimer le geste « glisser sur l'écran » partout, mode libre compris (le visuel n'est pas une commande) ; les défis et demandes qui l'acceptaient passent par les commandes Décision : la source `xy` devient `cc` (les CC MIDI passent toujours par `perform.setMacro`), aides « glisse » remplacées par la molette CC74 / CC1 ou retirées ; sauvegardes avec `k.xy` compatibles.
 - [ ] S6.3 Sections de Morceau : chaque section a ses motifs (mélodie, pulsations, basse) et sa progression d'accords, dans l'instrument
 - [ ] S6.5 Ville néon : le Jardin devient une ville sombre sous la pluie qu'on rallume (les plantes deviennent des tours, enseignes, antennes) ; mêmes tables `LOOK` / `SCENE` / `COMBO_FX`, seul le dessin change ; écran cathodique (lignes de balayage, léger aberration)
 
