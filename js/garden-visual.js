@@ -357,12 +357,12 @@
       for (let i = 0; i < 6; i++) g.fillRect(x0 + q(w / 2 - px, px), q(gd - ((T * 14 * px + i * h / 6) % h), px), 2 * px - 1, px - 1);
     } },
     soleil: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // two suns turning around each other
-      const R = Math.max(4, q(gd * 0.08, px)), an = T * 0.7;
+      const R = Math.max(4, q(gd * 0.16, px)), an = T * 0.7;
       g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, a);
       [[255, 196, 110], [255, 110, 190]].forEach((col, i) => {
-        const s = i ? -1 : 1, x = W / 2 + s * Math.cos(an) * R * 1.7, y = gd * 0.3 + s * Math.sin(an) * R * 0.55;
+        const s = i ? -1 : 1, x = W / 2 + s * Math.cos(an) * R * 1.5, y = gd * 0.38 + s * Math.sin(an) * R * 0.4;
         const gl = v.glow(col, 2 * R); g.drawImage(gl, Math.round(x - 2 * R), Math.round(y - 2 * R));
-        const disc = v.fx('sun' + i, R, R, () => { const c = v.canvas(2 * R, 2 * R), x2 = c.getContext('2d'); x2.fillStyle = rgb(col, 1.15); for (let yy = 0; yy < 2 * R; yy += px) for (let xx = 0; xx < 2 * R; xx += px) if (Math.hypot(xx + px / 2 - R, yy + px / 2 - R) < R * 0.62) x2.fillRect(xx, yy, px - 1, px - 1); return c; });
+        const disc = v.fx('sun' + i, R, R, () => { const c = v.canvas(2 * R, 2 * R), x2 = c.getContext('2d'); x2.fillStyle = rgb(col, 1.15); for (let yy = 0; yy < 2 * R; yy += px) for (let xx = 0; xx < 2 * R; xx += px) { const d = Math.hypot(xx + px / 2 - R, yy + px / 2 - R); if (d < R * 0.62) { x2.fillStyle = d < R * 0.35 ? '#fff6e0' : rgb(col, 1.15); x2.fillRect(xx, yy, px - 1, px - 1); } } return c; });
         g.drawImage(disc, Math.round(x - R), Math.round(y - R));
       });
     } },
@@ -392,6 +392,10 @@
       const off = ((T * px * 7) % W + W) % W, y = gd - bh * 0.62;
       g.globalCompositeOperation = 'lighter'; g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, a);
       g.drawImage(cv, off, y, W, bh); g.drawImage(cv, off - W, y, W, bh); g.imageSmoothingEnabled = false;
+      for (let i = 0; i < 4; i++) { // neon tubes humming at the foot of the plants
+        const yy = q(gd - bh * (0.08 + 0.1 * i), px), fl = 0.6 + 0.4 * Math.sin(T * (7 + i) + i * 2);
+        g.globalAlpha = Math.min(1, a * fl); g.fillStyle = i % 2 ? '#4fe0ff' : '#ff4fa0'; g.fillRect(q(((T * (30 + 12 * i) * px) % (W * 1.5)) - W * 0.25, px), yy, q(W * (0.25 + 0.1 * i), px), Math.max(1, px >> 1));
+      }
       g.globalCompositeOperation = 'source-over'; g.fillStyle = '#000'; g.globalAlpha = Math.min(1, 0.25 * a);
       for (let yy = q(y, px); yy < y + bh; yy += 3 * px) g.fillRect(0, yy, W, Math.max(1, px >> 1));
     } },

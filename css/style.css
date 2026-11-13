@@ -525,7 +525,7 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .dc-head.fresh { animation: ready-pulse 1.2s ease-in-out infinite; }
 .dc-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 14px; padding: 0 8px 8px; max-height: 30vh; overflow-y: auto; }
 .discoveries.min .dc-body { display: none; }
-.dc-item { margin: 0; display: grid; gap: 2px; font-size: 12px; line-height: 1.35; color: var(--muted); }
+.modal-card .dc-item, .dc-item { margin: 0; display: grid; gap: 2px; font-size: 12px; line-height: 1.35; color: var(--muted); }
 .dc-item b { font: 15px var(--f-lcd); color: var(--lcd-dim); letter-spacing: .05em; }
 .dc-item.found b { color: var(--lcd-fg); }
 .dc-item.found.combo b { color: #5ff0ff; text-shadow: 0 0 6px #5ff0ff88; }

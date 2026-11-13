@@ -7,6 +7,7 @@
   #roll (piano roll, mode libre : notes ♯ hors gamme, « ⤓ Garder » actif après des notes jouées) ;
   S4.6 : #ready (« ✦ Ouvrir : Pad » qui pulse, 2 prêts), #ready-card (la carte qui dit ce que le Pad apporte), #new (le Pad vient de s'ouvrir : panneau, halo, « Nouveau ») ;
   S5.9 : #juice-defi / #juice-open / #juice-tier (un moment du juice central en plein effet, figé) ;
+  S5.10 : #combo=<id>,<id> (combos ON dans le Jardin), #discovery=<id> (la fête d'une découverte, figée), #carnet (le carnet des découvertes dans l'Arbre : trouvées, puis silhouettes) ;
   S5.2 : #splash (notes jouées sur la Mélodie, une tenue ; une pastille allumée par la Mélodie auto) ;
   S4.5w : #grow (plante à mi-croissance), #sky=<degré> (ciel d'un accord), #dawn (fin : relecture, aube), #dawn-end (remis, WAV proposé). --><meta charset="utf-8"><style>body{margin:0}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body>
 <script>localStorage.removeItem('ambient.game.shot');</script>
@@ -42,15 +43,41 @@ document.getElementById('f').addEventListener('load', () => {
       if (h.includes('open')) A.game.unlock('h.pad');
       else if (h.includes('tier')) A.bus.emit('resp:tier', { tier: 3, name: 'Syncopes', lvl: 9 });
       else A.contracts.finish('m.notes');
-      setTimeout(() => { // freeze the moment (headless captures freeze CSS animations at their first frame)
+      setTimeout(() => freeze(C), 300);
+    }, 1600);
+    return;
+  }
+  function freeze(C) { // freeze a juice moment (headless captures freeze CSS animations at their first frame)
+    {
         C.frame = () => {}; doc.querySelectorAll('.fx-pop').forEach((p) => { p.remove = () => {}; });
         const st = doc.createElement('style'); st.textContent = `.fx-flash.on, .stage.fx-shake, .app.fx-quake > *, #viz.fx-punch, #viz.fx-punch-big, .fx-bounce .btn, .fx-bounce .pad, .fx-bounce .chip, .fx-hop, .lcd.lcd-arcade #lcdTop, .lcd.lcd-glitch-big, .fx-pop { animation: none !important; }
           .fx-flash.on { opacity: .4; } .app.fx-quake > .top { translate: -5px 2px; rotate: -.4deg; } .stage.fx-shake { translate: 6px -3px; } #viz.fx-punch, #viz.fx-punch-big { scale: 1.1; rotate: -1deg; }
           .fx-bounce .btn:nth-child(odd), .fx-bounce .pad:nth-child(odd), .fx-bounce .chip, .fx-hop { translate: 0 -8px; scale: 1.08 .92; } .fx-bounce .pad:nth-child(even) { scale: .94 1.06; }
           .fx-pop { opacity: 1; scale: 1.2; rotate: -4deg; }`; // (headless captures freeze CSS animations at their first frame: a mid-flight still instead)
         doc.head.append(st);
-      }, 300);
+    }
+  }
+  if (/#(combo|discovery)/.test(h)) { // S5.10: combos ON in the Jardin (#combo=brume,soleil), the party of a discovery (#discovery=<id>)
+    const w = document.getElementById('f').contentWindow, G = A.garden, GV = A.gardenVisual, D = A.discoveries;
+    ['m.bells', 'h.pad', 'h.key', 'm.grains', 'e.texture', 'e.reverb', 'c.seq'].forEach((i) => A.game.unlock(i));
+    D.run = () => {}; G.confetti.burst = () => {}; // (the notes played below must not find a gesture; the openings' confetti would hide the scene)
+    const ids = ((/(?:combo|discovery)=([\w,]+)/.exec(h) || [])[1] || 'brume').split(',');
+    setTimeout(() => {
+      G.showTree(false); A.perform.setMode('listen'); A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none';
+      GV.sig = null; GV.grow = {}; setInterval(() => A.visual.draw(), 40);
+      setInterval(() => { D.on = new Set(ids); }, 100);
+      let k = 0, id = 700; setInterval(() => { const n = ++id; A.bus.emit('live', { midi: 60 + [0, 7, 4, 12, 9, 2, 16, 11][k++ % 8], time: GV.clock(), vel: 0.8, raw: null, id: n }); A.bus.emit('liveOff', { id: n, time: GV.clock() + 0.1 }); }, 300);
+      if (h.includes('discovery')) {
+        const fc = G.fxClass; G.fxClass = function (el, c) { return fc.call(this, el, c, 6e5); }; // the effects stay on
+        setTimeout(() => { delete G.confetti.burst; D.state().found = {}; D.find(ids[0]); setTimeout(() => freeze(G.confetti), 350); }, 1200);
+      }
     }, 1600);
+    return;
+  }
+  if (h.includes('carnet')) { // S5.10: the notebook in the tree screen, a few found, the others as riddles
+    ['m.bells', 'h.pad', 'e.texture', 'e.reverb', 'm.tempo', 'h.key', 'e.echo'].forEach((i) => A.game.unlock(i));
+    const D = A.discoveries; Object.assign(D.state().found, { monolithe: 1, soleil: 2, brume: 3, tons: 4, jazz: 5 }); D.state().opened = { monolithe: 't.viz', soleil: 'h.drone', brume: 'e.halo', tons: 'm.phrase', jazz: 'h.prog' };
+    setTimeout(() => { A.garden.showTree(true); const b = doc.getElementById('discoveries'); b.classList.remove('min'); D.render(); }, 300);
     return;
   }
   if (/#(ready|new)/.test(h)) { // S4.6: a success waits for the player
