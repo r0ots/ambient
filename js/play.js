@@ -224,6 +224,8 @@
       // CCs drive the same macros as the XY pad: CC1 (mod wheel) = Densité, CC74 = Lumière, CC91 = Espace, CC93 = Nostalgie
       const cc = { 1: 'macro.density', 74: 'macro.light', 91: 'macro.space', 93: 'macro.nostalgia' }[d1];
       if (cc) AMB.perform.setMacro(cc, v);
+    } else if (type === 0xc0) { // Program Change n = section n+1 of the Morceau, on the next bar line (S6.3)
+      if (AMB.song) AMB.song.jump(d1);
     }
   }
 

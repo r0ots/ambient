@@ -1,62 +1,116 @@
 <!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../css/style.css"></head><body>
-<script src="lib.js"></script>
+<script src="lib.js"></script><script src="fake-midi.js"></script>
 <div id="scenes"></div><div id="journal"></div><div id="layers"></div><div id="seqrow"></div><div id="macros"></div><div id="globals"></div><button data-mode="listen"></button><button data-mode="sculpt"></button><button data-mode="compose"></button>
-<button id="play"></button><button id="bigPlay"></button><div id="chordName"></div><div id="hudInfo"></div><select id="preset"></select><button id="dice"></button><button id="save"></button><button id="rec"></button><select id="recFmt"><option value="wav">w</option></select><select id="recDur"><option value="0">0</option></select><button id="share"></button><div id="toast"></div><select id="sleep"></select><span id="sleepLeft"></span><canvas id="viz" style="width:400px;height:200px"></canvas>
+<button id="play"></button><button id="bigPlay"></button><div id="chordName"></div><div id="hudInfo"></div><select id="preset"></select><button id="dice"></button><button id="save"></button><button id="rec"></button><select id="recFmt"><option value="wav">w</option></select><select id="recDur"><option value="0">0</option></select><button id="share"></button><div id="toast"></div><button id="midi"></button><select id="sleep"></select><span id="sleepLeft"></span><canvas id="viz" style="width:400px;height:200px"></canvas>
 <script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/presets.js"></script><script src="../js/generator.js"></script><script src="../js/visual.js"></script><script src="../js/scenes.js"></script><script src="../js/journal.js"></script><script src="../js/pianoroll.js"></script><script src="../js/pulses.js"></script><script src="../js/bass.js"></script><script src="../js/chords.js"></script><script src="../js/midi.js"></script><script src="../js/automation.js"></script><script src="../js/song.js"></script><script src="../js/widgets.js"></script><script src="../js/perform.js"></script><script src="../js/rec.js"></script><script src="../js/ui.js"></script><script src="../js/play.js"></script>
 <script>
-const params=new URLSearchParams(location.search);
-async function measure(label, secs){
-  const an=AMB.engine.analyser, buf=new Float32Array(an.fftSize);
-  let peak=0,sum=0,n=0; const t0=performance.now();
-  while(performance.now()-t0<secs*1000){ an.getFloatTimeDomainData(buf); for(const v of buf){peak=Math.max(peak,Math.abs(v));sum+=v*v;n++;} await new Promise(r=>setTimeout(r,40*S)); }
-  log(`${label} rms=${Math.sqrt(sum/n).toFixed(4)} peak=${peak.toFixed(3)} notes=${notes} t=${AMB.engine.ctx.currentTime.toFixed(1)}`);
-}
-let notes=0;
 window.addEventListener('load', async ()=>{
   try{
-  localStorage.removeItem('ambient.song.v1');
-  const st=AMB.store, SG=AMB.song;
-  const secs=[]; AMB.bus.on('section',e=>secs.push(e.name));
+  const st=AMB.store, SG=AMB.song, PR=AMB.pianoRoll, q=(s)=>document.querySelector(s), qa=(s)=>[...document.querySelectorAll(s)];
+  const untilAudio=async(sec,cond)=>{const ctx=AMB.engine.ctx; const t=ctx.currentTime+sec; while(ctx.currentTime<t&&!(cond&&cond())) await wait(30);};
+  const kb=fakeMidi(window); await kb.connect();
+  SG.replace({sections:[]}); st.set('global.tempo',140);
+  const secs=[]; AMB.bus.on('section',e=>secs.push({name:e.name,step:AMB.seq.step}));
   // ● Rec of the song panel: disabled with a visible reason while the song has no section
-  const recB=document.querySelector('[data-s=rec]'), why=document.querySelector('.song-rec-why');
-  ok(recB.disabled && getComputedStyle(why).display!=='none', 'aucune section : ● Rec du morceau désactivé, explication visible');
-  st.set('global.tempo',140); st.set('fx.space',0.2,'user'); st.set('pad.wave','Nappe','user');
-  document.querySelector('[data-s=add]').click();
-  st.set('fx.space',0.9,'user'); st.set('pad.wave','Verre','user');
-  document.querySelector('[data-s=add]').click();
+  const recB=q('[data-s=rec]'), why=q('.song-rec-why');
+  ok(recB.disabled && getComputedStyle(why).display!=='none' && q('.song-edit').hidden, 'aucune section : ● Rec désactivé, explication visible, pas de réglages de section');
+
+  // --- the first section = the state heard now (an old song, a patch or a link = one section)
+  const P1='0.7.4,8.9.2,g.b.4', B1='1000100010001000.0000000000000000.0000000000000000.0000000000000000', X1='3000300030003000.0000000000000000.0000000000000000.0000000000000000';
+  st.setMany({'seq.on':true,'bass.on':true,'perc.on':true,'seq.pattern':P1,'bass.pattern':B1,'perc.pattern':X1,'pad.prog':'I–V–vi–IV','fx.space':0.2,'pad.wave':'Nappe'},'user');
+  q('[data-s=add]').click();
+  ok(SG.sections.length===1 && SG.idx===0 && SG.sections[0].snap['seq.pattern']===P1 && SG.sections[0].snap['perc.pattern']===X1 && q('.song-chip.sel') && !q('.song-edit').hidden, '+ Section : la 1re section = ce qu\'on entend (motifs compris), sélectionnée');
+  ok(/3 notes · basse · pulsations · accords I–V–vi–IV/.test(q('.song-meta').textContent), 'résumé de la section : '+q('.song-meta').textContent);
+  // --- a new section: same sound and chords, empty motifs, selected: the editors show it empty
+  q('[data-s=add]').click();
+  ok(SG.sections.length===2 && SG.idx===1 && SG.sections[1].name==='Couplet' && st.get('seq.pattern')==='' && !/1/.test(st.get('bass.pattern')) && PR.parse(st.get('seq.pattern')).length===0 && st.get('pad.prog')==='I–V–vi–IV' && st.get('pad.wave')==='Nappe', 'nouvelle section « Couplet » : motifs vides, même son, mêmes accords ; les éditeurs la montrent');
+  // editing writes into the selected section only
+  const P2='0.2.8,8.4.8', B2='0000000000000000.1000000010000000.0000000000000000.0000000000000000';
+  st.set('seq.pattern',P2,'user'); st.set('bass.pattern',B2,'user'); st.set('pad.prog','i–VI–III–VII','user'); st.set('pad.wave','Verre','user'); st.set('fx.space',0.9,'user');
+  ok(SG.sections[1].snap['seq.pattern']===P2 && SG.sections[1].snap['bass.pattern']===B2 && SG.sections[1].snap['pad.prog']==='i–VI–III–VII' && SG.sections[0].snap['seq.pattern']===P1 && SG.sections[0].snap['pad.prog']==='I–V–vi–IV', 'éditer = écrire dans la section choisie (mélodie, basse, accords), l\'autre ne bouge pas');
+  st.set('seq.pattern','0.0.1','evolve'); st.set('fx.space',0.5,'lfo');
+  ok(SG.sections[1].snap['seq.pattern']===P2 && SG.sections[1].snap['fx.space']===0.9, 'la Variation et les Mouvements lents n\'écrivent pas dans la section');
+  st.set('seq.pattern',P2,'user');
+  // selecting with a tap (stopped): its state is loaded now
+  qa('.song-chip[data-i]')[0].click();
+  ok(SG.idx===0 && st.get('seq.pattern')===P1 && st.get('bass.pattern')===B1 && st.get('perc.pattern')===X1 && st.get('pad.prog')==='I–V–vi–IV' && st.get('pad.wave')==='Nappe' && Math.abs(st.get('fx.space')-0.2)<1e-6, 'toucher « Intro » : ses motifs, ses accords et son son reviennent');
+  // keyboard: arrows move between chips, Alt+arrow reorders
+  const c0=qa('.song-chip[data-i]')[0]; c0.focus(); c0.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
+  ok(document.activeElement===qa('.song-chip[data-i]')[1], 'clavier : → passe à la section suivante');
+  // rename, length, duplicate, move, delete (the selected section's row)
+  const nm=q('.song-name'); nm.value='Refrain'; nm.dispatchEvent(new Event('change'));
+  const bs=q('.song-bars'); bs.value='4'; bs.dispatchEvent(new Event('change'));
+  ok(SG.sections[0].name==='Refrain' && SG.sections[0].bars===4 && /Refrain/.test(qa('.song-chip')[0].textContent), 'renommer et choisir la longueur ('+qa('.song-chip')[0].textContent.trim().replace(/\s+/g,' ')+')');
+  q('[data-b=dup]').click();
+  ok(SG.sections.length===3 && SG.idx===1 && SG.sections[1].name==='Refrain 2' && SG.sections[1].snap['seq.pattern']===P1 && SG.sections[1].snap!==SG.sections[0].snap && Array.isArray(SG.sections[1].loops), '⧉ dupliquer : « Refrain 2 » juste après, mêmes motifs, copie indépendante, place pour les boucles (S6.4)');
+  q('[data-b=r]').click();
+  ok(SG.sections.map(s=>s.name).join('|')==='Refrain|Couplet|Refrain 2' && SG.idx===2 && q('[data-b=r]').disabled, '▶ déplacer : '+SG.sections.map(s=>s.name).join('|'));
+  window.confirm=()=>true; q('[data-b=del]').click();
+  ok(SG.sections.length===2 && SG.idx===1 && st.get('seq.pattern')===P2, '✕ supprimer la section choisie : sa voisine est chargée');
   SG.sections.forEach(s=>s.bars=1); SG.render();
-  log('cards='+document.querySelectorAll('.song-card').length+' names='+SG.sections.map(s=>s.name).join('|'));
-  document.querySelector('[data-s=play]').click();
-  await new Promise(r=>setTimeout(r,500));
-  log('section0 space='+st.get('fx.space').toFixed(2)+' wave='+st.get('pad.wave'));
-  await new Promise(r=>setTimeout(r,1900)); // one bar at 140 bpm = 1.7 s
-  log('section1 space='+st.get('fx.space').toFixed(2)+' wave='+st.get('pad.wave')+' sections='+secs.join(','));
-  // shared motifs: a motif edited after capture is used by every section
-  st.set('seq.pattern','0.7.2','user'); log('section snaps have pattern='+SG.sections.some(s=>'seq.pattern' in s.snap)+' origin='+AMB.seq.origin);
-  document.dispatchEvent(new KeyboardEvent('keydown',{key:'1',bubbles:true})); log('pending='+SG.pending);
+
+  // --- playback: sections chained on the bar line, each with its own motifs
+  q('[data-s=play]').click(); await untilAudio(0.3);
+  ok(SG.playing && SG.idx===0 && st.get('seq.pattern')===P1, '▶ Jouer le morceau : depuis la 1re section, ses motifs');
+  const n0=secs.length; await untilAudio(4, ()=>secs.length>n0);
+  const e1=secs[secs.length-1];
+  ok(SG.idx===1 && st.get('seq.pattern')===P2 && st.get('bass.pattern')===B2 && st.get('pad.prog')==='i–VI–III–VII' && e1.name==='Couplet', 'à la mesure suivante : « Couplet » et ses motifs, ses accords');
+  // during play, a tap waits for the bar line
+  qa('.song-chip[data-i]')[0].click();
+  ok(SG.pending===0 && q('.song-chip.next') && SG.idx===1, 'pendant la lecture : la section touchée attend la prochaine mesure');
+  const o0=AMB.seq.origin, n1=secs.length; await untilAudio(4, ()=>secs.length>n1);
+  ok(SG.idx===0 && st.get('seq.pattern')===P1 && (secs[secs.length-1].step-o0)%16===0, 'changement calé sur la barre de mesure ('+(secs[secs.length-1].step-o0)+' pas)');
+  // MIDI Program Change 2 = section 2, on the next bar
+  kb.send([0xc0,1,0]); await wait(20);
+  ok(SG.pending===1, 'MIDI Program Change 2 : « Couplet » à la prochaine mesure');
+  const n2=secs.length; await untilAudio(4, ()=>secs.length>n2);
+  ok(SG.idx===1 && st.get('seq.pattern')===P2, 'Program Change appliqué sur la mesure');
+  document.dispatchEvent(new KeyboardEvent('keydown',{key:'1',bubbles:true}));
+  ok(SG.pending===0, 'touche 1 : première section à la prochaine mesure');
+  // editing while it plays goes into the playing section
+  const n3=secs.length; await untilAudio(4, ()=>secs.length>n3);
+  st.set('perc.pattern','0.0.0.3333333333333333','user');
+  ok(SG.idx===0 && SG.sections[0].snap['perc.pattern']==='0.0.0.3333333333333333' && SG.sections[1].snap['perc.pattern']!=='0.0.0.3333333333333333', 'éditer pendant la lecture : la section qui joue');
+  SG.stop();
+
+  // --- MIDI export: each section's own motifs
+  const exp=AMB.midiExport.build();
+  ok(exp.song && exp.bars===2, 'export MIDI du morceau : '+exp.bars+' mesures');
+  // --- an old song (before S6.3: sound only, motifs shared) = its sections take the current motifs once loaded
+  st.set('seq.pattern',P1,'user');
+  SG.replace({sections:[{name:'Intro',bars:4,snap:{'fx.space':0.3}},{name:'A',bars:8,snap:{'fx.space':0.7}}],loop:true});
+  ok(SG.idx===-1 && !q('.song-chip.sel') && q('.song-edit').hidden, 'ancien morceau chargé : aucune section choisie, rien n\'est écrasé');
+  st.set('seq.pattern',P2,'user');
+  ok(!('seq.pattern' in SG.sections[0].snap), 'sans section choisie, éditer ne touche aucune section');
+  qa('.song-chip[data-i]')[1].click(); await untilAudio(4, ()=>SG.idx===1); // the music still plays: on the bar line
+  ok(SG.idx===1 && SG.sections[1].snap['seq.pattern']===P2 && st.get('seq.pattern')===P2 && SG.sections[1].snap['fx.space']===0.7 && SG.fade && Array.isArray(SG.sections[1].loops), 'ancienne section choisie : son son + les motifs entendus (un ancien morceau garde ses motifs)');
+  SG.save(); const saved=JSON.parse(localStorage.getItem('ambient.song.v1'));
+  ok(saved.sections[1].snap['seq.pattern']===P2 && saved.sections.length===2, 'sauvegarde : motifs par section');
+  // another mode (the path) brings its own sound: the song lets go
+  AMB.bus.emit('game:mode','path');
+  ok(SG.idx===-1 && !SG.playing, 'changement de mode : la section n\'est plus liée');
+  st.set('seq.pattern','','game'); ok(SG.sections[1].snap['seq.pattern']===P2, 'le son de l\'autre mode n\'écrase pas la section');
+  qa('.song-chip[data-i]')[0].click(); SG.sections.splice(1); SG.render();
+
+  // --- one-gesture recording: plays the song once from the top, stops by itself, offers a WAV
   ok(!recB.disabled && getComputedStyle(why).display==='none', 'avec des sections : ● Rec actif, explication cachée');
-  // one-gesture recording: plays the song once from the top, stops by itself, offers a WAV
-  const ctx=AMB.engine.ctx, untilAudio=async(sec,cond)=>{const t=ctx.currentTime+sec; while(ctx.currentTime<t&&!(cond&&cond())) await wait(50);};
   const files=[], done=[]; AMB.rec.download=(b,ext)=>files.push({b,ext}); AMB.bus.on('rec:done',x=>done.push(x));
-  // a short song (one bar, a short tail) keeps the page quick
-  SG.pending=null; SG.stop(); SG.sections.splice(1); SG.sections[0].bars=1; SG.render(); AMB.rec.SONG_TAIL=0.6;
+  SG.sections[0].bars=1; SG.render(); AMB.rec.SONG_TAIL=0.6;
   const bar=16*AMB.seq.stepDur(), want=SG.sections.length*bar+AMB.rec.SONG_TAIL;
   recB.click(); await untilAudio(0.3);
   ok(SG.playing && SG.idx===0 && AMB.rec.songRecording() && recB.classList.contains('rec'), 'clic : le morceau part de la 1re section et s\'enregistre ('+recB.textContent+')');
   await untilAudio(want+3, ()=>files.length);
   ok(files.length===1 && files[0].ext==='wav' && !SG.playing && !AMB.rec.songRecording() && recB.textContent==='● Rec', 'arrêt automatique à la fin du morceau, WAV proposé');
   if(files.length){
-    const dec=await ctx.decodeAudioData(await files[0].b.arrayBuffer());
+    const dec=await AMB.engine.ctx.decodeAudioData(await files[0].b.arrayBuffer());
     ok(Math.abs(dec.duration-want)<=bar, `WAV ${dec.duration.toFixed(2)} s ≈ sections + queue ${want.toFixed(2)} s (± 1 mesure ${bar.toFixed(2)} s)`);
     ok(done.length===1 && Math.abs(done[0]-dec.duration)<0.1, 'rec:done = durée du WAV ('+(done[0]||0).toFixed(2)+' s)');
   }
   const g0=AMB.engine.out.gain.value; await untilAudio(0.5); const g1=AMB.engine.out.gain.value;
   ok(g1>g0 && g1>0.15 && AMB.seq.playing, `après la queue, le son revient (gain ${g0.toFixed(2)} → ${g1.toFixed(2)})`);
-  // second click = cancel: no file, no rec:done, normal sound
   recB.click(); await untilAudio(0.4); recB.click(); await untilAudio(0.2);
   ok(files.length===1 && done.length===1 && !SG.playing && !AMB.rec.songRecording() && !AMB.engine.capturing && recB.textContent==='● Rec' && AMB.seq.playing, 'second clic : annulé, aucun fichier, le son continue');
-  // the song stopped another way (■ Arrêter le morceau) cancels too
-  recB.click(); await untilAudio(0.3); document.querySelector('[data-s=play]').click(); await untilAudio(0.3);
+  recB.click(); await untilAudio(0.3); q('[data-s=play]').click(); await untilAudio(0.3);
   ok(files.length===1 && !AMB.rec.songRecording(), 'arrêter le morceau pendant l\'enregistrement l\'annule');
   await wait(100); log('DONE');
   }catch(e){log('EXC '+e.stack)}

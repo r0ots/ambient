@@ -221,7 +221,7 @@
         AMB.scenes.A = data.scenes.A; AMB.scenes.B = data.scenes.B; AMB.scenes.save(); AMB.scenes.render();
       }
       if (data.song && Array.isArray(data.song.sections) && AMB.song && (!AMB.song.sections.length || confirm('Remplacer le morceau actuel par celui du fichier ?'))) {
-        AMB.song.sections = data.song.sections; AMB.song.loop = data.song.loop !== false; AMB.song.save(); AMB.song.render();
+        AMB.song.replace(data.song);
       }
       toast(`${n} paysage(s) importé(s)`);
     } catch (e) { toast('Fichier non reconnu'); console.warn(e); }
