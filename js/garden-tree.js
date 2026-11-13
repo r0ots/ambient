@@ -238,13 +238,17 @@
       const st = T.status(id), br = T.BRANCHES[n.branch], ops = st === 'owned' || st === 'ready' ? [] : this.openers(id);
       const req = n.req.map((r) => `<span class="${g.has(r) ? 'ok' : ''}">${g.has(r) ? '✓' : '·'} ${T.byId[r].name}</span>`).join(' ');
       const now = ops.find((o) => o.d && K.state().active[0] === o.d.id);
+      // S6.7: while nodes wait on « ✦ Ouvrir » no challenge runs (contracts.refill): its card says so, not a challenge
+      // that cannot come yet
+      const wait = g.path && !g.s.ended ? (g.s.ready || []).filter((r) => g.canOpen(r.id)).length : 0;
+      const opTxt = (wait && ops.some((o) => o.d) ? [`Ouvre d'abord tes nœuds prêts (${wait})`] : []).concat(ops.filter((o) => !(wait && o.d)).map((o) => o.text));
       box.style.setProperty('--c', br.color);
       box.dataset.id = id; box.className = `tree-info st-${st}`;
       box.innerHTML = `<p class="ti-h"><b>${n.name}</b> <small>${br.name} · ${STATE_TXT[st]}</small></p>`
         + `<p class="ti-d">${n.desc}</p>`
         + `<p class="ti-g">Ouvre : ${T.grantsText(id) || '—'}</p>`
         + (n.req.length ? `<p class="ti-r">Demande : ${req}</p>` : '')
-        + (ops.length ? `<p class="ti-o">Pour l'ouvrir : ${ops.map((o) => `<span>${o.text}</span>`).join(' · ou ')}${now ? ' <em>(le défi en cours)</em>' : ''}</p>` : '')
+        + (ops.length ? `<p class="ti-o">Pour l'ouvrir : ${opTxt.map((t) => `<span>${t}</span>`).join(' · ou ')}${now && !wait ? ' <em>(le défi en cours)</em>' : ''}</p>` : '')
         // S4.6: won, waiting for the player: the same « ✦ Ouvrir » as on the LCD (after its prerequisites, for a secret's chain)
         + (st === 'ready' ? (n.req.every((r) => g.has(r)) ? '<p class="ti-o">✓ Réussi : à toi de l\'ouvrir. <button type="button" class="btn primary small ti-open">✦ Ouvrir</button></p>'
           : `<p class="ti-o">✓ Réussi : s'ouvre après ${n.req.filter((r) => !g.has(r)).map((r) => T.byId[r].name).join(', ')}.</p>`) : '');

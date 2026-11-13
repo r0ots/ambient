@@ -3,7 +3,9 @@
      no MIDI button on a touch screen, the score line hidden at record 0, the pads in sight at 19 nodes, an ask only when
      the LCD is seen, the countdown « 3, 2, 1, MAINTENANT ! », one glide = one action, nothing during the song's ● Rec,
      « ✦ Tout ouvrir », grains thickened by the macro or a CC, IV after the key, sevenths read, Rec live folding said,
-     long LCD titles never cut, no party over a window. -->
+     long LCD titles never cut, no party over a window. S6.7a: the LCD pinned on top when the page scrolls, the bar's ● Rec
+     records the song, a compact bar at 390 px (city + pads together, no chord over the city), no layout jump (Rec, help),
+     the city stays the view, long toasts readable, MIDI said, fewer hard words, the tree's card while nodes are ready. -->
 <script src="lib.js"></script>
 <script>localStorage.removeItem('ambient.game.regards');</script>
 <iframe id="f" src="../index.html?gamekey=ambient.game.regards" style="width:390px;height:780px;border:0"></iframe>
@@ -45,9 +47,15 @@ f.addEventListener('load', async () => {
         'S5.7 : 19 nœuds à 390 px, les pastilles restent visibles (' + Math.round(pr.top) + '–' + Math.round(pr.bottom) + ' / ' + w.innerHeight + ')');
 
     // --- 1. an ask only when the LCD is seen (an opening scrolls to what it opened)
-    A.perform.setMode('sculpt'); await wait(30); w.scrollTo(0, 3000); await wait(30);
-    const out = D.seen(); w.scrollTo(0, 0); await wait(30);
-    ok(!out && D.seen(), 'S5.7 : LCD hors de la fenêtre → aucune demande lancée ; revenu en vue → oui');
+    // S6.7: the rule stays (an ask waits for a visible LCD), but the LCD no longer leaves the window: pinned on top
+    { A.perform.setMode('sculpt'); await wait(200); const lcd = d.getElementById('lcd'), y0 = lcd.getBoundingClientRect().top, bar0 = d.querySelector('.transport').getBoundingClientRect().height;
+      w.scrollTo(0, 3000); await wait(30); Gd._pin.check(); const r = lcd.getBoundingClientRect(), pinned = lcd.classList.contains('lcd-pin');
+      const ph = d.querySelector('.lcd-ph').getBoundingClientRect();
+      const seen = D.seen(); w.scrollTo(0, 0); await wait(60); Gd._pin.check(); const y1 = lcd.getBoundingClientRect().top;
+      ok(pinned && Math.abs(r.top) < 2 && r.width > 300 && seen && Math.round(ph.height) >= 60 && !lcd.classList.contains('lcd-pin') && Math.abs(y1 - y0) < 3,
+        'S6.7 : page défilée → LCD collé en haut (' + Math.round(r.top) + ' px, ' + Math.round(r.width) + ' px de large, seen ' + seen + ', place ' + Math.round(ph.height) + ' px) ; revenu en haut → à sa place (' + Math.round(y0) + ' → ' + Math.round(y1) + ' px, barre ' + Math.round(bar0) + ' px)');
+      lcd.style.display = 'none'; const hid = D.seen(); lcd.style.display = '';
+      ok(!hid, 'la règle reste : un LCD invisible → aucune demande'); }
     A.perform.setMode('listen');
 
     // --- 2. the countdown: « prêt ? », 3, 2, 1, « MAINTENANT ! » on the 1 (never « sur le 1 » in the texts)
@@ -110,6 +118,49 @@ f.addEventListener('load', async () => {
     // --- 15. the notebook's hints say what is judged
     { const S = A.discoveries.byId;
       ok(/fort.*presque rien.*fort/i.test(S.velo.hint) && !/tout en haut/.test(S.velo.hint) && /molette/.test(S.chroma.hint2) && !/se laissent descendre/.test(S.chroma.hint) && !/Une main qui se promène/.test(S.cinq.hint), 'S5.7 carnet : Funambule = fort / doux / fort, Entre les touches = 6 demi-tons (pas la molette), Petite phrase moins évidente'); }
+
+    // ===== S6.7a (a child of 9 on a 390 px phone, a musician at his desk) =====
+    { G.reset(); await wait(30); Gd.showTree(false); A.perform.setMode('sculpt'); w.scrollTo(0, 0); await wait(50);
+      const rect = (s) => d.querySelector(s).getBoundingClientRect(), padTop = () => Math.round(rect('#pads').top);
+      // 7. the Rec appearing and the challenge's help on the LCD never move the pads
+      const p0 = padTop(); G.unlock('t.rec'); for (let t = 0; t < 60 && Gd.seq; t++) await wait(40); Gd.showTree(false); w.scrollTo(0, 0); await wait(80);
+      const p1 = padTop(), recIn = css('.tgrp:has(#rec)', 'display') !== 'none';
+      d.querySelector('#lcdTask .lcd-task-txt').click(); await wait(30); const help = d.getElementById('lcdTask').classList.contains('help'), p2 = padTop();
+      d.querySelector('#lcdTask .lcd-task-txt').click(); await wait(30);
+      ok(recIn && help && p0 === p1 && p1 === p2, 'S6.7 : l\'arrivée de ● Rec et l\'aide du défi sur le LCD ne bougent pas les pastilles (' + [p0, p1, p2].join(' → ') + ' px)');
+      // 2 + 6. the end of the path at 390 px: a compact bar, the city and the pads together in the window, no chord / tempo over the city
+      for (let k = 0; k < 40; k++) T.NODES.forEach((n) => { if (T.status(n.id) === 'available') G.unlock(n.id); });
+      for (let t = 0; t < 80 && Gd.seq; t++) await wait(40); Gd.showTree(false); A.tree.release && A.tree.release(); Gd.checkEnd(); Gd.renderContracts(); w.scrollTo(0, 0); await wait(120);
+      const top = rect('.top'), st = rect('.stage'), pd = rect('#pads'), H = w.innerHeight;
+      ok(Gd.complete() && K.state().active[0] === 'c.morceau' && top.height <= 0.42 * H && pd.bottom <= H + 1 && st.bottom <= pd.top + 2 && st.height >= 150 && css('.brand', 'display') === 'none' && css('.stage .hud', 'display') === 'none',
+        'S6.7 fin du Parcours à 390 px : barre ' + Math.round(top.height) + ' px (≤ 42 % de ' + H + '), ville ' + Math.round(st.top) + '–' + Math.round(st.bottom) + ' px puis pastilles ' + Math.round(pd.top) + '–' + Math.round(pd.bottom) + ' px, sans accord ni tempo sur la ville');
+      // 5. the Parcours keeps the city: no visual chip, no cycle; a toast over the chips
+      const vm = A.visual.cycleMode();
+      ok(css('#vizMode', 'display') === 'none' && vm === 'Jardin' && A.visual.mode === 'Jardin' && +css('#toast', 'zIndex') > +css('.stage-tools', 'zIndex'), 'S6.7 : en Parcours, la vue reste la Ville (pas de bouton Orbes / Spectre) ; les toasts passent au-dessus des boutons du visuel');
+      // 8. a long toast stays long enough to be read
+      const long = 'Tu joues déjà : 12 nœuds prêts → ✦ Ouvrir sur l\'écran du haut'; A.ui.toast(long); await wait(2600);
+      ok(d.getElementById('toast').classList.contains('show'), 'S6.7 : un toast long (' + long.length + ' signes) reste plus de 2,6 s'); d.getElementById('toast').classList.remove('show');
+      ok(/MIDI/.test(G.txt(K.byId['m.notes'].title)) && /MIDI/.test(G.txt(K.byId['e.echo'].hint)), 'S6.7 au bureau, les défis de notes disent aussi le MIDI : « ' + G.txt(K.byId['m.notes'].title) + ' »');
+      // 9. fewer hard words for a child in the texts of the path (the controls keep their names)
+      const hard = K.DEFS.map((x) => x.title).concat(Object.values(T.EXPLAIN), K.DEFS.filter((x) => x.kind === 'reponse').map((x) => x.hint || '')).filter((s) => /\bnappe\b|\btimbre\b|\bnœud\b/.test(s));
+      ok(!hard.length, 'S6.7 : ni « nappe », ni « timbre », ni « nœud » dans les titres des défis, les cartes d\'ouverture et l\'aide des Réponses' + (hard.length ? ' — ' + hard[0] : '')); }
+
+    // 4. the tree's card while nodes are ready: no challenge runs, it says to open them first
+    { G.reset(); await wait(30); G.ready('m.bells'); await wait(30); Gd.showTree(true); Gd.select('h.pad'); await wait(30);
+      const t = d.querySelector('#treeDlg .tree-info').textContent; Gd.showTree(false);
+      G.reset(); await wait(30); Gd.showTree(true); Gd.select('h.pad'); await wait(30); const t2 = d.querySelector('#treeDlg .tree-info').textContent; Gd.showTree(false);
+      ok(/Pour l'ouvrir : Ouvre d'abord tes nœuds prêts \(1\)/.test(t) && !/Joue 6 notes/.test(t) && /Pour l'ouvrir : ◇ Joue 6 notes/.test(t2), 'S6.7 fiche de l\'Arbre : un nœud prêt → « Ouvre d\'abord tes nœuds prêts (1) » ; sinon le défi (« ' + t2.replace(/.*Pour l'ouvrir : /, '').slice(0, 40) + ' »)'); }
+
+    // 1. « Enregistre ton morceau » with the bar's ● Rec: the take ends the path (kept for the finale, no download)
+    { G.reset(); await wait(30); Gd.END_MS = 30000; // (the finale itself is tested by gameui-end)
+      for (let k = 0; k < 40; k++) T.NODES.forEach((n) => { if (T.status(n.id) === 'available') G.unlock(n.id); });
+      for (let t = 0; t < 80 && Gd.seq; t++) await wait(40); Gd.showTree(false); Gd.checkEnd();
+      const files = [], dl0 = A.rec.download; A.rec.download = (b, e) => files.push(e); d.getElementById('recFmt').value = 'wav';
+      const btn = d.getElementById('rec'); await A.rec.toggleRec(btn); await wait(100); const dn = w.Date.now; w.Date.now = () => dn.call(w.Date) + 4000;
+      await A.rec.toggleRec(btn); w.Date.now = dn; await wait(30);
+      ok(K.state().active[0] !== 'c.morceau' && G.s.contracts.includes('c.morceau') && G.s.ended && Gd.song && !files.length,
+        'S6.7 : « Enregistre ton morceau » réussi par le ● Rec de la barre (4 s) : fin du Parcours, morceau gardé pour la relecture, pas de téléchargement (' + files.join() + ')');
+      A.rec.download = dl0; Gd.song = null; Gd.handing = false; if (A.seq.playing) A.ui.stop(); }
 
     G.touchOverride = null; localStorage.removeItem('ambient.game.regards');
     done();

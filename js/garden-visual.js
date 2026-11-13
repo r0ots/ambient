@@ -1444,10 +1444,10 @@
   // ---- « Jardin » as a mode of AMB.visual, only in the Parcours ----
   const V = AMB.visual;
   if (!V) return;
-  const NAME = 'Jardin', PATH_KEY = 'ambient.vizMode.path', FREE_KEY = 'ambient.vizMode';
+  const NAME = 'Jardin', FREE_KEY = 'ambient.vizMode';
   const onPath = () => !!(AMB.game && AMB.game.path);
   const get = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
-  const pathPref = () => { const m = get(PATH_KEY); return m === NAME || V.MODES.includes(m) ? m : NAME; };
+  const pathPref = () => NAME; // S6.7: the Parcours always shows the city (its chip is gone: css body.game #vizMode)
   const freePref = () => { const m = get(FREE_KEY); return m === NAME || V.MODES.includes(m) ? m : NAME; }; // S6.7: the city by default
   const SHOWN = { [NAME]: 'Ville' }; // S6.5: the mode keeps its id (stored preference), the chip says « Ville »
   const chip = () => { const el = typeof document !== 'undefined' && document.getElementById('vizMode'); if (el) el.textContent = SHOWN[V.mode] || V.mode; };
@@ -1468,9 +1468,10 @@
     return baseDraw.call(this);
   };
   V.cycleMode = function () {
+    if (onPath()) { this.mode = NAME; Promise.resolve().then(chip); return this.mode; } // S6.7: no Orbes / Spectre in the Parcours (they hid the city)
     const L = [NAME, ...this.MODES];
     this.mode = L[(L.indexOf(this.mode) + 1) % L.length];
-    try { localStorage.setItem(onPath() ? PATH_KEY : FREE_KEY, this.mode); } catch (e) {}
+    try { localStorage.setItem(FREE_KEY, this.mode); } catch (e) {}
     Promise.resolve().then(chip); // (ui.js writes the returned id on the chip: the label follows)
     return this.mode;
   };

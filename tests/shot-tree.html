@@ -173,6 +173,17 @@ document.getElementById('f').addEventListener('load', () => {
     ['h.pad2', 'h.key', 'h.scale', 'h.prog', 'c.seq', 'c.rythme'].forEach((i) => A.game.unlock(i));
     A.garden.showTree(true); setTimeout(() => { const G = A.garden, r = doc.querySelector('#treeDlg .tree-map').getBoundingClientRect();
       G.zoomAt(r.right, r.top + r.height / 2, 0.75); G.panToNode('c.song', 0); G.panToNode('c.seq', 0); }, 300);
+  } else if (h.includes('endpath')) { // S6.7: the end of the Parcours on a phone: whole tree open, « Enregistre ton morceau » on the LCD, city + pads; &down=<px> scrolls the page (LCD pinned on top)
+    for (let k = 0; k < 40; k++) A.tree.NODES.forEach((n) => { if (A.tree.status(n.id) === 'available') A.game.unlock(n.id); });
+    const w = document.getElementById('f').contentWindow, GV = A.gardenVisual;
+    setTimeout(() => {
+      A.garden.showTree(false); A.perform.setMode('sculpt'); A.tree.release && A.tree.release(); doc.querySelectorAll('.is-new').forEach((e) => e.classList.remove('is-new', 'is-new-first'));
+      A.garden.checkEnd(); A.garden.renderContracts(); A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none'; GV.grow = {}; GV.sig = null;
+      setInterval(() => A.visual.draw(), 40);
+      const L = ['pad', 'bells', 'seq', 'bass', 'grains']; let i = 0;
+      setInterval(() => { const l = L[i++ % L.length]; A.bus.emit('note', { layer: l, midi: 60, time: 0, vel: 0.8 }); }, 220);
+      const s = /down=(\d+)/.exec(h); w.scrollTo(0, s ? +s[1] : 0); setTimeout(() => A.garden._pin.check(), 100);
+    }, 1600);
   } else if (h.includes('handover')) { // S3.7: whole tree, last contract done: the instrument handed over (LCD message, no challenge)
     for (let k = 0; k < 40; k++) A.tree.NODES.forEach((n) => { if (A.tree.status(n.id) === 'available') A.game.unlock(n.id); });
     setTimeout(() => A.bus.emit('act', 'songRec'), 1500);
@@ -213,6 +224,7 @@ document.getElementById('f').addEventListener('load', () => {
     const L = ['pad', 'bells', 'seq', 'bass', 'grains']; let i = 0;
     setInterval(() => { const l = L[i++ % L.length]; if (l === 'grains') A.bus.emit('grain', { layer: l, time: 0, vel: 0.6 }); else A.bus.emit('note', { layer: l, midi: 60, time: 0, vel: 0.8 }); if (i % 3 === 0) A.bus.emit('chord', { time: 0 }); if (i % 2) A.bus.emit('perc', { time: 0, vel: 0.7 }); }, 180);
   } else {
+    if (h.includes('rdy')) ['h.pad2', 't.journal'].forEach((i) => A.game.ready(i)); // S6.7 #sel=<node>&rdy: two nodes wait on « ✦ Ouvrir » (no challenge runs)
     A.garden.showTree(true);
     const m = /sel=([\w.]+)/.exec(h); if (m) A.garden.select(m[1]);
   }

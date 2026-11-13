@@ -39,7 +39,7 @@
     }, '{Touche une pastille sous l\'écran, une touche de A à L ou ton clavier MIDI : le son démarre.|Touche une pastille de couleur sous l\'écran : le son démarre.}'),
     Dm('k.couleur', ['racine'], 'Tourne la lumière du drone sur MAINTENANT', { how: 'hit', param: 'drone.tone', src: ['user', 'cc'] },
       ON1 + 'Sculpter > Drone > Lumière{ (ou la molette CC74 du clavier MIDI)|} : le son s\'ouvre et se ferme.'),
-    Dm('k.timbre', ['t.son'], 'Change le timbre du drone sur MAINTENANT', { how: 'hit', param: 'drone.wave' },
+    Dm('k.timbre', ['t.son'], 'Change le son du drone sur MAINTENANT', { how: 'hit', param: 'drone.wave' },
       ON1 + 'Sculpter > Drone > Timbre : choisis-en un autre.'),
     Dm('k.moments', ['t.journal'], 'Garde ce moment (♥) sur MAINTENANT', { how: 'hit', act: 'keep' },
       ON1 + 'Sculpter > Journal : ♥ garde le son de l\'instant ; plus tard, un clic sur un moment passé le fait revenir.'),
@@ -53,7 +53,7 @@
     C('h.forcer', ['h.pad'], 'Force 3 accords ({Z à M, ou appui long sur une pastille|appui long sur une pastille})', 3, {
       act(st, id) { if (id === 'chord' && gesture(st, 'chord', 600)) st.n = (st.n || 0) + 1; },
     }, '{Pendant la lecture, les touches Z, X, C, V, B, N, M jouent les accords I à VII ; au doigt, un appui long sur une pastille force l\'accord de son degré (au clavier MIDI : les notes graves).|Pendant la lecture, garde le doigt appuyé sur une pastille : elle joue tout un accord.}'),
-    Dm('h.son', ['h.pad'], 'Change le timbre du Pad sur MAINTENANT', { how: 'hit', param: 'pad.wave' },
+    Dm('h.son', ['h.pad'], 'Change le son du Pad sur MAINTENANT', { how: 'hit', param: 'pad.wave' },
       ON1 + 'Sculpter > Pad > Timbre : choisis-en un autre.'),
     Dm('h.suivre', ['h.drone'], 'Fais suivre les accords au drone sur MAINTENANT', { how: 'hit', param: 'drone.follow', v: (v) => !!v },
       ON1 + 'Sculpter > Drone > Suit accords : écoute ensuite le drone changer de note avec les accords.'),
@@ -71,10 +71,10 @@
       BY + 'Sculpter > Effets > Taille au-dessus de 80.'),
     C('e.echo', ['e.echo', 'm.bells'], 'Joue 4 notes dans l\'écho', 4, {
       note(st) { if (store.get('fx.echo') >= 0.4) st.n = (st.n || 0) + 1; },
-    }, 'Monte l\'Écho au-dessus de 40 (Sculpter > Effets), puis joue des notes (pastilles{ ou A à L|}) et écoute-les se répéter.'),
+    }, 'Monte l\'Écho au-dessus de 40 (Sculpter > Effets), puis joue des notes (pastilles{, A à L ou MIDI|}) et écoute-les se répéter.'),
 
     // Mouvement
-    C('m.notes', ['m.bells'], 'Joue 6 notes (pastilles{ ou clavier A à L|})', 6, {
+    C('m.notes', ['m.bells'], 'Joue 6 notes (pastilles{, A à L ou MIDI|})', 6, {
       note(st) { st.n = (st.n || 0) + 1; },
     }, '{Les pastilles sous l\'écran ou les touches A à L jouent la gamme (Q à P une octave au-dessus), ou ton clavier MIDI.|Les pastilles de couleur sous l\'écran jouent la gamme : touche-les une par une.}'),
     C('m.monte', ['m.bells'], 'Joue 4 notes qui montent', 4, run((p, n) => n.midi > p.midi),
@@ -110,9 +110,12 @@
       },
     }, 'Composer > Basse : allume ou éteins des pas de la grille, puis laisse jouer 4 mesures avec les pulsations.'),
     // the path's last challenge (`first`): proposed once the whole tree is open (S5.7); it opens no node, it ends the path
+    // S6.7: the bar's ● Rec counts too (a child could not find Composer > Morceau > + Section ×2 > ● Rec): a take of 3 s
+    // or more, stopped by ■; rec.js then hands its WAV to the finale instead of downloading it
     C('c.morceau', ['c.song'], 'Enregistre ton morceau', 1, {
       act(st, id) { if (id === 'songRec') st.n = 1; },
-    }, 'Composer > Morceau : + Section pour garder le paysage du moment (fais-en au moins deux), puis ● Rec : le morceau joue du début à la fin et s\'enregistre.'),
+      rec(st, secs) { if (secs >= 3) st.n = 1; },
+    }, '{● Rec en haut, joue un moment, puis ■ : ton morceau est gardé. Ou Composer > Morceau > ● Rec : tes sections, du début à la fin.|Touche ● Rec en haut, joue un peu, puis touche ■ pour arrêter.}'),
 
     // gates opened by a Réponse (S4.3: they replaced the « set the knobs to a target » puzzles; S4.2: played in the music)
     E('p.premier', ['t.son', 'h.pad', 'm.bells'], 'Premier reflet'),
@@ -143,7 +146,7 @@
   for (const d of DEFS) if (d.kind === 'reponse') {
     d.d = Math.max(0, Math.min(1, (depth(d.node) - 3) / 3));
     const n = 3 + Math.round(d.d * 3); // AMB.puzzles.respLen
-    d.hint = `Pendant la lecture, l'enseigne Mélodie auto s'allume et l'écran dit « ↺ À toi » : rejoue la phrase juste après (pastilles{, A à L ou MIDI|}). ${n} notes justes ouvrent le nœud.`;
+    d.hint = `Pendant la lecture, l'enseigne Mélodie auto s'allume et l'écran dit « ↺ À toi » : rejoue la phrase juste après (pastilles{, A à L ou MIDI|}). ${n} notes justes ouvrent la suite.`;
   }
 
   const contracts = {
