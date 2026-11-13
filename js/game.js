@@ -19,6 +19,7 @@
     active: [], prog: {}, // the active challenge (one at a time) and its progress (contracts.js)
     skipped: [], // challenges passed (back of the queue)
     rng: null, // seed of the Réponse phrases (contracts.js)
+    dem: null, // S5.5 live asks (demands.js): combo, best, misses per challenge
     secrets: null, // discoveries state (discoveries.js; the field keeps its old name: older saves' secrets are discoveries)
     ended: false, // whole tree owned: the instrument was handed over (S3.7), no game interface any more
   });

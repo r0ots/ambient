@@ -96,7 +96,9 @@ f.addEventListener('load', async () => {
       await wait(100);
       const lsAfter2 = LS(), touched = Object.keys(Object.assign({}, lsBefore2, lsAfter2)).filter(k => lsBefore2[k] !== lsAfter2[k] && !HARMLESS.includes(k));
       ok(A2.game.s.mode === 'free' && !d2.querySelector('.modal:not([hidden])') && !errs.length && !touched.length && !('shards' in A2.game.s), 'ancien lien #save (' + code.slice(0, 6) + '…) : ignoré, aucune boîte, aucune clé de jeu écrite (' + (touched.join(', ') || 'aucune') + ')');
-      ok(JSON.stringify(A2.store.stableSnapshot()) === before.store && JSON.stringify(A2.game.s) === before.game, 'ancien lien #save : réglages et état du jeu inchangés');
+      const st2 = JSON.stringify(A2.store.stableSnapshot()), gs2 = JSON.stringify(A2.game.s);
+      const why = st2 !== before.store ? ' (réglages : ' + Object.keys(A2.store.stableSnapshot()).filter((k) => JSON.stringify(A2.store.stableSnapshot()[k]) !== JSON.stringify(JSON.parse(before.store)[k])).slice(0, 5).join(', ') + ')' : gs2 !== before.game ? ' (jeu : ' + gs2.slice(0, 300) + ' ≠ ' + before.game.slice(0, 300) + ')' : '';
+      ok(st2 === before.store && gs2 === before.game, 'ancien lien #save : réglages et état du jeu inchangés' + why);
       g2.remove();
     }
     localStorage.removeItem('ambient.game.fri');

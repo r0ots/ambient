@@ -3,7 +3,7 @@
 <script>window.AMB_GAME_KEY='ambient.game.test';
 localStorage.removeItem('ambient.game.test');
 </script>
-<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/game.js"></script><script src="../js/tree.js"></script><script src="../js/contracts.js"></script><script src="../js/puzzles.js"></script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/game.js"></script><script src="../js/tree.js"></script><script src="../js/contracts.js"></script><script src="../js/puzzles.js"></script><script src="../js/demands.js"></script>
 <script>
 const ok=(c,m)=>log((c?'ok ':'ERROR fail ')+m);
 window.addEventListener('load', async ()=>{
@@ -67,9 +67,13 @@ window.addEventListener('load', async ()=>{
   ok(g.open() && g.has('m.bells') && !g.isReady('m.bells') && ev.includes('unlock:k.xy') && g.s.active.join()==='m.notes', 'S4.6 : le joueur l\'ouvre → Mélodie ouverte (par son défi), puis le défi suivant : '+g.s.active.join());
   K.skip('m.notes'); ok(g.s.active.join()==='k.couleur' && g.s.skipped.includes('m.notes'), 'passer → le suivant');
   AMB.seq.playing=true;
-  AMB.store.set('drone.tone',0.2,'user'); AMB.store.set('drone.tone',0.25,'user'); ok(K.progress('k.couleur')===1, 'un geste = 1 (glisser ne compte qu\'une fois)');
-  g.s.prog['k.couleur']['t_drone.tone']=0; AMB.store.set('drone.tone',0.5,'user'); g.open();
-  ok(g.has('t.son') && g.s.active.join()==='m.monte', 'Couleur du drone → Timbre du drone ouvert, puis : '+g.s.active.join());
+  // S5.5: an interface challenge is asked in the music (js/demands.js, own page tests/demandes.html): the gesture on the 1
+  const D=AMB.demands; let tNow=100; D.now=()=>tNow; D.at=()=>tNow;
+  const ask=()=>{ D.cur=null; D.wait=0; D.fresh=null; D.onStep(0,tNow,0.25); return D.cur; };
+  AMB.store.set('drone.tone',0.2,'user'); ok(K.progress('k.couleur')===0 && !g.isReady('t.son'), 'S5.5 : la lumière du drone tournée hors demande ne compte pas');
+  ok(ask() && D.cur.gate==='k.couleur', 'S5.5 : pendant la lecture, la demande « '+D.cur.text+' » arrive');
+  tNow=D.cur.tT; AMB.store.set('drone.tone',0.5,'user'); g.open();
+  ok(g.has('t.son') && g.s.active.join()==='m.monte', 'Couleur du drone (sur le 1) → Timbre du drone ouvert, puis : '+g.s.active.join());
   K.skip('m.monte'); K.skip('m.descend'); ok(g.s.active.join()==='m.pas', 'passer encore : '+g.s.active.join());
   K.skip('m.pas'); K.skip('p.suite'); K.skip('k.timbre'); ok(g.s.active.join()==='m.notes', 'tous passés : le premier passé revient');
   const live=(m,t)=>AMB.bus.emit('live',{midi:m==null?60:m,time:t||0,vel:1}), lives=(n)=>()=>{ for(let i=0;i<n;i++) live(); };
@@ -87,9 +91,13 @@ window.addEventListener('load', async ()=>{
     run('m.descend',[notes([72,71,69,67,65],0.4)],[notes([60,62,64,65,67],0.4)]);
     run('m.respire',[notes([60,62,64,65],2)],[notes([60,62,64,65],0.5)]);
     run('m.pas',[notes([60,62,64,65],0.6)],[notes([60,62,64,65],0.1),()=>[0,0.4,1.4,1.6].forEach((t,i)=>live(60,200+t))]);
-    run('m.nuage',[S('grains.density',0.7),lives(4)],[lives(6),S('grains.density',0.65,'preset')]);
-    run('e.noyer',[S('pad.send',0.8),...[1].map(()=>()=>{ K.state().prog['e.noyer'].t_chord=0; AMB.bus.emit('act','chord'); })],[()=>AMB.bus.emit('act','chord'),S('pad.send',0.5)]);
-    run('k.timbre',[S('drone.wave',AMB.store.spec('drone.wave').options[1]),lives(4)],[lives(6)]);
+    // S5.5 asked in the music: the gesture on time (wrong: another gesture, a value short, from a preset, or no ask)
+    const onTime=(f)=>()=>{ ask(); tNow=D.cur.tT; f(); };
+    run('m.nuage',[onTime(S('grains.density',0.7))],[S('grains.density',0.9),onTime(S('grains.density',0.5)),onTime(S('grains.density',0.9,'preset'))]);
+    run('e.noyer',[onTime(S('pad.send',0.8))],[onTime(()=>AMB.bus.emit('act','chord')),onTime(S('pad.send',0.5))]);
+    run('k.timbre',[onTime(S('drone.wave',AMB.store.spec('drone.wave').options[1]))],[lives(6),S('drone.wave',AMB.store.spec('drone.wave').options[2])]);
+    run('m.figer',[onTime(()=>AMB.bus.emit('act','freeze'))],[()=>AMB.bus.emit('act','freeze'),onTime(()=>AMB.bus.emit('act','keep'))]);
+    D.cur=null;
     // S3.5: the Composer challenges are played (Rec live, a groove that turns, the song recorded), never drawn
     AMB.pianoRoll=AMB.pianoRoll||{roll:{recording:false}}; // this page has no piano roll: its Rec live state is enough
     const R=AMB.pianoRoll.roll, rec0=R.recording;
@@ -103,7 +111,7 @@ window.addEventListener('load', async ()=>{
     force('m.notes'); Pz.cur={ midis:[60,62,64], steps:[0,4,8], len:3, row:[], from:-1, until:1e9, t0:0, sd:0.25 }; lives(3)();
     ok(K.progress('m.notes')===3, 'Réponse en attente : les notes comptent encore pour « Joue 6 notes » ('+K.progress('m.notes')+')');
     Pz.cancel();
-    force('m.phrase'); AMB.store.set('bells.mode','Aléatoire','user'); AMB.bus.emit('phrase',{}); ok(K.progress('m.phrase')===0,'phrase : tours non comptés hors mode Phrase'); AMB.store.set('bells.mode','Phrase','user'); AMB.bus.emit('phrase',{}); AMB.bus.emit('phrase',{}); ok(g.s.contracts.includes('m.phrase'),'2 tours → réussi'); g.open();
+    force('m.phrase'); AMB.store.set('bells.mode','Aléatoire','user'); ask(); tNow=D.cur.tT; AMB.store.set('bells.mode','Aléatoire','user'); ok(!g.s.contracts.includes('m.phrase') && D.cur,'Phrases : un autre mode ne compte pas'); AMB.store.set('bells.mode','Phrase','user'); ok(g.s.contracts.includes('m.phrase'),'Phrase sur le 1 → réussi'); g.open();
     ok((()=>{ g.s.active=[]; g.s.skipped=[]; g.s.contracts=[]; K.refill(); return g.s.active.join(); })()==='c.morceau', 'Morceau ouvert : « Enregistre ton morceau » passe avant les autres'); }
   AMB.seq.playing=false; g.setMode('free'); AMB.store.set('drone.tone',0.1,'user'); ok(true,'libre : pas de suivi');
   g.reset();

@@ -27,13 +27,23 @@
       const box = $('#lcdTask'), line = $('#lcdLine'); if (!box || !AMB.contracts) return;
       const K = AMB.contracts, g = AMB.game, live = g.path && !this.handedOver();
       const ready = live ? g.s.ready || [] : [], nr = live && g.nextReady(), rn = nr && AMB.tree.byId[nr.id];
+      const dm = live && !rn && AMB.demands ? AMB.demands.view() : null; // S5.5: an ask in progress takes the line
       const id = live && !rn ? K.state().active[0] : null, d = id && K.byId[id];
       const offer = !d && !rn && g.path && this.offer && this.handedOver(); // S4.5w: after the finale, the song is offered here
-      box.hidden = !d && !offer && !rn; if (line) line.hidden = !!(d || offer || rn);
+      box.hidden = !d && !offer && !rn && !dm; if (line) line.hidden = !!(d || offer || rn || dm);
       box.classList.toggle('ready', !!rn);
+      box.classList.toggle('demand', !!dm); box.classList.toggle('hot', !!(dm && dm.hot));
       const tb = $('#treeBtn'); if (tb) tb.classList.toggle('has-ready', !!rn);
       const skip = box.querySelector('.lcd-skip'), skipTxt = offer ? 'Non merci' : 'Passer au défi suivant';
-      if (skip) { skip.title = skipTxt; skip.setAttribute('aria-label', skipTxt); skip.hidden = !!rn; }
+      if (skip) { skip.title = skipTxt; skip.setAttribute('aria-label', skipTxt); skip.hidden = !!(rn || dm); }
+      if (dm) { // the ask and its countdown (« dans 2 mesures », 4, 3, 2, 1, « MAINTENANT ! »); a tap = how to do it
+        if (box.dataset.id !== 'demand') box.classList.remove('help');
+        box.dataset.id = 'demand';
+        const t = box.querySelector('.lcd-task-txt'), help = box.classList.contains('help');
+        t.textContent = help ? dm.hint : `♪ ${dm.text}`; t.title = help ? 'Toucher : revenir à la demande' : `${dm.hint}\n(Toucher : comment faire)`;
+        box.querySelector('.lcd-task-n').textContent = dm.n;
+        return;
+      }
       if (rn) {
         box.dataset.id = 'open:' + rn.id; box.classList.remove('help');
         const t = box.querySelector('.lcd-task-txt'); t.textContent = `✦ Ouvrir : ${rn.name}`; t.title = 'Toucher : voir ce qui s\'ouvre';
@@ -49,11 +59,12 @@
       if (!d) return;
       if (box.dataset.id !== id) box.classList.remove('help');
       box.dataset.id = id;
-      const n = K.progress(id), resp = d.kind === 'reponse', help = box.classList.contains('help') && d.hint;
+      const n = K.progress(id), resp = d.kind === 'reponse', ask = d.kind === 'demande', help = box.classList.contains('help') && d.hint;
       const txt = box.querySelector('.lcd-task-txt');
       txt.textContent = help ? d.hint : resp ? `↺ Réponse : ${d.title}` : `◇ ${d.title}`;
       txt.title = help ? 'Toucher : revenir au défi' : `${d.hint}\n(Toucher : comment faire)`;
-      box.querySelector('.lcd-task-n').textContent = resp ? `${AMB.puzzles.need(d)} ♪` : d.goal > 1 ? `${n}/${d.goal}` : n ? '✓' : '·';
+      // S5.5 a challenge asked in the music: it comes with the playback
+      box.querySelector('.lcd-task-n').textContent = resp ? `${AMB.puzzles.need(d)} ♪` : ask ? (AMB.seq && AMB.seq.playing ? '♪ bientôt' : '▶ lecture') : d.goal > 1 ? `${n}/${d.goal}` : n ? '✓' : '·';
       if (flashId === id) { box.classList.remove('bump'); void box.offsetWidth; box.classList.add('bump'); }
     },
     // clicks that always succeed go on the bus as actions (contracts count them); actions that can fail or be
@@ -314,12 +325,19 @@
       open: { rank: 7, flash: 0.75, confetti: 260, shake: 2, lcd: 'arcade', bounce: 1, punch: 1.5, jingle: 'unlock', pop: 'OUVERT !!!', splash: 'tier', kick: ['rays', 'aurora', 'ripple', 'hue'] },
       end: { rank: 8, flash: 1, confetti: 380, shake: 2, lcd: 'arcade', bounce: 1, punch: 2, jingle: 'end', pop: 'À TOI !!!', beats: 3, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'hue'] },
       placement: { rank: 10, flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => `⚡ ${String(o.name || 'musicien').toUpperCase()} !!!`, hop: '#treeBtn', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `⚡ ${o.name || 'Musicien'} détecté` }, // S5.4 a Réponse placement (the queue « n prêts » is on the LCD's 2nd line)
+      // S5.5 the live asks (js/demands.js), judged on the time; n = the combo of successes in a row
+      parfait: { rank: 4, flash: 0.5, confetti: 130, shake: 1, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'streak', pop: (o) => o.n > 1 ? `PARFAIT !!! ×${o.n}` : 'PARFAIT !!!', splash: 'streak', kick: ['rays', 'twinkle', 'ripple'],
+        say: (o) => `★ Parfait !${o.n > 1 ? ' ×' + o.n : ''}${o.node ? ' · ✦ ' + o.node : ''}` },
+      bien: { rank: 3, flash: 0.25, confetti: 50, shake: 1, lcd: 'glitch', jingle: 'streak', pop: (o) => o.n > 1 ? `BIEN ! ×${o.n}` : 'BIEN !', kick: ['twinkle'],
+        say: (o) => `✓ Bien !${o.n > 1 ? ' ×' + o.n : ''}${o.node ? ' · ✦ ' + o.node : ''}` },
+      rate: { rank: 1, lcd: 'glitch', say: (o) => `✗ Raté${o.why ? ' · ' + o.why : ''} : la musique continue` },
       discovery: { rank: 9, flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => o.name ? `${String(o.name).toUpperCase()} !!!` : 'DÉCOUVERTE !!!', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `✦ Découverte${o.name ? ' : ' + o.name : ' !'}` },
     },
     // the bus events that are moments (the others call fx() where they happen: an opening, a discovery, the end, a first touch)
     FX_ON: {
       'game:ready': (d) => {
         const c = d.by && AMB.contracts.byId[d.by], n = AMB.tree.byId[d.id];
+        if (c && c.kind === 'demande') return null; // S5.5: the ask's own PARFAIT / BIEN already said it
         if (c && AMB.puzzles && AMB.puzzles.outGate === c.id) return ['consolation', { say: '✦ Prêt quand même', ms: 3000, toast: `Pas cette fois, mais ${n ? n.name : 'la suite'} est prêt à ouvrir quand même.` }];
         return c ? ['defi', { say: c.kind === 'reponse' ? '↺ ✓ Juste !' : '✓ Défi réussi' }] : ['ready'];
       },

@@ -8,7 +8,11 @@
      one more click). That time is the player's own pace: it counts in the total and in the waits without a new node, the
      45-min target stays on the time spent playing (total minus opening).
      S5.4: the Réponse ladder and placement (puzzles.level / placeOf / PLACE) run during play: the nephew at the MIDI keyboard
-     reaches the full instrument in < 20 min, the son is never placed. -->
+     reaches the full instrument in < 20 min, the son is never placed.
+     S5.5: the interface challenges are asked in the music (kind 'demande', js/demands.js): TIME.demande = find the control
+     (~15 s) + the ask itself (~1 bar of wait + 2 bars of countdown ≈ 13 s at 66 bpm) + one miss on average (4 bars more +
+     the countdown ≈ 22 s) + the « Nouveau » ask that may come first after an opening (≈ 10 s); after MISSES misses the node
+     is ready anyway, so an ask can never block the path. -->
 <script src="lib.js"></script>
 <script>localStorage.removeItem('ambient.game.balance');</script>
 <iframe id="f" src="../index.html?gamekey=ambient.game.balance&listen" style="width:800px;height:600px"></iframe>
@@ -20,8 +24,8 @@ const mulberry = (a) => () => { a = (a + 0x6d2b79f5) >>> 0; let t = Math.imul(a 
 document.getElementById('f').addEventListener('load', async () => {
   try {
     const w = document.getElementById('f').contentWindow, A = w.AMB, T = A.tree, K = A.contracts, nodes = T.NODES;
-    const TIME = { contract: (d) => 40 + 12 * Math.min(d.goal, 8), echo: (d) => 45 + 15 * A.puzzles.respLen(d.d), secret: 45, open: 8 };
-    const tOf = (d) => (d.kind === 'reponse' ? TIME.echo(d) : TIME.contract(d));
+    const TIME = { contract: (d) => 40 + 12 * Math.min(d.goal, 8), echo: (d) => 45 + 15 * A.puzzles.respLen(d.d), demande: 60, secret: 45, open: 8 };
+    const tOf = (d) => (d.kind === 'reponse' ? TIME.echo(d) : d.kind === 'demande' ? TIME.demande : TIME.contract(d));
     const fmt = (s) => (s / 60).toFixed(1);
     // a key secret is reachable once its node is owned (Lenteur céleste also plays Halo and Tempo); MIDI-only ones for the musician
     const SECRET_NEED = { lent: ['e.halo', 'm.tempo'] };
@@ -76,6 +80,8 @@ document.getElementById('f').addEventListener('load', async () => {
     }
 
     const echoes = K.DEFS.filter((d) => d.kind === 'reponse').map((d) => `${d.title} ${A.puzzles.respLen(d.d)}`);
+    const asks = K.DEFS.filter((d) => d.kind === 'demande');
+    ok(asks.length && asks.every((d) => d.node && A.demands.MISSES > 0 && d.ask && ['hit', 'by'].includes(d.ask.how)), `S5.5 : ${asks.length} défis demandés en musique (${TIME.demande} s chacun), prêts quand même après ${A.demands.MISSES} ratés : jamais d'impasse`);
     const base = K.DEFS.reduce((a, d) => a + tOf(d), 0);
     log(`ouvrir un nœud prêt : ${TIME.open} s (lire la carte, toucher Ouvrir)`);
     log(`${K.DEFS.length} défis (${echoes.length} Échos : ${echoes.join(', ')}), ${nodes.length - 1} nœuds à ouvrir ; somme des temps nominaux ${fmt(base)} min`);

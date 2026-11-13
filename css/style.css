@@ -442,6 +442,11 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .lcd-task.ready .lcd-task-txt { justify-self: start; padding: 1px 8px !important; border-radius: 4px; background: var(--lcd-fg); color: #1a1408; text-shadow: none; animation: ready-pulse 2s ease-in-out infinite; }
 .lcd-task.ready .lcd-task-txt:hover { color: #000 !important; background: #fff3c4; }
 .lcd-task.ready .lcd-task-n { color: var(--lcd-fg); font-size: 16px; }
+/* S5.5 a live ask: the countdown in musical time, lit up when it is now */
+.lcd-task.demand .lcd-task-txt { color: #fff3c4; }
+.lcd-task.demand .lcd-task-n { justify-self: end; padding: 0 6px; border-radius: 4px; border: 1px solid var(--lcd-fg); color: var(--lcd-fg); font-size: 18px; }
+.lcd-task.demand.hot .lcd-task-n { background: var(--lcd-fg); color: #1a1408; text-shadow: none; animation: ready-pulse .5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .lcd-task.demand.hot .lcd-task-n { animation: none; } }
 @keyframes ready-pulse { 50% { box-shadow: 0 0 12px var(--lcd-fg); filter: brightness(1.15); } }
 .tree-btn.has-ready::after { content: '✦'; position: absolute; top: -6px; right: -6px; font-size: 13px; color: var(--lcd-fg); text-shadow: 0 0 6px var(--lcd-fg); animation: ready-pulse 2s ease-in-out infinite; }
 /* the card that says what a node gives, before opening it */
