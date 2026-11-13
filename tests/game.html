@@ -183,6 +183,54 @@ window.addEventListener('load', async ()=>{
     gate('p.suite'); P.cancel(); let k=0;
     while(!(res && res.out) && k++<10){ res=null; until(()=>P.cur); const c=P.cur; c.midis.forEach((m,i)=>lv(m+1, c.ans+i)); }
     ok(res && res.out && res.open==='p.suite' && k===6 && g.isReady('m.phrase') && g.open('m.phrase'), '6 réponses manquées : la porte (Phrases) est prête quand même');
+    // S5.3 — no ceiling: named tiers past 8 notes, the score saved, gates unchanged
+    { g.s.active=[]; const tiers=[], recs=[], streaks=[];
+      AMB.bus.on('resp:tier',e=>tiers.push(e.name)); AMB.bus.on('resp:record',e=>recs.push(e.best)); AMB.bus.on('resp:streak',e=>streaks.push(e.streak));
+      const next=(lvl)=>{ P.cancel(); if(lvl!=null) st.lvl=lvl; P.wait=0; res=null; until(()=>P.cur); return P.cur; };
+      const tri=(c,i)=>c.midis.slice(3*i,3*i+3);
+      // the right answer: each note on its place (a fifth higher when asked); a chord played inverted (3rd and 5th below, root on top)
+      const answer=(c)=>{ if(c.chord) c.pcs.forEach((_,i)=>{ const t=tri(c,i), at=c.ans+i*1.5; lv(t[1],at); lv(t[2]-12,at+0.03); lv(t[0]+12,at+0.06); });
+        else c.want.forEach((m,i)=>lv(m, c.ans+c.steps[i]*sd+0.03)); };
+      st.streak=0; st.best=2; const L7=AMB.seq.scale.length;
+      let c=next(5), seen=[];
+      let allOk=true; for(let k=0;k<9;k++){ seen.push(P.level(st.lvl).id+':'+c.len); answer(c); if(!(res&&res.ok)){ allOk=false; break; } c=next(); }
+      ok(allOk && st.lvl===14 && tiers.join()==='Octaves,Syncopes,Quinte,Accords,Combinaisons', 'des réussites : un palier après l\'autre ('+tiers.join(' → ')+') ; niveaux '+seen.join(' '));
+      ok(recs.join()==='3' && st.best===9 && st.streak===9 && streaks.slice(-3).join()==='7,8,9', 'série et record : le record (2) battu une fois, à 3 ; série '+st.streak+', record '+st.best);
+      ok(P.cur.tier==='combi' && P.cur.sync && P.cur.f<1 && P.tol(sd,P.cur.f)<P.tol(sd), 'au-delà : combinaisons, jugement plus serré ('+Math.round(P.tol(sd,P.cur.f)*1000)+' ms au lieu de '+Math.round(P.tol(sd)*1000)+')');
+      { const c=P.cur; lv(c.want[0]+1, c.ans+0.03); until(()=>!P.cur, 30); }
+      ok(res && !res.ok && st.lvl===13 && st.streak===0 && st.best===9 && P.level(st.lvl).id==='accords', 'un raté : un cran plus bas (Accords), la série retombe, le record reste');
+      const saved=JSON.parse(localStorage.getItem('ambient.game.test')).resp;
+      ok(saved.lvl===13 && saved.streak===0 && saved.best===9, 'palier, série et record sauvegardés '+JSON.stringify({lvl:saved.lvl,streak:saved.streak,best:saved.best}));
+      // octave leaps: the leap must be played (the same note an octave off is wrong)
+      c=next(6); const jump=c.degs.findIndex((d,i)=>i && Math.abs(d-c.degs[i-1])===L7);
+      ok(c.oct && jump>0 && c.timed, 'Octaves : un saut d\'une octave dans la phrase ('+c.degs.join(' ')+')');
+      c.want.forEach((m,i)=>lv(m+(i===jump?(c.degs[jump]>c.degs[jump-1]?-12:12):0), c.ans+c.steps[i]*sd+0.03));
+      ok(res && !res.ok && res.row[jump].state==='far' && res.row.filter(p=>p.state==='ok').length===c.len-1, 'saut d\'octave joué sans sauter : faux');
+      c=next(6); c.want.forEach((m,i)=>lv(m+12, c.ans+c.steps[i]*sd+0.03)); ok(res && res.ok, 'le même saut une octave plus haut (MIDI) : juste');
+      // syncopations: an off-beat note played on the beat is refused
+      c=next(8); const offs=c.steps.map((x,i)=>x%4===2?i:-1).filter(i=>i>0);
+      ok(c.timed && offs.length>=2 && c.steps[0]===0, 'Syncopes : '+offs.length+' notes entre les temps ('+c.steps.join(' ')+')');
+      const si=offs[0]; c.want.forEach((m,i)=>lv(m, c.ans+(c.steps[i]-(i===si?2:0))*sd+0.02));
+      ok(res && !res.ok && res.row[si].state==='off' && res.row[si].dir==='early', 'une syncope jouée sur le temps : refusée');
+      // a fifth higher: judged right when shifted, wrong when played as heard
+      c=next(10); ok(c.tr>0 && c.want.every((m,i)=>m>c.midis[i]) && c.want.every(m=>m<=AMB.theory.degreeToMidi(8,AMB.seq.root,AMB.seq.scale,4)), 'Quinte : la phrase est à rejouer '+c.tr+' degrés plus haut, toujours sur A–L');
+      c.midis.forEach((m,i)=>lv(m, c.ans+c.steps[i]*sd+0.03));
+      ok(res && !res.ok && res.row[0].state==='far', 'Quinte : rejouée telle quelle → fausse');
+      c=next(10); answer(c); ok(res && res.ok, 'Quinte : décalée d\'une quinte → juste');
+      // chords: any inversion, by hand (MIDI) or forced (long press on a pad, low notes)
+      c=next(12); ok(c.chord && c.len===1 && c.pcs[0].length===3, 'Accords : la machine joue un accord ('+tri(c,0).join(' ')+')');
+      answer(c); ok(res && res.ok, 'un accord renversé (tierce et quinte en bas, fondamentale en haut) : juste');
+      c=next(13); run(c.ans-now+0.1); P.chordIn(c.cdeg[0]+L7, now); ok(c.row[0] && c.row[0].state==='ok', 'un accord forcé (appui long sur une pastille) du bon degré : juste');
+      { const t=tri(c,1); lv(t[0], now); lv(t[1]+1===t[2]?t[1]-1:t[1]+1, now+0.02); }
+      ok(res && !res.ok && res.row[1].state==='far', 'une note étrangère à l\'accord : faux');
+      ok(/'chord', \(c\) => \{ if \(c && c\.forced/.test(await fetch('../js/puzzles.js').then(r=>r.text())), 'les accords forcés (bus chord) sont écoutés par la Réponse');
+      // gates stay easy for the son: 3 or 4 notes, untimed, whatever the level
+      st.lvl=20; gate('p.premier'); c=next(); ok(c.gate==='p.premier' && c.len===3 && !c.timed && !c.chord && !c.tr && !c.oct, 'porte de profondeur ≤ 3 au palier 20 : 3 notes, sans rythme');
+      gate('p.gamme'); c=next(); ok(c.gate==='p.gamme' && c.len===4 && !c.timed && !c.chord && !c.tr && !c.oct, 'porte profonde au palier 20 : 4 notes, sans rythme');
+      answer(c); ok(res && res.ok && st.lvl===20 && g.isReady('h.prog'), 'porte réussie : le palier du joueur n\'est pas touché');
+      // older saves: resp {len, streak, best = a length} load as a level
+      g.s.resp={len:6, streak:2, best:7, miss:{}}; ok(P.st(g).lvl===3 && P.st(g).len===6 && P.st(g).best===2 && P.level(P.st(g).lvl).id==='phrases', 'ancienne sauvegarde (resp.len 6) : niveau 6 notes, record = série');
+      g.s.resp=st; P.cancel(); }
     // 8. stopped (panic), free mode: nothing
     gate('p.composer'); until(()=>P.cur); AMB.bus.emit('panic'); ok(!P.cur, 'lecture arrêtée : la phrase s\'en va, rien de jugé');
     g.setMode('free'); notes.length=0; run(bar*12); lv(60, now);

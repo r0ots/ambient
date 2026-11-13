@@ -261,6 +261,17 @@ f.addEventListener('load', async ()=>{
     ok(A.game.isReady('t.macros') && !A.game.has('t.macros') && A.game.s.contracts.includes('p.premier') && A.lcdMsg.text==='↺ ✓ Juste !' && JSON.stringify(A.store.stableSnapshot())===snap, 'réponse juste : « Juste ! », Grands réglages prêt, l\'ambiance est intacte');
     A.garden.openNode('t.macros'); ok(A.game.has('t.macros'), 'puis le joueur l\'ouvre');
     await wait(1500); A.garden.showTree(false);
+    // S5.3: the score on the LCD (tier, series, record), the juice of a new tier, the tier mark on the Melody plant
+    { const sc=d.getElementById('lcdScore'), lcdEl=d.getElementById('lcd'), stR=P.st(A.game); A.contracts.state().active=[];
+      ok(shown('#lcdScore') && /↺ PHRASES · SÉRIE 1 · RECORD 1/.test(sc.textContent), 'LCD : le palier, la série et le record « '+sc.textContent+' »');
+      stR.lvl=11; stR.streak=4; stR.best=6; let tierEv=null; A.bus.on('resp:tier',e=>tierEv=e);
+      P.launch(ctx.currentTime+0.05, sd); const c3=P.cur; c3.want.forEach((m,i)=>A.bus.emit('live',{midi:m,time:0,vel:0.85,raw:null,played:c3.ans+c3.steps[i]*sd})); await wait(30);
+      ok(tierEv && tierEv.name==='Accords' && A.lcdMsg.text==='↑ Palier : Accords' && lcdEl.classList.contains('lcd-glitch-big') && /ACCORDS · SÉRIE 5 · RECORD 6/.test(sc.textContent), 'palier franchi : « '+A.lcdMsg.text+' », le LCD passe en glitch, « '+sc.textContent+' »');
+      ok(gv.kicks.bells && (gv.energy.bells||0)>=0.99 && P.mark()===4, 'la plante Mélodie rebondit et s\'éclaire ; repère de palier : '+P.mark());
+      const cv2=d.createElement('canvas'); cv2.width=480; cv2.height=320; const g3=cv2.getContext('2d'); gv.refresh(480,320,true);
+      const marks=gv.drawMark(g3, 14); A.game.setMode('free'); const freeMark=P.mark(), freeScore=shown('#lcdScore'); A.game.setMode('path');
+      ok(marks===4 && freeMark===0 && !freeScore, 'repère de palier dessiné près du nom (4) ; ni repère ni score en mode libre');
+      stR.lvl=1; stR.streak=1; stR.best=1; A.garden.renderScore(); }
     P.launch(ctx.currentTime+0.05, sd); A.game.setMode('free'); await wait(20);
     ok(!P.cur && P.view()===null && !shown('#pads') && P.onStep(0, ctx.currentTime, sd)===false, 'mode libre : la phrase s\'en va, aucune autre'); A.game.setMode('path'); P.wait=0; A.game.reset(); }
   A.ui.stop && A.ui.stop();

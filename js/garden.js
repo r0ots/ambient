@@ -77,13 +77,20 @@
       if (!ctx || ctx.state !== 'running' || !AMB.game.path) return 0;
       const Th = AMB.theory, root = Th.NOTE_NAMES.indexOf(AMB.store.get('global.key'));
       const scale = Th.SCALES[AMB.store.get('global.scale')] || Th.SCALES['Ionien (majeur)'];
-      const degs = (kind === 'small' ? [4] : kind === 'solve' ? [0, 2, 4, 7, 9, 11] : [0, 2, 4, 7]).map((d) => d + (o.deg || 0));
+      const J = this.JINGLES[kind], up = J ? Math.min(7, o.n || 0) : 0; // S5.3: the juice of the Réponse, higher as the series grows
+      const degs = (J ? J.degs : kind === 'small' ? [4] : kind === 'solve' ? [0, 2, 4, 7, 9, 11] : [0, 2, 4, 7]).map((d) => d + (o.deg || 0) + up);
       const out = ctx.createGain(); out.gain.value = 0.16;
       out.connect(ctx.destination); // never recorded nor frozen
       const t0 = Math.max(ctx.currentTime + 0.02, o.at || 0);
+      if (J && J.boing) { // a goofy « boing »: a triangle sliding up two octaves
+        const b = ctx.createOscillator(), bg = ctx.createGain(), f0 = Th.mtof(Th.degreeToMidi(up, root, scale, 3)), tb = t0 + degs.length * J.gap;
+        b.type = 'triangle'; b.frequency.setValueAtTime(f0, tb); b.frequency.exponentialRampToValueAtTime(f0 * 4, tb + 0.28);
+        bg.gain.setValueAtTime(0, tb); bg.gain.linearRampToValueAtTime(0.35, tb + 0.02); bg.gain.exponentialRampToValueAtTime(0.0001, tb + 0.4);
+        b.connect(bg); bg.connect(out); b.start(tb); b.stop(tb + 0.45);
+      }
       degs.forEach((dg, i) => {
         const f = Th.mtof(Th.degreeToMidi(dg, root, scale, 5));
-        const at = t0 + (kind === 'solve' ? (i < 3 ? 0 : 0.35) + i % 3 * 0.02 : i * 0.09);
+        const at = t0 + (J ? i * J.gap : kind === 'solve' ? (i < 3 ? 0 : 0.35) + i % 3 * 0.02 : i * 0.09);
         for (const [mul, amp] of [[1, 1], [2.76, 0.25], [5.4, 0.08]]) { // bell-ish partials
           const o = ctx.createOscillator(), g = ctx.createGain();
           o.type = 'sine'; o.frequency.value = f * mul;
@@ -95,14 +102,21 @@
       setTimeout(() => out.disconnect(), 3000 + (t0 - ctx.currentTime) * 1000);
       return degs.length;
     },
+    // S5.3 jingles of the Réponse (scale degrees, gap between notes in s): a series that grows, a record, a new tier
+    JINGLES: {
+      streak: { degs: [0, 2, 4], gap: 0.07 },
+      record: { degs: [0, 4, 2, 6, 4, 9], gap: 0.06, boing: true },
+      tier: { degs: [0, 2, 4, 7, 9, 11, 14], gap: 0.075, boing: true },
+    },
     // ---- S4.5w: an opening lands on the music ----
     // next strong beat (beat 1 or 3 of the bar, counted from the song section's start) at least `lead` s ahead, on the
     // audio clock; null while the sequencer is stopped. S.step is the next step to schedule, at S.nextTime.
-    strongBeat(lead = 0.05, S = AMB.seq, now = AMB.engine && AMB.engine.ctx && AMB.engine.ctx.currentTime) {
+    // unit = 4: the next beat
+    strongBeat(lead = 0.05, S = AMB.seq, now = AMB.engine && AMB.engine.ctx && AMB.engine.ctx.currentTime, unit = 8) {
       if (!S || !S.playing || now == null) return null;
       const sd = S.stepDur(), o = S.origin || 0;
       let j = S.step + Math.ceil((now + lead - S.nextTime) / sd - 1e-6);
-      j += (8 - (((j - o) % 8) + 8) % 8) % 8;
+      j += (unit - (((j - o) % unit) + unit) % unit) % unit;
       return S.nextTime + (j - S.step) * sd;
     },
     // the opened layer's own chime note (scale degrees above the key's root): each plant has its voice
@@ -250,15 +264,42 @@
       const P = AMB.puzzles; if (!e || !P || !AMB.game.path) return;
       if (e.phase === 'call') {
         const ctx = AMB.engine && AMB.engine.ctx, c = P.cur, ms = ctx ? Math.max(0, (e.ans - ctx.currentTime) * 1000) : 0;
-        clearTimeout(this._toiT);
-        this._toiT = setTimeout(() => { if (P.cur === c && c) this.lcd('↺ À toi', 2500); }, ms);
+        const say = e.tr ? '↺ Une quinte plus haut !' : e.chord ? (e.len > 1 ? '↺ À toi : les accords' : '↺ À toi : l\'accord') : '↺ À toi';
+        clearTimeout(this._toiT); this.renderScore();
+        this._toiT = setTimeout(() => { if (P.cur === c && c) this.lcd(say, 2500); }, ms);
       } else if (e.phase === 'end' && e.res) {
         const r = e.res, node = r.open && AMB.tree.byId[AMB.contracts.byId[r.open].node];
+        this.renderScore(r.ok && r.streak > 1);
         if (r.out) { AMB.ui.toast(`Pas cette fois, mais ${node ? node.name : 'la suite'} est prêt à ouvrir quand même.`); this.lcd('✦ Prêt quand même', 3000); }
         else if (r.open) return; // the ready chime and « ✦ Ouvrir » say it
+        else if (r.tier) { this.cheer('tier'); this.lcd(`↑ Palier : ${r.tier}`, 4000); }
+        else if (r.record) { this.cheer('record', r.best); this.lcd(`★ Record : série ${r.best} !`, 3500); }
+        else if (r.ok && r.streak > 1) { this.cheer('streak', r.streak); this.lcd(`✓ Juste · série ${r.streak}`, 2500); }
         else if (r.ok) { this.chime('small'); this.lcd(`✓ Juste · prochaine : ${r.next}`, 2500); }
-        else this.lcd(`↺ Presque · prochaine : ${r.next}`, 2500);
+        else this.lcd(P.level(r.lvl).tier ? `↺ Presque · ${r.name}` : `↺ Presque · prochaine : ${r.next}`, 2500);
       }
+    },
+    // S5.3 the score of the Réponse on the LCD (path only, once a phrase came): tier reached, series, record
+    renderScore(bump) {
+      const el = $('#lcdScore'), P = AMB.puzzles; if (!el || !P) return;
+      const v = AMB.game.path && !this.handedOver() ? P.score() : null;
+      el.hidden = !v; if (!v) return;
+      el.textContent = `↺ ${v.name.toUpperCase()} · SÉRIE ${v.streak} · RECORD ${v.best}`;
+      el.title = `Réponse : palier ${v.name}, ${v.streak} réussie${v.streak > 1 ? 's' : ''} d'affilée, record ${v.best}`;
+      if (bump) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+    },
+    // S5.3 juice (a series that grows, a record, a new tier): the LCD glitches, a short jingle lands on the next beat, the
+    // Melody plant bounces and shines (a reflection only). Reduced motion: no glitch nor bounce (a steady flash, the jingle).
+    cheer(kind, n = 0) {
+      const lcd = $('#lcd'), cls = kind === 'streak' ? 'lcd-glitch' : 'lcd-glitch-big';
+      if (lcd) {
+        lcd.classList.remove('lcd-glitch', 'lcd-glitch-big'); void lcd.offsetWidth; lcd.classList.add(cls);
+        clearTimeout(this._glT); this._glT = setTimeout(() => lcd.classList.remove(cls), kind === 'streak' ? 700 : 1400);
+      }
+      this.chime(kind, { at: this.strongBeat(0.08, undefined, undefined, 4), n });
+      const GV = AMB.gardenVisual;
+      if (GV && GV.kicks) { const t = GV.t || 0; GV.kicks.bells = { t0: t, last: t + (kind === 'streak' ? 0 : 0.6) }; GV.energy.bells = Math.max(GV.energy.bells || 0, kind === 'streak' ? 0.7 : 1); }
+      return cls;
     },
 
     build() {
@@ -307,12 +348,12 @@
       if (AMB.bus) {
         AMB.bus.on('game:contract', (d) => { this.renderContracts(d && d.id); if (!d || !d.id) this.checkEnd(); }); // ↷ on the last one
         AMB.bus.on('game:contracts', () => this.checkEnd());
-        ['contracts', 'mode', 'reset', 'unlock'].forEach((ev) => AMB.bus.on('game:' + ev, () => this.renderContracts()));
+        ['contracts', 'mode', 'reset', 'unlock'].forEach((ev) => AMB.bus.on('game:' + ev, () => { this.renderContracts(); this.renderScore(); }));
         AMB.bus.on('game:ready', () => this.renderContracts());
         ['mode', 'reset'].forEach((ev) => AMB.bus.on('game:' + ev, () => this.ask(null)));
       }
       if (AMB.contracts) AMB.contracts.refill();
-      this.renderContracts();
+      this.renderContracts(); this.renderScore();
       this.wireTree(); // map: hover / focus / touch selection, pan & zoom (garden-tree.js)
       const tb = $('#treeBtn'); if (tb) tb.addEventListener('click', () => this.showTree(true));
       const od = $('#openDlg');
