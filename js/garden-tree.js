@@ -75,6 +75,7 @@
       d.hidden = !on;
       if (this.resetPointers) this.resetPointers(); // no finger left over from the last visit
       if (on) { this.select(null); this.renderTree(); this.fitTree(); if (AMB.discoveries) AMB.discoveries.render(); }
+      if (this.hiscores) this.hiscores.render(); // S6.6 (the entry of the initials shows while the Arbre is open)
     },
     // ---- the screen: header (nodes open, discoveries) + the map, built once and repainted ----
     renderTree() {

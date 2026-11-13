@@ -14,11 +14,38 @@
       AMB.game.setMode(mode);
       this.welcome(false);
       this.renderSwitch();
-      AMB.ui.toast(mode === 'path' ? AMB.game.txt('🌱 Parcours : une seule note pour commencer. {Touche une pastille, une touche de A à L ou ton clavier MIDI.|Touche une pastille de couleur.}') : '◎ Mode libre : tout est ouvert');
+      // S6.6: stopped, the Parcours starts on « INSERT COIN » (the stage says it, no toast); already playing, the toast
+      if (mode === 'free') AMB.ui.toast('◎ Mode libre : tout est ouvert');
+      else if (!this.coinUp()) AMB.ui.toast(AMB.game.txt('🕹 Parcours : une seule note pour commencer. {Touche une pastille, une touche de A à L ou ton clavier MIDI.|Touche une pastille de couleur.}'));
+    },
+    // ---- S6.6 « INSERT COIN »: in the Parcours, before the first sound, the stage is a blinking title screen (css
+    // body.game:not(.playing):not(.coined) #coin); the first press — a finger on it or on a pad, a key, a MIDI note
+    // (play.js firstNote) — starts the music. Once per page; free mode never sees it. ----
+    coinUp() { const b = document.body; return !!(AMB.game && AMB.game.path && b && !b.classList.contains('playing') && !b.classList.contains('coined')); },
+    coin() {
+      if (!this.coinUp()) return false;
+      document.body.classList.add('coined');
+      if (AMB.ui && AMB.ui.play) Promise.resolve(AMB.ui.play()).catch(() => {});
+      return true;
+    },
+    coinWire() {
+      const c = $('#coin'); if (!c) return;
+      const say = () => { const s = c.querySelector('small'); if (s) s.textContent = AMB.game.txt('{une note : pastille, touche A–L ou clavier MIDI|touche l\'écran ou une pastille}'); };
+      say(); if (AMB.bus) AMB.bus.on('game:mode', say);
+      c.addEventListener('pointerdown', (e) => { e.preventDefault(); this.coin(); });
+      c.addEventListener('click', () => this.coin()); // (keyboard: Enter on the focused button)
+      window.addEventListener('keydown', (e) => {
+        if (!this.coinUp() || e.repeat || e.metaKey || e.ctrlKey || e.altKey || this.modalUp() || /^(Shift|Tab|Escape|Meta|Control|Alt|CapsLock|Dead)$/.test(e.key)) return;
+        const t = e.target && e.target.tagName; if (t === 'INPUT' || t === 'SELECT' || t === 'TEXTAREA') return;
+        if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); } // (not also ui.js's play / stop toggle)
+        this.coin(); // a note key goes on: play.js plays it
+      }, true);
+      // the music started another way (▶ Lecture of the bar): the title is gone for good
+      if (typeof MutationObserver === 'function') new MutationObserver(() => { const b = document.body; if (b.classList.contains('playing') && !b.classList.contains('coined')) b.classList.add('coined'); }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
     },
     renderSwitch() {
       const b = $('#gameMode'); if (!b) return;
-      b.textContent = AMB.game.path ? '◎ Passer en mode libre' : '🌱 Parcours (ouvrir pas à pas)';
+      b.textContent = AMB.game.path ? '◎ Passer en mode libre' : '🕹 Parcours (ouvrir pas à pas)';
     },
     // ---- the challenge on the 2nd line of the LCD (v1.06): one at a time, ↷ = the next one, a tap = how to do it ----
     // S4.6: a node won waits there first, « ✦ Ouvrir : <nœud> » (pulsing; « N prêts » when several wait): a tap tells what
@@ -354,29 +381,30 @@
     //   'arcade' = the message scrolls in and blinks) · bounce (the buttons hop) · hop (one element hops) · punch (the scene
     //   zooms in, 1 | 1.5 | 2) · jingle (garden.chime kind, in the key) · pop (text that jumps out, arcade combo) · splash
     //   (S5.2 splashes of a plant) · beats (confetti again on the next beats) · say (the LCD message) · kick (S5.8 scene
-    //   layers of the Jardin that flare up: gardenVisual.flare, same JUICE).
+    //   layers of the Jardin that flare up: gardenVisual.flare, same JUICE) · boom (S6.6 the moment's comic onomatopoeia:
+    //   « POW! » in a starburst bubble, halftone, neon, tilted, bouncing in, the pop text under it; size by rank, × JUICE).
     // Moments fired in the same tick merge: the biggest (rank) plays alone (a gate answered = a challenge won, not also a
     // series). Reduced motion: a soft flash only (plus the jingle and the LCD message). S5.10 (combos, discoveries) reuses
     // it: fx('discovery', {name}).
     FX: {
-      first: { rank: 1, confetti: 16, from: 'el', hop: 'el', jingle: 'pop', pop: '✦', kick: ['fireflies'] }, // a new control touched the 1st time
-      juste: { rank: 2, confetti: 12, from: '#lcd', hop: '#lcdScore', jingle: 'small', kick: ['fireflies'] }, // a right answer (series of 1)
-      ready: { rank: 2, confetti: 24, from: '#treeBtn', hop: '#treeBtn', jingle: 'ready', kick: ['fireflies', 'twinkle'] }, // a node waits on « ✦ Ouvrir »
+      first: { rank: 1, boom: 'POP!', confetti: 16, from: 'el', hop: 'el', jingle: 'pop', pop: '✦', kick: ['fireflies'] }, // a new control touched the 1st time
+      juste: { rank: 2, boom: 'BIP!', confetti: 12, from: '#lcd', hop: '#lcdScore', jingle: 'small', kick: ['fireflies'] }, // a right answer (series of 1)
+      ready: { rank: 2, boom: 'DING!', confetti: 24, from: '#treeBtn', hop: '#treeBtn', jingle: 'ready', kick: ['fireflies', 'twinkle'] }, // a node waits on « ✦ Ouvrir »
       consolation: { rank: 2, confetti: 10, from: '#treeBtn', hop: '#treeBtn', jingle: 'small', kick: ['fireflies'] }, // a gate missed 6 times: « prêt quand même », no party
-      streak: { rank: 3, flash: 0.25, confetti: 40, shake: 1, lcd: 'glitch', jingle: 'streak', pop: (o) => `×${o.n} !`, splash: 'streak', kick: ['twinkle', 'ripple'], say: (o) => `✓ Juste · série ${o.n}` },
-      defi: { rank: 4, flash: 0.5, confetti: 140, shake: 1, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'defi', pop: 'DÉFI RÉUSSI !!!', kick: ['rays', 'twinkle', 'ripple'] },
-      record: { rank: 5, flash: 0.55, confetti: 160, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1, jingle: 'record', pop: (o) => `★ RECORD ×${o.n} !`, splash: 'record', kick: ['aurora', 'twinkle', 'song'], say: (o) => `★ Record : série ${o.n} !` },
-      tier: { rank: 6, flash: 0.65, confetti: 220, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1.5, jingle: 'tier', pop: (o) => `↑ ${String(o.name || 'palier').toUpperCase()} !!`, splash: 'tier', kick: ['aurora', 'rays', 'song', 'ripple'], say: (o) => `↑ Palier : ${o.name}` },
-      open: { rank: 7, flash: 0.75, confetti: 260, shake: 2, lcd: 'arcade', bounce: 1, punch: 1.5, jingle: 'unlock', pop: 'OUVERT !!!', splash: 'tier', kick: ['rays', 'aurora', 'ripple', 'hue'] },
-      end: { rank: 8, flash: 1, confetti: 380, shake: 2, lcd: 'arcade', bounce: 1, punch: 2, jingle: 'end', pop: 'À TOI !!!', beats: 3, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'hue'] },
-      placement: { rank: 10, flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => `⚡ ${String(o.name || 'musicien').toUpperCase()} !!!`, hop: '#treeBtn', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `⚡ ${o.name || 'Musicien'} détecté` }, // S5.4 a Réponse placement (the queue « n prêts » is on the LCD's 2nd line)
+      streak: { rank: 3, boom: 'ZING!', flash: 0.25, confetti: 40, shake: 1, lcd: 'glitch', jingle: 'streak', pop: (o) => `×${o.n} !`, splash: 'streak', kick: ['twinkle', 'ripple'], say: (o) => `✓ Juste · série ${o.n}` },
+      defi: { rank: 4, boom: 'POW!', flash: 0.5, confetti: 140, shake: 1, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'defi', pop: 'DÉFI RÉUSSI !!!', kick: ['rays', 'twinkle', 'ripple'] },
+      record: { rank: 5, boom: 'KAPOW!', flash: 0.55, confetti: 160, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1, jingle: 'record', pop: (o) => `★ RECORD ×${o.n} !`, splash: 'record', kick: ['aurora', 'twinkle', 'song'], say: (o) => `★ Record : série ${o.n} !` },
+      tier: { rank: 6, boom: 'WHAM!', flash: 0.65, confetti: 220, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1.5, jingle: 'tier', pop: (o) => `↑ ${String(o.name || 'palier').toUpperCase()} !!`, splash: 'tier', kick: ['aurora', 'rays', 'song', 'ripple'], say: (o) => `↑ Palier : ${o.name}` },
+      open: { rank: 7, boom: 'KA-BLAM!', flash: 0.75, confetti: 260, shake: 2, lcd: 'arcade', bounce: 1, punch: 1.5, jingle: 'unlock', pop: 'OUVERT !!!', splash: 'tier', kick: ['rays', 'aurora', 'ripple', 'hue'] },
+      end: { rank: 8, boom: 'KA-BOOM!', flash: 1, confetti: 380, shake: 2, lcd: 'arcade', bounce: 1, punch: 2, jingle: 'end', pop: 'À TOI !!!', beats: 3, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'hue'] },
+      placement: { rank: 10, boom: 'WHOOSH!', flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => `⚡ ${String(o.name || 'musicien').toUpperCase()} !!!`, hop: '#treeBtn', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `⚡ ${o.name || 'Musicien'} détecté` }, // S5.4 a Réponse placement (the queue « n prêts » is on the LCD's 2nd line)
       // S5.5 the live asks (js/demands.js), judged on the time; n = the combo of successes in a row
-      parfait: { rank: 4, flash: 0.5, confetti: 130, shake: 1, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'streak', pop: (o) => o.n > 1 ? `PARFAIT !!! ×${o.n}` : 'PARFAIT !!!', splash: 'streak', kick: ['rays', 'twinkle', 'ripple'],
+      parfait: { rank: 4, boom: 'SHAZAM!', flash: 0.5, confetti: 130, shake: 1, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'streak', pop: (o) => o.n > 1 ? `PARFAIT !!! ×${o.n}` : 'PARFAIT !!!', splash: 'streak', kick: ['rays', 'twinkle', 'ripple'],
         say: (o) => `★ Parfait !${o.n > 1 ? ' ×' + o.n : ''}${o.node ? ' · ✦ ' + o.node : ''}` },
-      bien: { rank: 3, flash: 0.25, confetti: 50, shake: 1, lcd: 'glitch', jingle: 'streak', pop: (o) => o.n > 1 ? `BIEN ! ×${o.n}` : 'BIEN !', kick: ['twinkle'],
+      bien: { rank: 3, boom: 'ZIP!', flash: 0.25, confetti: 50, shake: 1, lcd: 'glitch', jingle: 'streak', pop: (o) => o.n > 1 ? `BIEN ! ×${o.n}` : 'BIEN !', kick: ['twinkle'],
         say: (o) => `✓ Bien !${o.n > 1 ? ' ×' + o.n : ''}${o.node ? ' · ✦ ' + o.node : ''}` },
-      rate: { rank: 1, lcd: 'glitch', say: (o) => `✗ Raté${o.why ? ' · ' + o.why : ''} : la musique continue` },
-      discovery: { rank: 9, flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => o.name ? `${String(o.name).toUpperCase()} !!!` : 'DÉCOUVERTE !!!', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `✦ Découverte${o.name ? ' : ' + o.name : ' !'}` },
+      rate: { rank: 1, boom: 'BZZT!', lcd: 'glitch', say: (o) => `✗ Raté${o.why ? ' · ' + o.why : ''} : la musique continue` },
+      discovery: { rank: 9, boom: 'ZAP!', flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => o.name ? `${String(o.name).toUpperCase()} !!!` : 'DÉCOUVERTE !!!', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `✦ Découverte${o.name ? ' : ' + o.name : ' !'}` },
     },
     // the bus events that are moments (the others call fx() where they happen: an opening, a discovery, the end, a first touch)
     FX_ON: {
@@ -417,6 +445,7 @@
       if (R.jingle) { this.chime(R.jingle, { at, n: o.n || 0, deg: o.deg || 0 }); did.push('jingle'); }
       if (R.splash && GV) { GV.cheer(R.splash, at, o.plant); did.push('splash'); }
       if (!red) for (const k of ['confetti', 'shake', 'lcd', 'bounce', 'hop', 'punch', 'pop', 'kick']) if (R[k]) did.push(k);
+      if (!red && R.boom && J > 0) did.push('boom');
       const beatMs = AMB.seq && AMB.seq.playing ? AMB.seq.stepDur() * 4000 : 380;
       let waits = 0;
       const fire = () => {
@@ -432,7 +461,7 @@
         if (R.bounce) this.fxClass(document.body, 'fx-bounce', 800);
         const el = R.hop === 'el' ? o.el : R.hop && $(R.hop); if (el) this.fxClass(el, 'fx-hop', 550);
         if (R.kick && GV && GV.flare) GV.flare(R.kick, J);
-        if (R.pop) this.fxPop(typeof R.pop === 'function' ? R.pop(o) : R.pop, stage, R.rank);
+        if (R.pop || R.boom) this.fxPop(R.pop ? (typeof R.pop === 'function' ? R.pop(o) : R.pop) : '', stage, R.rank, J > 0 ? R.boom : null, J);
         if (R.confetti) {
           const src = R.from === 'el' ? o.el : R.from ? $(R.from) : stage, n = Math.round(R.confetti * J);
           this.confetti.burst(n, src || stage);
@@ -456,12 +485,29 @@
       f.style.setProperty('--a', a.toFixed(2)); f.classList.toggle('soft', !!soft);
       this.fxClass(f, 'on', soft ? 950 : 600);
     },
-    fxPop(text, stage, rank) {
+    // the pop text; S6.6 with its onomatopoeia (`boom`): a comic starburst (halftone, two neons picked by the word, tilted,
+    // bouncing in), the pop text under it, size by rank × JUICE; never over the LCD (it stays readable during an ask)
+    BOOM_COLS: [['#ff3fa4', '#fff36b', '#3ff0ff'], ['#3ff0ff', '#ff3fa4', '#fff36b'], ['#ffd23f', '#ff3348', '#3ff0ff'], ['#9d6bff', '#3ff0ff', '#fff36b']],
+    fxPop(text, stage, rank, boom = null, J = 1) {
       const L = this.confetti.layer(), r = stage ? stage.getBoundingClientRect() : { left: 0, top: 0, width: innerWidth, height: innerHeight };
-      const p = document.createElement('div'); p.className = 'fx-pop'; p.textContent = text;
-      p.style.left = Math.round(r.left + r.width / 2) + 'px'; p.style.top = Math.round(r.top + r.height * 0.42) + 'px';
-      p.style.fontSize = `min(${24 + rank * 5}px, 10vw)`;
-      L.hidden = false; L.append(p); setTimeout(() => { p.remove(); this.confetti.idle(); }, 1300);
+      const p = document.createElement('div'); p.className = 'fx-pop';
+      const x = Math.round(r.left + r.width / 2); let y = Math.round(r.top + r.height * 0.42);
+      if (boom) {
+        let h = 0; for (const c of boom) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+        const C = this.BOOM_COLS[h % this.BOOM_COLS.length], k = Math.min(1.6, 0.6 + 0.4 * J);
+        p.classList.add('fx-boom');
+        p.style.setProperty('--b1', C[0]); p.style.setProperty('--b2', C[1]); p.style.setProperty('--b3', C[2]);
+        p.style.setProperty('--rot', ((this._boomTilt = -(this._boomTilt || 9)) + (Math.random() - 0.5) * 6).toFixed(1) + 'deg');
+        p.style.animationDuration = rank >= 7 ? '1.8s' : '1.3s';
+        p.style.fontSize = `min(${Math.round((22 + rank * 4) * k)}px, ${(8 * k).toFixed(1)}vw)`;
+        const b = document.createElement('b'); b.textContent = boom; p.append(b);
+        if (text) { const s = document.createElement('small'); s.textContent = text; p.append(s); }
+      } else { p.textContent = text; p.style.fontSize = `min(${24 + rank * 5}px, 10vw)`; }
+      p.style.left = x + 'px'; p.style.top = y + 'px';
+      L.hidden = false; L.append(p);
+      const lcd = document.getElementById('lcd'), lr = lcd && lcd.getBoundingClientRect(), half = p.offsetHeight * 0.75;
+      if (lr && lr.height && y - half < lr.bottom + 6) p.style.top = Math.round(lr.bottom + 6 + half) + 'px'; // under the LCD, never over it
+      setTimeout(() => { p.remove(); this.confetti.idle(); }, boom && rank >= 7 ? 1800 : 1300);
       while (L.querySelectorAll('.fx-pop').length > 3) L.querySelector('.fx-pop').remove();
     },
     // pixel confetti on one fixed, click-through canvas over the whole page; it only draws while some are flying
@@ -550,6 +596,7 @@
         document.querySelectorAll('.modal').forEach((m) => mo.observe(m, { attributes: true, attributeFilter: ['hidden'] }));
       }
       this.pressFeedback();
+      this.coinWire(); this.hiscores.build();
       // S5.7: a touch screen in the path: no MIDI button, no keyboard words (css body.game.touch, game.txt)
       this.applyTouch(); if (window.matchMedia) { const q = matchMedia('(pointer: coarse)'); if (q.addEventListener) q.addEventListener('change', () => this.applyTouch()); }
       const task = $('#lcdTask');
@@ -599,6 +646,107 @@
       if (AMB.game.s.mode === null && !q.get('autoplay') && !q.get('listen')) this.welcome(true);
     },
   };
+
+  // ---- S6.6 HIGH SCORES of the Réponse (its series: the same score as the LCD's « SÉRIE · RECORD », no second one) ----
+  // Top 5 kept in localStorage (<game key>.hiscores, try/catch), shown in the Arbre like an arcade cabinet. A series that
+  // enters the top 5 (≥ MIN) waits to be signed (★ on the Arbre button); in the Arbre, three initials arcade-style:
+  // letters typed (↑ ↓ ← →, ⌫, Entrée), ▲ ▼ and OK under a finger, or MIDI notes = their name (C D E F G A B).
+  // The series goes on growing after it is signed: its line follows.
+  const HS = {
+    MAX: 5, MIN: 3, LETTERS: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', NOTE: 'CCDDEFFGGAAB',
+    d: null, run: null, ent: null, // d = {list: [{n, s, t, run}], last}; run = {id, s}; ent = {l: [3 letters], cur}
+    key() { return ((AMB.game && AMB.game.key) || 'ambient.game.v1') + '.hiscores'; },
+    load() {
+      if (this.d) return this.d;
+      let d = null; try { d = JSON.parse(localStorage.getItem(this.key()) || 'null'); } catch (e) { d = null; }
+      return (this.d = d && Array.isArray(d.list) ? d : { list: [], last: 'AAA', pend: null });
+    },
+    save() { try { localStorage.setItem(this.key(), JSON.stringify(this.d)); } catch (e) {} },
+    list() { return this.load().list; },
+    qualifies(s) { const L = this.list(); return s >= this.MIN && (L.length < this.MAX || s > L[L.length - 1].s); },
+    sort(L) { L.sort((a, b) => b.s - a.s || a.t - b.t); L.length = Math.min(L.length, this.MAX); },
+    // a right answer of the Réponse (resp:streak): the series' line follows, or it may enter the table
+    onStreak(n) {
+      if (!AMB.game || !AMB.game.path) return;
+      const d = this.load();
+      if (n === 1 || !this.run) this.run = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), s: 0 };
+      this.run.s = n;
+      const mine = d.list.find((e) => e.run === this.run.id);
+      if (mine) { mine.s = Math.max(mine.s, n); this.sort(d.list); this.save(); return this.render(); }
+      if (!this.qualifies(n)) return;
+      const first = !d.pend || d.pend.run !== this.run.id;
+      d.pend = { run: this.run.id, s: n }; this.save();
+      if (first && AMB.ui && AMB.ui.toast) AMB.ui.toast('★ HIGH SCORE ! Signe tes 3 initiales dans l\'Arbre');
+      this.render();
+    },
+    pend() { const p = this.load().pend; return p && this.qualifies(p.s) ? p : null; },
+    // the entry (Arbre open, a series waiting): letter i of 3, ▲ ▼, a typed letter or a MIDI note
+    entry() { const p = this.pend(), td = $('#treeDlg'); return p && td && !td.hidden ? (this.ent || (this.ent = { l: (this.load().last || 'AAA').split('').slice(0, 3), cur: 0 })) : null; },
+    put(ch) { const e = this.entry(); if (!e) return false; e.l[e.cur] = ch; if (e.cur < 2) { e.cur++; this.render(); } else this.sign(); return true; },
+    spin(i, k) { const e = this.entry(); if (!e) return; const L = this.LETTERS; e.cur = i; e.l[i] = L[(L.indexOf(e.l[i]) + k + L.length) % L.length]; this.render(); },
+    sign() {
+      const d = this.load(), p = this.pend(), e = this.ent; if (!p || !e) return null;
+      const n = e.l.join(''), row = { n, s: p.s, t: Date.now(), run: p.run };
+      d.list.push(row); this.sort(d.list); d.last = n; d.pend = null; this.ent = null; this.save();
+      if (garden.lcd) garden.lcd(`★ ${n} · SÉRIE ${p.s} · HIGH SCORE`, 3000);
+      this.render(); return row;
+    },
+    onKey(e) {
+      if (!this.entry() || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target && e.target.tagName; if (t === 'INPUT' || t === 'SELECT' || t === 'TEXTAREA') return;
+      const k = e.key, ent = this.ent;
+      if (/^[a-z]$/i.test(k)) this.put(k.toUpperCase());
+      else if (k === 'Backspace' || k === 'ArrowLeft') { ent.cur = Math.max(0, ent.cur - 1); this.render(); }
+      else if (k === 'ArrowRight') { ent.cur = Math.min(2, ent.cur + 1); this.render(); }
+      else if (k === 'ArrowUp' || k === 'ArrowDown') this.spin(ent.cur, k === 'ArrowUp' ? 1 : -1);
+      else if (k === 'Enter') this.sign();
+      else return;
+      e.preventDefault(); e.stopPropagation(); // (no note played, the map does not move)
+    },
+    render() {
+      const box = this.box; if (!box) return;
+      const g = AMB.game, L = this.list(), p = this.pend(), ent = this.entry();
+      box.hidden = !g || !g.path || (!L.length && !p);
+      const tb = $('#treeBtn'); if (tb) tb.classList.toggle('has-hs', !!(g && g.path && p));
+      if (box.hidden) return;
+      const rows = L.map((r) => ({ n: r.n, s: r.s, me: !!(this.run && r.run === this.run.id) }));
+      if (p) rows.push({ n: ent ? ent.l.map((c, i) => (i <= ent.cur ? c : '_')).join('') : '???', s: p.s, me: true, pend: true });
+      rows.sort((a, b) => b.s - a.s || (a.pend ? 1 : 0) - (b.pend ? 1 : 0));
+      const ORD = ['1ST', '2ND', '3RD', '4TH', '5TH'], ol = box.querySelector('.hs-list'); ol.innerHTML = '';
+      for (let i = 0; i < this.MAX; i++) {
+        const r = rows[i], li = document.createElement('li'); if (r && r.me) li.className = 'me';
+        [ORD[i], r ? r.n : '---', r ? `×${r.s}` : '×0', r ? 'série' : ''].forEach((x, j) => { const s = document.createElement('span'); s.textContent = x; if (j === 2) s.className = 'hs-s'; if (j === 3) s.className = 'hs-t'; li.append(s); });
+        ol.append(li);
+      }
+      const en = box.querySelector('.hs-entry'); en.hidden = !ent;
+      if (!ent) return;
+      en.querySelector('.hs-say').textContent = `★ NOUVEAU HIGH SCORE ×${p.s} ! TES INITIALES :`;
+      en.querySelectorAll('.hs-slot').forEach((s, i) => { s.classList.toggle('cur', i === ent.cur); s.querySelector('.hs-l').textContent = ent.l[i]; });
+      en.querySelector('.hs-help').textContent = g.txt('{Tape 3 lettres (↑ ↓ pour défiler, Entrée = OK) ou joue 3 notes au clavier MIDI : leur nom s\'écrit (do = C, ré = D…)|Touche ▲ ▼ pour choisir chaque lettre, puis OK}');
+    },
+    build() {
+      if (this.box || !document.body) return;
+      const box = (this.box = document.createElement('section'));
+      box.id = 'hiscores'; box.className = 'hiscores'; box.hidden = true; box.setAttribute('aria-label', 'Meilleurs scores de la Réponse');
+      const slot = (i) => `<div class="hs-slot" data-i="${i}"><button type="button" data-k="1" aria-label="Lettre ${i + 1} : suivante">▲</button><button type="button" class="hs-l" aria-label="Lettre ${i + 1}"></button><button type="button" data-k="-1" aria-label="Lettre ${i + 1} : précédente">▼</button></div>`;
+      box.innerHTML = `<h4 class="hs-title">HIGH SCORES · RÉPONSE</h4><ol class="hs-list"></ol><div class="hs-entry" hidden><span class="hs-say"></span><div class="hs-slots">${slot(0)}${slot(1)}${slot(2)}</div><button type="button" class="btn hs-ok">OK</button><p class="hs-help"></p></div>`;
+      box.addEventListener('click', (e) => {
+        const b = e.target.closest('button'), s = b && b.closest('.hs-slot'); if (!b || !this.entry()) return;
+        if (b.classList.contains('hs-ok')) return this.sign();
+        if (s) { const i = +s.dataset.i; if (b.dataset.k) this.spin(i, +b.dataset.k); else { this.ent.cur = i; this.render(); } }
+      });
+      const at = document.querySelector('#treeDlg .tree-legend');
+      if (at) at.before(box); else document.body.append(box);
+      window.addEventListener('keydown', (e) => this.onKey(e), true);
+      if (AMB.bus) {
+        AMB.bus.on('resp:streak', (x) => x && this.onStreak(x.streak));
+        AMB.bus.on('live', (n) => { if (n && n.raw != null && this.entry()) this.put(this.NOTE[((n.midi % 12) + 12) % 12]); }); // a MIDI note writes its name
+        ['mode', 'reset'].forEach((ev) => AMB.bus.on('game:' + ev, () => { this.ent = null; this.render(); }));
+      }
+      this.render();
+    },
+  };
+  garden.hiscores = HS;
 
   if (mq && mq.addEventListener) mq.addEventListener('change', (e) => { garden.reduced = e.matches; });
   AMB.garden = garden;

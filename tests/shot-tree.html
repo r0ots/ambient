@@ -38,6 +38,8 @@ document.getElementById('f').addEventListener('load', () => {
   }
   if (h.includes('free')) { A.game.setMode('free'); A.garden.welcome(false); return; }
   A.game.setMode('path'); A.garden.welcome(false);
+  if (!h.includes('coin')) doc.body.classList.add('coined'); // S6.6: past « INSERT COIN » (#coin = the title screen itself)
+  if (h.includes('coin')) return;
   if (h.includes('bar')) return; // S4.3: the very start of the Parcours
   if (h.includes('press')) { // S5.6: a button and a knob held down (press feedback, Parcours only)
     A.game.unlock('m.bells'); A.perform.setMode('sculpt');
