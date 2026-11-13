@@ -16,6 +16,8 @@ EventTarget.prototype.addEventListener = function (...a) { LISTENERS++; return a
   <div id="list" style="display:flex;gap:6px"><span class="btn" id="i0">A</span><span class="btn" id="i1">B</span><span class="btn" id="i2">C</span></div>
   <div class="stage" style="height:120px"><div id="toast" class="toast">Salut</div></div>
   <div id="probe"></div>
+  <button id="rec" class="btn">● Rec</button>
+  <div id="dlg" class="modal" hidden><div class="modal-card" style="width:300px;height:200px">Fenêtre</div></div>
 </div>
 <script>
 (async () => {
@@ -101,6 +103,34 @@ EventTarget.prototype.addEventListener = function (...a) { LISTENERS++; return a
     const ts = $('#toast'), hid = [cs(ts).opacity, cs(ts).scale];
     ts.classList.add('show'); await wait(M.MS.slow + 100);
     ok(hid[0] === '0' && parseFloat(hid[1]) < 0.5 && cs(ts).opacity === '1' && cs(ts).scale === '1', 'toast : arrive en rebond (caché ' + hid.join(' / ') + ')');
+
+    // 8b. S7.4: stronger hover tokens; windows (CRT in, ghost sucked out); ● Rec (pulse, boom); neon; a knob turned hard
+    ok(['--m-lift', '--m-z', '--m-glow', '--m-drop', '--m-bright'].every((n) => cs(root).getPropertyValue(n).trim()) && M.LEAN >= 20, 'survol S7.4 : jetons --m-lift / --m-z / --m-glow / --m-drop / --m-bright, inclinaison ' + M.LEAN + '°');
+    const dlg = $('#dlg'), card = dlg.firstElementChild;
+    dlg.hidden = false; await wait(0);
+    ok(!dlg.hidden && card.getAnimations().length > 0 && dlg.classList.contains('m-crt-on'), 'fenêtre : ouverte tout de suite, entrée en CRT (ligne qui s\'ouvre) et balayage');
+    await wait(M.MS.slow + 250);
+    dlg.hidden = true; await wait(0);
+    const gh = document.querySelector('.m-ghost-card');
+    ok(dlg.hidden && gh && gh.getAnimations().length > 0 && getComputedStyle(gh).pointerEvents === 'none', 'fenêtre : fermée tout de suite, un fantôme aspiré en un point (sans clic)');
+    await wait(M.MS.med + 250);
+    ok(!document.querySelector('.m-ghost'), 'fenêtre : le fantôme est parti');
+    const rec = $('#rec'), nR = P.n;
+    rec.classList.add('rec'); await wait(0);
+    ok(/m-rec/.test(cs(rec).animationName) && P.n > nR, '● Rec : pulse rouge pendant la prise (' + cs(rec).animationName + ')');
+    rec.classList.remove('rec'); await wait(0);
+    ok(rec.classList.contains('m-boom') && document.querySelector('.m-ring') && P.n - nR > 30, '● Rec arrêté : explose (onde, ' + (P.n - nR) + ' étincelles)');
+    const tg = $('#t');
+    ok(M.neon(tg, false) && tg.classList.contains('m-neon-off') && M.neon(tg, true) && tg.classList.contains('m-neon-on') && !tg.classList.contains('m-neon-off'), 'couche : néon qui s\'éteint en grésillant, puis se rallume avec un claquement');
+    for (let i = 0; i < 12; i++) { M.turn(k, 0.06, i * 10); await new Promise((r) => setTimeout(r, 16)); }
+    ok(k.classList.contains('m-hot'), 'potentiomètre tourné fort : onde de choc (m-hot)');
+    M.set({ reduced: true });
+    dlg.hidden = false; await wait(0);
+    ok(!card.getAnimations().length && !M.boom(rec) && !M.neon(tg, false), 'mouvement réduit : fenêtre ouverte sans animation, pas d\'explosion ni de néon');
+    dlg.hidden = true; await wait(0);
+    ok(!document.querySelector('.m-ghost-card'), 'mouvement réduit : pas de fantôme à la fermeture');
+    M.set({ reduced: null });
+    await wait(M.MS.slow + 300);
 
     // 9. no listener left behind: the utilities add none, init() twice adds none
     M.init(); for (let i = 0; i < 20; i++) { M.pop(b, 'pop'); M.roll(v, i); M.stagger([b]); M.burst(b); M.turn(k, 0.05, i); }

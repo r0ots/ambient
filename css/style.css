@@ -853,7 +853,7 @@ body.game .lcd.lcd-pin .lcd-score { display: none; }
    towards the pointer. A finger gets the same glow when it presses (.is-pressed). S7.4: stronger, from tokens (every
    wave uses these): --m-lift (rise), --m-z (3D height of the lean), --m-drop (deep cast shadow), --m-glow (neon
    radius, coloured by the element's --c where it is used), --m-bright; motion.LEAN = the lean's angle. */
-:root { --m-lift: calc(-5px * var(--m-amp)); --m-z: calc(22px * var(--m-amp)); --m-glow: calc(26px * var(--m-amp)); --m-bright: calc(1 + .2 * var(--m-amp));
+:root { --m-lift: calc(-5px * var(--m-amp)); --m-z: calc(22px * var(--m-amp)); --m-glow: calc(34px * var(--m-amp)); --m-bright: calc(1 + .2 * var(--m-amp));
   --m-drop: 0 calc(16px * var(--m-amp)) calc(18px * var(--m-amp)) calc(-7px * var(--m-amp)) #000f, 0 calc(4px * var(--m-amp)) calc(4px * var(--m-amp)) #0009; }
 @media (hover: hover) {
   /* any other control that leans (text buttons, LCD keys, tree tools…): lifts, its glyphs glow (drop-shadow) */
@@ -862,7 +862,7 @@ body.game .lcd.lcd-pin .lcd-score { display: none; }
   }
   :where(.btn, .mode-btn, .tog, .chip, label.btn, .song-chip, .chord-slot, .slot-tab, .sc-slot, .song-btns button, .loop-chip button):is(:hover, .m-tilt):not(:disabled) {
     translate: 0 var(--m-lift); filter: brightness(var(--m-bright)); color: color-mix(in srgb, var(--text, #fff) 70%, #fff);
-    box-shadow: var(--bevel), var(--m-drop), 0 0 var(--m-glow) calc(3px * var(--m-amp)) color-mix(in srgb, var(--c, var(--accent)) 75%, transparent),
+    box-shadow: var(--bevel), var(--m-drop), 0 0 var(--m-glow) calc(4px * var(--m-amp)) color-mix(in srgb, var(--c, var(--accent)) 85%, transparent),
       inset 0 0 0 1px color-mix(in srgb, var(--c, var(--accent)) calc(65% * min(1, var(--m-amp))), transparent);
   }
   select:is(:hover, .m-tilt) { translate: 0 var(--m-lift); filter: brightness(var(--m-bright));

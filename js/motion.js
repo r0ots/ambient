@@ -276,7 +276,7 @@
       if (!el || !dv || !this.on()) return 0;
       this.pop(el, 'm-turning', { ms: 450 });
       const now = performance.now(), sp = speed.get(el) || { t: now - 1000, v: 0 }, dt = Math.max(8, now - sp.t);
-      sp.v = sp.v * Math.pow(0.5, dt / 120) + Math.abs(dv) * (1000 / dt) * (1 - Math.pow(0.5, dt / 120)); sp.t = now; speed.set(el, sp);
+      sp.v = sp.v * Math.pow(0.5, dt / 60) + Math.abs(dv) * (1000 / dt) * (1 - Math.pow(0.5, dt / 60)); sp.t = now; speed.set(el, sp);
       const hot = sp.v > this.HOT;
       if (hot) { this.pop(el, 'm-hot', { ms: this.ms('slow') + 80 }); const pn = el.closest && el.closest('.panel'); if (pn) this.pop(pn, 'm-heat', { ms: this.ms('slow') + 80 }); }
       const acc = (notch.get(el) || 0) + Math.abs(dv);
