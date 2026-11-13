@@ -326,3 +326,19 @@ Vague 4
 ## Après la saison 4 — retours de l'utilisateur (v1.14)
 - [x] Ouvrir est le geste du joueur : un défi, une Réponse ou un secret réussi rend le nœud « prêt » ; le joueur l'ouvre (LCD « ✦ Ouvrir : X », carte qui explique ce qu'il apporte, file d'attente), ses contrôles entrent animés avec un halo et l'étiquette « Nouveau » Décision : rien ne s'ouvre ni ne disparaît sans geste du joueur ; la cible de 45 min de `tests/balance.html` porte sur le temps de jeu seul (43,0–44,8 min) : l'ouverture ajoute environ 4 min de lecture (47,1–48,9 min en tout), choix assumé.
 - [x] Les plantes reflètent les réglages : Niveau → taille, Lumière → couleur et fleurs ouvertes, Timbre → forme, Espace → halo, mouvement → ondulation, densité → fleurs ; le toucher d'un contrôle fait rebondir sa plante Décision : une seule table (`LOOK` / `LOOK_ALL`) ; au réglage par défaut, la taille d'avant (on grandit et rétrécit autour, ×0,5 à ×1,3) ; hauteur plafonnée sous le HUD, largeur limitée par l'espacement des plantes (plus de chevauchement à 390 px).
+
+## Saison 5 — interactivité : toucher, voir, être jugé en jouant
+
+Demande de l'utilisateur (après v1.14) : « continue d'améliorer l'interactivité », gamifié à fond y compris pour le neveu musicien. Décisions prises sans attendre (l'utilisateur a dit « vas-y ») : score et record visibles en Parcours ; rien de nouveau en mode libre (sauf ce que le retour visuel du Jardin y montre déjà) ; tout reste indépendant du dessin, car le passage à une esthétique sombre (prototype sonore en attente d'écoute) pourra remplacer les sprites. Supprimer plutôt qu'empiler : chaque chantier dit ce qu'il retire. Règle de l'utilisateur : la visualisation (plantes, Jardin) n'est PAS interactive, c'est seulement le reflet de ce que l'on joue ; toute l'interaction passe par les commandes, les pastilles, le clavier et le MIDI.
+
+Vague 1 (en parallèle)
+- [ ] S5.2 Chaque note se voit : touche A–L, pastille ou note MIDI → onde qui part de la plante qui joue, pastille qui s'allume au rythme de la Mélodie auto (on voit ce que joue la machine), sans particules envahissantes
+- [ ] S5.3 Réponse sans plafond : niveaux au-delà de 8 notes (accords à la main gauche, sauts d'octave, syncopes, phrase transposée), série et record sur le LCD, palier visible sur la plante Mélodie
+
+Vague 2 (en parallèle)
+- [ ] S5.4 Placement façon Rocksmith : la première Réponse sert de test ; une réponse longue et en rythme met toute une branche « prête » d'un coup (file d'ouverture existante)
+- [ ] S5.5 Demandes en direct façon Fuser : pendant la lecture, le paysage lance des demandes musicales jugées sur le temps (« fais entrer la basse sur le 1 », « coupe tout sauf le drone, 4 mesures », « passe en mineur au prochain tour ») ; elles remplacent les défis d'interface statiques restants
+
+Vague 3
+- [ ] S5.6 Finitions d'interaction : supprimer « ▶ Lancer le paysage » en Parcours (doublon, cache les plantes), pastille de couche cachée quand elle est seule, retours de pression sur boutons et potentiomètres, Mélodie / Mélodie auto et « Espace » désambiguïsés
+- [ ] S5.7 Revue regards neufs (enfant non musicien sur téléphone, ado musicien au MIDI) puis corrections ; fin de la saison 5
