@@ -709,6 +709,9 @@
       box.hidden = !g || !g.path || (!L.length && !p);
       const tb = $('#treeBtn'); if (tb) tb.classList.toggle('has-hs', !!(g && g.path && p));
       if (box.hidden) return;
+      if (ent) box.classList.remove('min');
+      const head = box.querySelector('.hs-title'), top = L[0];
+      head.textContent = `★ HIGH SCORES · RÉPONSE${top ? ` · ${top.n} ×${top.s}` : ''}`; head.setAttribute('aria-expanded', String(!box.classList.contains('min')));
       const rows = L.map((r) => ({ n: r.n, s: r.s, me: !!(this.run && r.run === this.run.id) }));
       if (p) rows.push({ n: ent ? ent.l.map((c, i) => (i <= ent.cur ? c : '_')).join('') : '???', s: p.s, me: true, pend: true });
       rows.sort((a, b) => b.s - a.s || (a.pend ? 1 : 0) - (b.pend ? 1 : 0));
@@ -729,9 +732,12 @@
       const box = (this.box = document.createElement('section'));
       box.id = 'hiscores'; box.className = 'hiscores'; box.hidden = true; box.setAttribute('aria-label', 'Meilleurs scores de la Réponse');
       const slot = (i) => `<div class="hs-slot" data-i="${i}"><button type="button" data-k="1" aria-label="Lettre ${i + 1} : suivante">▲</button><button type="button" class="hs-l" aria-label="Lettre ${i + 1}"></button><button type="button" data-k="-1" aria-label="Lettre ${i + 1} : précédente">▼</button></div>`;
-      box.innerHTML = `<h4 class="hs-title">HIGH SCORES · RÉPONSE</h4><ol class="hs-list"></ol><div class="hs-entry" hidden><span class="hs-say"></span><div class="hs-slots">${slot(0)}${slot(1)}${slot(2)}</div><button type="button" class="btn hs-ok">OK</button><p class="hs-help"></p></div>`;
+      box.innerHTML = `<button type="button" class="hs-title" aria-controls="hsBody"></button><div id="hsBody" class="hs-body"><ol class="hs-list"></ol><div class="hs-entry" hidden><span class="hs-say"></span><div class="hs-slots">${slot(0)}${slot(1)}${slot(2)}</div><button type="button" class="btn hs-ok">OK</button><p class="hs-help"></p></div></div>`;
+      box.classList.add('min'); // folded like the notebook of discoveries (the map keeps its room); open while signing
       box.addEventListener('click', (e) => {
-        const b = e.target.closest('button'), s = b && b.closest('.hs-slot'); if (!b || !this.entry()) return;
+        const b = e.target.closest('button'), s = b && b.closest('.hs-slot');
+        if (b && b.classList.contains('hs-title')) { box.classList.toggle('min'); return this.render(); }
+        if (!b || !this.entry()) return;
         if (b.classList.contains('hs-ok')) return this.sign();
         if (s) { const i = +s.dataset.i; if (b.dataset.k) this.spin(i, +b.dataset.k); else { this.ent.cur = i; this.render(); } }
       });

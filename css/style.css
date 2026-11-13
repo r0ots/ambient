@@ -750,13 +750,21 @@ body.game:not(.playing):not(.coined) .coin { position: absolute; inset: 0; z-ind
 /* the high scores of the Réponse (garden.js hiscores), in the Arbre: top 5, three initials typed arcade-style */
 .hiscores { margin: 0 0 6px; padding: 6px 10px 8px; border-radius: var(--radius, 4px); background: var(--arc-bg); box-shadow: var(--bevel-in); font-family: var(--f-lcd); color: var(--arc-fg); }
 .hiscores[hidden] { display: none; }
-.modal-card .hs-title { margin: 0; font: 22px var(--f-lcd); letter-spacing: .2em; color: var(--arc-gold); text-shadow: 2px 0 var(--arc-hot), -2px 0 #3ff0ffaa; }
-.hs-list { margin: 2px 0 0; padding: 0; list-style: none; display: grid; font-size: 20px; line-height: 1.15; }
+.hiscores { padding: 3px 8px; }
+.hs-title { width: 100%; text-align: left; background: none; border: 0; padding: 0; cursor: pointer; font: 18px var(--f-lcd); letter-spacing: .12em; color: var(--arc-gold); text-shadow: 2px 0 var(--arc-hot), -2px 0 #3ff0ffaa; }
+.hs-title::before { content: '▾ '; }
+.hiscores.min .hs-title::before { content: '▸ '; }
+.hiscores.min .hs-body { display: none; }
+.hs-body { padding: 2px 0 6px; }
+.modal-card .hiscores li, .modal-card .hiscores p { font-family: var(--f-lcd); color: inherit; line-height: 1.15; }
+.hs-list { margin: 2px 0 0; padding: 0; list-style: none; display: grid; }
+.modal-card .hs-list li { font-size: 20px; }
 .hs-list li { display: grid; grid-template-columns: 2.4em 3.6em 4.5em 1fr; gap: 6px; align-items: center; }
 .hs-list li:first-child { color: var(--arc-gold); }
 .hs-list li.me { color: var(--arc-hot); text-shadow: 0 0 8px var(--arc-hot); }
 .hs-list .hs-s { text-align: right; }
 .hs-list .hs-t { color: var(--arc-soft); font-size: 16px; }
+.modal-card .hiscores .hs-help { font-size: 16px; color: var(--arc-soft); margin: 0; }
 .hs-entry { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 6px; font-size: 18px; color: var(--arc-hot); }
 .hs-entry[hidden] { display: none; }
 .hs-slots { display: flex; gap: 6px; }

@@ -47,6 +47,27 @@ f.addEventListener('load', async () => {
     ok(pop && /BRUME NÉON/.test(pop.textContent) && /Découverte : Brume néon/.test(A.lcdMsg.text), 'S5.10 prêt : « découverte » énorme, nommée (« ' + (pop && pop.textContent) + ' », LCD « ' + A.lcdMsg.text + ' »)');
     await wait(400);
 
+    // --- 1b. S6.6 the onomatopoeias: one per moment (table FX `boom`), a comic bubble over the stage, size by rank × JUICE,
+    // tilted; never over the LCD; JUICE 0 = none (reduced motion: section 4)
+    { const words = kinds.filter((k) => k !== 'consolation').map((k) => G.FX[k].boom), lastBoom = () => [...d.querySelectorAll('.fx-pop.fx-boom')].pop();
+      ok(words.every((x) => /^[A-Z-]+!$/.test(x || '')) && new Set(words).size === words.length && ['BZZT!', 'KA-BLAM!', 'ZAP!', 'POW!', 'WHOOSH!'].every((x) => words.includes(x)), 'S6.6 : une onomatopée par moment de la table (' + words.join(' ') + ' ; pas pour « prêt quand même »)');
+      const size = {}; let tilt = true, word = true;
+      for (const k of ['defi', 'open', 'placement']) {
+        G.fx(k, { name: 'Musicien' }); await tick(); const p = lastBoom();
+        if (!p || p.querySelector('b').textContent !== G.FX[k].boom) word = false;
+        if (!p || !/deg$/.test(p.style.getPropertyValue('--rot')) || Math.abs(parseFloat(p.style.getPropertyValue('--rot'))) < 3) tilt = false;
+        size[k] = p ? parseFloat(w.getComputedStyle(p).fontSize) : 0; await wait(30);
+      }
+      const p = lastBoom(), cs = p && w.getComputedStyle(p, '::before');
+      ok(word && tilt && size.open > size.defi && size.placement > size.open && p.querySelector('small') && /polygon/.test(cs.clipPath) && /radial-gradient/.test(cs.backgroundImage), 'bulle de comics : le mot du moment, incliné, plus gros pour les gros moments (' + JSON.stringify(size) + '), étoilée et tramée, le texte de la recette dessous (« ' + (p && p.textContent) + ' »)');
+      // a phone: the LCD right above the stage — the bubble goes under it, never over it
+      const lcd = d.getElementById('lcd'), sr = d.querySelector('.stage').getBoundingClientRect(), css0 = lcd.style.cssText;
+      lcd.style.cssText = 'position:fixed;left:0;right:0;top:' + Math.round(sr.top + sr.height * 0.25) + 'px;z-index:1'; const lb = lcd.getBoundingClientRect().bottom;
+      G.fx('end', {}); await tick(); const pe = lastBoom(), top = parseFloat(pe.style.top) - pe.offsetHeight / 2;
+      ok(top >= lb, 'jamais par-dessus le LCD (haut de la bulle ' + Math.round(top) + ' px ≥ bas du LCD ' + Math.round(lb) + ' px)'); lcd.style.cssText = css0;
+      const J0 = GV.JUICE; GV.JUICE = 0; d.querySelectorAll('.fx-pop').forEach((x) => x.remove()); G.fx('defi', {}); await tick();
+      ok(!d.querySelector('.fx-boom') && !G.fxLast.did.includes('boom'), 'JUICE 0 : pas d\'onomatopée'); GV.JUICE = J0; await wait(200); }
+
     // --- 2. the bus moments go through the table; same tick = the biggest alone
     const via = async (fn) => { plays.length = 0; fn(); await tick(); return plays.map((p) => p && p.kind).join(','); };
     const r = {
@@ -84,7 +105,7 @@ f.addEventListener('load', async () => {
 
     // --- 4. reduced motion: a soft flash only (and the jingle, the message)
     { await wait(1300); let bursts = 0; const b0 = C.burst; C.burst = function () { bursts++; return b0.apply(this, arguments); }; G.reduced = true; d.querySelectorAll('.fx-quake,.fx-shake,.fx-bounce').forEach((e) => e.classList.remove('fx-quake', 'fx-shake', 'fx-bounce'));
-      G.fx('discovery', { name: 'Calme' }); await tick(); const p = G.fxLast, fl = d.querySelector('.stage > .fx-flash');
+      d.querySelectorAll('.fx-pop').forEach((x) => x.remove()); G.fx('discovery', { name: 'Calme' }); await tick(); const p = G.fxLast, fl = d.querySelector('.stage > .fx-flash');
       ok(p.did.join() === 'flash,jingle,splash' && fl.classList.contains('soft') && +fl.style.getPropertyValue('--a') <= 0.3 && !has('.app', 'fx-quake') && !has('.stage', 'fx-shake') && !d.body.classList.contains('fx-bounce') && !bursts && !d.querySelector('.fx-pop'),
         'mouvement réduit : flash doux seulement (' + p.did.join(', ') + ', opacité ' + fl.style.getPropertyValue('--a') + '), ni secousse, ni confettis, ni rebond');
       G.reduced = false; C.burst = b0; }
@@ -113,6 +134,61 @@ f.addEventListener('load', async () => {
       const q = G.fx('tier', { name: 'x' }); A.bus.emit('resp:tier', { tier: 1, name: 'x', lvl: 1 }); A.bus.emit('resp:streak', { streak: 4 }); await tick();
       ok(q === null && !plays.length && !chimes.length, 'mode libre : aucun effet, aucun jingle'); A.game.setMode('path'); }
     G.chime = ch0; G.fxPlay = fp0;
+
+    // --- 8. S6.6 « INSERT COIN »: stopped in the Parcours (once per page), the first press starts the music; free mode never
+    { const coin = d.getElementById('coin'), shown = () => w.getComputedStyle(coin).display !== 'none', toast = d.getElementById('toast');
+      const playing = async () => { for (let i = 0; i < 40 && !A.seq.playing; i++) await wait(25); await wait(150); return A.seq.playing; };
+      A.ui.stop(); await wait(50); d.body.classList.remove('coined');
+      ok(shown() && /INSERT COIN/.test(coin.textContent) && /APPUIE POUR JOUER/.test(coin.textContent) && G.coinUp(), 'Parcours à l\'arrêt : écran « INSERT COIN / APPUIE POUR JOUER »');
+      A.game.setMode('free'); ok(!shown() && !G.coinUp(), 'mode libre : pas d\'INSERT COIN'); toast.textContent = '';
+      d.querySelector('[data-choose=path]').click(); await wait(30);
+      ok(shown() && !/une seule note/.test(toast.textContent), 'choisir le Parcours à l\'arrêt : l\'écran titre remplace l\'ancien message d\'accueil (toast « ' + toast.textContent + ' »)');
+      w.dispatchEvent(new w.KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true, cancelable: true }));
+      ok(await playing() && !shown() && d.body.classList.contains('coined'), 'barre d\'espace : la musique part (pas aussitôt arrêtée), l\'écran titre s\'en va');
+      A.ui.stop(); await wait(50); ok(!shown(), 'arrêt ensuite : il ne revient pas (une fois par page)');
+      d.body.classList.remove('coined'); coin.dispatchEvent(new w.PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+      ok(await playing() && !shown(), 'un doigt sur l\'écran titre : la musique part'); A.ui.stop(); await wait(50);
+      d.body.classList.remove('coined'); A.play.onMidi({ data: [0x90, 67, 100], timeStamp: w.performance.now() }); A.play.onMidi({ data: [0x80, 67, 0], timeStamp: w.performance.now() });
+      ok(await playing() && !shown(), 'une note MIDI : la musique part'); A.ui.stop(); await wait(50);
+      d.body.classList.remove('coined'); await A.ui.play(); await wait(30); ok(d.body.classList.contains('coined') && !shown(), '▶ Lecture de la barre : l\'écran titre s\'en va aussi'); A.ui.stop(); await wait(50); }
+
+    // --- 9. S6.6 HIGH SCORES of the Réponse: top 5, three initials (keys, MIDI note names, ▲ ▼ OK), localStorage
+    { const HS = G.hiscores, box = d.getElementById('hiscores'), tb = d.getElementById('treeBtn'), key = HS.key();
+      w.localStorage.removeItem(key); HS.d = null; HS.run = null; HS.ent = null; HS.render(); G.showTree(false);
+      const streak = (a, b) => { for (let n = a; n <= b; n++) A.bus.emit('resp:streak', { streak: n }); };
+      const K = (k) => w.dispatchEvent(new w.KeyboardEvent('keydown', { key: k, code: 'Key' + k.toUpperCase(), bubbles: true, cancelable: true }));
+      ok(box && box.hidden && !tb.classList.contains('has-hs'), 'pas de score : pas de tableau');
+      streak(1, 2); ok(!HS.pend(), 'série de 2 : pas un high score (minimum ' + HS.MIN + ')');
+      streak(3, 3); ok(HS.pend() && HS.pend().s === 3 && tb.classList.contains('has-hs'), 'série de 3 : à signer (★ sur le bouton Arbre)');
+      G.showTree(true); await wait(30);
+      ok(!box.hidden && !box.classList.contains('min') && !box.querySelector('.hs-entry').hidden && box.querySelectorAll('.hs-list li').length === 5 && /---/.test(box.textContent), 'dans l\'Arbre : le tableau (5 lignes) et la saisie des initiales');
+      let notes = 0; const pd = A.seq.playDegree; A.seq.playDegree = function () { notes++; return pd.apply(this, arguments); };
+      K('r'); K('o'); ok(HS.ent.cur === 2 && /ROA/.test(box.textContent) && !notes, 'au clavier : R, O… (aucune note jouée)'); K('m'); A.seq.playDegree = pd;
+      const L1 = HS.list(); let stored = null; try { stored = JSON.parse(w.localStorage.getItem(key)); } catch (e) {}
+      ok(L1.length === 1 && L1[0].n === 'ROM' && L1[0].s === 3 && !HS.pend() && stored && stored.list[0].n === 'ROM' && box.querySelector('.hs-entry').hidden && !tb.classList.contains('has-hs'), '3e lettre : signé « ROM ×3 », gardé (localStorage)');
+      streak(4, 4); ok(HS.list()[0].s === 4 && HS.list().length === 1 && !HS.pend(), 'la série continue : sa ligne suit (×4), pas de 2e ligne');
+      streak(1, 3); A.bus.emit('live', { midi: 64, raw: null }); ok(HS.ent && HS.ent.cur === 0, 'une note des pastilles ou de A–L n\'écrit rien');
+      [60, 69, 71].forEach((m) => A.bus.emit('live', { midi: m, raw: 0.8 }));
+      ok(HS.list().map((r) => r.n).join() === 'ROM,CAB', 'au clavier MIDI : le nom des notes (do la si → « CAB »)');
+      streak(1, 5); await wait(10); const s0 = box.querySelector('.hs-slot[data-i="0"]');
+      s0.querySelector('[data-k="1"]').click(); s0.querySelector('[data-k="1"]').click(); box.querySelector('.hs-slot[data-i="1"] .hs-l').click(); box.querySelector('.hs-slot[data-i="1"] [data-k="-1"]').click();
+      const SP = w.Storage.prototype.setItem; w.Storage.prototype.setItem = () => { throw new Error('full'); };
+      let err = null; try { box.querySelector('.hs-ok').click(); } catch (e) { err = e; } w.Storage.prototype.setItem = SP;
+      ok(!err && HS.list()[0].s === 5 && HS.list()[0].n === 'EZB', 'au doigt : ▲ ▲ sur la 1re lettre (C → E), ▼ sur la 2e (A → Z), OK → « ' + HS.list()[0].n + ' ×5 » en tête ; stockage plein : pas d\'erreur');
+      HS.d.list = [9, 8, 7, 6, 5].map((s, i) => ({ n: 'AAA', s, t: i, run: 'x' + i })); HS.run = null; streak(1, 5); ok(!HS.pend(), 'tableau plein : une série de 5 n\'y entre pas (5e = 5)'); streak(6, 6); ok(HS.pend() && HS.pend().s === 6, '… à 6, si');
+      G.showTree(false); A.game.setMode('free'); streak(1, 9); ok(box.hidden && !tb.classList.contains('has-hs'), 'mode libre : rien'); A.game.setMode('path');
+      w.localStorage.removeItem(key); HS.d = null; }
+
+    // --- 10. S6.5 → S6.6 the city under the HUD: the top corners only (HUD left, chips right); the middle sky is free, an
+    // element under a corner shrinks to stay under it; the captions never touch (phone)
+    { GV.sig = null; A.visual.draw(); await wait(80); A.visual.draw();
+      const H = GV.H, bad = GV.plants.filter((p) => { const s = GV.sprite(p, GV.px); return p.y - s.h * (p.sz || 1) < H * GV.ceilAt(p.x, s.w * 0.35) - 2 * GV.px; });
+      ok(GV.zones.length >= 1 && GV.ceil === GV.SKY && GV.zones[0].b > GV.ceil && !bad.length, 'plafond par coin (HUD ' + JSON.stringify(GV.zones) + ', ciel libre ' + GV.ceil + ') ; aucun élément dans le HUD ' + bad.map((p) => p.id).join(','));
+      const st = { layers: ['drone', 'pad', 'bells', 'texture', 'grains', 'seq', 'bass', 'perc'], levels: {}, secrets: [] }, Lw = GV.layout(st, 660, 360);
+      const xs = Lw.plants.sort((a, b) => a.x - b.x); xs.forEach((p, i) => { p.roomL = (i ? (p.x - xs[i - 1].x) / 2 : p.x) - 1; p.roomR = (i < xs.length - 1 ? (xs[i + 1].x - p.x) / 2 : 660 - p.x) - 1; });
+      const box = xs.map((p) => { const lb = GV.label(p, 22, Math.min(Lw.slotW * 0.96, 2 * Math.min(p.roomL, p.roomR) - 2)); return [p.x - lb.width / 2, p.x + lb.width / 2, p.id]; });
+      const touch = box.slice(1).filter((b, i) => b[0] < box[i][1]).map((b, i) => box[i][2] + '/' + b[2]);
+      ok(!touch.length, 'téléphone (390 px) : les étiquettes ne se touchent pas ' + (touch.join(' ') || box.map((b) => b[2] + ' ' + Math.round(b[1] - b[0])).join(', '))); }
     done();
   } catch (e) { fail(e); }
 });

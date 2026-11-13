@@ -6,7 +6,7 @@
   #song (panneau Morceau, mode libre, 3 sections, la 1re choisie : ses réglages et les éditeurs dessous ; S6.3), #song-empty (aucune section : ● Rec désactivé), #song-loops (S6.4 : rangée Boucles, 2 couches dont une muette, overdub en cours) ;
   #roll (piano roll, mode libre : notes ♯ hors gamme ; S6.4 : « ⤓ Garder » est passé dans le looper du Morceau) ;
   S4.6 : #ready (« ✦ Ouvrir : Pad » qui pulse, 2 prêts), #ready-card (la carte qui dit ce que le Pad apporte), #new (le Pad vient de s'ouvrir : panneau, halo, « Nouveau ») ;
-  S5.9 : #juice-defi / #juice-open / #juice-tier (un moment du juice central en plein effet, figé) ;
+  S5.9 : #juice-defi / #juice-open / #juice-tier (un moment du juice central en plein effet, figé) ; S6.6 : #juice-end (la fin, KA-BOOM!), #coin (« INSERT COIN » avant le premier son), #hiscores (HIGH SCORES dans l'Arbre, initiales en cours) ;
   S5.4 : #placement (« ⚡ Musicien détecté » en pleine fête, la file « ✦ Ouvrir · n prêts ») ;
   S5.5 : #demande (une demande en direct sur le LCD, son compte à rebours), #demande-parfait (« PARFAIT !!! ×3 », figé) ;
   S5.10 : #combo=<id>,<id> (combos ON dans le Jardin), #discovery=<id> (la fête d'une découverte, figée), #carnet (le carnet des découvertes dans l'Arbre : trouvées, puis silhouettes) ;
@@ -40,6 +40,10 @@ document.getElementById('f').addEventListener('load', () => {
   A.game.setMode('path'); A.garden.welcome(false);
   if (!h.includes('coin')) doc.body.classList.add('coined'); // S6.6: past « INSERT COIN » (#coin = the title screen itself)
   if (h.includes('coin')) return;
+  if (h.includes('hiscores')) { // S6.6: the HIGH SCORES of the Réponse in the Arbre, a series waiting for its initials (2nd letter)
+    const HS = A.garden.hiscores; HS.d = { list: [{ n: 'ROM', s: 17, t: 1, run: 'a' }, { n: 'LEO', s: 11, t: 2, run: 'b' }, { n: 'NEV', s: 6, t: 3, run: 'c' }], last: 'NEV', pend: { run: 'z', s: 9 } };
+    HS.run = { id: 'z', s: 9 }; A.garden.showTree(true); HS.ent = { l: ['B', 'O', 'A'], cur: 1 }; HS.render(); return;
+  }
   if (h.includes('bar')) return; // S4.3: the very start of the Parcours
   if (h.includes('press')) { // S5.6: a button and a knob held down (press feedback, Parcours only)
     A.game.unlock('m.bells'); A.perform.setMode('sculpt');
@@ -58,6 +62,7 @@ document.getElementById('f').addEventListener('load', () => {
       const fc = G.fxClass; G.fxClass = function (el, c) { return fc.call(this, el, c, 6e5); }; // the effects stay on
       if (h.includes('open')) A.game.unlock('h.pad');
       else if (h.includes('tier')) A.bus.emit('resp:tier', { tier: 3, name: 'Syncopes', lvl: 9 });
+      else if (h.includes('end')) { A.game.s.ended = true; G.fx('end', { say: '✦ L\'instrument est à toi', ms: 60000 }); } // S6.6 #juice-end: the handover (KA-BOOM!)
       else A.contracts.finish('m.notes');
       setTimeout(() => freeze(C), 300);
     }, 1600);
