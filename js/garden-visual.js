@@ -31,16 +31,31 @@
 (function () {
   const AMB = (window.AMB = window.AMB || {});
 
+  // S6.5: the neon colour of each element (kind = the code id of its drawing, see cells())
   const LAYERS = [
-    { id: 'drone', node: 'racine', label: 'Drone', short: 'Drone', col: [111, 159, 216], kind: 'reed' },
-    { id: 'pad', node: 'h.pad', label: 'Pad', short: 'Pad', col: [212, 150, 210], kind: 'bush' },
-    { id: 'bells', node: 'm.bells', label: 'Mélodie auto', short: 'Mélo', col: [255, 196, 110], kind: 'bell' },
-    { id: 'texture', node: 'e.texture', label: 'Texture', short: 'Text.', col: [120, 210, 200], kind: 'fern' },
-    { id: 'grains', node: 'm.grains', label: 'Grains', short: 'Grain', col: [111, 207, 159], kind: 'puff' },
-    { id: 'seq', node: 'c.seq', label: 'Mélodie écrite', short: 'Écrite', col: [255, 150, 71], kind: 'vine' },
-    { id: 'bass', node: 'c.rythme', label: 'Basse', short: 'Basse', col: [127, 159, 224], kind: 'cactus' },
-    { id: 'perc', node: 'c.rythme', label: 'Pulsations', short: 'Rythme', col: [255, 90, 60], kind: 'shroom' },
+    { id: 'drone', node: 'racine', label: 'Drone', short: 'Drone', col: [124, 132, 255], kind: 'reed' },
+    { id: 'pad', node: 'h.pad', label: 'Pad', short: 'Pad', col: [236, 96, 214], kind: 'bush' },
+    { id: 'bells', node: 'm.bells', label: 'Mélodie auto', short: 'Mélo', col: [255, 196, 92], kind: 'bell' },
+    { id: 'texture', node: 'e.texture', label: 'Texture', short: 'Text.', col: [80, 228, 236], kind: 'fern' },
+    { id: 'grains', node: 'm.grains', label: 'Grains', short: 'Grain', col: [96, 240, 168], kind: 'puff' },
+    { id: 'seq', node: 'c.seq', label: 'Mélodie écrite', short: 'Écrite', col: [255, 128, 72], kind: 'vine' },
+    { id: 'bass', node: 'c.rythme', label: 'Basse', short: 'Basse', col: [150, 110, 255], kind: 'cactus' },
+    { id: 'perc', node: 'c.rythme', label: 'Pulsations', short: 'Rythme', col: [255, 64, 110], kind: 'shroom' },
   ];
+  // S6.5 the city's palette: CSS tokens (css/style.css :root, --city-*), read once; these values without a stylesheet
+  const TOK = (() => {
+    const D = { night: '#07040f', sky: '#1c0b33', horizon: '#6a1f6e', wall: '#130c22', ground: '#06040b', pink: '#ff3fa4', cyan: '#3ff0ff',
+      violet: '#9d6bff', amber: '#ffb347', red: '#ff3348', rain: '#a9b8ff', dawnTop: '#140a33', dawnMid: '#a8327e', dawnLow: '#ff7a4f', sunTop: '#ffd36b', sunLow: '#ff3f8e' };
+    const out = {};
+    let cs = null; try { cs = getComputedStyle(document.documentElement); } catch (e) {}
+    for (const k in D) {
+      let v = ''; try { v = cs ? cs.getPropertyValue('--city-' + k.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase())).trim() : ''; } catch (e) {}
+      const m = /^#([0-9a-f]{6})$/i.exec(v) || /^#([0-9a-f]{6})$/i.exec(D[k]), n = parseInt(m[1], 16);
+      out[k] = [n >> 16, (n >> 8) & 255, n & 255];
+    }
+    return out;
+  })();
+  const hex = (c) => '#' + c.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
   const byLayer = Object.fromEntries(LAYERS.map((l) => [l.id, l]));
 
   // ---- S4.6 SETTINGS → LOOK: the one table. Each plant shows its layer's settings as 7 aspects, all 0..1, and knows
@@ -223,121 +238,134 @@
     return { plants, rares, ground, slotW };
   }
 
-  // ---- sprites: plants drawn as LED dot matrices (1 cell = px device pixels, 1 px gap) ----
-  const CW = 25; // sprite width in cells (stem at column 12)
+  // ---- sprites: S6.5 « Ville néon »: each layer is an element of a city at night, drawn as a pixel matrix (1 cell = px
+  // device pixels; walls solid, lights as LEDs). The `kind` ids of the plants are kept (code), the drawing is the city's:
+  //   reed = Tour (Drone), bush = Pyramide (Pad), bell = Enseigne néon (Mélodie auto), fern = Antenne radio (Texture),
+  //   puff = Parabole (Grains), vine = Écran géant (Mélodie écrite), cactus = Pylône (Basse), shroom = Voitures volantes
+  //   (Pulsations), crystal = Hologramme (a discovery).
+  // tones: 0 frame, 1 wall, 2 lit window, 3 neon tube, 4 hot light, 6 window (lit or not: dress, by Lumière), 7 dark
+  // window, 8 red beacon, 12 cable (dim)
+  const CW = 25; // sprite width in cells (axis at column 12)
   function cells(kind, hC, seed, a) {
-    const r = mulberry(seed), out = []; // [x, y (0 = base), tone]  tone: 0 stem, 1 leaf, 2 light, 4 dot
+    const r = mulberry(seed), out = [];
     const put = (x, y, t) => { if (x >= 0 && x < CW && y >= 0) out.push([x, y, t]); };
     const C = 12;
-    if (kind === 'bush') {
-      for (let y = 0; y < Math.max(2, hC * 0.25); y++) put(C, y, 0);
-      const cy = hC * 0.55, rx = Math.min(11, 4 + hC * 0.22), ry = hC * 0.42;
-      for (let y = 0; y <= hC; y++) for (let x = 0; x < CW; x++) {
-        const d = ((x - C) / rx) ** 2 + ((y - cy) / ry) ** 2;
-        if (d < 1 && r() < 0.86) put(x, y, d < 0.35 && r() < 0.3 ? 2 : 1);
+    const line = (x0, y0, x1, y1, t) => { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) || 1; for (let i = 0; i <= n; i++) put(Math.round(x0 + (x1 - x0) * i / n), Math.round(y0 + (y1 - y0) * i / n), t); };
+    if (kind === 'bush') { // a stepped pyramid (Tyrell), bands of windows
+      const Wm = Math.min(11, 4 + Math.round(hC * 0.2));
+      for (let y = 0; y < hC; y++) {
+        const hw = Math.max(1, Math.round(Wm * (1 - y / (hC + 1)) / 1));
+        for (let x = C - hw; x <= C + hw; x++) put(x, y, x === C - hw || x === C + hw ? 0 : y % 3 === 1 && (x - C) % 2 === 0 ? 6 : 1);
       }
-    } else if (kind === 'cactus') {
-      const w = hC > 30 ? 2 : 1;
-      for (let y = 0; y < hC; y++) for (let x = -w; x <= w; x++) put(C + x, y, x === 0 && y % 3 === 0 ? 2 : 1);
+    } else if (kind === 'cactus') { // an electricity pylon: a tapered lattice, cross-arms, insulators
+      for (let y = 0; y < hC; y++) {
+        const hw = Math.round(1 + 4 * (1 - y / hC) ** 1.6);
+        put(C - hw, y, 0); put(C + hw, y, 0);
+        const k = y % 6, d = Math.round(hw * (1 - k / 3)); if (hw > 1) { put(C + d, y, 0); put(C - d, y, 0); } // X bracing
+      }
+      put(C, hC, 0); put(C, hC + 1, 8);
       const arms = hC > 18 ? 2 : hC > 10 ? 1 : 0;
       for (let a = 0; a < arms; a++) {
-        const s = a ? 1 : -1, y0 = Math.round(hC * (0.35 + 0.15 * a)), len = Math.round(hC * 0.35);
-        for (let x = 1; x <= 4; x++) put(C + s * (w + x), y0, 1);
-        for (let y = 0; y < len; y++) put(C + s * (w + 4), y0 + y, 1);
+        const y0 = Math.round(hC * (0.62 + 0.2 * a)), L = 5 + (a ? 0 : 2);
+        for (let x = -L - 2; x <= L + 2; x++) put(C + x, y0, 0);
+        for (const s of [-1, 1]) { put(C + s * (L + 2), y0 - 1, 4); put(C + s * (L + 2), y0 - 2, 4); put(C + s * 3, y0 - 1, 4); }
       }
-    } else if (kind === 'shroom') {
-      const caps = 1 + Math.min(2, Math.floor(hC / 18));
-      for (let k = 0; k < caps; k++) {
-        const x0 = C + (k === 0 ? 0 : k === 1 ? -6 : 6), h = Math.round(hC * (k ? 0.55 : 0.85)), w = Math.max(2, Math.round(h * 0.28));
-        for (let y = 0; y < h; y++) put(x0, y, 0);
-        for (let y = 0; y <= w; y++) for (let x = -w * 2 + y; x <= w * 2 - y; x++) put(x0 + x, h + y, y === 0 ? 2 : (x + y) % 4 === 0 ? 4 : 1);
+    } else if (kind === 'shroom') { // a landing tower, flying cars hovering around it
+      const h = Math.round(hC * 0.78);
+      for (let y = 0; y < h; y++) for (let x = -1; x <= 1; x++) put(C + x, y, x ? 0 : y % 3 === 1 ? 6 : 1);
+      for (let x = -4; x <= 4; x++) { put(C + x, h, 0); if (x % 2 === 0) put(C + x, h + 1, 3); }
+      const cars = 1 + Math.min(2, Math.floor(hC / 18));
+      for (let k = 0; k < cars; k++) {
+        const x0 = C + (k === 0 ? 0 : k === 1 ? -6 : 6), y = k ? Math.round(hC * 0.45) + 2 * k : h + 3, s = k === 1 ? -1 : 1;
+        for (let x = -3; x <= 3; x++) { put(x0 + x, y, x === 3 * s ? 4 : x === -3 * s ? 8 : 1); if (Math.abs(x) <= 2) put(x0 + x, y - 1, 3); }
+        for (let x = -1; x <= 1; x++) put(x0 + x - s, y + 1, 6);
       }
-    } else if (kind === 'puff') {
-      let x = C;
-      for (let y = 0; y < hC; y++) { put(Math.round(x), y, 0); x += (r() - 0.5) * 0.5; }
-      const R = Math.min(8, 2 + hC * 0.13);
-      for (let a = 0; a < 40; a++) { const t = (a / 40) * 6.283, rr = R * (0.6 + 0.4 * r()); put(Math.round(x + Math.cos(t) * rr), Math.round(hC + Math.sin(t) * rr), r() < 0.4 ? 2 : 1); }
-      for (let y = 2; y < hC * 0.6; y += 4) put(C + (y % 8 ? 1 : -1), y, 1);
-    } else if (kind === 'fern') {
-      for (let f = -2; f <= 2; f++) {
-        let x = C, len = hC * (1 - Math.abs(f) * 0.18);
-        for (let y = 0; y < len; y++) {
-          x += f * 0.22 * (y / len) * 1.6; put(Math.round(x), y, 0);
-          if (y > 2 && y % 2 === 0) { put(Math.round(x) - 1, y + 1, 1); put(Math.round(x) + 1, y + 1, 1); if (y % 4 === 0) { put(Math.round(x) - 2, y + 2, 1); put(Math.round(x) + 2, y + 2, 1); } }
-        }
-      }
-    } else if (kind === 'vine') {
+    } else if (kind === 'puff') { // a satellite dish on a mast, a small station at its foot
+      const st = Math.min(Math.round(hC * 0.3), 8), ys = Math.round(hC * 0.62), R = Math.min(8, 3 + Math.round(hC * 0.12));
+      for (let y = 0; y < st; y++) for (let x = -4; x <= 4; x++) put(C + x, y, Math.abs(x) === 4 || y === st - 1 ? 0 : y % 2 && x % 2 === 0 ? 6 : 1);
+      for (let y = st; y < ys; y++) { put(C, y, 0); if (y % 3 === 0) { put(C - 1, y, 0); put(C + 1, y, 0); } }
+      for (let x = -R; x <= R; x++) { const y = ys + Math.round((x * x) / (R * 1.1)); put(C + x, y, Math.abs(x) >= R - 1 ? 3 : 1); put(C + x, y + 1, Math.abs(x) === R ? 3 : 1); }
+      line(C, ys, C, ys + R, 0); put(C, ys + R + 1, 4);
+    } else if (kind === 'fern') { // a radio mast: a lattice, guy wires, red beacons
+      for (const s of [-1, 1]) { line(C, Math.round(hC * 0.72), C + s * 8, 0, 12); line(C, Math.round(hC * 0.4), C + s * 5, 0, 12); }
       for (let y = 0; y < hC; y++) {
-        const x = Math.round(C + Math.sin(y * 0.35) * 3); put(x, y, 0);
-        if (y % 5 === 2) { const s = Math.sin(y * 0.35) > 0 ? 1 : -1; put(x + s, y, 1); put(x + 2 * s, y + 1, 1); put(x + s, y + 1, 2); }
+        const hw = Math.max(1, Math.round(2.5 * (1 - y / hC) + 0.5));
+        put(C - hw, y, 0); put(C + hw, y, 0); const ph = (y % 6) / 6, z = Math.round(2 * hw * (ph < 0.5 ? ph * 2 : 2 - ph * 2)); put(C - hw + z, y, 0);
       }
-      for (let y = 0; y < hC; y++) put(C - 6 + (y % 2), y, y % 4 ? 3 + 9 : 0); // trellis (tone 12 = dim)
-    } else if (kind === 'crystal') {
+      for (let i = 1; i <= 2; i++) { const y = Math.round(hC * i / 3); put(C - 2, y, 8); put(C + 2, y, 8); }
+      put(C, hC, 0); put(C, hC + 1, 0); put(C, hC + 2, 8);
+    } else if (kind === 'vine') { // a giant screen on legs, a piano roll lit on it
+      const b = Math.round(hC * 0.4), hw = 7;
+      for (let y = 0; y < b; y++) { put(C - 5, y, 0); put(C + 5, y, 0); if (y % 4 === 2) line(C - 5, y, C + 5, y + 2, 12); }
+      for (let y = b; y < hC; y++) for (let x = -hw; x <= hw; x++) put(C + x, y, Math.abs(x) === hw || y === b || y === hC - 1 ? 0 : 1);
+      for (let y = b + 2; y < hC - 2; y += 2) { let x = -hw + 2 + Math.floor(r() * 3); while (x < hw - 2) { const L = 1 + Math.floor(r() * 4); for (let i = 0; i < L && x + i < hw - 1; i++) put(C + x + i, y, 6); x += L + 1 + Math.floor(r() * 3); } }
+      for (let x = -hw; x <= hw; x += 2) put(C + x, hC, 3);
+    } else if (kind === 'crystal') { // a hologram: a diamond of light over a small base
       const h = hC;
       for (let y = 0; y < h; y++) { const w = Math.round((y < h * 0.6 ? y / (h * 0.6) : (h - y) / (h * 0.4)) * 3); for (let x = -w; x <= w; x++) put(C + x, y, x === 0 || y === Math.round(h * 0.6) ? 2 : 1); }
-      put(C - 4, 1, 1); put(C - 4, 2, 1); put(C - 5, 1, 1); put(C + 4, 1, 1); put(C + 5, 1, 1); put(C + 4, 2, 2);
-    } else { // reed (drone) and bell (melody): a stem with leaves
-      let x = C;
-      for (let y = 0; y < hC; y++) {
-        put(Math.round(x), y, 0); x += (r() - 0.5) * 0.35;
-        if (y > 1 && y < hC - 3 && r() < 0.28) { const s = r() < 0.5 ? -1 : 1, L = 2 + Math.floor(r() * (kind === 'reed' ? 5 : 3)); for (let k = 1; k <= L; k++) put(Math.round(x) + s * k, y + Math.floor(k * (kind === 'reed' ? 0.9 : 0.5)), 1); }
+      put(C - 4, 0, 1); put(C - 3, 0, 1); put(C + 3, 0, 1); put(C + 4, 0, 2);
+    } else if (kind === 'bell') { // a neon sign: a pole, a vertical sign box with glyphs
+      const p = Math.round(hC * 0.38);
+      for (let y = 0; y < p; y++) put(C, y, 0);
+      put(C - 1, 0, 0); put(C + 1, 0, 0); put(C + 1, p - 1, 0); put(C + 2, p - 1, 0);
+      for (let y = p; y < hC; y++) for (let x = -3; x <= 3; x++) put(C + x, y, Math.abs(x) === 3 || y === p || y === hC - 1 ? 3 : 1);
+      for (let y = p + 2; y < hC - 2; y += 4) { // one glyph every 4 rows: a few strokes of a 3 × 3 grid
+        const m = 1 + Math.floor(r() * 510);
+        for (let i = 0; i < 9; i++) if (m >> i & 1) put(C - 1 + (i % 3), y + Math.floor(i / 3), 6);
       }
-      if (kind === 'reed') { for (let y = 0; y < 4; y++) { put(Math.round(x), hC + y, 2); put(Math.round(x) + 1, hC + y, 1); } }
-      else { const X = Math.round(x); for (let y = 0; y < 4; y++) for (let k = -(1 + (y >> 1)); k <= 1 + (y >> 1); k++) put(X + k, hC + 3 - y, y === 0 ? 2 : 1); put(X, hC - 1, 2); }
+    } else { // reed: a slim tower, setbacks, a grid of windows, a mast
+      const w = hC > 30 ? 5 : 4, s1 = Math.round(hC * 0.62), s2 = Math.round(hC * 0.86);
+      for (let y = 0; y < hC; y++) {
+        const hw = y < s1 ? w : y < s2 ? w - 1 : w - 2;
+        for (let x = C - hw; x <= C + hw; x++) put(x, y, x === C - hw || x === C + hw ? 0 : y % 2 === 1 && y > 1 && (x - C + hw) % 2 === 1 ? 6 : 1);
+      }
+      put(C, hC, 0); put(C, hC + 1, 0); put(C, hC + 2, 8);
     }
-    return a && kind !== 'crystal' ? dress(out, hC, seed, a) : out;
+    return a && kind !== 'crystal' ? dress(out, hC, seed, a, kind) : out;
   }
 
-  // S4.6: the look on top of the species. a = {shape 0..1, light 0..1, bloom = number of flowers 1..4} (quantized).
-  // shape: leaves get teeth (> 0.45, more > 0.8), petals go from round discs to pointed rays (4 to 7 points);
-  // light: the petals open (dark = a closed bud, petals up only; bright = a wide flower)
-  function dress(out, hC, seed, a) {
+  // S4.6 → S6.5: the look on top of the element. a = {shape 0..1, light 0..1, bloom = neon signs 1..4} (quantized).
+  // light: how many windows are lit (dark = a few); shape: smooth roofs (a dome) ↔ spiky (masts, 1 to 5, and greebles on
+  // the outline); bloom: neon signs hung on its sides
+  function dress(out, hC, seed, a, kind) {
     const r = mulberry(seed ^ 0x5bd1e995), has = new Set(out.map((c) => c[0] + ',' + c[1]));
     const put = (x, y, t) => { const k = x + ',' + y; if (x >= 0 && x < CW && y >= 0 && !has.has(k)) { has.add(k); out.push([x, y, t]); } };
-    const C = 12, body = out.slice();
-    if (a.shape > 0.45) for (const [x, y, t] of body) { // teeth: a leaf cell on the outline sprouts a point outward
-      if (t !== 1 || (x * 7 + y * 3) % (a.shape > 0.8 ? 2 : 3)) continue;
-      const s = x >= C ? 1 : -1;
-      if (!has.has((x + s) + ',' + y)) { put(x + s, y + 1, 1); if (a.shape > 0.8 && (x + y) % 2) put(x + 2 * s, y + 2, 1); }
-    }
-    const flower = (cx, cy, R) => {
-      const n = 4 + Math.round(a.shape * 3), open = a.light, reach = 1.4 + open * 2.6 * R / 3, up = Math.PI / 2;
-      const span = Math.PI * (0.35 + 0.65 * Math.min(1, open * 1.6)); // closed bud: only the petals around the top
-      for (let i = 0; i < n; i++) {
-        const ang = up + (i / n) * 2 * Math.PI + (n % 2 ? 0 : Math.PI / n);
-        const off = Math.abs(Math.atan2(Math.sin(ang - up), Math.cos(ang - up)));
-        if (off > span) continue;
-        const ca = Math.cos(ang), sa = Math.sin(ang);
-        if (a.shape < 0.5) { // round petal: a small disc
-          const pr = Math.max(1, reach * 0.42), px0 = cx + ca * reach * 0.62, py0 = cy + sa * reach * 0.62;
-          for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (dx * dx + dy * dy <= pr * pr + 0.3) put(Math.round(px0 + dx), Math.round(py0 + dy), 3);
-        } else { // pointed petal: a ray, wide at the base, a light point at the tip
-          const L = reach * (1 + 0.45 * a.shape);
-          for (let d = 1; d <= L; d += 0.5) {
-            const x = Math.round(cx + ca * d), y = Math.round(cy + sa * d);
-            put(x, y, d > L - 1 ? 4 : 3);
-            if (d < L * 0.45) put(Math.round(x - sa), Math.round(y + ca), 3);
-          }
-        }
+    const C = 12;
+    for (const c of out) if (c[2] === 6) c[2] = r() < 0.08 + 0.88 * a.light ? (r() < 0.22 ? 4 : 2) : 7;
+    const body = out.slice();
+    if (a.shape > 0.45) { // spikes: from the outermost frame cell of a row, a short antenna up and outward, a light at its tip
+      const ext = {}; for (const [x, y, t] of body) if (t === 0) { const e = ext[y] || (ext[y] = [x, x]); e[0] = Math.min(e[0], x); e[1] = Math.max(e[1], x); }
+      const every = a.shape > 0.8 ? 3 : 5;
+      for (const y in ext) {
+        const yy = +y; if (yy < 2 || yy % every !== 1) continue;
+        for (const [x, s] of [[ext[y][0], -1], [ext[y][1], 1]]) if (!has.has((x + s) + ',' + (yy + 1)) && !has.has((x + 2 * s) + ',' + (yy + 2))) { put(x + s, yy + 1, 0); put(x + 2 * s, yy + 2, (yy >> 2) % 2 ? 8 : 4); }
       }
-      put(Math.round(cx), Math.round(cy), 4); if (R >= 3) { put(cx + 1, cy, 2); put(cx - 1, cy, 2); put(cx, cy + 1, 2); }
-    };
+    }
     let top = 0, tx = C; for (const [x, y] of body) if (y > top || (y === top && Math.abs(x - C) < Math.abs(tx - C))) { top = y; tx = x; }
-    const R = Math.max(2, Math.min(4, Math.round(2 + hC / 22))), mx = (x, R) => Math.max(R + 1, Math.min(CW - 2 - R, x));
-    flower(mx(tx, R), top + 1 + Math.round(R * (0.3 + 0.5 * a.light)), R);
-    const rows = [0.62, 0.42, 0.8], side0 = r() < 0.5 ? 1 : -1;
-    for (let i = 1; i < a.bloom; i++) { // more flowers: on the sides, smaller, each on a short stalk
+    let xl = tx, xr = tx; for (const [x, y] of body) if (y === top) { xl = Math.min(xl, x); xr = Math.max(xr, x); }
+    if (a.shape < 0.5) { // a dome, its rim in neon
+      const R = Math.max(1, Math.min(3, Math.round((xr - xl) / 2) || 1 + Math.round(hC / 30)));
+      for (let dy = 0; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) { const d = dx * dx + dy * dy; if (d <= R * R + 0.5) put(tx + dx, top + 1 + dy, d > (R - 1) * (R - 1) + 0.5 ? 3 : 1); }
+    } else { // masts on the roof, a light at each tip
+      const span = Math.max(1, xr - xl + 1), n = Math.min(1 + Math.round(a.shape * 4), Math.ceil(span / 2));
+      for (let i = 0; i < n; i++) {
+        const x = n === 1 ? tx : xl + Math.round(i * (span - 1) / (n - 1)), L = 2 + ((i * 2) % 3) + Math.round(a.shape * 2);
+        for (let y = 1; y < L; y++) put(x, top + y, 0);
+        put(x, top + L, i % 2 ? 8 : 4);
+      }
+    }
+    const rows = [0.3, 0.55, 0.75], side0 = r() < 0.5 ? 1 : -1;
+    for (let i = 1; i < a.bloom; i++) { // neon signs on brackets, alternately left and right
       const y = Math.round(hC * rows[i - 1]), s = i % 2 ? side0 : -side0;
-      let edge = C; for (const [x, yy] of body) if (Math.abs(yy - y) <= 1 && (s > 0 ? x > edge : x < edge)) edge = x;
-      const fx = mx(edge + s * 3, R - 1);
-      put(edge + s, y, 0); put(edge + 2 * s, y + 1, 0);
-      flower(fx, y + 2, R - 1);
+      let edge = C; for (const [x, yy] of body) if (Math.abs(yy - y) <= 2 && (s > 0 ? x > edge : x < edge)) edge = x;
+      put(edge + s, y, 0);
+      for (let dy = -2; dy <= 2; dy++) for (let dx = 2; dx <= 3; dx++) put(edge + s * dx, y + dy, dy === 0 && dx === 2 ? 4 : 3);
     }
     return out;
   }
 
-  // sky per chord: a hue per scale degree; minor scales (minor third) darker and cooler
-  const HUES = [35, 315, 190, 160, 215, 275, 0]; // I amber, ii magenta, iii cyan, IV teal, V blue, vi violet, vii red
+  // sky per chord (S6.5: a city night): a hue per scale degree; minor scales (minor third) darker and cooler
+  const HUES = [285, 320, 200, 255, 230, 335, 5]; // I violet, ii magenta, iii cyan, IV indigo, V blue, vi pink, vii red
   const GROW = 1.2, SKY_FADE = 2; // s
   const ease = (q) => q * q * (3 - 2 * q) + 0.1 * Math.sin(Math.PI * q) * q * q; // slow start, a slight overshoot at the end
 
@@ -537,15 +565,22 @@
     // S4.6: the sprite of a look, quantized (5 shapes × 5 lights × 1–4 flowers) so a slider glides through a few
     // cached sprites; size, halo and sway are drawn continuously on top (transform, glow), never in the sprite
     quant(a) { return a ? { shape: Math.round(a.shape * 4) / 4, light: Math.round(a.light * 4) / 4, bloom: 1 + Math.round(a.bloom * 3) } : null; },
+    // S6.5 the colour of each tone (cells()): walls dark and barely tinted, frames a little lighter, windows warm,
+    // neon in the element's colour; Lumière brightens everything (and lights the windows, dress())
     tones(col, q) {
-      if (!q) return [rgb(col, 0.55), rgb(col, 0.85), rgb(col, 1.25), 'rgb(255,214,236)', 'rgb(255,233,168)'];
-      const L = q.light, grey = (col[0] + col[1] + col[2]) / 3, dull = (1 - L) * 0.55;
-      const c = col.map((v) => v + (grey - v) * dull), mix = (u, w, t) => u.map((v, i) => v + (w[i] - v) * t);
-      const petal = mix(c, [255, 250, 240], 0.15 + 0.5 * L);
-      return [rgb(c, 0.4 + 0.3 * L), rgb(c, 0.55 + 0.5 * L), rgb(c, 0.8 + 0.6 * L), rgb(petal, 0.45 + 0.65 * L), rgb(mix(petal, [255, 240, 190], L), 0.6 + 0.6 * L)];
+      const L = q ? q.light : 0.75, mix = (u, w, t) => u.map((v, i) => v + (w[i] - v) * t), W = TOK.wall;
+      const wall = mix(W, col, 0.14).map((v) => v * (0.9 + 0.5 * L)), frame = mix(wall, col, 0.5).map((v) => v * (1.05 + 0.35 * L)); // the outline reads as a neon edge
+      const neon = mix(col.map((v) => v * (0.55 + 0.6 * L)), [255, 255, 255], 0.1 * L), win = mix(col, [255, 236, 200], 0.55);
+      const t = [];
+      t[0] = rgb(frame); t[1] = rgb(wall); t[2] = rgb(win, 0.6 + 0.5 * L); t[3] = rgb(neon); t[4] = rgb(mix(col, [255, 255, 255], 0.75), 0.75 + 0.3 * L);
+      t[5] = t[6] = t[2]; t[7] = rgb(mix(wall, col, 0.25), 1.15); t[8] = rgb(TOK.red, 0.7 + 0.4 * L); t[12] = rgb(mix(wall, col, 0.4), 1.4, 0.7);
+      if (!q) { t[1] = rgb(col, 0.55, 0.85); t[2] = rgb(col, 1.25); } // the hologram (discovery): its own colour
+      return t;
     },
+    // S6.5 CRT: the chromatic aberration is baked into the sprites (a red and a cyan edge), set by JUICE; off in reduced motion
+    crt() { return this.reduced ? 0 : Math.min(1.5, JUICE); },
     sprite(p, px) {
-      const hC = this.heightCells(p), q = p.rare ? null : this.quant(p.look), key = `${p.kind}|${p.id}|${hC}|${px}` + (q ? `|${q.shape}|${q.light}|${q.bloom}` : '');
+      const hC = this.heightCells(p), q = p.rare ? null : this.quant(p.look), ab = this.crt(), key = `${p.kind}|${p.id}|${hC}|${px}|${ab}` + (q ? `|${q.shape}|${q.light}|${q.bloom}` : '');
       let s = this.sprites.get(key);
       if (s) return s;
       this.cacheMisses++;
@@ -555,9 +590,20 @@
       cv.width = CW * px; cv.height = Hc * px;
       const g = cv.getContext('2d'), gap = px >= 4 ? 1 : 0, col = p.col;
       const tones = this.tones(col, q);
-      for (const [x, y, t] of cl) { g.fillStyle = t === 12 ? 'rgba(107,74,26,0.55)' : tones[t]; g.fillRect(x * px, (Hc - 1 - y) * px, px - gap, px - gap); }
+      for (const [x, y, t] of cl) {
+        g.fillStyle = tones[t] || tones[1];
+        if (t === 12) g.fillRect(x * px + (px >> 2), (Hc - 1 - y) * px + (px >> 2), Math.max(1, px >> 1), Math.max(1, px >> 1));
+        else if (t === 0 || t === 1 || t === 3 || t === 7) g.fillRect(x * px, (Hc - 1 - y) * px, px, px);
+        else g.fillRect(x * px, (Hc - 1 - y) * px, px - gap, px - gap);
+      }
+      if (ab) { // behind the element: its silhouette in red shifted left, in cyan shifted right
+        const o = Math.max(1, Math.round(px * 0.35 * ab)), m = this.canvas(cv.width, cv.height), mg = m.getContext('2d');
+        g.globalCompositeOperation = 'destination-over';
+        [[TOK.red, -o], [TOK.cyan, o]].forEach(([c, dx]) => { mg.globalCompositeOperation = 'source-over'; mg.clearRect(0, 0, m.width, m.height); mg.drawImage(cv, 0, 0); mg.globalCompositeOperation = 'source-in'; mg.fillStyle = rgb(c, 1, 0.5); mg.fillRect(0, 0, m.width, m.height); g.drawImage(m, dx, 0); });
+        g.globalCompositeOperation = 'source-over';
+      }
       let x0 = CW, x1 = 0; for (const c of cl) { x0 = Math.min(x0, c[0]); x1 = Math.max(x1, c[0]); }
-      s = { cv, w: cv.width, h: cv.height, hC: Hc, key, l: cv.width / 2 - x0 * px, r: (x1 + 1) * px - cv.width / 2 }; // l, r: drawn extent left and right of the stem
+      s = { cv, w: cv.width, h: cv.height, hC: Hc, key, l: cv.width / 2 - x0 * px, r: (x1 + 1) * px - cv.width / 2 }; // l, r: drawn extent left and right of the axis
       this.sprites.set(key, s);
       if (this.sprites.size > 200) this.sprites.delete(this.sprites.keys().next().value);
       return s;
@@ -573,51 +619,78 @@
       this.glows.set(key, cv);
       return cv;
     },
-    // « MÉLODIE » under the plant; « MÉLO » when it does not fit its slot (phone)
+    // « MÉLODIE AUTO » under its element, a neon caption; « MÉLO » when it does not fit its slot (phone)
     label(p, fs, maxW) {
-      const full = p.label.toUpperCase(), key = full + '|' + fs + '|' + Math.round(maxW);
+      const full = p.label.toUpperCase(), key = full + '|' + fs + '|' + Math.round(maxW) + '|' + p.col.join();
       let s = this.labels.get(key);
       if (s) return s;
       const cv = document.createElement('canvas'), g = cv.getContext('2d'), font = `${fs}px VT323, "IBM Plex Mono", monospace`;
       g.font = font;
-      const lines = [g.measureText(full).width + 4 <= maxW ? full : p.short.toUpperCase()];
-      const w = Math.ceil(Math.max(...lines.map((t) => g.measureText(t).width))) + 4;
-      cv.width = w; cv.height = Math.ceil(fs * 1.05 * lines.length + fs * 0.2);
-      g.font = font; g.textBaseline = 'top'; g.textAlign = 'center'; g.fillStyle = '#b38a4f';
-      lines.forEach((t, i) => g.fillText(t, w / 2, i * fs * 1.05));
+      const lines = [g.measureText(full).width + 4 <= maxW ? full : p.short.toUpperCase()], pad = Math.ceil(fs * 0.4);
+      const w = Math.ceil(Math.max(...lines.map((t) => g.measureText(t).width))) + 4 + 2 * pad;
+      cv.width = w; cv.height = Math.ceil(fs * 1.05 * lines.length + fs * 0.2) + pad;
+      g.font = font; g.textBaseline = 'top'; g.textAlign = 'center';
+      g.shadowColor = rgb(p.col, 1, 0.9); g.shadowBlur = fs * 0.45; g.fillStyle = rgb(p.col, 0.9);
+      lines.forEach((t, i) => g.fillText(t, w / 2, pad / 2 + i * fs * 1.05));
+      g.shadowBlur = 0; g.fillStyle = rgb(p.col.map((v) => v + (255 - v) * 0.55));
+      lines.forEach((t, i) => g.fillText(t, w / 2, pad / 2 + i * fs * 1.05));
       this.labels.set(key, cv);
       return cv;
     },
-    // ground + stars (static), drawn under the sky of the current chord (S4.5w: two layers so the dawn can fade the stars)
+    // S6.5 the far city (cached): two rows of buildings against the sky, a little transparent (the sky's tint shows through),
+    // their windows lit by a share k 0..1 (the layers open, the dawn), always the same ones first: one canvas, only the
+    // band the buildings cover, rebuilt when k changes. The wet street below: asphalt, a faint synthwave grid to the
+    // horizon, puddles, a neon kerb.
     background(W, H, ground) {
-      const key = W + 'x' + H + '|' + ground + '|' + (this.px || 3);
+      const px = this.px || 3, key = W + 'x' + H + '|' + ground + '|' + px;
       if (this.bg && this.bg.key === key) return this.bg;
-      const r = mulberry(7), px = this.px || 3;
-      const st = document.createElement('canvas'); st.width = W; st.height = Math.max(1, ground);
-      let g = st.getContext('2d');
-      for (let i = 0; i < 70; i++) { g.fillStyle = `rgba(255,179,71,${0.08 + r() * 0.18})`; g.fillRect(Math.floor(r() * W / px) * px, Math.floor(r() * ground * 0.7 / px) * px, px - 1, px - 1); }
+      const r = mulberry(7), blds = [], wins = [], bandH = Math.round(ground * 0.2 / px) * px + 5 * px, top = ground - bandH;
+      [[0.05, 0.15, 6, 16, 0.8], [0.02, 0.08, 8, 22, 0.92]].forEach(([h0, h1, w0, w1, al], row) => {
+        let x = -Math.floor(r() * 8) * px;
+        while (x < W) {
+          const bw = Math.round(w0 + r() * (w1 - w0)) * px, bh = Math.round((h0 + r() * (h1 - h0)) * ground / px) * px, y = ground - bh - top;
+          blds.push([x, y, bw - px, bh, row, al]);
+          if (r() < 0.3) { const mx = x + Math.round(bw / 2 / px) * px - px; blds.push([mx, y - 3 * px, px, 3 * px, row, al]); if (r() < 0.8) wins.push([mx, y - 4 * px, 0, 3, row]); } // a mast, its red light
+          for (let yy = y + 2 * px; yy < bandH - px; yy += (2 + row) * px) for (let xx = x + px; xx < x + bw - 2 * px; xx += 2 * px) wins.push([xx, yy, r(), r() < 0.6 ? 0 : r() < 0.5 ? 1 : 2, row]);
+          x += bw;
+        }
+      });
       const gr = document.createElement('canvas'); gr.width = W; gr.height = Math.max(1, H - ground);
-      g = gr.getContext('2d');
-      g.fillStyle = '#120d07'; g.fillRect(0, 0, W, H - ground);
-      for (let y = 0; y < H - ground; y += px) for (let x = 0; x < W; x += px) {
-        const v = r(); if (v < 0.22) { g.fillStyle = v < 0.05 ? '#4a3316' : '#2a1d0e'; g.fillRect(x, y, px - 1, px - 1); }
-      }
-      g.fillStyle = 'rgba(255,179,71,0.35)'; g.fillRect(0, 0, W, Math.max(1, px >> 1));
-      this.bg = { key, stars: st, ground: gr };
+      const g = gr.getContext('2d'), gh = H - ground, grd = g.createLinearGradient(0, 0, 0, gh);
+      grd.addColorStop(0, rgb(TOK.ground, 1.9)); grd.addColorStop(1, rgb(TOK.ground)); g.fillStyle = grd; g.fillRect(0, 0, W, gh);
+      g.strokeStyle = rgb(TOK.pink, 1, 0.1); g.lineWidth = Math.max(1, px >> 1); g.beginPath();
+      for (let k = -12; k <= 12; k++) { g.moveTo(W / 2 + k * W * 0.02, 0); g.lineTo(W / 2 + k * W * 0.16, gh); }
+      for (let i = 1; i < 7; i++) { const y = Math.round(gh * (i / 7) ** 2); g.moveTo(0, y); g.lineTo(W, y); }
+      g.stroke();
+      for (let i = 0; i < 26; i++) { g.fillStyle = r() < 0.5 ? rgb(TOK.cyan, 1, 0.08) : rgb(TOK.pink, 1, 0.08); g.fillRect(Math.floor(r() * W / px) * px, Math.floor(r() * gh / px) * px, Math.round((4 + r() * 22)) * px, Math.max(1, px >> 1)); } // puddles
+      g.fillStyle = rgb(TOK.pink, 1, 0.55); g.fillRect(0, 0, W, Math.max(1, px >> 1));
+      this.bg = { key, ground: gr, blds, wins, top, bandH };
       return this.bg;
+    },
+    skyline(W, k) {
+      const bg = this.bg, q = Math.round(k * 20) / 20, key = bg.key + '|' + q;
+      if (this.skyW && this.skyW.key === key) return this.skyW.cv;
+      const cv = this.skyW && this.skyW.cv.width === W && this.skyW.cv.height === bg.bandH ? this.skyW.cv : this.canvas(W, bg.bandH), g = cv.getContext('2d'), px = this.px || 3;
+      g.clearRect(0, 0, cv.width, cv.height);
+      for (const [x, y, w, h, row, al] of bg.blds) { g.fillStyle = rgb(TOK.wall, 0.85 - 0.25 * row, al); g.fillRect(x, y, w, h); }
+      const cols = [TOK.amber, TOK.cyan, TOK.pink, TOK.red], s = Math.max(1, px - 1);
+      for (const [x, y, t, c, row] of bg.wins) if (t < q || c === 3) { g.fillStyle = rgb(cols[c], c === 3 ? 1 : 0.95, (row ? 0.75 : 0.5) * (c === 0 ? 1 : 0.85)); g.fillRect(x, y, s, s); }
+      this.skyW = { key, cv };
+      return cv;
     },
     // the sky of a chord: 'night' (before any chord), 'dawn' (finale), or `${deg}|${minor}`; cached by key and size
     // S5.8: off = hue shift (degrees) of the « hue » layer (Tonalité, Diapason), 0 at the default settings
+    // S6.5: a violet night, magenta at the horizon (the city's glow); the dawn = a synthwave sunrise
     skyColors(key, off = 0) {
-      if (key === 'night') return off ? [[0, '#0b0a08'], [1, `rgb(${hsl2rgb(((38 + off) % 360 + 360) % 360, 0.45, 0.075).join()})`]] : [[0, '#0b0a08'], [1, '#17120b']];
-      if (key === 'dawn') return [[0, '#141a33'], [0.5, '#4d2f4f'], [0.82, '#b0584a'], [1, '#f2a65a']];
+      if (key === 'night') return off ? [[0, hex(TOK.night)], [0.6, `rgb(${hsl2rgb(((285 + off) % 360 + 360) % 360, 0.5, 0.09).join()})`], [1, `rgb(${hsl2rgb(((300 + off) % 360 + 360) % 360, 0.55, 0.2).join()})`]] : [[0, hex(TOK.night)], [0.6, hex(TOK.sky)], [1, hex(TOK.horizon)]];
+      if (key === 'dawn') return [[0, hex(TOK.dawnTop)], [0.5, hex(TOK.dawnMid)], [0.85, hex(TOK.dawnLow)], [1, hex(TOK.sunTop)]];
       const [d, mi] = key.split('|'), h = ((HUES[(+d % 7 + 7) % 7] + (mi === '1' ? 18 : 0) + off) % 360 + 360) % 360;
       const c = (sa, l) => `rgb(${hsl2rgb(h, sa, l).join()})`;
-      return [[0, c(0.35, 0.03)], [0.55, c(0.5, mi === '1' ? 0.07 : 0.09)], [1, c(0.6, mi === '1' ? 0.17 : 0.22)]];
+      return [[0, hex(TOK.night)], [0.5, c(0.5, mi === '1' ? 0.07 : 0.1)], [1, c(0.65, mi === '1' ? 0.2 : 0.27)]];
     },
     hueOff() { const D = this.sDef, v = this.sc.hue; return D && v != null ? Math.round((v - D.hue) * 22) * 15 : 0; },
     sky(key, W, ground) {
-      const off = key === 'dawn' ? 0 : this.hueOff(), k = key + '|' + off + '|' + W + 'x' + ground;
+      const off = key === 'dawn' ? 0 : this.hueOff(), k = key + '|' + off + '|' + W + 'x' + ground + '|' + (this.px || 3);
       let cv = this.skies.get(k);
       if (cv) return cv;
       this.cacheMisses++;
@@ -625,9 +698,37 @@
       const g = cv.getContext('2d'), grd = g.createLinearGradient(0, 0, 0, ground);
       for (const [o, c] of this.skyColors(key, off)) grd.addColorStop(o, c);
       g.fillStyle = grd; g.fillRect(0, 0, W, ground);
+      if (key !== 'dawn') { const r = mulberry(7), px = this.px || 3; for (let i = 0; i < 40; i++) { g.fillStyle = `rgba(220,200,255,${(0.06 + r() * 0.16).toFixed(3)})`; g.fillRect(Math.floor(r() * W / px) * px, Math.floor(r() * ground * 0.45 / px) * px, px - 1, px - 1); } } // a few stars
       this.skies.set(k, cv);
       if (this.skies.size > 16) this.skies.delete(this.skies.keys().next().value);
       return cv;
+    },
+    // S6.5 the dawn's sun: a synthwave disc, striped at its foot, rising behind the city (cached)
+    sun(R) {
+      return this.fx('dawnsun', R, R, () => {
+        const c = this.canvas(2 * R, 2 * R), x = c.getContext('2d'), grd = x.createLinearGradient(0, 0, 0, 2 * R);
+        grd.addColorStop(0, hex(TOK.sunTop)); grd.addColorStop(1, hex(TOK.sunLow)); x.fillStyle = grd;
+        x.beginPath(); x.arc(R, R, R, 0, 6.283); x.fill(); x.globalCompositeOperation = 'destination-out';
+        for (let i = 0; i < 7; i++) x.fillRect(0, R * (1.05 + i * 0.13), 2 * R, Math.max(1, R * 0.025 * (i + 1)));
+        return c;
+      });
+    },
+    // S6.5 rain: a few dozen streaks drawn directly (far and near, slanted by the wind), falling with the scene's time;
+    // a handful of splashes blink on the street; it stops at dawn
+    drawRain(g, W, H, k) {
+      if (k < 0.02) return 0;
+      const px = this.px || 3, T = this.st, r = mulberry(131), n = Math.round(60 * Math.min(2.5, Math.max(0.6, W / 1000)));
+      const lw = Math.max(1, Math.round(px * 0.34)), cols = [rgb(TOK.rain, 1, 0.2), rgb(TOK.rain, 1, 0.34), rgb(TOK.pink, 1, 0.4)];
+      for (let i = 0; i < n; i++) {
+        const z = r() < 0.6 ? 0.55 : 1, x0 = r() * W, y0 = r() * H, L = Math.round(px * (3 + 6 * z)), v = H * (0.55 + 0.5 * z), c = i % 13 === 0 ? 2 : z < 1 ? 0 : 1;
+        const y = ((y0 + T * v) % (H + L)) - L, x = ((x0 - (y + T * v) * 0.12) % W + W) % W;
+        g.fillStyle = cols[c]; g.globalAlpha = k; g.fillRect(Math.round(x), Math.round(y), lw, L);
+      }
+      const q = mulberry(Math.floor(T * 9)), gd = this.ground, s = Math.max(1, px >> 1);
+      g.fillStyle = rgb(TOK.rain, 1, 0.5); g.globalAlpha = k * 0.7;
+      for (let i = 0; i < 12; i++) g.fillRect(Math.round(q() * W / px) * px, Math.round((gd + px * 2 + q() * (H - gd - px * 3)) / px) * px, 2 * px, s);
+      g.globalAlpha = 1;
+      return n;
     },
     chordKey(deg) {
       let minor = false;
@@ -772,14 +873,14 @@
     drawSky(g, W, gd) {
       const px = this.px || 3, T = this.st, red = this.reduced;
       let a;
-      if ((a = this.kick.hue || 0) > 0.02) { g.fillStyle = `rgba(255,226,190,${(0.16 * a).toFixed(3)})`; g.fillRect(0, 0, W, gd); }
+      if ((a = this.kick.hue || 0) > 0.02) { g.fillStyle = `rgba(255,200,245,${(0.16 * a).toFixed(3)})`; g.fillRect(0, 0, W, gd); }
       g.globalCompositeOperation = 'lighter';
       if ((a = this.amt('aurora')) > 0.03) {
         const cv = this.fx('aurora', W, gd, (w, h) => {
           const c = this.canvas(w / 4, h * 0.55 / 4), x = c.getContext('2d');
           for (let i = 0; i < c.width; i++) for (let r = 0; r < 2; r++) {
             const y = c.height * (0.35 + 0.22 * Math.sin(i * 0.035 + r * 2.1) + 0.08 * Math.sin(i * 0.11 + r)), hgt = c.height * (0.25 + 0.15 * Math.sin(i * 0.05 + r * 3));
-            const grd = x.createLinearGradient(0, y - hgt, 0, y + 4); grd.addColorStop(0, 'rgba(90,255,190,0)'); grd.addColorStop(0.8, r ? 'rgba(170,110,255,0.45)' : 'rgba(90,255,190,0.5)'); grd.addColorStop(1, 'rgba(90,255,190,0)');
+            const grd = x.createLinearGradient(0, y - hgt, 0, y + 4); grd.addColorStop(0, 'rgba(63,240,255,0)'); grd.addColorStop(0.8, r ? 'rgba(255,63,164,0.45)' : 'rgba(63,240,255,0.45)'); grd.addColorStop(1, 'rgba(63,240,255,0)');
             x.fillStyle = grd; x.fillRect(i, y - hgt, 1, hgt + 4);
           }
           return c;
@@ -788,25 +889,28 @@
         g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.15 + 0.85 * a);
         g.drawImage(cv, dx - W * 0.06, gd * 0.04, W * 1.12, gd * 0.55); g.imageSmoothingEnabled = false;
       }
-      if ((a = this.amt('rays')) > 0.03) {
-        const cv = this.fx('rays', W, gd, (w, h) => {
-          const c = this.canvas(w / 4, h / 4), x = c.getContext('2d');
-          for (let i = 0; i < 5; i++) {
-            const x0 = c.width * (0.1 + 0.2 * i), sp = c.width * (0.05 + 0.03 * (i % 3));
-            const grd = x.createLinearGradient(0, 0, 0, c.height); grd.addColorStop(0, 'rgba(255,214,150,0.5)'); grd.addColorStop(1, 'rgba(255,214,150,0)');
-            x.fillStyle = grd; x.beginPath(); x.moveTo(x0, 0); x.lineTo(x0 + sp * 0.4, 0); x.lineTo(x0 + sp * 3 + c.width * 0.15, c.height); x.lineTo(x0 + c.width * 0.15, c.height); x.closePath(); x.fill();
-          }
+      if ((a = this.amt('rays')) > 0.03) { // S6.5 searchlights: beams sweeping the sky from the city (Blade Runner)
+        const bh = Math.round(gd * 1.1), cv = this.fx('beam', W, gd, () => {
+          const c = this.canvas(64, 128), x = c.getContext('2d'), grd = x.createLinearGradient(0, 128, 0, 0);
+          grd.addColorStop(0, 'rgba(210,235,255,0.55)'); grd.addColorStop(1, 'rgba(210,235,255,0)');
+          x.fillStyle = grd; x.beginPath(); x.moveTo(30, 128); x.lineTo(34, 128); x.lineTo(64, 0); x.lineTo(0, 0); x.closePath(); x.fill();
           return c;
         });
-        g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.6 * a * (red ? 1 : 0.8 + 0.2 * Math.sin(T * 0.6)));
-        g.drawImage(cv, red ? 0 : Math.sin(T * 0.15) * W * 0.03, 0, W, gd); g.imageSmoothingEnabled = false;
+        const n = 2 + Math.round(a * 3), bw = Math.round(W * 0.09), ox = this.ox || 0, oy = this.oy || 0;
+        g.imageSmoothingEnabled = true;
+        for (let i = 0; i < n; i++) {
+          const bx = W * (0.12 + 0.76 * ((i * 0.618 + 0.2) % 1)), an = (red ? 0.25 : Math.sin(T * (0.25 + 0.07 * i) + i * 2.1)) * 0.5, c = Math.cos(an), sn = Math.sin(an);
+          g.setTransform(c, sn, -sn, c, bx + ox, gd * 0.92 + oy); g.globalAlpha = Math.min(1, 0.5 * a);
+          g.drawImage(cv, -bw / 2, -bh, bw, bh);
+        }
+        g.setTransform(1, 0, 0, 1, ox, oy); g.imageSmoothingEnabled = false;
       }
       if ((a = this.amt('twinkle')) > 0.03) { // 48 stars: how many and how fast they twinkle
         const r = mulberry(31), n = Math.round(8 + 40 * a), s = Math.max(1, px - 1);
         for (let i = 0; i < n; i++) {
           const x = Math.floor(r() * W / px) * px, y = Math.floor(r() * gd * 0.8 / px) * px, ph = r() * 6.283;
           g.globalAlpha = Math.min(1, (0.25 + 0.75 * a) * (red ? 0.7 : 0.5 + 0.5 * Math.sin(T * (1.5 + 5 * a) + ph)));
-          g.fillStyle = i % 5 ? '#fff4d6' : '#bfe6ff'; g.fillRect(x, y, s, s);
+          g.fillStyle = i % 5 ? '#f4e6ff' : i % 2 ? '#ff5468' : '#bff6ff'; g.fillRect(x, y, s, s);
           if (a > 0.5 && i % 7 === 0) { g.fillRect(x - px, y, s, s); g.fillRect(x + px, y, s, s); g.fillRect(x, y - px, s, s); g.fillRect(x, y + px, s, s); }
         }
       }
@@ -814,7 +918,7 @@
       if ((a = this.amt('clouds')) > 0.03) { // pixel clouds drifting across the sky (Dérive)
         const cv = this.fx('cloud', W, gd, (w, h, px) => {
           const c = this.canvas(48 * px, 12 * px), x = c.getContext('2d'), r = mulberry(5);
-          for (let j = 0; j < 12; j++) for (let i = 0; i < 48; i++) { const d = ((i - 24) / 24) ** 2 + ((j - 8) / (j < 8 ? 7 : 4)) ** 2 + 0.25 * Math.sin(i * 0.7) * (j < 6 ? 1 : 0); if (d < 1 && r() < 0.92) { x.fillStyle = j < 5 ? 'rgba(232,214,196,0.9)' : 'rgba(170,150,140,0.85)'; x.fillRect(i * px, j * px, px - 1, px - 1); } }
+          for (let j = 0; j < 12; j++) for (let i = 0; i < 48; i++) { const d = ((i - 24) / 24) ** 2 + ((j - 8) / (j < 8 ? 7 : 4)) ** 2 + 0.25 * Math.sin(i * 0.7) * (j < 6 ? 1 : 0); if (d < 1 && r() < 0.92) { x.fillStyle = j < 5 ? 'rgba(70,40,100,0.9)' : j < 9 ? 'rgba(120,50,130,0.88)' : 'rgba(190,70,160,0.85)'; x.fillRect(i * px, j * px, px - 1, px - 1); } }
           return c;
         });
         const r = mulberry(17), n = Math.max(1, Math.round(a * 6)), span = W + cv.width;
@@ -824,8 +928,8 @@
           g.globalAlpha = Math.min(1, 0.12 + 0.4 * a); g.drawImage(cv, Math.round(x), Math.round(y), Math.round(cv.width * sc), Math.round(cv.height * sc));
         }
       }
-      if ((a = this.sc.song || 0) > 0.01) { g.globalAlpha = 0.6; g.fillStyle = '#ffb347'; g.fillRect(0, 0, Math.round(W * a), Math.max(2, px)); }
-      if ((a = this.kick.song || 0) > 0.02 && !red) { const x = (1 - a) * W * 1.2 - W * 0.1; g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.35 * a; g.fillStyle = '#ffd9a0'; g.fillRect(Math.round(x), 0, Math.round(W * 0.08), gd); g.globalCompositeOperation = 'source-over'; }
+      if ((a = this.sc.song || 0) > 0.01) { g.globalAlpha = 0.7; g.fillStyle = hex(TOK.cyan); g.fillRect(0, 0, Math.round(W * a), Math.max(2, px)); }
+      if ((a = this.kick.song || 0) > 0.02 && !red) { const x = (1 - a) * W * 1.2 - W * 0.1; g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.35 * a; g.fillStyle = '#ffb0ec'; g.fillRect(Math.round(x), 0, Math.round(W * 0.08), gd); g.globalCompositeOperation = 'source-over'; }
       g.globalAlpha = 1;
     },
     // the ground ondulates (rhythm feel): two wavy lines of light along its edge
@@ -834,11 +938,32 @@
       const px = this.px || 3, T = this.st, A = px * (0.5 + 3 * a), st = px * 2, s = Math.max(1, px >> 1);
       g.globalCompositeOperation = 'lighter';
       for (let j = 0; j < 2; j++) {
-        g.fillStyle = `rgba(255,179,71,${((0.12 + 0.3 * a) / (j + 1)).toFixed(3)})`;
+        g.fillStyle = `rgba(63,240,255,${((0.12 + 0.3 * a) / (j + 1)).toFixed(3)})`;
         const y0 = gd + px * (2 + 5 * j), f = 0.012 + 0.01 * j;
         for (let x = 0; x < W; x += st) g.fillRect(x, Math.round(y0 + Math.sin(x * f + T * (2.5 + j)) * A), st - 1, s);
       }
       g.globalCompositeOperation = 'source-over';
+    },
+    // S6.5 the wet street: each element reflected upside down under its foot (the previous frame's transform), faded with
+    // distance by a cached overlay with streaks of rain; the finale lights them with their element
+    drawReflections(g, W, H, gd, R) {
+      const ox = this.ox || 0, oy = this.oy || 0;
+      g.globalAlpha = 1;
+      for (const p of this.plants) {
+        if (!p.kx || !p.gy || p.gy < 0.05) continue;
+        const s = this.sprite(p, this.px), ky = p.ky || p.kx, on = p.look ? 0.3 + 0.7 * p.look.on : 1;
+        g.globalAlpha = 0.42 * on * (R ? 0.3 + 0.7 * Math.min(1, this.lit[p.id] || 0) : 1);
+        g.setTransform(p.kx, 0, (p.sway || 0) * ky * p.gy, -ky * p.gy * 0.62, p.x + ox, p.y + oy + this.px); g.drawImage(s.cv, -s.w / 2, -s.h);
+      }
+      g.setTransform(1, 0, 0, 1, ox, oy);
+      const cv = this.fx('wet', W, H - gd, (w, h, px) => {
+        const c = this.canvas(w, h), x = c.getContext('2d'), grd = x.createLinearGradient(0, 0, 0, h);
+        grd.addColorStop(0, rgb(TOK.ground, 1, 0.1)); grd.addColorStop(0.55, rgb(TOK.ground, 1, 0.75)); grd.addColorStop(1, rgb(TOK.ground, 1, 0.95));
+        x.fillStyle = grd; x.fillRect(0, 0, w, h); x.fillStyle = rgb(TOK.ground, 1, 0.55);
+        for (let y = px; y < h; y += 2 * px) x.fillRect(0, y, w, Math.max(1, px >> 1));
+        return c;
+      });
+      g.globalAlpha = 1; g.drawImage(cv, 0, gd);
     },
     // S5.8 echo: faded copies of a plant trailing to its right (Écho: how many, how far)
     drawEcho(g, p, s, kx, ky, sway, gy, ox, oy) {
@@ -857,9 +982,9 @@
       if ((a = this.amt('haze')) > 0.03) {
         const bh = Math.round(H * 0.32), cv = this.fx('haze', W, H, (w, h) => {
           const c = this.canvas(w / 4, bh / 4), x = c.getContext('2d'), r = mulberry(11);
-          const grd = x.createLinearGradient(0, 0, 0, c.height); grd.addColorStop(0, 'rgba(200,190,220,0)'); grd.addColorStop(0.6, 'rgba(200,190,220,0.4)'); grd.addColorStop(1, 'rgba(200,190,220,0.1)');
+          const grd = x.createLinearGradient(0, 0, 0, c.height); grd.addColorStop(0, 'rgba(200,90,190,0)'); grd.addColorStop(0.6, 'rgba(200,90,190,0.38)'); grd.addColorStop(1, 'rgba(120,60,160,0.12)');
           x.fillStyle = grd; x.fillRect(0, 0, c.width, c.height);
-          for (let i = 0; i < 14; i++) { const cx = r() * c.width, cy = c.height * (0.35 + 0.4 * r()), R = c.height * (0.2 + 0.3 * r()), gg = x.createRadialGradient(cx, cy, 0, cx, cy, R); gg.addColorStop(0, 'rgba(220,210,235,0.35)'); gg.addColorStop(1, 'rgba(220,210,235,0)'); x.fillStyle = gg; x.fillRect(cx - R, cy - R, 2 * R, 2 * R); }
+          for (let i = 0; i < 14; i++) { const cx = r() * c.width, cy = c.height * (0.35 + 0.4 * r()), R = c.height * (0.2 + 0.3 * r()), gg = x.createRadialGradient(cx, cy, 0, cx, cy, R); gg.addColorStop(0, 'rgba(230,120,210,0.32)'); gg.addColorStop(1, 'rgba(230,120,210,0)'); x.fillStyle = gg; x.fillRect(cx - R, cy - R, 2 * R, 2 * R); }
           return c;
         });
         const off = red ? 0 : ((T * px * 4) % W + W) % W, y = gd - bh * 0.7;
@@ -873,13 +998,13 @@
           const bx = r() * W, by = gd - (0.08 + 0.5 * r()) * gd * 0.7, ph = r() * 6.283, f = 0.3 + r() * 0.5;
           const x = bx + (red ? 0 : Math.sin(T * f + ph) * 14 * px), y = by + (red ? 0 : Math.cos(T * f * 1.3 + ph) * 6 * px);
           g.globalAlpha = Math.min(1, (0.3 + 0.7 * a) * (red ? 0.8 : 0.5 + 0.5 * Math.sin(T * 3 * f + ph * 2)));
-          g.fillStyle = '#ffe07a'; g.fillRect(Math.round(x / px) * px, Math.round(y / px) * px, s, s);
+          g.fillStyle = i % 3 ? '#ff5468' : '#e8f6ff'; g.fillRect(Math.round(x / px) * px, Math.round(y / px) * px, s, s);
           g.globalAlpha *= 0.35; g.fillRect(Math.round(x / px) * px - px, Math.round(y / px) * px - px, 3 * px - 1, 3 * px - 1);
         }
       }
       g.globalCompositeOperation = 'source-over';
       if ((a = this.amt('snow')) > 0.03) {
-        const r = mulberry(41), n = Math.round(6 + 64 * a); g.fillStyle = '#e4efff';
+        const r = mulberry(41), n = Math.round(6 + 64 * a); g.fillStyle = '#bff6ff';
         for (let i = 0; i < n; i++) {
           const x0 = r() * W, y0 = r() * H, v = (8 + 14 * r()) * px, ph = r() * 6.283;
           const y = ((y0 + T * v) % H + H) % H, x = x0 + (red ? 0 : Math.sin(T * 0.8 + ph) * 3 * px);
@@ -902,7 +1027,7 @@
       if ((a = this.amt('lens')) > 0.03) {
         const cv = this.fx('lens', W, H, (w, h, px) => {
           const c = this.canvas(w, h), x = c.getContext('2d'), q = px * 12;
-          x.fillStyle = 'rgba(140,200,255,0.5)';
+          x.fillStyle = 'rgba(63,240,255,0.45)';
           for (let X = 0; X < w; X += q) for (let Y = 0; Y < h; Y += px * 3) x.fillRect(X, Y, Math.max(1, px >> 1), Math.max(1, px >> 1));
           for (let Y = 0; Y < h; Y += q) for (let X = 0; X < w; X += px * 3) x.fillRect(X, Y, Math.max(1, px >> 1), Math.max(1, px >> 1));
           return c;
@@ -910,7 +1035,7 @@
         const sv = this.sc.lens || 0, k = this.kick.lens || 0;
         g.globalAlpha = Math.min(1, 0.5 * Math.min(1, 2 * sv) + 0.4 * k); g.drawImage(cv, 0, 0);
         const staff = Math.max(0, 2 * sv - 1); // Composer: the five lines of a staff across the sky
-        if (staff > 0.02) { g.globalAlpha = Math.min(1, 0.35 * staff + 0.3 * k); g.fillStyle = '#ffd9a0'; for (let i = 0; i < 5; i++) g.fillRect(0, Math.round(gd * 0.18 + i * px * 4), W, Math.max(1, px >> 1)); }
+        if (staff > 0.02) { g.globalAlpha = Math.min(1, 0.35 * staff + 0.3 * k); g.fillStyle = '#ff9ee0'; for (let i = 0; i < 5; i++) g.fillRect(0, Math.round(gd * 0.18 + i * px * 4), W, Math.max(1, px >> 1)); }
       }
       g.globalAlpha = 1;
     },
@@ -945,15 +1070,27 @@
         });
         const vg = this.fx('vignette', W, H, (w, h) => {
           const c = this.canvas(w / 4, h / 4), x = c.getContext('2d'), gg = x.createRadialGradient(c.width / 2, c.height / 2, c.height * 0.3, c.width / 2, c.height / 2, c.width * 0.62);
-          gg.addColorStop(0, 'rgba(20,10,0,0)'); gg.addColorStop(1, 'rgba(20,10,0,0.9)'); x.fillStyle = gg; x.fillRect(0, 0, c.width, c.height); return c;
+          gg.addColorStop(0, 'rgba(12,0,24,0)'); gg.addColorStop(1, 'rgba(12,0,24,0.9)'); x.fillStyle = gg; x.fillRect(0, 0, c.width, c.height); return c;
         });
         g.globalAlpha = Math.min(1, 0.15 + 0.85 * a); g.drawImage(cv, 0, 0, W, H);
         g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.75 * a); g.drawImage(vg, 0, 0, W, H); g.imageSmoothingEnabled = false;
       }
       const pl = this.sc.play == null ? 1 : this.sc.play, pk = this.kick.play || 0;
-      if (pl < 0.98) { g.globalAlpha = 1; g.fillStyle = `rgba(6,4,2,${(0.3 * (1 - pl)).toFixed(3)})`; g.fillRect(0, 0, W, H); }
-      if (pk > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 1; g.fillStyle = `rgba(255,200,130,${(0.12 * pk).toFixed(3)})`; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over'; }
+      if (pl < 0.98) { g.globalAlpha = 1; g.fillStyle = `rgba(4,2,10,${(0.3 * (1 - pl)).toFixed(3)})`; g.fillRect(0, 0, W, H); }
+      if (pk > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 1; g.fillStyle = `rgba(255,150,230,${(0.12 * pk).toFixed(3)})`; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over'; }
+      this.drawCrt(g, W, H);
       g.globalAlpha = 1;
+    },
+    // S6.5 a discreet cathode-ray screen over the scene (strength = JUICE; off in reduced motion): its scanlines and violet
+    // vignette are css (body.city .stage::after, opacity --crt, set by V.draw: no canvas cost), the colour fringes are baked
+    // in the sprites; here only a faint band rolling down
+    drawCrt(g, W, H) {
+      const k = this.crt(); if (!k) return 0;
+      const bh = Math.round(H * 0.1), y = ((this.st * H * 0.08) % (H + 3 * bh)) - 2 * bh;
+      g.globalCompositeOperation = 'lighter'; g.fillStyle = '#b8a0ff';
+      for (let i = 0; i < 3; i++) { g.globalAlpha = Math.min(1, 0.022 * k * (i === 1 ? 1.6 : 1)); g.fillRect(0, Math.round(y + i * bh * 0.5), W, Math.round(bh * (i === 1 ? 0.5 : 1.5))); }
+      g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+      return 1;
     },
 
     // ---- S5.10 combos: each one ON in js/discoveries.js fades in (~0.25 s), and out when it falls; drawn by COMBO_FX ----
@@ -1095,24 +1232,31 @@
       if (sh) { const age = this.t - sh.t0; if (age > 0.4 || this.reduced) this.shake = null; else { const A = sh.amp * this.px * 2.5 * Math.exp(-age * 11); ox = Math.round(A * Math.sin(age * 95)); oy = Math.round(A * 0.7 * Math.cos(age * 71)); } }
       this.ox = ox; this.oy = oy;
       g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-over"; g.globalAlpha = 1; g.imageSmoothingEnabled = false;
-      if (ox || oy) { g.fillStyle = '#0b0a08'; g.fillRect(0, 0, W, H); g.setTransform(1, 0, 0, 1, ox, oy); }
-      // sky: the previous chord's, the current one fading in over it, the dawn (finale), the stars; then the ground
+      if (ox || oy) { g.fillStyle = hex(TOK.night); g.fillRect(0, 0, W, H); g.setTransform(1, 0, 0, 1, ox, oy); }
+      // sky: the previous chord's, the current one fading in over it, the dawn (finale) and its sun, the stars, the sky
+      // layers, then the far city (its windows light up as layers open, all of them at dawn), the wet street
       const gd = this.ground, bg = this.background(W, H, gd), sf = Math.min(1, ((this.t || 0) - this.skyT) / SKY_FADE), dawn = this.dawnLevel(now);
       if (sf < 1) g.drawImage(this.sky(this.skyPrevKey || 'night', W, gd), 0, 0);
       g.globalAlpha = sf; g.drawImage(this.sky(this.skyKey || 'night', W, gd), 0, 0);
-      if (dawn > 0) { g.globalAlpha = dawn * 0.92; g.drawImage(this.sky('dawn', W, gd), 0, 0); }
-      g.globalAlpha = 1 - dawn * 0.85; g.drawImage(bg.stars, 0, 0);
+      if (dawn > 0) {
+        g.globalAlpha = dawn * 0.95; g.drawImage(this.sky('dawn', W, gd), 0, 0);
+        const Rs = Math.max(8, Math.round(gd * 0.26)), sy0 = Math.round(gd + Rs * 0.7 - dawn * Rs * 1.15), gl = this.glow([255, 120, 150], 2 * Rs);
+        g.globalCompositeOperation = 'lighter'; g.globalAlpha = dawn; g.drawImage(gl, Math.round(W / 2 - 2 * Rs), sy0 - 2 * Rs); g.globalCompositeOperation = 'source-over';
+        g.drawImage(this.sun(Rs), Math.round(W / 2 - Rs), sy0 - Rs);
+      }
       g.globalAlpha = 1; this.drawSky(g, W, gd); // S5.8 sky layers
+      g.drawImage(this.skyline(W, Math.max(0.03 + 0.11 * this.plants.length, dawn)), 0, bg.top);
       g.drawImage(bg.ground, 0, gd); this.drawGround(g, W, H, gd);
-      this.drawCombos(g, W, H, gd, 'back'); // S5.10 combos behind the plants
       const px = this.px, red = this.reduced, fs = Math.round(Math.max(11 * dpr, px * 2.6));
       this.dpr = dpr;
-      // the ground breathes on the beat (stronger on beats 1 and 3); still in reduced motion and during the finale
+      this.drawReflections(g, W, H, gd, R);
+      this.drawCombos(g, W, H, gd, 'back'); // S5.10 combos behind the plants
+      // the street's kerb flashes on the beat (stronger on beats 1 and 3); still in reduced motion and during the finale
       const bp = red || R ? null : this.beatPhase(now);
       if (bp || dawn > 0) {
         g.globalCompositeOperation = 'lighter';
-        if (dawn > 0) { g.fillStyle = `rgba(242,166,90,${(dawn * 0.1).toFixed(3)})`; g.fillRect(0, gd, W, H - gd); }
-        if (bp) { const a = (bp.strong ? 0.3 : 0.16) * Math.exp(-bp.ph * 5); this.pulse = a; g.fillStyle = `rgba(255,179,71,${a.toFixed(3)})`; g.fillRect(0, gd, W, Math.max(2, px)); g.fillStyle = `rgba(255,179,71,${(a * 0.18).toFixed(3)})`; g.fillRect(0, gd, W, H - gd); }
+        if (dawn > 0) { g.fillStyle = `rgba(255,122,79,${(dawn * 0.12).toFixed(3)})`; g.fillRect(0, gd, W, H - gd); }
+        if (bp) { const a = (bp.strong ? 0.3 : 0.16) * Math.exp(-bp.ph * 5); this.pulse = a; g.fillStyle = rgb(TOK.pink, 1, Math.min(1, a * 2.2)); g.fillRect(0, gd, W, Math.max(2, px)); g.fillStyle = rgb(TOK.pink, 1, a * 0.16); g.fillRect(0, gd, W, H - gd); }
         g.globalCompositeOperation = 'source-over';
       }
       const all = this.plants.concat(this.rares), sy = {};
@@ -1133,7 +1277,7 @@
         }
         const k = red ? 1 : 1 + e * 0.05, wide = p.rare ? 1e9 : Math.min(p.roomL / s.l, p.roomR / s.r); // never over a neighbour (phone)
         const tall = p.rare ? 1e9 : (p.y - (this.H || 0) * (this.ceil || 0)) / s.h; // never into the stage HUD
-        const szc = (p.sz = Math.min(sz, Math.max(1, tall / k))), kx = (p.kx = Math.min(k * szc * (1 - 0.6 * bounce), wide)), ky = k * szc * (1 + bounce);
+        const szc = (p.sz = Math.min(sz, Math.max(1, tall / k))), kx = (p.kx = Math.min(k * szc * (1 - 0.6 * bounce), wide)), ky = (p.ky = k * szc * (1 + bounce));
         p.sway = sway; p.k = k; p.gy = gy; // the Réponse leaves follow the plant (drawAnswer)
         if (a && a.halo > 0.03 && gy > 0.01) { // S4.6 halo (Espace): a soft aura, radius in 8 cached steps
           const Rg = Math.round(px * (8 + 18 * Math.round(a.halo * 7) / 7)), gl = this.glow(p.col, Rg);
@@ -1144,9 +1288,10 @@
         if (!p.rare && !R) this.drawEcho(g, p, s, kx, ky, sway, gy, ox, oy); // S5.8 Écho: ghost copies behind it
         if (R && !p.rare) g.globalAlpha = 0.3 + 0.7 * Math.min(1, this.lit[p.id] || 0); // finale: dark until its layer plays
         if (a && a.on < 0.99) g.globalAlpha *= 0.3 + 0.7 * a.on; // S5.8: its layer switched off = a dim plant
+        if (p.kind === 'bell' && !red && !hot) { const b = Math.sin(this.t * 53 + p.phase) + Math.sin(this.t * 7.3) + Math.sin(this.t * 2.1 + 1); if (b > 2.2) g.globalAlpha *= 0.55; } // S6.5: the neon sign buzzes
         if (gy > 0.01) {
-          g.setTransform(kx, 0, -sway * ky * gy, ky * gy, p.x + ox, p.y + oy); g.drawImage(s.cv, -s.w / 2, -s.h); // shear from the base: the plant bends, the root stays put; it grows from there
-          const lit = Math.max(0.5 * hot, 0.75 * (this.zap[p.id] || 0)); // S4.6: lit while touched; S5.2: a flash on each note
+          g.setTransform(kx, 0, -sway * ky * gy, ky * gy, p.x + ox, p.y + oy); g.drawImage(s.cv, -s.w / 2, -s.h); // shear from the base: the element bends, its foot stays put; it grows from there
+          const lit = Math.max(0.5 * hot, 0.75 * (this.zap[p.id] || 0), p.rare ? 0 : 0.3 * dawn * (R ? Math.min(1, this.lit[p.id] || 0) : 1)); // S4.6: lit while touched; S5.2: a flash on each note; S6.5: all lit at dawn
           if (lit > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, lit); g.drawImage(s.cv, -s.w / 2, -s.h); g.globalCompositeOperation = 'source-over'; }
           if (hot > 0.02) this.energy[p.id] = Math.max(this.energy[p.id] || 0, 0.55 * hot);
         }
@@ -1175,12 +1320,13 @@
         g.fillRect(Math.round(q.x / px) * px, Math.round(q.y / px) * px, px * q.s - 1, px * q.s - 1);
       }
       g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+      this.drawRain(g, W, H, 1 - dawn); // S6.5 the rain, which stops at dawn
       this.drawFront(g, W, H, gd); this.drawCombos(g, W, H, gd, 'front'); g.setTransform(1, 0, 0, 1, 0, 0); this.drawPost(g, W, H); // S5.8 scene layers in front, then the filters
       g.imageSmoothingEnabled = true; // nearest-neighbour above: crisp LEDs, cheaper shear
       for (const id in this.zap) this.zap[id] = Math.max(0, this.zap[id] - dt * 3.5);
       for (const id in this.energy) this.energy[id] = Math.max(0, this.energy[id] - dt * (red ? 1.2 : 1.6));
       for (const id in this.lit) this.lit[id] = Math.max(0, this.lit[id] - dt * 0.35);
-      if (!all.length) { g.font = `${fs * 1.3}px VT323, monospace`; g.fillStyle = '#b38a4f'; g.textAlign = 'center'; g.fillText('Ouvre une couche pour planter ton jardin', W / 2, H * 0.5); g.textAlign = 'start'; }
+      if (!all.length) { g.font = `${fs * 1.3}px VT323, monospace`; g.fillStyle = hex(TOK.pink); g.textAlign = 'center'; g.shadowColor = hex(TOK.pink); g.shadowBlur = fs * 0.6; g.fillText('Ouvre une couche pour rallumer la ville', W / 2, H * 0.42); g.shadowBlur = 0; g.textAlign = 'start'; }
       const ms = this.now() - t0;
       this.times.push(ms); if (this.times.length > 240) this.times.shift();
       this.frames++;
@@ -1195,8 +1341,9 @@
         : v.phase === 'answer' ? 0.6 : Math.max(0, 0.5 - v.age / 6);
       this.energy.bells = Math.max(this.energy.bells || 0, e);
     },
-    // one leaf per note of the phrase, up the stem, alternately left and right: dim = to play, green = right, red = wrong.
-    // The leaves keep a readable size (≥ 4 CSS px a cell) even on a small plant: the stem then reaches up to carry them.
+    // one lamp per note of the phrase (S6.5: on brackets up the sign's pole; were leaves), alternately left and right:
+    // dim = to play, green = right, red = wrong. They keep a readable size (≥ 4 CSS px a cell) even on a small element:
+    // the pole then reaches up to carry them.
     drawAnswer(g, v) {
       const p = this.plants.find((q) => q.id === 'bells'); if (!p) return 0;
       const gy = p.gy == null ? 1 : p.gy; if (gy < 0.05) return 0; // S4.5w: a plant still growing carries its leaves up
@@ -1210,7 +1357,7 @@
         const peg = v.row[i]; if (!peg && v.phase === 'call') continue;
         const y = -Math.round(y0 + (top - y0) * (v.len > 1 ? i / (v.len - 1) : 0.5)), s = i % 2 ? 1 : -1;
         g.fillStyle = !peg ? rgb(p.col, 0.8, 0.5) : rgb(peg.state === 'ok' ? this.LEAF_OK : this.LEAF_BAD);
-        for (const [dx, dy] of [[1, 0], [2, 0], [3, 0], [2, -1], [3, -1], [4, -1], [5, -1], [4, -2], [5, -2]]) g.fillRect(s * dx * lp - (s < 0 ? lp : 0), y + dy * lp, lp - gap, lp - gap);
+        for (const [dx, dy] of [[1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [3, -1], [4, -1], [5, -1], [3, -2], [4, -2], [5, -2]]) g.fillRect(s * dx * lp - (s < 0 ? lp : 0), y + dy * lp, lp - gap, lp - gap);
         n++;
       }
       g.setTransform(1, 0, 0, 1, 0, 0);
@@ -1276,12 +1423,16 @@
   const get = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const pathPref = () => { const m = get(PATH_KEY); return m === NAME || V.MODES.includes(m) ? m : NAME; };
   const freePref = () => { const m = get('ambient.vizMode'); return V.MODES.includes(m) ? m : 'Orbes'; };
-  const chip = () => { const el = typeof document !== 'undefined' && document.getElementById('vizMode'); if (el) el.textContent = V.mode; };
+  const SHOWN = { [NAME]: 'Ville' }; // S6.5: the mode keeps its id (stored preference), the chip says « Ville »
+  const chip = () => { const el = typeof document !== 'undefined' && document.getElementById('vizMode'); if (el) el.textContent = SHOWN[V.mode] || V.mode; };
   const sync = () => { V.mode = onPath() ? pathPref() : freePref(); chip(); };
   const baseDraw = V.draw, baseCycle = V.cycleMode;
   V.draw = function () {
     gv.active = this.mode === NAME && onPath();
     if (this.mode === NAME && !onPath()) { sync(); }
+    if (gv.active !== gv.shown && typeof document !== 'undefined' && document.body) { // S6.5: the city's CRT (css), set by JUICE
+      gv.shown = gv.active; document.body.classList.toggle('city', gv.active); document.body.style.setProperty('--crt', String(Math.min(1, gv.crt() / 1.5 + 0.1)));
+    }
     if (gv.active && this.c) {
       gv.attach(this.c);
       gv.frame(this.g, this.c.width, this.c.height, this.dpr || 1);
@@ -1294,9 +1445,11 @@
     const L = [NAME, ...this.MODES];
     this.mode = L[(L.indexOf(this.mode) + 1) % L.length];
     try { localStorage.setItem(PATH_KEY, this.mode); } catch (e) {}
+    Promise.resolve().then(chip); // (ui.js writes the returned id on the chip: the label follows)
     return this.mode;
   };
   V.gardenSync = sync;
   if (onPath()) V.mode = pathPref();
   if (AMB.bus) { AMB.bus.on('game:mode', sync); gv.listen(AMB.bus); }
+  if (typeof window !== 'undefined') window.addEventListener('load', () => setTimeout(chip, 0));
 })();
