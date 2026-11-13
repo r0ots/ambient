@@ -156,6 +156,7 @@
     const deg = +b.dataset.deg, key = 'p' + e.pointerId;
     try { b.setPointerCapture(e.pointerId); } catch (err) {}
     b.classList.add('on');
+    if (AMB.motion) AMB.motion.burst(b, { n: 9, spread: 1.7, speed: 280 }); // S7.3: a pad sparks in its colour at once (and again when let go)
     press(key, AMB.seq.playDegree(deg, 0.85, true, e.timeStamp));
     const t = setTimeout(() => { // long press: the chord of this degree (needs the Pad; the note keeps sounding)
       if (!padPtr.has(e.pointerId) || !can('h.pad')) return;
@@ -201,7 +202,7 @@
   const padCall = (e) => { if (e && e.notes) e.notes.forEach((n) => n.midis.forEach((m) => padLight(m, n.time, n.dur * 1000, 'call'))); };
   function padsInit() {
     const bar = document.getElementById('pads'); if (!bar) return;
-    bar.innerHTML = PADS.map((k, i) => `<button type="button" class="pad" data-deg="${i}" style="--i:${i}" title="Touche ${k} · appui long : accord" aria-label="Note ${i + 1}"><span>${k}</span></button>`).join('');
+    bar.innerHTML = PADS.map((k, i) => `<button type="button" class="pad" data-deg="${i}" style="--i:${i};--c:hsl(${250 - i * 27}, 85%, 64%)" title="Touche ${k} · appui long : accord" aria-label="Note ${i + 1}"><span>${k}</span></button>`).join('');
     bar.addEventListener('pointerdown', padDown);
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((n) => bar.addEventListener(n, (e) => padUp(e.pointerId)));
     bar.addEventListener('contextmenu', (e) => e.preventDefault());

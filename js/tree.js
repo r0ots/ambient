@@ -250,7 +250,12 @@
     // the outermost unfolds (a panel with its controls unfolds once); the controls themselves get the halo
     for (const e of els.filter((e) => !els.some((o) => o !== e && o.contains(e)))) {
       e.classList.remove('is-appearing'); void e.offsetWidth; e.classList.add('is-appearing');
-      setTimeout(() => e.classList.remove('is-appearing'), this.APPEAR_MS + 100);
+      setTimeout(() => {
+        e.classList.remove('is-appearing');
+        // S7.3: it lands with a burst of sparks (where it is now: the reveal scrolled to it), if it is in the window
+        const M = AMB.motion, r = e.getBoundingClientRect();
+        if (M && r.width && r.bottom > 0 && r.top < innerHeight && !(AMB.garden && AMB.garden.modalUp && AMB.garden.modalUp())) M.burst({ x: r.left + r.width / 2, y: r.top + Math.min(r.height, 60) / 2 }, { n: 20, spread: Math.PI * 2, speed: 340, color: '#fff36b' });
+      }, this.APPEAR_MS + 100);
     }
     const hl = els.filter((e) => e.dataset.node && !e.matches('.stage .hint')); // (the keys line just appears)
     if (!hl.length) return hl;

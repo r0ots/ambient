@@ -445,16 +445,11 @@ body.game .tree-grp { display: flex !important; }
 
 /* S4.6: what a node opens comes in (tree.appear): unfolds from the top, fades and grows in (~0.55 s), then a pulsing halo
    until it is touched (8 s at most); the « Nouveau » tag points at the first one. Generic: any control, panel, button. */
-.is-appearing { animation: is-appear .55s cubic-bezier(.2, .8, .3, 1) both; transform-origin: 50% 0; }
-@keyframes is-appear { from { opacity: 0; transform: scale(.94); clip-path: inset(0 0 100% 0); } 60% { opacity: 1; } to { opacity: 1; transform: none; clip-path: inset(0 0 0 0); } }
-.is-new { outline: 2px solid var(--lcd-fg); outline-offset: 3px; border-radius: 8px; animation: is-new-glow 1.6s ease-in-out infinite; }
-.is-new.is-appearing { animation: is-appear .55s cubic-bezier(.2, .8, .3, 1) both, is-new-glow 1.6s ease-in-out .55s infinite; }
+/* (their motion: S7.3, end of the file) */
+.is-new { outline: 2px solid var(--lcd-fg); outline-offset: 3px; border-radius: 8px; }
 .is-new-rel { position: relative; }
 /* (at the control's top-right corner, clear of the panel's name; !important: some controls draw their own ::after) */
-.is-new-first::after { content: '◂ Nouveau' !important; display: block !important; position: absolute !important; top: auto !important; right: auto !important; bottom: calc(100% - 4px) !important; left: calc(100% - 16px) !important; width: auto !important; height: auto !important; transform: none !important; font: 15px/1.1 var(--f-lcd); letter-spacing: .04em; text-transform: none; padding: 1px 6px; border-radius: 4px !important; background: var(--lcd-fg) !important; color: #1a1408; white-space: nowrap; pointer-events: none; z-index: 5; box-shadow: 0 2px 8px #0008; transition: none !important; animation: is-new-tag 1.6s ease-in-out infinite; }
-@keyframes is-new-glow { 50% { outline-color: #fff3c4; box-shadow: 0 0 18px color-mix(in srgb, var(--lcd-fg) 60%, transparent); } }
-@keyframes is-new-tag { 50% { translate: 0 -3px; } }
-@media (prefers-reduced-motion: reduce) { .is-appearing, .is-new, .is-new.is-appearing, .is-new-first::after { animation: none; } }
+.is-new-first::after { content: '◂ Nouveau' !important; display: block !important; position: absolute !important; top: auto !important; right: auto !important; bottom: calc(100% - 4px) !important; left: calc(100% - 16px) !important; width: auto !important; height: auto !important; transform: none !important; font: 15px/1.1 var(--f-lcd); letter-spacing: .04em; text-transform: none; padding: 1px 6px; border-radius: 4px !important; background: var(--lcd-fg) !important; color: #1a1408; white-space: nowrap; pointer-events: none; z-index: 5; box-shadow: 0 2px 8px #0008; transition: none !important; }
 .lcd { position: relative; }
 body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* S4.3: no key / chord names before Tonalité */
 @keyframes lcd-bump { 30% { transform: scale(1.35); color: #fff3c4; } }
@@ -489,8 +484,7 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .modal-card .open-more:empty { display: none; }
 .open-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .open-actions .open-go { font-size: 16px; padding: 8px 18px; animation: ready-pulse 2s ease-in-out infinite; }
-.open-dlg:not([hidden]) .open-card { animation: is-appear .45s cubic-bezier(.2, .8, .3, 1) both; }
-@media (prefers-reduced-motion: reduce) { .lcd-task.ready .lcd-task-txt, .tree-btn.has-ready::after, .open-actions .open-go, .open-dlg:not([hidden]) .open-card { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .lcd-task.ready .lcd-task-txt, .tree-btn.has-ready::after, .open-actions .open-go { animation: none; } }
 @media (prefers-reduced-motion: reduce) { .lcd-task.bump { animation: none; } }
 /* S5.3 Réponse: score row (path), glitch when a series grows, a record falls or a tier is reached */
 .lcd-score { font-size: 15px; letter-spacing: .04em; color: #b38a4f; justify-self: start; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
@@ -598,10 +592,6 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .tree-map:has(.is-focus) .tree-link:not(.is-hl) { opacity: .18; }
 @keyframes tree-flow { to { stroke-dashoffset: -13; } }
 .tree-glow { fill: none; stroke: var(--c); stroke-width: 6; stroke-linecap: round; stroke-dasharray: 1 1; stroke-dashoffset: 1; opacity: 0; pointer-events: none; }
-.tree-glow.lit { opacity: 1; filter: drop-shadow(0 0 6px var(--c)); animation: tree-lit .38s ease-out forwards; }
-.tree-glow.hint { opacity: 1; stroke: var(--lcd-fg); stroke-width: 4; stroke-dasharray: none; animation: tree-hint .2s steps(2) 4 alternate; }
-@keyframes tree-lit { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
-@keyframes tree-hint { from { opacity: 1; } to { opacity: .15; } }
 /* nodes: round LEDs, name and cost on small plates so links never cover the text */
 .tree-node { position: absolute; width: 92px; margin: -15px 0 0 -46px; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: 0; color: var(--muted); font: 500 12px/1.15 var(--f-ui); text-align: center; cursor: pointer; transition: opacity .2s; }
 .tree-node .led { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 13px; line-height: 1;
@@ -622,7 +612,6 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .tree-node.st-owned span { color: var(--c); }
 @keyframes led-breathe { 0%, 100% { box-shadow: inset 0 -2px 3px #0006, 0 0 0 2px #0b0a09, 0 0 4px color-mix(in srgb, var(--lcd-fg) 30%, transparent); }
   50% { box-shadow: inset 0 -2px 3px #0006, 0 0 0 2px #0b0a09, 0 0 16px color-mix(in srgb, var(--lcd-fg) 75%, transparent); } }
-.tree-node:hover .led { transform: scale(1.1); }
 .tree-node:focus { outline: none; }
 .tree-node:focus-visible .led { outline: 2px solid #fff; outline-offset: 4px; }
 .tree-map:has(.is-focus) .tree-node:not(.is-focus):not(.is-req):not(.is-dep) { opacity: .35; }
@@ -630,12 +619,7 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .tree-node.is-dep .led { outline: 2px dashed var(--lcd-fg); outline-offset: 3px; }
 .tree-node.is-sel .led { outline: 2px solid #fff; outline-offset: 4px; }
 /* unlock sequence (G8.5) */
-.tree-node.is-buying .led { animation: led-charge .38s ease-in forwards; }
-.tree-node.is-born .led { animation: led-born .6s cubic-bezier(.2, 1.6, .4, 1); }
-.tree-node.is-blink .led { animation: led-blink .2s steps(2) 4 alternate; }
-@keyframes led-charge { to { transform: scale(.8); box-shadow: 0 0 0 2px #0b0a09, 0 0 24px var(--c); } }
-@keyframes led-born { 0% { transform: scale(.8); } 40% { transform: scale(1.5); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 50%, transparent), 0 0 44px var(--c); } 100% { transform: scale(1); } }
-@keyframes led-blink { from { filter: brightness(2.2); } to { filter: brightness(.6); } }
+/* (the unlock sequence's motion: S7.3, end of the file) */
 .tree-zoom { position: absolute; bottom: 10px; right: 10px; z-index: 2; display: flex; flex-direction: column; gap: 4px; }
 .tree-zoom .btn { min-width: 30px; padding: 4px 8px; font-size: 15px; line-height: 1; }
 .tree-info { position: absolute; left: 10px; bottom: 10px; z-index: 3; width: min(310px, calc(100% - 20px)); padding: 9px 12px 10px; background: var(--panel); border-left: 3px solid var(--c); border-radius: var(--radius, 4px); box-shadow: var(--bevel, none), 0 10px 30px #000b; }
@@ -958,3 +942,146 @@ body.playing #play::after { content: ""; position: absolute; inset: -2px; border
 @keyframes m-beat-glow { 0% { opacity: calc(.75 * min(1, var(--m-amp))); } 60%, 100% { opacity: 0; } }
 .m-still body.playing #play, .m-still body.playing #play::after { animation: none; }
 @media (prefers-reduced-motion: reduce) { body.playing #play, body.playing #play::after { animation: none; } }
+
+/* =====================================================================
+   S7.3 « Parcours en mouvement » — the Arbre, its cards, the carnet, HIGH SCORES, INSERT COIN, what comes in « Nouveau »,
+   the LCD of the asks and of the Réponse, the pads. On the S7.1 system only (tokens --m-*, AMB.motion): durations × --m-t,
+   amplitudes × --m-amp; loops that breathe follow the tempo (--beat). js: garden-tree.js (treeIn, crtOff, sparkRun, boom),
+   garden.js (suck, coinFx, slam, rollN, hiscores.drum), discoveries.js (reveal), tree.js (landing sparks), play.js (pads).
+   ===================================================================== */
+/* the Arbre opens: a neon line unrolls into the screen (CRT), a scan sweeps it; the nodes pop in level by level (js) */
+.tree-card.m-tree-in { animation: m-tree-in calc(var(--m-slow) + var(--m-fast)) var(--m-out) both; }
+.tree-card.m-tree-in::after { content: ""; position: absolute; inset: 0; z-index: 9; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(transparent 86%, color-mix(in srgb, var(--arc-fg) 25%, transparent) 96%, #e9fdff 99%, transparent);
+  animation: m-scan calc(var(--m-slow) + var(--m-med)) var(--m-out) var(--m-fast) both; }
+@keyframes m-tree-in { 0% { scale: .04 .006; filter: brightness(4); } 30% { scale: 1.02 .006; filter: brightness(3); } 65% { scale: 1 1.02; filter: brightness(1.4); } 100% { scale: 1 1; filter: none; } }
+@keyframes m-scan { from { translate: 0 -100%; opacity: 1; } 90% { opacity: 1; } to { translate: 0 0; opacity: 0; } }
+/* a screen that closes (garden-tree.js crtOff): the ghost of its frame collapses to a line, then a dot (under the windows) */
+.m-crt-off { position: fixed; z-index: 49; pointer-events: none; border-radius: 6px; background: linear-gradient(#e9fdff, var(--arc-fg)); box-shadow: 0 0 30px var(--arc-fg), 0 0 60px var(--arc-hot); }
+/* a card sucked away (garden.js suck): its ghost, under the windows, inert */
+.m-ghost { position: fixed !important; z-index: 49; margin: 0 !important; max-height: none !important; overflow: hidden !important; pointer-events: none; transform-origin: 50% 50%; }
+.m-ghost, .m-ghost * { animation: none !important; transition: none !important; }
+
+/* nodes: hover = the LED swells and glows, the name lifts (clearly); ready = it levitates on the tempo, a ring pulses out */
+.tree-node .led { position: relative; transition: scale var(--m-fast) var(--m-spring), filter var(--m-fast) var(--m-out); }
+.tree-node b { transition: translate var(--m-fast) var(--m-spring), box-shadow var(--m-fast) var(--m-out), color var(--m-fast); }
+@media (hover: hover) {
+  .tree-node:hover .led { scale: calc(1 + .32 * var(--m-amp)); filter: brightness(1.35) drop-shadow(0 0 calc(10px * var(--m-amp)) var(--c)); }
+  .tree-node:hover b { translate: 0 calc(-3px * var(--m-amp)); color: #fff; box-shadow: 0 calc(5px * var(--m-amp)) 10px -3px #000d, 0 0 calc(12px * var(--m-amp)) -2px var(--c); }
+}
+.tree-node.st-ready { animation: m-levitate calc(var(--beat) * 2) ease-in-out infinite; }
+.tree-node.st-ready .led::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; border: 2px solid var(--lcd-fg); pointer-events: none; opacity: 0;
+  animation: m-ring calc(var(--beat) * 2) var(--m-out) infinite; }
+@keyframes m-levitate { 50% { translate: 0 calc(-6px * var(--m-amp)); } }
+@keyframes m-ring { from { scale: .9; opacity: .9; } to { scale: calc(1 + 1.1 * var(--m-amp)); opacity: 0; } }
+/* the unlock sequence: the link traces itself (a spark runs along it, js), the node charges up, shakes, is born in an
+   explosion (js boom) with a shock ring, the children it reaches blink */
+.tree-glow.lit { opacity: 1; filter: drop-shadow(0 0 6px var(--c)); animation: tree-lit var(--m-slow) var(--m-out) forwards; }
+.tree-glow.hint { opacity: 1; stroke: var(--lcd-fg); stroke-width: 4; stroke-dasharray: none; animation: tree-hint var(--m-med) steps(2) 4 alternate; }
+@keyframes tree-lit { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes tree-hint { from { opacity: 1; } to { opacity: .15; } }
+.tree-node.is-buying .led { animation: led-charge var(--m-slow) var(--m-in) forwards; }
+.tree-node.is-born .led { animation: led-born calc(var(--m-slow) * 1.5) var(--m-spring); }
+.tree-node.is-born .led::after { content: ""; position: absolute; inset: -2px; border-radius: 50%; pointer-events: none; border: 3px solid var(--c); box-shadow: 0 0 14px var(--c);
+  animation: m-shock calc(var(--m-slow) * 1.5) var(--m-out) both; }
+.tree-node.is-blink .led { animation: led-blink var(--m-med) steps(2) 4 alternate; }
+@keyframes led-charge { 20% { translate: calc(-1px * var(--m-amp)) 0; } 40% { translate: calc(1px * var(--m-amp)) 0; } 60% { translate: calc(-1.5px * var(--m-amp)) 0; } 80% { translate: calc(1.5px * var(--m-amp)) 0; }
+  to { translate: 0 0; scale: calc(1 - .2 * var(--m-amp)); box-shadow: 0 0 0 2px #0b0a09, 0 0 24px var(--c); } }
+@keyframes led-born { 0% { scale: .8; } 35% { scale: calc(1 + .8 * var(--m-amp)); filter: brightness(2.2); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 50%, transparent), 0 0 50px var(--c); } 100% { scale: 1; } }
+@keyframes m-shock { from { scale: 1; opacity: 1; } to { scale: calc(1 + 3 * var(--m-amp)); opacity: 0; border-width: 1px; } }
+@keyframes led-blink { from { filter: brightness(2.2); } to { filter: brightness(.6); } }
+
+/* the cards « ✦ Prêt à ouvrir » (and its explanation): an arcade card flipped in 3D, its lines dealt one by one */
+.open-dlg { perspective: 1000px; }
+.open-dlg:not([hidden]) .open-card { animation: m-card-flip calc(var(--m-slow) + var(--m-med)) var(--m-out) both; }
+.open-dlg:not([hidden]) .open-card > :not(.modal-x) { animation: m-deal var(--m-med) var(--m-spring) var(--m-med) both; }
+.open-dlg:not([hidden]) .open-card > :nth-child(3) { animation-delay: calc(var(--m-med) + var(--m-stagger)); }
+.open-dlg:not([hidden]) .open-card > :nth-child(4) { animation-delay: calc(var(--m-med) + 2 * var(--m-stagger)); }
+.open-dlg:not([hidden]) .open-card > :nth-child(5) { animation-delay: calc(var(--m-med) + 3 * var(--m-stagger)); }
+.open-dlg:not([hidden]) .open-card > :nth-child(n+6) { animation-delay: calc(var(--m-med) + 4 * var(--m-stagger)); }
+@keyframes m-card-flip { 0% { opacity: 0; rotate: y calc(-115deg * min(1, var(--m-amp))); scale: .45; translate: 0 calc(70px * var(--m-amp)); }
+  45% { opacity: 1; rotate: y calc(16deg * min(1, var(--m-amp))); scale: 1.06; translate: 0 0; } 72% { rotate: y calc(-6deg * min(1, var(--m-amp))); scale: .98; } 100% { rotate: y 0deg; scale: 1; } }
+@keyframes m-deal { from { opacity: 0; translate: calc(-18px * var(--m-amp)) 0; } }
+/* « ✦ Ouvrir » breathes on the tempo (the card's, the LCD's), the Arbre's ✦ / ★ bob and spin */
+.open-dlg:not([hidden]) .open-card .open-actions .open-go { animation: m-breathe calc(var(--beat) * 2) ease-in-out infinite; }
+.lcd-task.ready .lcd-task-txt { transform-origin: 0 50%; animation: m-breathe calc(var(--beat) * 2) ease-in-out infinite; }
+@keyframes m-breathe { 50% { scale: calc(1 + .07 * var(--m-amp)); filter: brightness(1.25); box-shadow: 0 0 calc(16px * var(--m-amp)) var(--arc-hot), 0 0 4px var(--arc-gold); } }
+.tree-btn.has-ready::after, .tree-btn.has-hs::before { animation: m-star calc(var(--beat) * 2) ease-in-out infinite; }
+@keyframes m-star { 50% { scale: calc(1 + .5 * var(--m-amp)); rotate: calc(25deg * var(--m-amp)); filter: brightness(1.6); } }
+
+/* the carnet: riddles « ??? » crackle like a bad signal; a discovery found is revealed in a glitch (js dc-reveal) */
+.dc-item.riddle b { animation: m-crackle calc(var(--m-slow) * 7) steps(1, end) infinite; }
+.dc-item.riddle:nth-child(2n) b { animation-delay: calc(var(--m-slow) * -2.3); }
+.dc-item.riddle:nth-child(3n) b { animation-delay: calc(var(--m-slow) * -4.1); }
+@keyframes m-crackle { 0%, 86%, 100% { translate: 0 0; text-shadow: none; }
+  88% { translate: calc(2px * var(--m-amp)) 0; text-shadow: -2px 0 #ff3fa4, 2px 0 #3ff0ff; opacity: 1; } 90% { translate: calc(-2px * var(--m-amp)) calc(1px * var(--m-amp)); opacity: .2; }
+  92% { translate: calc(1px * var(--m-amp)) 0; text-shadow: 2px 0 #ff3fa4, -2px 0 #3ff0ff; opacity: .9; } 95% { opacity: .35; } }
+.dc-item.dc-reveal { animation: m-reveal calc(var(--m-slow) * 2) steps(1, end); }
+.dc-item.dc-reveal b { color: #fff; text-shadow: 3px 0 #ff3fa4, -3px 0 #3ff0ff, 0 0 12px #fff3c4; }
+@keyframes m-reveal { 0% { opacity: 0; clip-path: inset(45% 0 45% 0); translate: calc(-8px * var(--m-amp)) 0; } 8% { opacity: 1; clip-path: inset(0 0 60% 0); translate: calc(8px * var(--m-amp)) 0; }
+  16% { clip-path: inset(55% 0 0 0); translate: calc(-4px * var(--m-amp)) 0; } 24% { clip-path: inset(0 0 0 0); translate: 0 0; scale: calc(1 + .08 * var(--m-amp)); } 34% { opacity: .4; scale: 1; } 44% { opacity: 1; translate: calc(3px * var(--m-amp)) 0; } 54%, 100% { translate: 0 0; clip-path: none; } }
+.dc-head, .hs-title { transition: translate var(--m-fast) var(--m-spring), filter var(--m-fast) var(--m-out); }
+@media (hover: hover) { .dc-head:hover, .hs-title:hover { translate: calc(5px * var(--m-amp)) 0; filter: brightness(1.4) drop-shadow(0 0 calc(8px * var(--m-amp)) var(--arc-hot)); } }
+
+/* HIGH SCORES: lines come up like a cabinet's attract screen (js stagger), the score being signed blinks, a new one
+   flashes in; the initials roll like a drum (js drum); ▲ ▼ swell under the pointer */
+.hs-list li { border-radius: 3px; padding: 0 4px; }
+.hs-list li.pend { animation: m-hs-blink calc(var(--m-slow) * 2) steps(1, end) infinite; }
+@keyframes m-hs-blink { 50% { color: var(--arc-gold); text-shadow: 0 0 10px var(--arc-gold); opacity: .55; } }
+.hs-list li.hs-new { animation: m-hs-new calc(var(--m-slow) * 3) steps(1, end); }
+@keyframes m-hs-new { 0%, 32%, 64% { background: var(--arc-hot); color: var(--arc-ink); text-shadow: none; } 16%, 48%, 80%, 100% { background: transparent; } }
+.hs-slot button { transition: scale var(--m-fast) var(--m-spring), color var(--m-fast), text-shadow var(--m-fast); }
+@media (hover: hover) { .hs-slot button:hover { scale: calc(1 + .3 * var(--m-amp)); color: #fff; text-shadow: 0 0 10px var(--arc-fg), 0 0 2px #fff; } }
+
+/* INSERT COIN: hover = the title swells and burns brighter; the press = a coin drops into the slot (sparks, js), then
+   the screen lights up like a CRT (a line that opens out). The title itself is already gone: this dresses the stage */
+.coin b, .coin span { transition: scale var(--m-fast) var(--m-spring), letter-spacing var(--m-med) var(--m-out), color var(--m-fast), filter var(--m-fast); }
+@media (hover: hover) { .coin:hover b { scale: calc(1 + .08 * var(--m-amp)); filter: brightness(1.3); } .coin:hover span { color: #fff; letter-spacing: .22em; } }
+.coin-fx { position: absolute; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; border-radius: inherit; }
+.cf-coin { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px; border-radius: 50%; display: grid; place-items: center; font: 32px/1 var(--f-lcd); font-style: normal;
+  color: #7a4d00; background: radial-gradient(circle at 35% 30%, #fffbe0, #ffd23f 45%, #b8860b); box-shadow: 0 0 0 3px #7a5200, 0 0 26px #fff36b; opacity: 0;
+  animation: m-coin-drop var(--m-slow) var(--m-in) both; }
+@keyframes m-coin-drop { 0% { opacity: 1; translate: 0 calc(-260px * min(1, var(--m-amp))); rotate: y 0deg; } 78% { opacity: 1; translate: 0 0; rotate: y 900deg; scale: 1; }
+  88% { opacity: 1; scale: 1.35 .55; rotate: y 900deg; } 100% { opacity: 0; translate: 0 0; scale: .1 0; rotate: y 900deg; } }
+.cf-crt { position: absolute; inset: 0; background: linear-gradient(#ffffff, #c8f9ff); mix-blend-mode: screen; opacity: 0; animation: m-crt-on var(--m-slow) var(--m-out) var(--m-slow) both; }
+@keyframes m-crt-on { 0% { opacity: 1; scale: 0 .01; } 30% { opacity: 1; scale: 1 .012; } 62% { opacity: .85; scale: 1 1; } 100% { opacity: 0; scale: 1 1; } }
+
+/* « Nouveau »: what a node opens drops in and bounces (sparks when it lands, tree.js), then a halo on the tempo */
+.is-appearing { animation: m-appear calc(var(--m-slow) + var(--m-fast)) var(--m-bounce) both; transform-origin: 50% 0; }
+@keyframes m-appear { from { opacity: 0; scale: calc(1 - .25 * min(1, var(--m-amp))); translate: 0 calc(-26px * var(--m-amp)); clip-path: inset(0 0 100% 0); }
+  35% { opacity: 1; clip-path: inset(0 0 0 0); } to { opacity: 1; scale: 1; translate: 0 0; clip-path: inset(0 0 0 0); } }
+.is-new { animation: m-new-glow calc(var(--beat) * 2) ease-in-out infinite; }
+.is-new.is-appearing { animation: m-appear calc(var(--m-slow) + var(--m-fast)) var(--m-bounce) both, m-new-glow calc(var(--beat) * 2) ease-in-out calc(var(--m-slow) + var(--m-fast)) infinite; }
+.is-new-first::after { animation: m-new-tag var(--beat) ease-in-out infinite; }
+@keyframes m-new-glow { 50% { outline-color: #fff3c4; box-shadow: 0 0 calc(20px * var(--m-amp)) color-mix(in srgb, var(--lcd-fg) 65%, transparent); } }
+@keyframes m-new-tag { 50% { translate: 0 calc(-4px * var(--m-amp)); scale: calc(1 + .06 * var(--m-amp)); } }
+
+/* the LCD: a new challenge is typed in (m-type), counts roll (motion.roll), the countdown of an ask slams in
+   (« MAINTENANT ! » harder), PARFAIT / BIEN / RATÉ land on the top line like a rubber stamp. Inside the LCD only. */
+.lcd-task-txt { position: relative; }
+#lcdTask .lcd-task-n { transform-origin: 100% 50%; }
+#lcdTask .lcd-task-n.m-slam { animation: m-slam var(--m-med) var(--m-snap); }
+#lcdTask .lcd-task-n.m-slam-now { animation: m-slam-now var(--m-slow) var(--m-snap); }
+@keyframes m-slam { from { scale: calc(1 + .9 * var(--m-amp)); opacity: .2; filter: brightness(2); } 60% { scale: calc(1 - .08 * var(--m-amp)); opacity: 1; } }
+@keyframes m-slam-now { 0% { scale: calc(1 + 1.4 * var(--m-amp)); rotate: calc(-8deg * var(--m-amp)); opacity: .2; filter: brightness(2.5); } 30% { scale: calc(1 - .15 * var(--m-amp)); rotate: calc(2deg * var(--m-amp)); opacity: 1; }
+  55% { scale: calc(1 + .08 * var(--m-amp)); rotate: 0deg; } 100% { scale: 1; } }
+#lcdTop.m-stamp { transform-origin: 30% 50%; animation: m-stamp var(--m-slow) var(--m-snap); }
+@keyframes m-stamp { 0% { scale: calc(1 + 1.5 * var(--m-amp)); rotate: calc(-10deg * var(--m-amp)); opacity: 0; } 30% { scale: calc(1 - .1 * var(--m-amp)); rotate: calc(-3deg * var(--m-amp)); opacity: 1; filter: brightness(1.8); }
+  50% { scale: calc(1 + .05 * var(--m-amp)); rotate: calc(-1deg * var(--m-amp)); } 100% { scale: 1; rotate: 0deg; filter: none; } }
+.lcd-task.bump, .lcd-score.bump { animation: lcd-bump calc(var(--m-slow) + var(--m-fast)) var(--m-spring); }
+
+/* the pads: hover = lifted in their colour (a mouse), press = squashed hard, a ring of their colour flashes out, sparks
+   of their colour (js: at once, and when let go: motion.js) */
+.pad { position: relative; --m-sx: calc(1 + .1 * var(--m-amp)); --m-sy: calc(1 - .24 * var(--m-amp)); transition: translate var(--m-fast) var(--m-spring), filter var(--m-fast) var(--m-out), box-shadow var(--m-fast) var(--m-out); }
+.pad.on::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none; box-shadow: 0 0 0 3px var(--c), 0 0 20px 4px var(--c); opacity: 0;
+  animation: m-pad-ring var(--m-med) var(--m-out); }
+@keyframes m-pad-ring { from { scale: .9; opacity: 1; } to { scale: calc(1 + .22 * var(--m-amp)) calc(1 + .4 * var(--m-amp)); opacity: 0; } }
+@media (hover: hover) { .pad:not(.on):not(.auto):not(.call):hover { translate: 0 calc(-3px * var(--m-amp)); filter: brightness(1.3); box-shadow: 0 calc(6px * var(--m-amp)) 12px -4px #000d, 0 0 calc(16px * var(--m-amp)) -2px var(--c); } }
+
+/* motion off (reduced, JUICE 0): the loops stop too (their tempo is not a motion token) */
+.m-still :is(.tree-node.st-ready, .open-actions .open-go, .lcd-task.ready .lcd-task-txt, .dc-item.riddle b, .hs-list li.pend, .is-new),
+.m-still .tree-node.st-ready .led::after, .m-still .tree-btn.has-ready::after, .m-still .tree-btn.has-hs::before, .m-still .is-new-first::after { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  :is(.tree-node.st-ready, .open-actions .open-go, .lcd-task.ready .lcd-task-txt, .dc-item.riddle b, .hs-list li.pend, .is-new),
+  .tree-node.st-ready .led::after, .tree-btn.has-ready::after, .tree-btn.has-hs::before, .is-new-first::after { animation: none !important; }
+}

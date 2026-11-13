@@ -25,8 +25,21 @@
     coin() {
       if (!this.coinUp()) return false;
       document.body.classList.add('coined');
+      this.coinFx();
       if (AMB.ui && AMB.ui.play) Promise.resolve(AMB.ui.play()).catch(() => {});
       return true;
+    },
+    // S7.3: the coin drops into the slot (gold sparks), then the screen lights up like a CRT (a line that opens out);
+    // the title is already gone (the state changed), this only dresses the stage, click-through
+    coinFx() {
+      const M = AMB.motion, stage = $('.stage'); if (!M || !M.on() || !stage) return null;
+      const f = document.createElement('div'); f.className = 'coin-fx'; f.setAttribute('aria-hidden', 'true');
+      f.innerHTML = '<i class="cf-coin">¢</i><b class="cf-crt"></b>';
+      stage.append(f);
+      const land = M.ms('slow') * 0.9;
+      setTimeout(() => { const c = f.querySelector('.cf-coin'); if (c && f.isConnected) M.burst(c, { n: 22, spread: Math.PI * 1.2, speed: 300, color: '#fff36b' }); }, land);
+      setTimeout(() => f.remove(), M.ms('slow') * 2 + 120);
+      return f;
     },
     coinWire() {
       const c = $('#coin'); if (!c) return;
@@ -69,13 +82,13 @@
         const t = box.querySelector('.lcd-task-txt'), help = box.classList.contains('help');
         const T = (x) => g.txt(x);
         t.textContent = help ? T(dm.hint) : `♪ ${T(dm.text)}`; t.title = help ? 'Toucher : revenir à la demande' : `${T(dm.hint)}\n(Toucher : comment faire)`;
-        box.querySelector('.lcd-task-n').textContent = dm.n;
+        this.slam(box.querySelector('.lcd-task-n'), dm.n);
         return;
       }
       if (rn) {
         box.dataset.id = 'open:' + rn.id; box.classList.remove('help');
         const t = box.querySelector('.lcd-task-txt'); t.textContent = `✦ Ouvrir : ${rn.name}`; t.title = 'Toucher : voir ce qui s\'ouvre';
-        box.querySelector('.lcd-task-n').textContent = ready.length > 1 ? `${ready.length} prêts` : '';
+        this.rollN(box.querySelector('.lcd-task-n'), ready.length > 1 ? `${ready.length} prêts` : '');
         return;
       }
       if (offer) {
@@ -85,15 +98,25 @@
         return;
       }
       if (!d) return;
-      if (box.dataset.id !== id) box.classList.remove('help');
+      const was = box.dataset.id;
+      if (was !== id) box.classList.remove('help');
       box.dataset.id = id;
       const n = K.progress(id), resp = d.kind === 'reponse', ask = d.kind === 'demande', help = box.classList.contains('help') && d.hint;
       const txt = box.querySelector('.lcd-task-txt');
+      if (was && was !== id && AMB.motion) AMB.motion.pop(txt, 'type'); // S7.3: a new challenge is typed in
       txt.textContent = g.txt(help ? d.hint : resp ? `↺ Réponse : ${d.title}` : `◇ ${d.title}`);
       txt.title = help ? 'Toucher : revenir au défi' : `${g.txt(d.hint)}\n(Toucher : comment faire)`;
       // S5.5 a challenge asked in the music: it comes with the playback
-      box.querySelector('.lcd-task-n').textContent = resp ? `${AMB.puzzles.need(d)} ♪` : ask ? (AMB.seq && AMB.seq.playing ? '♪ bientôt' : '▶ lecture') : d.goal > 1 ? `${n}/${d.goal}` : n ? '✓' : '·';
+      this.rollN(box.querySelector('.lcd-task-n'), resp ? `${AMB.puzzles.need(d)} ♪` : ask ? (AMB.seq && AMB.seq.playing ? '♪ bientôt' : '▶ lecture') : d.goal > 1 ? `${n}/${d.goal}` : n ? '✓' : '·');
       if (flashId === id) { box.classList.remove('bump'); void box.offsetWidth; box.classList.add('bump'); }
+    },
+    // S7.3: the LCD's counter — a count rolls in (motion.roll), the countdown of an ask slams in (« MAINTENANT ! » harder)
+    rollN(el, v) { if (!el) return; if (AMB.motion) AMB.motion.roll(el, v); else el.textContent = v; },
+    slam(el, v) {
+      if (!el || el.textContent === String(v)) return;
+      const was = el.textContent; el.textContent = v;
+      const M = AMB.motion; if (!was || !M) return;
+      M.pop(el, /MAINTENANT/.test(v) ? 'm-slam-now' : 'm-slam', { ms: M.ms('slow') + 60 });
     },
     // clicks that always succeed go on the bus as actions (contracts count them); actions that can fail or be
     // cancelled (save, journal, chords, freeze) are emitted by their own code once they really happened
@@ -213,14 +236,14 @@
     },
     beats: {}, // node id -> {id, at, deg}
     beatOf(id) { return this.beats[id] || {}; },
-    lcd(text, ms = 3500) { AMB.lcdMsg = { text, until: Date.now() + ms }; },
+    lcd(text, ms = 3500, stamp = false) { AMB.lcdMsg = { text, until: Date.now() + ms, stamp }; }, // S7.3 stamp: PARFAIT / BIEN / RATÉ land like a rubber stamp
     // ---- S4.6: opening is the player's move. The card says in plain words what the node gives (tree.EXPLAIN), then
     // « Ouvrir » plays the opening (chime on the beat, the layer comes in, the plant grows, the map's sequence for a
     // challenge) and what it opens comes in animated (tree.appear). Nothing goes away on a timer before that. ----
     ask(id) {
       const dlg = $('#openDlg'); if (!dlg) return false;
       const g = AMB.game, n = id && AMB.tree.byId[id];
-      if (!n || !g.path || !g.canOpen(id)) { dlg.hidden = true; dlg.dataset.id = ''; return false; }
+      if (!n || !g.path || !g.canOpen(id)) { if (!dlg.hidden) this.suck(dlg.querySelector('.open-card'), id === null && this._suckTo); this._suckTo = null; dlg.hidden = true; dlg.dataset.id = ''; return false; }
       const more = (g.s.ready || []).length - 1;
       dlg.dataset.id = id;
       dlg.querySelector('.modal-card').style.setProperty('--c', AMB.tree.BRANCHES[n.branch].color);
@@ -235,8 +258,26 @@
       const go = dlg.querySelector('.open-go'); if (go) go.focus({ preventScroll: true });
       return true;
     },
+    // S7.3: a card that goes is sucked away (a ghost of it, under the windows: the Arbre opening next covers it), towards
+    // the ✦ on the LCD (« Plus tard ») or the Arbre's button (« Ouvrir »)
+    suck(card, to) {
+      const M = AMB.motion; if (!M || !M.on() || !card) return null;
+      const r = card.getBoundingClientRect(); if (!r.width) return null;
+      const g = card.cloneNode(true); g.querySelectorAll('[id]').forEach((e) => e.removeAttribute('id'));
+      g.setAttribute('aria-hidden', 'true'); g.inert = true; g.classList.add('m-ghost');
+      Object.assign(g.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+      document.body.append(g);
+      const t = (to || $('#lcdTask:not([hidden]) .lcd-task-txt') || $('#treeBtn'));
+      const tr = t && t.getBoundingClientRect(), ok = tr && tr.width;
+      const dx = ok ? tr.left + tr.width / 2 - (r.left + r.width / 2) : 0, dy = ok ? tr.top + tr.height / 2 - (r.top + r.height / 2) : -r.bottom;
+      const an = g.animate([{ translate: '0 0', scale: '1 1', opacity: 1 }, { translate: `${-dx * 0.04}px ${-dy * 0.04}px`, scale: '1.05 .94', opacity: 1, offset: 0.25 },
+        { translate: `${dx}px ${dy}px`, scale: '.04 .02', opacity: 0.3 }], { duration: M.ms('slow'), easing: M.EASE.in });
+      an.onfinish = an.oncancel = () => g.remove();
+      return an;
+    },
     openNode(id) {
       const g = AMB.game, T = AMB.tree;
+      this._suckTo = $('#treeBtn');
       this.ask(null);
       if (!id || !g.canOpen(id)) return false;
       T.hold(); // what it opens waits for the end of the map's sequence (seqFinish), or comes in now
@@ -259,6 +300,8 @@
         const r = g.path && g.nextReady();
         if (!r || !this.batch) { this.batch = 0; this.renderContracts(); return; }
         this.openNode(r.id);
+        const M = AMB.motion, tb = $('#treeBtn'); // S7.3: each opening of the cascade pops the Arbre's button, sparks
+        if (M && tb) { M.pop(tb, 'pop'); M.burst(tb, { n: 14, spread: Math.PI * 2, color: r && AMB.tree.byId[r.id] ? AMB.tree.BRANCHES[AMB.tree.byId[r.id].branch].color : null }); }
         const S = AMB.seq, ms = S && S.playing ? S.stepDur() * unit * 1000 : 300;
         this._allT = setTimeout(next, ms);
       };
@@ -414,11 +457,11 @@
       end: { rank: 8, boom: 'KA-BOOM!', flash: 1, confetti: 380, shake: 2, lcd: 'arcade', bounce: 1, punch: 2, jingle: 'end', pop: 'À TOI !!!', beats: 3, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'hue'] },
       placement: { rank: 10, boom: 'WHOOSH!', flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => `⚡ ${String(o.name || 'musicien').toUpperCase()} !!!`, hop: '#treeBtn', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `⚡ ${o.name || 'Musicien'} détecté` }, // S5.4 a Réponse placement (the queue « n prêts » is on the LCD's 2nd line)
       // S5.5 the live asks (js/demands.js), judged on the time; n = the combo of successes in a row
-      parfait: { rank: 4, boom: 'SHAZAM!', flash: 0.5, confetti: 130, shake: 1, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'streak', pop: (o) => o.n > 1 ? `PARFAIT !!! ×${o.n}` : 'PARFAIT !!!', splash: 'streak', kick: ['rays', 'twinkle', 'ripple'],
+      parfait: { rank: 4, stamp: 1, boom: 'SHAZAM!', flash: 0.5, confetti: 130, shake: 1, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'streak', pop: (o) => o.n > 1 ? `PARFAIT !!! ×${o.n}` : 'PARFAIT !!!', splash: 'streak', kick: ['rays', 'twinkle', 'ripple'],
         say: (o) => `★ Parfait !${o.n > 1 ? ' ×' + o.n : ''}${o.node ? ' · ✦ ' + o.node : ''}` },
-      bien: { rank: 3, boom: 'ZIP!', flash: 0.25, confetti: 50, shake: 1, lcd: 'glitch', jingle: 'streak', pop: (o) => o.n > 1 ? `BIEN ! ×${o.n}` : 'BIEN !', kick: ['twinkle'],
+      bien: { rank: 3, stamp: 1, boom: 'ZIP!', flash: 0.25, confetti: 50, shake: 1, lcd: 'glitch', jingle: 'streak', pop: (o) => o.n > 1 ? `BIEN ! ×${o.n}` : 'BIEN !', kick: ['twinkle'],
         say: (o) => `✓ Bien !${o.n > 1 ? ' ×' + o.n : ''}${o.node ? ' · ✦ ' + o.node : ''}` },
-      rate: { rank: 1, boom: 'BZZT!', lcd: 'glitch', say: (o) => `✗ Raté${o.why ? ' · ' + o.why : ''} : la musique continue` },
+      rate: { rank: 1, stamp: 1, boom: 'BZZT!', lcd: 'glitch', say: (o) => `✗ Raté${o.why ? ' · ' + o.why : ''} : la musique continue` },
       discovery: { rank: 9, boom: 'ZAP!', flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => o.name ? `${String(o.name).toUpperCase()} !!!` : 'DÉCOUVERTE !!!', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `✦ Découverte${o.name ? ' : ' + o.name : ' !'}` },
     },
     // the bus events that are moments (the others call fx() where they happen: an opening, a discovery, the end, a first touch)
@@ -440,7 +483,7 @@
     fx(kind, o = {}) {
       const R = this.FX[kind]; if (!R || !AMB.game || !AMB.game.path) return null;
       const say = o.say || (typeof R.say === 'function' ? R.say(o) : R.say);
-      if (say) this.lcd(say, o.ms || 3500);
+      if (say) this.lcd(say, o.ms || 3500, !!R.stamp);
       if (o.toast && AMB.ui && AMB.ui.toast) AMB.ui.toast(o.toast);
       const q = this._fxQ;
       if (q) { if (R.rank > this.FX[q.kind].rank) { q.kind = kind; q.o = o; } return q; }
@@ -651,12 +694,20 @@
     pend() { const p = this.load().pend; return p && this.qualifies(p.s) ? p : null; },
     // the entry (Arbre open, a series waiting): letter i of 3, ▲ ▼, a typed letter or a MIDI note
     entry() { const p = this.pend(), td = $('#treeDlg'); return p && td && !td.hidden ? (this.ent || (this.ent = { l: (this.load().last || 'AAA').split('').slice(0, 3), cur: 0 })) : null; },
-    put(ch) { const e = this.entry(); if (!e) return false; e.l[e.cur] = ch; if (e.cur < 2) { e.cur++; this.render(); } else this.sign(); return true; },
-    spin(i, k) { const e = this.entry(); if (!e) return; const L = this.LETTERS; e.cur = i; e.l[i] = L[(L.indexOf(e.l[i]) + k + L.length) % L.length]; this.render(); },
+    put(ch) { const e = this.entry(); if (!e) return false; const i = e.cur; e.l[i] = ch; if (e.cur < 2) { e.cur++; this.render(); this.drum(i, 1); } else this.sign(); return true; },
+    spin(i, k) { const e = this.entry(); if (!e) return; const L = this.LETTERS; e.cur = i; e.l[i] = L[(L.indexOf(e.l[i]) + k + L.length) % L.length]; this.render(); this.drum(i, k); },
+    // S7.3: a letter of the initials rolls in like a drum (▲ from below, ▼ from above), with a few sparks
+    drum(i, k) {
+      const M = AMB.motion, l = this.box && this.box.querySelector(`.hs-slot[data-i="${i}"] .hs-l`); if (!M || !M.on() || !l || !l.animate) return;
+      const a = Math.min(1.5, M.amp());
+      l.animate([{ translate: `0 ${0.8 * k * a}em`, scale: '1 .4', opacity: 0.1 }, { translate: `0 ${-0.12 * k * a}em`, scale: '1 1.15', opacity: 1, offset: 0.6 }, { translate: '0 0', scale: '1 1' }],
+        { duration: M.ms('med'), easing: M.EASE.out });
+      M.burst(l, { n: 5, angle: k > 0 ? -Math.PI / 2 : Math.PI / 2, spread: 1.2, speed: 180, color: '#fff36b' });
+    },
     sign() {
       const d = this.load(), p = this.pend(), e = this.ent; if (!p || !e) return null;
       const n = e.l.join(''), row = { n, s: p.s, t: Date.now(), run: p.run };
-      d.list.push(row); this.sort(d.list); d.last = n; d.pend = null; this.ent = null; this.save();
+      d.list.push(row); this.sort(d.list); d.last = n; d.pend = null; this.ent = null; this.save(); this.fresh = row.run; // (its line flashes in)
       if (garden.lcd) garden.lcd(`★ ${n} · SÉRIE ${p.s} · HIGH SCORE`, 3000);
       this.render(); return row;
     },
@@ -677,6 +728,8 @@
       const g = AMB.game, L = this.list(), p = this.pend(), ent = this.entry();
       box.hidden = !g || !g.path || (!L.length && !p);
       const tb = $('#treeBtn'); if (tb) tb.classList.toggle('has-hs', !!(g && g.path && p));
+      const td = $('#treeDlg'), was = this.shown;
+      this.shown = !box.hidden && !box.classList.contains('min') && !!td && !td.hidden;
       if (box.hidden) return;
       if (ent) box.classList.remove('min');
       const head = box.querySelector('.hs-title'), top = L[0];
@@ -687,9 +740,17 @@
       const ORD = ['1ST', '2ND', '3RD', '4TH', '5TH'], ol = box.querySelector('.hs-list'); ol.innerHTML = '';
       for (let i = 0; i < this.MAX; i++) {
         const r = rows[i], li = document.createElement('li'); if (r && r.me) li.className = 'me';
+        if (r && r.pend) li.classList.add('pend'); // S7.3: the line being signed blinks like a cabinet
+        if (r && this.fresh && L.some((x) => x.run === this.fresh && x.n === r.n && x.s === r.s)) li.classList.add('hs-new');
         [ORD[i], r ? r.n : '---', r ? `×${r.s}` : '×0', r ? 'série' : ''].forEach((x, j) => { const s = document.createElement('span'); s.textContent = x; if (j === 2) s.className = 'hs-s'; if (j === 3) s.className = 'hs-t'; li.append(s); });
         ol.append(li);
       }
+      const M = AMB.motion;
+      this.shown = !box.classList.contains('min') && !!td && !td.hidden;
+      // S7.3: the table comes up line by line like an arcade cabinet's attract screen (when it shows), a new score flashes in
+      if (M && this.shown && !was) M.stagger(ol.children, { y: 22, dur: 'slow' });
+      const nw = ol.querySelector('.hs-new');
+      if (nw && M) { this.fresh = null; M.pop(nw, 'hs-new', { ms: M.ms('slow') * 3 }); M.burst(nw, { n: 18, spread: Math.PI * 2, color: '#ff3fa4' }); }
       const en = box.querySelector('.hs-entry'); en.hidden = !ent;
       if (!ent) return;
       en.querySelector('.hs-say').textContent = `★ NOUVEAU HIGH SCORE ×${p.s} ! TES INITIALES :`;

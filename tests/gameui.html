@@ -40,7 +40,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
   const lt=d.getElementById('lcdTask'), ltx=lt.querySelector('.lcd-task-txt'), odlg=d.getElementById('openDlg');
   A.contracts.finish('m.notes'); await wait(60);
   ok(!A.game.has('h.pad') && A.game.isReady('h.pad') && !A.garden.seq && d.getElementById('treeDlg').hidden && A.lcdMsg && A.lcdMsg.text==='✓ Défi réussi', 'S4.6 : défi réussi → fêté (carillon, « ✓ Défi réussi »), le Pad est prêt mais rien ne s\'ouvre seul');
-  ok(!lt.hidden && lt.classList.contains('ready') && ltx.textContent==='✦ Ouvrir : Pad' && lt.querySelector('.lcd-skip').hidden && w.getComputedStyle(ltx).animationName==='ready-pulse' && d.getElementById('treeBtn').classList.contains('has-ready') && !A.contracts.state().active.length, 'S4.6 : « ✦ Ouvrir : Pad » sur le LCD, qui pulse (sans ↷), ✦ sur le bouton Arbre ; pas de défi suivant');
+  ok(!lt.hidden && lt.classList.contains('ready') && ltx.textContent==='✦ Ouvrir : Pad' && lt.querySelector('.lcd-skip').hidden && w.getComputedStyle(ltx).animationName==='m-breathe' && d.getElementById('treeBtn').classList.contains('has-ready') && !A.contracts.state().active.length, 'S4.6 : « ✦ Ouvrir : Pad » sur le LCD, qui pulse (sans ↷), ✦ sur le bouton Arbre ; pas de défi suivant');
   await wait(1500);
   ok(!lt.hidden && ltx.textContent==='✦ Ouvrir : Pad' && !A.game.has('h.pad') && odlg.hidden, 'S4.6 : le temps passe, rien ne disparaît ni ne s\'ouvre tant que le joueur n\'a pas agi');
   A.garden.showTree(true); await wait(30); tn('h.pad').click(); await wait(20);
@@ -58,7 +58,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
   for (let i=0;i<60 && A.garden.seq;i++) await wait(40);
   const padP=d.querySelector('.panel[data-sec=pad]'), nf=d.querySelector('.is-new-first');
   ok(!A.garden.seq && d.getElementById('treeDlg').hidden, 'fin de séquence : arbre fermé');
-  ok(A.mode==='sculpt' && padP.classList.contains('is-appearing') && w.getComputedStyle(padP).animationName.includes('is-appear') && padP.querySelectorAll('.is-new').length>=3 && nf && padP.contains(nf) && /Nouveau/.test(w.getComputedStyle(nf,'::after').content), 'révélé : mode Sculpter, le panneau Pad se déploie (is-appearing), ses réglages en surbrillance (is-new), « Nouveau » sur le premier');
+  ok(A.mode==='sculpt' && padP.classList.contains('is-appearing') && w.getComputedStyle(padP).animationName.includes('m-appear') && padP.querySelectorAll('.is-new').length>=3 && nf && padP.contains(nf) && /Nouveau/.test(w.getComputedStyle(nf,'::after').content), 'révélé : mode Sculpter, le panneau Pad se déploie (is-appearing), ses réglages en surbrillance (is-new), « Nouveau » sur le premier');
   await wait(700); ok(!padP.classList.contains('is-appearing') && padP.querySelector('.is-new'), 'déploiement fini (~0,55 s), la surbrillance reste');
   nf.dispatchEvent(new w.PointerEvent('pointerdown',{bubbles:true})); ok(!nf.classList.contains('is-new') && !d.querySelector('.is-new-first') && padP.querySelector('.is-new'), 'le premier toucher éteint la surbrillance de ce contrôle (et l\'étiquette), les autres restent');
   // v1.14: the two S4.6 changes together: the opened node's plant grew, shows its settings, and a « Nouveau » control touched = halo off + the plant reacts
