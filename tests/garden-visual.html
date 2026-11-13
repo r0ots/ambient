@@ -281,6 +281,78 @@ window.addEventListener('load', async () => {
       ok(!GV.active && !GV.waves.length, 'mode libre : pas de Jardin, aucune onde gardée'); G.setMode('path'); V.mode = 'Jardin'; frame();
       GV.clock = realClock; GV.now = realNow; GV.lastT = null; reset(); }
 
+    // --- S5.8 « Chaque bouton a un impact visuel »: every control reaches a plant aspect (LOOK) or a scene layer (SCENE)
+    { const St = AMB.store, S = AMB.SCHEMA, realNow = GV.now; let fake = performance.now(); GV.now = () => fake;
+      const step = (n = 1, ms = 16) => { for (let i = 0; i < n; i++) { fake += ms; frame(); } };
+      G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.rythme', 'e.texture']; GV.grow = {}; GV.sig = null; step(3);
+      const keysOf = (c) => (typeof c === 'string' ? [c] : c.keys || []);
+      const lookKeys = new Set(); Object.values(GV.LOOK).forEach((L) => Object.values(L).forEach((c) => keysOf(c).forEach((k) => lookKeys.add(k)))); Object.values(GV.LOOK_ALL).forEach((c) => keysOf(c).forEach((k) => lookKeys.add(k)));
+      const sceneKeys = new Set(); Object.values(GV.SCENE).forEach((L) => (L.keys || []).forEach((k) => sceneKeys.add(k)));
+      const all = []; Object.entries(S).forEach(([sec, d]) => Object.keys(d.params).forEach((k) => all.push(sec + '.' + k)));
+      const none = all.filter((k) => !k.startsWith('macro.') && k !== 'global.scale' && !lookKeys.has(k) && !sceneKeys.has(k)); // Gamme: the sky of the chord (S4.5w)
+      ok(!none.length, 'audit : chacun des ' + all.length + ' réglages a un reflet (plantes ' + lookKeys.size + ', scène ' + sceneKeys.size + ', grands réglages par les réglages qu\'ils bougent)' + (none.length ? ' — sans reflet : ' + none.join(', ') : ''));
+      // the table walked: each key, from one end to the other, moves its layer (or its plant)
+      const ends = (k) => { const sp = St.spec(k); if (sp.type === 'select') return [sp.options[0], sp.options[sp.options.length - 1]]; if (sp.type === 'toggle') return [false, true]; if (sp.type === 'text') return ['', 'a1b2c3d4']; return [sp.min, sp.max]; };
+      const with_ = (k, v) => (q) => (q === k ? v : undefined);
+      const still = [];
+      for (const [n, L] of Object.entries(GV.SCENE)) for (const k of L.keys || []) { const [lo, hi] = ends(k), d = GV.scene(with_(k, hi))[n] - GV.scene(with_(k, lo))[n]; if (Math.abs(d) < 0.004) still.push(n + ':' + k); }
+      for (const k of lookKeys) { const [lo, hi] = ends(k); if (JSON.stringify(GV.look(with_(k, lo))) === JSON.stringify(GV.look(with_(k, hi)))) still.push('look:' + k); }
+      ok(!still.length, 'la table parcourue : chaque réglage bouge l\'intensité de son calque (' + sceneKeys.size + ') ou l\'aspect de sa plante (' + lookKeys.size + ')' + (still.length ? ' — immobiles : ' + still.join(', ') : ''));
+      // app state outside the store: mode, playback, song sections
+      const saved = [AMB.mode, AMB.seq, AMB.song];
+      AMB.mode = 'compose'; AMB.seq = { playing: true }; AMB.song = { playing: true, sections: [1, 2, 3, 4], idx: 1 };
+      const on = GV.scene(() => undefined); AMB.mode = 'listen'; AMB.seq = { playing: false }; AMB.song = { playing: false, sections: [] }; const off = GV.scene(() => undefined);
+      ok(on.lens === 1 && off.lens === 0 && on.play === 1 && off.play === 0 && on.song === 0.5 && off.song === 0, 'modes (Écouter 0 → Composer 1), lecture / arrêt, section du Morceau : leur calque bouge');
+      ok(Object.keys(GV.layers()).length === Object.keys(GV.SCENE).length && Object.values(GV.layers()).every((v) => v >= 0 && v <= 1), 'AMB.gardenVisual.layers() : ' + Object.keys(GV.SCENE).length + ' intensités entre 0 et 1, lisibles par le code');
+      // a touched control kicks its layer (visible), a drift does not; a mode change, Gel, a section kick theirs
+      step(80); GV.kick = {};
+      St.set('fx.echo', 0.9, 'lfo'); step(1); const noKick = !GV.kick.echo;
+      St.set('fx.lofi', 0.3, 'user'); step(1); const k1 = GV.kick.grain;
+      ok(noKick && k1 > 0.9 && GV.amt('grain') > (GV.sc.grain || 0) + 0.6 && !GV.kick.echo, 'toucher Usure : impulsion sur le calque grain (' + k1.toFixed(2) + ') ; un mouvement lent n\'en donne pas');
+      AMB.mode = 'sculpt'; step(1); const kl = GV.kick.lens; AMB.bus.emit('freeze', {}); AMB.bus.emit('section', { index: 1, name: 'A' });
+      ok(kl > 0.9 && GV.kick.frost === 1 && GV.kick.song === 1, 'changer de mode, Gel, nouvelle section : impulsion sur leur calque');
+      step(60); ok(!Object.keys(GV.kick).length, 'les impulsions retombent en moins d\'1 s');
+      { const lumSky = () => { const d = cv.getContext('2d').getImageData(0, 0, 1280, GV.ground).data; let t = 0; for (let i = 0; i < d.length; i += 16) t += d[i] + d[i + 1] + d[i + 2]; return t; };
+        const b0 = lumSky(); St.set('global.key', 'F', 'user'); step(1); const b1 = lumSky();
+        ok(b1 > b0 * 1.15, 'l\'impulsion se voit : ciel plus lumineux d\'un coup en changeant de tonalité (' + (b1 / b0).toFixed(2) + ' ×)'); }
+      // each layer draws, distinctly; they add up (the scene alone, everything at 0, then one layer at 1, then all)
+      cv.width = 640; cv.height = 400; GV.sig = null; // smaller canvas: quicker reads
+      const hash = () => { const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let h = 0; for (let i = 0; i < d.length; i += 4) h = (Math.imul(h, 31) + d[i] + 3 * d[i + 1] + 7 * d[i + 2]) | 0; return h; };
+      const upd = GV.updateScene, names = Object.keys(GV.SCENE), fixed = (o) => { GV.updateScene = function () { this.sc = { ...o }; this.kick = {}; }; };
+      GV.reduced = true; GV.skyT = -99; step(2);
+      const zero = Object.fromEntries(names.map((n) => [n, 0])); zero.play = 1; fixed(zero); step(2); const h0 = hash();
+      const hs = names.map((n) => { fixed({ ...zero, [n]: n === 'play' ? 0 : 1 }); step(1); return hash(); });
+      const one = Object.fromEntries(names.map((n) => [n, 1])); fixed(one); step(1); const hAll = hash();
+      ok(hs.every((h) => h !== h0) && new Set(hs).size === names.length && !hs.includes(hAll), 'chaque calque se dessine, distinct des autres (' + names.join(', ') + '), et ils se cumulent' + (hs.every((h) => h !== h0) ? '' : ' — sans dessin : ' + names.filter((n, i) => hs[i] === h0).join(', ')) + (new Set(hs).size === names.length ? '' : ' — identiques : ' + names.filter((n, i) => hs.indexOf(hs[i]) !== i).join(', ')));
+      // reduced motion: every layer at its maximum, the scene stands still
+      step(1); const r1 = hash(); step(6, 50); const r2 = hash(), st0 = GV.st;
+      ok(r1 === r2 && GV.st === st0, 'mouvement réduit : tous les calques au maximum, la scène ne bouge pas (images identiques)');
+      GV.reduced = false; step(1); const m1 = hash(); step(3, 50); ok(hash() !== m1, 'sans mouvement réduit : les calques s\'animent');
+      GV.updateScene = upd; cv.width = 1280; cv.height = 800; GV.sig = null;
+      // the tempo is the scene's speed
+      St.set('global.tempo', 30, 'preset'); step(1); const sl = GV.speed; St.set('global.tempo', 140, 'preset'); step(1);
+      ok(GV.speed > sl * 2.5, 'tempo → vitesse de la scène (' + sl.toFixed(2) + ' → ' + GV.speed.toFixed(2) + ')');
+      // coupure de couche: a dim plant
+      St.set('pad.on', false, 'user'); step(40); const dim = GV.plants.find((p) => p.id === 'pad').look.on; St.set('pad.on', true, 'user'); step(40);
+      ok(dim < 0.05 && GV.plants.find((p) => p.id === 'pad').look.on > 0.95, 'couche coupée : sa plante s\'éteint (aspect on ' + dim.toFixed(2) + ')');
+      // free mode: no garden, no impulse kept
+      G.setMode('free'); frame(); GV.kick = {}; St.set('fx.tape', 0.9, 'user'); ok(!GV.active && !GV.kick.tape, 'mode libre : pas de scène, aucune impulsion'); G.setMode('path'); V.mode = 'Jardin'; frame();
+      [AMB.mode, AMB.seq, AMB.song] = saved; if (!AMB.seq) delete AMB.seq; if (!AMB.song) delete AMB.song;
+      Object.entries(S).forEach(([sec, d]) => Object.entries(d.params).forEach(([k, sp]) => St.set(sec + '.' + k, sp.def, 'preset')));
+      GV.now = realNow; GV.lastT = null; GV.kick = {}; }
+
+    // --- S5.8 cost: every scene layer at its maximum, a control touched every 6 frames, notes; real rAF
+    { const St = AMB.store; AMB.seq = { playing: true, step: 64, nextTime: GV.clock(), origin: 0, stepDur: () => 0.25 }; AMB.mode = 'compose'; AMB.song = { playing: true, sections: [1, 2], idx: 1 };
+      const mx = { 'global.key': 'B', 'global.tuning': '432 Hz', 'global.evolve': 1, 'fx.shimmer': 1, 'fx.space': 1, 'fx.size': 1, 'fx.predelay': 1, 'fx.revType': 'Cloud', 'fx.echo': 1, 'fx.feedback': 0.92, 'fx.echoTime': '1/1', 'fx.tape': 1, 'fx.lofi': 1, 'grains.source': 'Gel', 'grains.scan': 1, 'grains.reverse': 1, 'grains.glide': 1, 'grains.pitch': 'Libre', 'global.swing': 1, 'global.humanize': 1, 'pad.counter': 1, 'pad.length': 8, 'mod.l1depth': 1, 'mod.l2depth': 1, 'mod.l1rate': 1, 'mod.l2rate': 1, 'auto.on': true, 'bells.mutate': 1, 'bells.range': 1, 'seq.mutate': 1, 'seq.decay': 1 };
+      St.setMany(mx, 'preset'); GV.sig = null; frame(); GV.times.length = 0;
+      const ks = ['fx.echo', 'fx.lofi', 'fx.tape', 'fx.shimmer', 'global.evolve', 'fx.space'];
+      await new Promise((res) => { let n = 0; const tick = () => { if (n % 6 === 0) St.set(ks[(n / 6) % ks.length], 0.9 + 0.1 * Math.random(), 'user'); if (n % 4 === 0) AMB.bus.emit('note', { layer: 'bells', midi: 72, time: 0, vel: 0.8 }); frame(); if (++n < 50) requestAnimationFrame(tick); else res(); }; requestAnimationFrame(tick); });
+      const s = GV.stats(), L = GV.layers();
+      log('PERF S5.8 1280×800 (' + Object.values(L).filter((v) => v > 0.6).length + ' calques sur ' + Object.keys(L).length + ' au-dessus de 0,6, un réglage touché toutes les 6 images) : moyenne ' + s.avg.toFixed(2) + ' ms, p95 ' + s.p95.toFixed(2) + ' ms, max ' + s.max.toFixed(2) + ' ms (' + s.frames + ' images)');
+      ok(s.avg < 2, 'coût par image, tous les calques actifs : moyenne ' + s.avg.toFixed(2) + ' ms (cible < 2 ms)');
+      Object.entries(AMB.SCHEMA).forEach(([sec, d]) => Object.entries(d.params).forEach(([k, sp]) => St.set(sec + '.' + k, sp.def, 'preset')));
+      delete AMB.seq; delete AMB.song; delete AMB.mode; GV.kick = {}; }
+
     // --- S5.2 cost: the player plays 8 notes a second (held 0.3 s), a forced chord a second, the machine plays along; real rAF
     { G.s.secrets = { found: { jazz: 1, tons: 1 } }; GV.sig = null; frame(); GV.times.length = 0;
       const t0 = performance.now(); let k = 0, m = 0, c = 0; const offs = [];
