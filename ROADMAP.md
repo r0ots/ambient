@@ -389,3 +389,18 @@ Vague 3
 - Acquis (S6.7) : l'enfant finit le Parcours au téléphone sans impasse ; le musicien au MIDI est placé en ~1 min et jugé à ±60 ms.
 - Question à l'utilisateur : écouter les 4 WAV sombres (scratchpad/dark : pluie, ruines, menace, arpege) puis décider de la suppression des paysages doux.
 - Reste ouvert : un défi de 3 lignes agrandit encore le LCD au téléphone ; quelques « nœuds » dans les toasts ; hors section, une progression ne repart pas au début ; la suite de tests est plus lente (~75 s) et parfois instable sous forte charge.
+
+## Saison 7 — motion design sur toute l'interface
+
+Précision de l'utilisateur (après v1.28) : « dans le juice je voulais surtout du motion design sur tous les bouts d'interfaces ». Les saisons 5–6 ont mis le juice dans les fêtes et la scène ; ici, chaque élément d'interface bouge avec du caractère : entrée, appui, changement de valeur, sortie. Style : arcade années 80, goofy assumé (rebond, élan, cascade, glitch néon), mais lisible et rapide (une interaction ne doit jamais attendre une animation). Un seul système de mouvement (jetons de durée et de courbes, quelques utilitaires JS), réglé par `JUICE`, coupé en reduced-motion. Parcours ET mode libre (c'est l'apparence de l'app ; le son et les commandes du mode libre ne changent pas).
+
+Vague 1
+- [ ] S7.1 Système de mouvement + commandes de base : jetons (durées, courbes ressort / élan / rebond), utilitaires (cascade d'entrée, FLIP pour les réordonnancements, compteur qui roule), et application aux boutons, bascules, potentiomètres, curseurs, menus, LCD (texte qui s'écrit / glitch au changement), toasts, changement de mode Écouter / Sculpter / Composer
+
+Vague 2 (en parallèle)
+- [ ] S7.2 Composer en mouvement : panneaux qui s'ouvrent en cascade, puces de sections (ajout, réordonnancement, suppression animés), looper (décompte, prise, couches), cases d'accords, piano roll (notes posées / effacées), grilles de basse et de pulsations (pas qui s'allument), automation
+- [ ] S7.3 Parcours en mouvement : Arbre (ouverture, nœuds prêts, liens qui se tracent), cartes d'ouverture et d'explication, carnet des découvertes, HIGH SCORES, INSERT COIN, contrôles qui entrent « Nouveau », LCD des demandes et de la Réponse
+- [ ] S7.4 Barre, Sculpter et fenêtres : paysages et humeurs, Rec, ⋯, aide, fenêtres et menus, Grands réglages, Effets, couches (pastilles de couche qui s'allument / se coupent), Plein écran
+
+Vague 3
+- [ ] S7.5 Revue du mouvement image par image (bureau et 390 px), coût par image, reduced-motion, puis corrections ; fin de la saison 7
