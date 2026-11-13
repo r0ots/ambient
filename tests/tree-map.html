@@ -28,10 +28,11 @@ f.addEventListener('load', async ()=>{
   d.querySelector('[data-zoom=fit]').click(); await wait(20);
   ok(Gd.view.k<=0.5, '⤢ : toute la carte (k='+Gd.view.k.toFixed(2)+')');
   // --- resize: refit only when the width changes
+  const resized=(set)=>new Promise(r=>{ w.addEventListener('resize',()=>w.requestAnimationFrame(()=>r()),{once:true}); setTimeout(r,3000); set(); }); // (waits for the resize itself, not a delay)
   Gd.fitTree(); Gd.zoomAt(200,400,1.5); const k1=Gd.view.k;
-  f.style.height='700px'; await wait(120);
+  await resized(()=>{ f.style.height='700px'; });
   ok(Math.abs(Gd.view.k-k1)<1e-9, 'redimensionnement en hauteur seule : zoom gardé (k='+Gd.view.k.toFixed(2)+')');
-  f.style.width='360px'; await wait(120);
+  await resized(()=>{ f.style.width='360px'; });
   ok(Math.abs(Gd.view.k-k1)>1e-6 && Gd.view.k>=0.45, 'largeur changée : recadrage (k='+Gd.view.k.toFixed(2)+')');
   // --- pointers: never a stale finger
   const pe=(t,id)=>map.dispatchEvent(new w.PointerEvent(t,{bubbles:true,pointerId:id,pointerType:'touch',isPrimary:id===1,clientX:150,clientY:300}));
