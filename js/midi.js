@@ -26,7 +26,7 @@
 
   // Render a span of music into the event arrays, reading parameters through `get`
   // (live store for loop export, a section snapshot for song export).
-  function renderSpan(get, s0, span, out) {
+  function renderSpan(get, s0, span, out, loops = []) {
     const PR = AMB.pianoRoll, PU = AMB.pulses, BS = AMB.bassSeq;
     const root = T.NOTE_NAMES.indexOf(get('global.key')), scale = T.SCALES[get('global.scale')] || T.SCALES['Lydien'];
     const barLen = get('pad.length');
@@ -86,19 +86,29 @@
       const DRUM = [36, 70, 76, 81], grid = PU.parse(get('perc.pattern'), parseInt(get('perc.steps'), 10) || 16);
       for (let rel = 0; rel < span; rel++) grid.forEach((row, t) => { const lvl = row[rel % row.length]; if (lvl) note(out.dr, 9, (s0 + rel) * STEP, STEP - 2, DRUM[t], [0, 50, 85, 115][lvl] || 85); });
     }
+    // S6.4: the section's loop layers (played timing kept to the tick, velocity, key of the section), channel 4
+    for (const l of loops) {
+      if (!l || l.mute || !l.notes) continue;
+      const len = l.bars * 16;
+      for (let r0 = 0; r0 < span; r0 += len) for (const n of l.notes) {
+        const rel = r0 + n.s; if (rel >= span) continue;
+        if (n.c != null) T.chordDegrees(n.c, 3, scale).forEach((d) => note(out.lp, 3, Math.round((s0 + rel) * STEP), STEP * 4, dm(d, 3), 80));
+        else note(out.lp, 3, Math.round((s0 + rel) * STEP), Math.round(Math.min(n.l || 1, span - rel) * STEP) - 2, dm(n.d, 0) + (n.a || 0), (n.b != null ? n.b : n.v) * 127);
+      }
+    }
     return { progBars };
   }
 
   // whole song when it has sections, otherwise the current loop (a whole number of cycles, ≤ 64 bars)
   function build(opts = {}) {
     const song = AMB.song, useSong = opts.song !== false && song && song.sections.length;
-    const out = { ch: [], pr: [], bs: [], dr: [] };
+    const out = { ch: [], pr: [], bs: [], dr: [], lp: [] };
     let totalSteps = 0, bars;
     const live = (k) => store.get(k);
     if (useSong) {
       for (const sec of song.sections) {
         const get = song.getter(sec); // the section's own sound, motifs and progression
-        renderSpan(get, totalSteps, sec.bars * 16, out);
+        renderSpan(get, totalSteps, sec.bars * 16, out, sec.loops || []);
         totalSteps += sec.bars * 16;
       }
       bars = totalSteps / 16;
@@ -129,6 +139,7 @@
     if (out.pr.length) tracks.push(track('Mélodie écrite', out.pr));
     if (out.bs.length) tracks.push(track('Basse', out.bs));
     if (out.dr.length) tracks.push(track('Pulsations', out.dr));
+    if (out.lp.length) tracks.push(track('Boucles', out.lp));
     const header = [...str('MThd'), ...u32(6), 0, 1, 0, tracks.length, (PPQ >> 8) & 255, PPQ & 255];
     return { bytes: new Uint8Array([...header, ...tracks.flat()]), bars, tracks: tracks.length, song: !!useSong };
   }

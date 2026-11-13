@@ -19,7 +19,7 @@ window.addEventListener('load', async ()=>{
   st.set('global.tempo',140); st.set('seq.steps','16');
   const canvas=document.querySelector('canvas.roll');
   await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-  ok(document.querySelector('[data-act=keep]').disabled && !PR.canKeep(), 'Garder : grisé tant que rien n\'a été joué');
+  ok(!document.querySelector('[data-act=keep]') && !PR.keep, 'S6.4 : plus de « ⤓ Garder » dans le piano roll (il est dans le looper du Morceau)');
   log('roll canvas='+!!canvas+' w='+(canvas&&canvas.width));
   // click a cell through pointer events: step 0, row 7
   const r=canvas.getBoundingClientRect(), G=PR.roll.geom();
@@ -101,10 +101,6 @@ window.addEventListener('load', async ()=>{
     ok(offs===1 && h1===h0+1 && AMB.play.held===h0, 'clavier : keydown = note tenue, keyup = fin de note');
     ['KeyA','KeyD','KeyG'].forEach(code=>document.dispatchEvent(new KeyboardEvent('keyup',{code}))); ok(AMB.play.held===0, 'clavier : plus aucune note tenue');
     rb.click(); }
-  // « ⤓ Garder » with nothing played: the auto Melody's last bars (the old « Capturer la mélodie »)
-  st.set('bells.on',true); st.set('bells.density',0.9);
-  await new Promise(r=>setTimeout(r,2500));
-  { const k=PR.keep('melody'); ok(!document.querySelector('[data-act=capture]') && k && k.notes.length>0 && PR.parse(st.get(PR.SLOTKEY[k.slot])).length===k.notes.length, 'Garder sans jouer : les notes de la Mélodie ('+(k&&k.notes.length)+' dans le motif '+(k&&k.slot)+', '+bellNotes+' entendues), plus de bouton Capturer'); }
   AMB.history && log('undoable='+(AMB.history.past.length>0));
   // ---- S4.6 chromatic notes: an old motif still opens, a sharp survives encoding and is played ----
   { st.set('global.key','C'); st.set('global.scale','Ionien (majeur)'); st.set('seq.octave','0'); st.set('seq.follow',false); st.set('seq.mutate',0);
@@ -124,26 +120,6 @@ window.addEventListener('load', async ()=>{
     const k=AMB.seq.step+8; AMB.bus.emit('live',{midi:64,time:at(k+3),played:at(k),vel:0.8,id:9100}); AMB.bus.emit('liveOff',{id:9100,midi:64,time:at(k+5),played:at(k+2)});
     rb.click(); const n=PR.parse(st.get('seq.pattern'))[0]||{};
     ok(n.s===k%len && n.l===2, 'Rec live : pas et longueur pris à l\'instant joué ('+st.get('seq.pattern')+')'); }
-  // ---- S4.6 « ⤓ Garder »: 4 bars played (no Rec) → the next empty motif, on the grid, real lengths; one undo ----
-  { const sd=AMB.seq.stepDur(), seq=AMB.seq, at=(k)=>seq.nextTime+(k-seq.step)*sd;
-    st.set('seq.steps','16'); st.set('seq.slot','A'); st.set('seq.pattern','0.0.1'); ['patB','patC','patD'].forEach(k=>st.set('seq.'+k,''));
-    const b0=(seq.origin||0)+Math.ceil((seq.step+40-(seq.origin||0))/16)*16; // a bar start, a bit ahead (any audio time works)
-    let id=9200; const play=(k,midi,steps,jit=0)=>{ id++; AMB.bus.emit('live',{midi,time:at(b0+k+jit),played:at(b0+k+jit),vel:0.8,id}); AMB.bus.emit('liveOff',{id,midi,time:at(b0+k+jit+steps),played:at(b0+k+jit+steps)}); };
-    play(-16,72,2);            // a bar before the 4 kept ones: left out
-    play(0,60,4,0.3);          // slightly late → step 0, 4 steps
-    play(18,61,2,-0.2);        // C#: chromatic, kept as such
-    play(36,64,0.3);           // very short → 1 step
-    play(52,67,8);             // last bar
-    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-    const kb=document.querySelector('[data-act=keep]'); ok(!kb.disabled, 'Garder : actif après avoir joué');
-    await new Promise(r=>setTimeout(r,800)); // a separate undo step from the setup above
-    kb.click();
-    const pb=st.get('seq.patB'), want='0.7.4,i.7.2.7.a.1,10.9.1,1g.b.8'.split(',').sort().join(',');
-    ok(st.get('seq.slot')==='B' && st.get('seq.pattern')==='0.0.1', 'Garder : motif B (A était occupé), A intact');
-    ok(st.get('seq.steps')==='64', 'Garder : 4 mesures → motif de 64 pas');
-    ok(pb.split(',').sort().join(',')===want, 'Garder : bonnes notes, places et durées ('+pb+')');
-    AMB.history.undo();
-    ok(st.get('seq.patB')==='' && st.get('seq.slot')==='A' && st.get('seq.steps')==='16', 'Garder : ⌘Z annule tout d\'un coup'); }
   // ---- S4.6 a chromatic .mid keeps its sharps ----
   { const ev=[0,0x90,60,100, 24,0x80,60,0, 0,0x90,61,100, 24,0x80,61,0, 0,0x90,66,100, 48,0x80,66,0, 0,0xff,0x2f,0];
     const hdr=[77,84,104,100,0,0,0,6,0,0,0,1,0,96], trk=[77,84,114,107,0,0,0,ev.length];
