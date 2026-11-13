@@ -243,9 +243,10 @@
     const hl = els.filter((e) => e.dataset.node && !e.matches('.stage .hint')); // (the keys line just appears)
     if (!hl.length) return hl;
     hl.forEach((e) => e.classList.add('is-new'));
-    // the tag: on the first full control (not an Écouter shortcut), never on a form field (no ::after there)
+    // the tag: on the first full control in reading order (not an Écouter shortcut nor a panel's on/off switch in its
+    // corner), never on a form field (no ::after there)
     const tagOk = (e) => !e.matches('select, input, textarea, canvas, img');
-    const first = hl.find((e) => tagOk(e) && !e.closest('.macros')) || hl.find(tagOk) || null;
+    const first = hl.find((e) => tagOk(e) && !e.closest('.macros, .panel header')) || hl.find(tagOk) || null;
     document.querySelectorAll('.is-new-first').forEach((e) => e.classList.remove('is-new-first', 'is-new-rel'));
     if (first) { first.classList.add('is-new-first'); if (getComputedStyle(first).position === 'static') first.classList.add('is-new-rel'); }
     this.newFirst = first || hl[0];

@@ -38,7 +38,6 @@
         box.dataset.id = 'open:' + rn.id; box.classList.remove('help');
         const t = box.querySelector('.lcd-task-txt'); t.textContent = `✦ Ouvrir : ${rn.name}`; t.title = 'Toucher : voir ce qui s\'ouvre';
         box.querySelector('.lcd-task-n').textContent = ready.length > 1 ? `${ready.length} prêts` : '';
-        if (flashId === 'ready') { box.classList.remove('bump'); void box.offsetWidth; box.classList.add('bump'); }
         return;
       }
       if (offer) {
@@ -309,7 +308,7 @@
         AMB.bus.on('game:contract', (d) => { this.renderContracts(d && d.id); if (!d || !d.id) this.checkEnd(); }); // ↷ on the last one
         AMB.bus.on('game:contracts', () => this.checkEnd());
         ['contracts', 'mode', 'reset', 'unlock'].forEach((ev) => AMB.bus.on('game:' + ev, () => this.renderContracts()));
-        AMB.bus.on('game:ready', () => this.renderContracts('ready'));
+        AMB.bus.on('game:ready', () => this.renderContracts());
         ['mode', 'reset'].forEach((ev) => AMB.bus.on('game:' + ev, () => this.ask(null)));
       }
       if (AMB.contracts) AMB.contracts.refill();

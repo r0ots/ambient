@@ -276,7 +276,7 @@ f.addEventListener('load', async ()=>{
     ok(A.seq.playing && ((A.game.s.prog['k.xy']||{}).n||0)>=1, 'premier glissé : le son démarre et le glissé compte ('+((A.game.s.prog['k.xy']||{}).n||0)+'/4)');
     A.ui.stop(); A.game.reset(); }
   // --- S4.5w: a real ending — the recorded song is replayed (night → dawn, plants lit by their layer), then handed over and offered
-  { await wait(300); A.perform.setMode('listen'); buyAll(); await wait(200);
+  { await wait(300); A.perform.setMode('listen'); w.scrollTo(0,0); window.scrollTo(0,0); buyAll(); await wait(200); // (the Jardin only draws on screen: an opening scrolled down to its controls, this page too)
     const sr=A.engine.ctx.sampleRate, n=Math.round(3*sr), ab=new ArrayBuffer(44+n*4), dv=new DataView(ab), W=(o,x)=>{ for(let i=0;i<x.length;i++) dv.setUint8(o+i,x.charCodeAt(i)); };
     W(0,'RIFF'); dv.setUint32(4,36+n*4,true); W(8,'WAVEfmt '); dv.setUint32(16,16,true); dv.setUint16(20,1,true); dv.setUint16(22,2,true); dv.setUint32(24,sr,true); dv.setUint32(28,sr*4,true); dv.setUint16(32,4,true); dv.setUint16(34,16,true); W(36,'data'); dv.setUint32(40,n*4,true);
     for (let i=0;i<n;i++){ const x=Math.round(Math.sin(i/sr*2*Math.PI*440)*2000); dv.setInt16(44+i*4,x,true); dv.setInt16(46+i*4,x,true); }

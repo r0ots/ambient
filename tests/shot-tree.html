@@ -31,11 +31,13 @@ document.getElementById('f').addEventListener('load', () => {
   if (h.includes('bar')) return; // S4.3: the very start of the Parcours
   if (/#(ready|new)/.test(h)) { // S4.6: a success waits for the player
     A.game.unlock('m.bells'); A.tree.NEW_MS = 6e5;
+    // headless captures freeze CSS animations at their first frame: show the end of the arrivals (the pulses at rest)
+    const st = doc.createElement('style'); st.textContent = '.is-appearing, .open-dlg .open-card { animation: none !important; }'; doc.head.append(st);
     setTimeout(() => {
       A.garden.showTree(false); A.perform.setMode('listen'); A.tree.clearNew();
       A.game.ready('h.pad', 'm.notes'); A.game.ready('t.son', 'k.couleur');
       if (h.includes('ready-card')) A.garden.ask('h.pad');
-      if (h.includes('new')) A.garden.openNode('h.pad');
+      if (h.includes('new')) { A.garden.openNode('h.pad'); setTimeout(() => { const e = doc.querySelector('.is-new-first'); if (e) e.scrollIntoView({ block: 'center' }); }, 3000); }
     }, 1500);
     return;
   }
