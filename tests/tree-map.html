@@ -13,10 +13,12 @@ f.addEventListener('load', async ()=>{
   G.setMode('path'); Gd.welcome(false); ['m.bells','h.pad','t.son','e.reverb'].forEach(i=>G.unlock(i));
   const map=d.querySelector('#treeDlg .tree-map'), R=(e)=>e.getBoundingClientRect();
   Gd.showTree(true); await wait(60);
-  // --- narrow screen: k ≈ 0.6, centred on the root
+  // --- narrow screen (S5.7): a narrow fan, the whole map in sight and filling its height (k ≥ 0.45), root at the bottom
   const root=map.querySelector('.tree-node[data-id=racine] .led'), mr=R(map), rr=R(root);
-  ok(Math.abs(Gd.view.k-0.6)<0.01, 'écran étroit ('+map.clientWidth+' px) : ouverture à k='+Gd.view.k.toFixed(2));
-  ok(Math.abs((rr.left+rr.width/2)-(mr.left+mr.width/2))<12 && rr.bottom<=mr.bottom && rr.top>mr.top, 'racine centrée et visible en bas de la carte');
+  const leds=[...map.querySelectorAll('.tree-node .led')].map(R), lo=Math.min(...leds.map(r=>r.left)), hi=Math.max(...leds.map(r=>r.right)), top=Math.min(...leds.map(r=>r.top));
+  ok(Gd.treeLayout().nar && Gd.view.k>=0.45 && lo>=mr.left-30 && hi<=mr.right+30, 'écran étroit ('+map.clientWidth+' px) : éventail étroit, toute la carte en largeur (k='+Gd.view.k.toFixed(2)+', '+Math.round(lo-mr.left)+'…'+Math.round(mr.right-hi)+' px des bords)');
+  ok(Math.abs((rr.left+rr.width/2)-(mr.left+mr.width/2))<40 && rr.bottom<=mr.bottom && rr.top>mr.top && mr.bottom-rr.bottom<70 && top-mr.top<110, 'racine en bas, la carte remplit la hauteur (pas de quart vide : '+Math.round(mr.bottom-rr.bottom)+' px sous la racine, '+Math.round(top-mr.top)+' px au-dessus)');
+  ok(/conic-gradient/.test(w.getComputedStyle(d.querySelector('.tree-legend i.st-owned')).backgroundImage), 'S5.7 légende : « ouvert » = la couleur de sa branche (pastille aux 5 couleurs), plus « vert »');
   // --- legend on one line, zoom buttons clear of it
   const items=[...d.querySelectorAll('.tree-legend > span:not(.tree-tip)')], tops=new Set(items.map(e=>Math.round(R(e).top)));
   ok(items.length===4 && tops.size===1, 'légende : 4 états (S4.6 : prêt) sur une seule ligne');
@@ -24,13 +26,13 @@ f.addEventListener('load', async ()=>{
   ok(zb.top>=lg.bottom, 'boutons + − ⤢ sous la légende (pas de recouvrement)');
   // --- ⤢ = whole map
   d.querySelector('[data-zoom=fit]').click(); await wait(20);
-  ok(Gd.view.k<0.5, '⤢ : toute la carte (k='+Gd.view.k.toFixed(2)+')');
+  ok(Gd.view.k<=0.5, '⤢ : toute la carte (k='+Gd.view.k.toFixed(2)+')');
   // --- resize: refit only when the width changes
   Gd.fitTree(); Gd.zoomAt(200,400,1.5); const k1=Gd.view.k;
   f.style.height='700px'; await wait(120);
   ok(Math.abs(Gd.view.k-k1)<1e-9, 'redimensionnement en hauteur seule : zoom gardé (k='+Gd.view.k.toFixed(2)+')');
   f.style.width='360px'; await wait(120);
-  ok(Math.abs(Gd.view.k-0.6)<0.01, 'largeur changée : recadrage (k='+Gd.view.k.toFixed(2)+')');
+  ok(Math.abs(Gd.view.k-k1)>1e-6 && Gd.view.k>=0.45, 'largeur changée : recadrage (k='+Gd.view.k.toFixed(2)+')');
   // --- pointers: never a stale finger
   const pe=(t,id)=>map.dispatchEvent(new w.PointerEvent(t,{bubbles:true,pointerId:id,pointerType:'touch',isPrimary:id===1,clientX:150,clientY:300}));
   pe('pointerdown',1); pe('pointerdown',2); ok(Gd.pointers()===2, 'deux doigts suivis');

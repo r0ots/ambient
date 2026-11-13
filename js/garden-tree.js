@@ -24,9 +24,12 @@
     // ---- layout (G11.1): rows by level from the bottom, branch bands spreading out like a fan ----
     // A branch holds at most 2 nodes per row (3 for the trunk and big branches), so rows stay readable
     // and the outer branches climb into the upper corners.
+    // S5.7: a phone (map < 560 px) gets a narrow fan — branches side by side but barely spreading, taller rows — so the
+    // whole map fits its width and fills its height (the wide fan was cut at the sides, with an empty quarter below)
+    narrowTree() { const m = $('#treeDlg .tree-map'); return !!m && m.clientWidth > 0 && m.clientWidth < 560; },
     treeLayout() {
-      const T = AMB.tree;
-      if (this._lay && this._lay.n === T.NODES.length) return this._lay;
+      const T = AMB.tree, nar = this.narrowTree(), A = nar ? 8 : L.A, B = nar ? 6 : L.B, ROW = nar ? 185 : L.ROW, MIN = nar ? 82 : L.MIN, GAP = nar ? 82 : L.GAP;
+      if (this._lay && this._lay.n === T.NODES.length && this._lay.nar === nar) return this._lay;
       const memo = {}, order = this.fanOrder(), mid = (order.length - 1) / 2;
       const slot = Object.fromEntries(order.map((b, i) => [b, i - mid]));
       const count = {}; T.NODES.forEach((n) => { count[n.branch] = (count[n.branch] || 0) + 1; });
@@ -39,27 +42,32 @@
         used[n.branch + '|' + l] = (used[n.branch + '|' + l] || 0) + 1;
         lvl[n.id] = l;
       }
-      const maxL = Math.max(...Object.values(lvl)), H = L.TOP + maxL * L.ROW + L.BOT, CX = L.W / 2;
+      const maxL = Math.max(...Object.values(lvl)), H = L.TOP + maxL * ROW + L.BOT, CX = L.W / 2;
       const pos = {};
       for (let l = 0; l <= maxL; l++) {
         const row = [];
         for (const b of order) {
           const sib = T.NODES.filter((n) => n.branch === b && lvl[n.id] === l);
-          sib.forEach((n, i) => row.push({ n, want: CX + slot[b] * (L.A + L.B * l) + (i - (sib.length - 1) / 2) * L.GAP }));
+          sib.forEach((n, i) => row.push({ n, want: CX + slot[b] * (A + B * l) + (i - (sib.length - 1) / 2) * GAP }));
         }
         if (!row.length) continue;
         // (rows are built branch by branch in fan order: branches never interleave)
         // sweep: keep a minimum gap, then shift the row back to where it wanted to be, inside the stage
-        row.forEach((r, i) => { r.x = i ? Math.max(r.want, row[i - 1].x + L.MIN) : r.want; });
+        row.forEach((r, i) => { r.x = i ? Math.max(r.want, row[i - 1].x + MIN) : r.want; });
         const shift = row.reduce((s, r) => s + r.want - r.x, 0) / row.length;
         let lo = row[0].x + shift, hi = row[row.length - 1].x + shift, d = shift;
         if (lo < L.M) d += L.M - lo; else if (hi > L.W - L.M) d -= hi - (L.W - L.M);
         lo = row[0].x + d; if (lo < L.M) d += L.M - lo; // too wide: pin to the left edge
-        row.forEach((r) => { pos[r.n.id] = { x: Math.round(r.x + d), y: L.TOP + (maxL - l) * L.ROW, l }; });
+        row.forEach((r) => { pos[r.n.id] = { x: Math.round(r.x + d), y: L.TOP + (maxL - l) * ROW, l }; });
       }
       // a row too wide for the stage is pinned left and spills right: widen the stage so "see all" really shows all
       const W = Math.max(L.W, ...Object.values(pos).map((p) => p.x + L.M));
-      return (this._lay = { n: T.NODES.length, pos, W, H, maxL });
+      if (nar) { // the narrow fan: the stage only as wide as its widest row
+        const xs = Object.values(pos).map((p) => p.x), lo = Math.min(...xs) - 42;
+        for (const p of Object.values(pos)) p.x -= lo;
+        return (this._lay = { n: T.NODES.length, nar, pos, W: Math.max(...xs) - lo + 42, H, maxL });
+      }
+      return (this._lay = { n: T.NODES.length, nar, pos, W, H, maxL });
     },
     showTree(on) {
       const d = $('#treeDlg'); if (!d) return;
@@ -73,7 +81,7 @@
       const map = $('#treeDlg .tree-map'); if (!map) return;
       const T = AMB.tree, g = AMB.game;
       $('#treeDlg .tree-count').textContent = g.s.ended ? '✦ L\'instrument est à toi' : `${T.NODES.filter((n) => g.has(n.id)).length}/${T.NODES.length}`;
-      if (!map.querySelector('.tree-stage') || map.dataset.n !== String(T.NODES.length)) this.buildMap(map);
+      if (!map.querySelector('.tree-stage') || map.dataset.n !== T.NODES.length + (this.narrowTree() ? 'n' : '')) this.buildMap(map);
       this.paintTree();
     },
     // what opens a node: its challenge, or a discovery (S4.3, S5.10) — « ◇ Joue 6 notes », « ↺ Réponse « Premier reflet » (3 notes) », « ✦ Découverte : ??? »
@@ -86,18 +94,19 @@
     // the stage: SVG links under absolutely placed LED buttons, in layout units (pan/zoom = one transform)
     buildMap(map) {
       const T = AMB.tree, lay = this.treeLayout();
-      map.innerHTML = ''; map.dataset.n = T.NODES.length;
+      map.innerHTML = ''; map.dataset.n = T.NODES.length + (lay.nar ? 'n' : '');
       const stage = document.createElement('div');
       stage.className = 'tree-stage'; stage.style.width = lay.W + 'px'; stage.style.height = lay.H + 'px';
       const svg = document.createElementNS(SVGNS, 'svg');
       svg.setAttribute('class', 'tree-links'); svg.setAttribute('viewBox', `0 0 ${lay.W} ${lay.H}`);
       svg.setAttribute('width', lay.W); svg.setAttribute('height', lay.H); svg.setAttribute('aria-hidden', 'true');
       // branch names at the tip of each band
+      let bi = 0;
       for (const bid of this.fanOrder()) {
         const ps = T.NODES.filter((n) => n.branch === bid).map((n) => lay.pos[n.id]); if (!ps.length) continue;
         const top = Math.min(...ps.map((p) => p.y)), xs = ps.filter((p) => p.y === top).map((p) => p.x);
-        const t = document.createElementNS(SVGNS, 'text');
-        t.setAttribute('class', 'tree-bname'); t.setAttribute('x', xs.reduce((a, b) => a + b, 0) / xs.length); t.setAttribute('y', top - 30);
+        const t = document.createElementNS(SVGNS, 'text'), up = lay.nar && bid !== 'tronc' && bi++ % 2 ? 26 : 0; // (narrow fan: names on two lines)
+        t.setAttribute('class', 'tree-bname'); t.setAttribute('x', xs.reduce((a, b) => a + b, 0) / xs.length); t.setAttribute('y', top - 30 - up);
         t.setAttribute('text-anchor', 'middle'); t.style.setProperty('--c', T.BRANCHES[bid].color); t.textContent = T.BRANCHES[bid].name;
         if (bid !== 'tronc') svg.append(t);
       }
@@ -177,7 +186,9 @@
       const map = $('#treeDlg .tree-map'); if (!map || !map.clientWidth) return;
       const lay = this.treeLayout(), lim = this.kLimits(), v = this.view;
       this.fitW = map.clientWidth;
-      v.k = !all && map.clientWidth < 560 ? clamp(0.6, lim.min, lim.max) : Math.min(lim.fit, 1.15);
+      const narrow = !all && lay.nar;
+      // S5.7: a phone opens on the whole narrow map (its width, or its height), no smaller than 0.45 (then it pans)
+      v.k = narrow ? clamp(Math.max(0.45, lim.fit), lim.min, lim.max) : !all && map.clientWidth < 560 ? clamp(0.6, lim.min, lim.max) : Math.min(lim.fit, 1.15);
       const root = lay.pos.racine || { x: lay.W / 2, y: lay.H };
       v.tx = map.clientWidth / 2 - root.x * v.k;
       v.ty = map.clientHeight - (lay.H - L.BOT / 3) * v.k; // root (bottom) in view
@@ -309,7 +320,7 @@
       // any click during the unlock sequence fast-forwards it
       if (dlg) dlg.addEventListener('click', (e) => { if (this.seq) { e.stopPropagation(); e.preventDefault(); this.seqFinish(); } }, true);
       // refit only when the width changes (a mobile address bar showing / hiding changes the height only)
-      window.addEventListener('resize', () => { if (!dlg || dlg.hidden) return; if (map.clientWidth !== this.fitW) this.fitTree(); else this.applyView(); });
+      window.addEventListener('resize', () => { if (!dlg || dlg.hidden) return; if (map.clientWidth !== this.fitW) { this.renderTree(); this.fitTree(); } else this.applyView(); }); // (S5.7: across 560 px, the other fan)
     },
 
     // ---- unlock sequence (G8.5): a challenge just opened a node ----

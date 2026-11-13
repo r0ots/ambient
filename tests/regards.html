@@ -1,0 +1,128 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
+<!-- S5.7 « regards neufs » (a child on a phone, a teen at a MIDI keyboard): one check per fix, at 390 px. Touch texts and
+     no MIDI button on a touch screen, the score line hidden at record 0, the pads in sight at 19 nodes, an ask only when
+     the LCD is seen, the countdown « 3, 2, 1, MAINTENANT ! », one glide = one action, nothing during the song's ● Rec,
+     « ✦ Tout ouvrir », grains thickened by the macro or a CC, IV after the key, sevenths read, Rec live folding said,
+     long LCD titles never cut, no party over a window. -->
+<script src="lib.js"></script>
+<script>localStorage.removeItem('ambient.game.regards');</script>
+<iframe id="f" src="../index.html?gamekey=ambient.game.regards" style="width:390px;height:780px;border:0"></iframe>
+<script>
+const f = document.getElementById('f');
+f.addEventListener('load', async () => {
+  if (f.dataset.ran) return; f.dataset.ran = 1;
+  try {
+    const w = f.contentWindow, d = f.contentDocument, A = w.AMB, G = A.game, Gd = A.garden, D = A.demands, K = A.contracts, Pz = A.puzzles, T = A.tree;
+    w.addEventListener('error', (e) => log('ERROR ' + e.message + ' @' + e.filename + ':' + e.lineno));
+    G.setMode('path'); Gd.welcome(false); await wait(50);
+    const css = (sel, p) => w.getComputedStyle(d.querySelector(sel))[p];
+
+    // --- 3. a touch screen: no MIDI button, no keyboard words (free mode unchanged)
+    G.touchOverride = true; Gd.applyTouch();
+    const KB = /A à L|Z à M|touche V|Entrée|clavier/;
+    const texts = K.DEFS.flatMap((x) => [x.title, x.hint]).concat(D.FREE.flatMap((x) => [x.title, x.hint, x.intro || '']), Object.values(T.EXPLAIN));
+    const bad = texts.map((s) => G.txt(s)).filter((s) => KB.test(s));
+    ok(d.body.classList.contains('touch') && css('#midi', 'display') === 'none' && !bad.length, 'S5.7 écran tactile : bouton MIDI caché, aucun texte ne parle du clavier' + (bad.length ? ' — ' + bad[0] : ''));
+    const midiFree = () => { G.setMode('free'); const v = css('#midi', 'display'); G.setMode('path'); Gd.welcome(false); return v; };
+    ok(d.getElementById('midi').hidden || midiFree() !== 'none', 'mode libre : le bouton MIDI reste');
+    G.touchOverride = false; Gd.applyTouch();
+    ok(/A à L/.test(G.txt(K.byId['m.notes'].title)) && !/\{|\|/.test(G.txt(K.byId['m.notes'].title)), 'au clavier, les touches restent dites : ' + G.txt(K.byId['m.notes'].title));
+
+    // --- 5. IV only once the key is open; « 4 notes qui descendent » says it with the pads' colours
+    ok(D.byId.iv.need.includes('h.key') && /orange.*violettes/.test(K.byId['m.descend'].hint) && !/droite à gauche/.test(K.byId['m.descend'].hint), 'S5.7 : « Force l\'accord IV » après Tonalité ; les notes qui descendent : « ' + G.txt(K.byId['m.descend'].hint) + ' »');
+
+    // --- 6. the score line waits for a first series
+    G.s.resp = { lvl: 0, len: 3, streak: 0, best: 0, miss: {} }; G.s.nodes = ['racine', 'm.bells']; Gd.renderScore();
+    const h0 = d.getElementById('lcdScore').hidden; G.s.resp.best = 1; G.s.resp.streak = 1; Gd.renderScore();
+    ok(h0 && !d.getElementById('lcdScore').hidden, 'S5.7 : « ↺ PHRASES · SÉRIE 0 · RECORD 0 » caché, montré dès un record de 1');
+    G.reset(); await wait(30);
+
+    // --- 7. at 19 nodes the bar grows: the pads stay in sight (they stick to the bottom of the window)
+    ['m.bells', 'h.pad', 't.son', 't.viz', 't.journal', 't.rec', 't.share', 'h.key', 'h.drone', 'h.pad2', 'e.reverb', 'e.salle', 'e.echo', 'm.tempo', 'm.phrase', 't.macros', 't.dice', 'm.grains'].forEach((i) => G.unlock(i));
+    for (let t = 0; t < 60 && Gd.seq; t++) await wait(40); Gd.showTree(false); A.perform.setMode('listen'); w.scrollTo(0, 0); await wait(80);
+    const pr = d.getElementById('pads').getBoundingClientRect();
+    ok(G.s.nodes.length === 19 && css('#pads', 'position') === 'sticky' && pr.top < w.innerHeight - 100 && pr.bottom <= w.innerHeight + 8, // (a party's hop may lift them a few px)
+        'S5.7 : 19 nœuds à 390 px, les pastilles restent visibles (' + Math.round(pr.top) + '–' + Math.round(pr.bottom) + ' / ' + w.innerHeight + ')');
+
+    // --- 1. an ask only when the LCD is seen (an opening scrolls to what it opened)
+    A.perform.setMode('sculpt'); await wait(30); w.scrollTo(0, 3000); await wait(30);
+    const out = D.seen(); w.scrollTo(0, 0); await wait(30);
+    ok(!out && D.seen(), 'S5.7 : LCD hors de la fenêtre → aucune demande lancée ; revenu en vue → oui');
+    A.perform.setMode('listen');
+
+    // --- 2. the countdown: « prêt ? », 3, 2, 1, « MAINTENANT ! » on the 1 (never « sur le 1 » in the texts)
+    { const SD = 0.25, BEAT = 1; let now = 100; const n0 = D.now; D.now = () => now;
+      D.cur = null; D.launch({ d: D.byId.accord, text: D.byId.accord.title }, 0, now, SD); const c = D.cur;
+      const at = (r) => { now = c.tT - r; return D.view(now).n; };
+      const seq = [3.5, 2.5, 1.5, 0.5, 0.1].map((r) => at(r * BEAT));
+      const all = K.DEFS.concat(D.FREE).flatMap((x) => [x.title, x.hint || '', x.intro || '']).join(' ');
+      ok(seq.join('|') === 'prêt ?|3|2|1|MAINTENANT !' && !/sur le 1\b/.test(all) && /MAINTENANT/.test(c.text), 'S5.7 compte à rebours : ' + seq.join(' · ') + ' ; « ' + c.text + ' »');
+      D.cancel(); D.now = n0; }
+
+    // --- 9. one glide = one action, however fast
+    { const acts = []; A.bus.on('act', (id) => { if (id === 'xy') acts.push(id); }); const v = d.getElementById('viz'), r = v.getBoundingClientRect();
+      A.seq.playing = true; // (no sound start)
+      for (let i = 0; i < 4; i++) {
+        const PE = (t, x) => new w.PointerEvent(t, { bubbles: true, pointerId: 20 + i, clientX: r.left + x, clientY: r.top + r.height / 2 });
+        v.dispatchEvent(PE('pointerdown', 20)); for (let x = 30; x < 200; x += 40) v.dispatchEvent(PE('pointermove', x)); v.dispatchEvent(PE('pointerup', 200));
+      }
+      A.seq.playing = false;
+      ok(acts.length === 4, 'S5.7 : 4 glissés rapides = 4 gestes (' + acts.length + ')'); }
+
+    // --- 10. the song's ● Rec: no Réponse phrase, no ask
+    { const sr = A.rec.songRecording; A.rec.songRecording = () => true; A.seq.playing = true;
+      const n0 = D.now; let now = 200; D.now = () => now; D.cur = null; D.launch({ d: D.byId.accord, text: 'x' }, 0, now, 0.25);
+      D.onStep(1, now, 0.25); const dGone = !D.cur; const can = D.can(); Pz.wait = 0; const pz = Pz.onStep(16, now, 0.25);
+      A.rec.songRecording = sr; A.seq.playing = false; D.now = n0;
+      ok(dGone && !can && pz === false && !Pz.cur, 'S5.7 : pendant le ● Rec du morceau, la demande en cours s\'en va, aucune nouvelle, aucune phrase de Réponse'); }
+
+    // --- 14. « Épaissis les grains » counts the macro and a MIDI CC too
+    { const a = K.byId['m.nuage'].ask;
+      ok(['user', 'macro', 'xy'].every((src) => D.match(a, 'param', 'grains.density', 0.9, src)) && !D.match(a, 'param', 'grains.density', 0.9, 'lfo'), 'S5.7 : la densité des grains par le bouton, le grand réglage Densité, le glissé ou le CC1'); }
+
+    // --- 16. a seventh chord inverted: Amaj7 with C# in the bass is I (A), not iii (C#m)
+    { A.store.set('global.key', 'A', 'user'); A.store.set('global.scale', 'Ionien (majeur)', 'user'); await wait(30);
+      const P = A.play, i7 = P.chordForNotes([37, 40, 44, 45]), iii = P.chordForNotes([37, 40, 44]), vi7 = P.chordForNotes([42, 45, 49, 52]);
+      ok(i7 === 0 && iii === 2 && vi7 === 5, 'S5.7 accords : Amaj7/C# → I (' + i7 + '), C#m → iii (' + iii + '), F#m7 → vi (' + vi7 + ')'); }
+
+    // --- 17. Rec live: 1/16 grid; a note above the roll is folded and it is said
+    { G.setMode('free'); await wait(30); // (the roll's pattern is locked in the path until Mélodie écrite)
+      const PR = A.pianoRoll, roll = PR.roll, S = A.seq, toast = d.getElementById('toast');
+      const st = { p: S.playing }; S.playing = true; roll.recording = true; roll.toldFold = false; roll.save([]);
+      const sd = S.stepDur(), base = S.nextTime + 8 * sd;
+      A.bus.emit('live', { midi: 69, time: base, played: base, vel: 0.8, raw: null });
+      A.bus.emit('live', { midi: 71, time: base + sd, played: base + sd, vel: 0.8, raw: null });
+      const ss = roll.notes().map((n) => n.s).sort((a, b) => a - b);
+      A.bus.emit('live', { midi: 105, time: base + 3 * sd, played: base + 3 * sd, vel: 0.8, raw: null });
+      ok(ss.length === 2 && ss[1] - ss[0] === 1, 'S5.7 Rec live : deux notes à une double-croche d\'écart → deux pas voisins (grille au 1/16)');
+      ok(/trop aiguë/.test(toast.textContent), 'S5.7 Rec live : une note trop aiguë pour le piano roll, écrite une octave plus bas, est signalée (« ' + toast.textContent.slice(0, 60) + '… »)');
+      roll.recording = false; S.playing = st.p; roll.save([]); G.setMode('path'); Gd.welcome(false); await wait(30); }
+
+    // --- 18. a long LCD title is never cut
+    { Gd.lcd('✦ Découverte : Entre les touches', 5000); await wait(400); const top = d.getElementById('lcdTop'), lcd = d.getElementById('lcd');
+      ok(top.textContent === '✦ DÉCOUVERTE : ENTRE LES TOUCHES' && top.scrollWidth <= lcd.clientWidth, 'S5.7 LCD : « ' + top.textContent + ' » en entier (' + top.scrollWidth + ' ≤ ' + lcd.clientWidth + ' px, ' + top.style.fontSize + ')');
+      A.lcdMsg = null; }
+
+    // --- 19. a party never over a window: it waits for it to close
+    { const C = Gd.confetti; C.clear(); Gd.showTree(true); await wait(30); Gd.fxPlay('defi'); await wait(200);
+      const during = C.n; Gd.showTree(false); await wait(350);
+      ok(during === 0 && C.n > 0, 'S5.7 : fête pendant que l\'Arbre est ouvert → rien par-dessus (' + during + '), elle part à la fermeture (' + C.n + ' confettis)'); C.clear(); }
+
+    // --- 12. « ✦ Tout ouvrir (n) » when more than 3 wait: one after another, no map, no scrolling
+    { G.reset(); await wait(30); w.scrollTo(0, 0); const q = ['m.bells', 'h.pad', 't.son', 'e.reverb', 't.viz']; q.forEach((i) => G.ready(i)); await wait(30);
+      Gd.ask('m.bells'); const all = d.querySelector('#openDlg .open-all'), more = d.querySelector('#openDlg .open-more').textContent;
+      ok(!all.hidden && /\(5\)/.test(all.textContent) && /^Ensuite : .+, .+, .+ et 1 autre\.$/.test(more), 'S5.7 : file de 5 → « ' + all.textContent + ' » ; « ' + more + ' »');
+      all.click(); const y0 = w.scrollY; let mapSeen = false;
+      for (let t = 0; t < 60 && q.some((i) => !G.has(i)); t++) { await wait(50); if (!d.getElementById('treeDlg').hidden) mapSeen = true; }
+      ok(q.every((i) => G.has(i)) && !mapSeen && w.scrollY === y0 && !G.s.ready.length && d.getElementById('openDlg').hidden, 'tout s\'ouvre à la suite, sans carte ni défilement (LCD gardé en vue)');
+      Gd.ask(null); }
+
+    // --- 15. the notebook's hints say what is judged
+    { const S = A.discoveries.byId;
+      ok(/fort.*presque rien.*fort/i.test(S.velo.hint) && !/tout en haut/.test(S.velo.hint) && /molette/.test(S.chroma.hint2) && !/se laissent descendre/.test(S.chroma.hint) && !/Une main qui se promène/.test(S.cinq.hint), 'S5.7 carnet : Funambule = fort / doux / fort, Entre les touches = 6 demi-tons (pas la molette), Petite phrase moins évidente'); }
+
+    G.touchOverride = null; localStorage.removeItem('ambient.game.regards');
+    done();
+  } catch (e) { fail(e); }
+});
+</script></body></html>

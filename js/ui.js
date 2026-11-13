@@ -482,8 +482,9 @@
       document.body.classList.toggle('jargon-off', plain);
       top.classList.toggle('lcd-flash', !!on);
       const txt = on ? m.text.toUpperCase().slice(0, 48) : (plain ? 'AMBIENT' : patch.toUpperCase().slice(0, 24)) + (rec ? '  ● REC' : '');
-      if (top.textContent !== txt) {
-        top.textContent = txt;
+      const lw = top.parentElement ? top.parentElement.clientWidth : 0;
+      if (top.textContent !== txt || lw !== top._lw) {
+        top.textContent = txt; top._lw = lw;
         // S5.7: a game message is never cut (« ENTRE LES TOU… »): too long for the screen, it gets smaller
         top.style.fontSize = '';
         const lcdEl = top.parentElement, room = lcdEl ? lcdEl.clientWidth - 24 : 0;

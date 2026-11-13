@@ -443,6 +443,7 @@
       if (delay > 0) setTimeout(fire, delay); else fire();
       return (this.fxLast = { kind, at, delay, did });
     },
+    applyTouch() { document.body.classList.toggle('touch', AMB.game.touch()); this.renderContracts(); },
     modalUp() { return [...document.querySelectorAll('.modal')].some((m) => !m.hidden); },
     fxClass(el, cls, ms) {
       if (!el) return;
@@ -551,8 +552,7 @@
       }
       this.pressFeedback();
       // S5.7: a touch screen in the path: no MIDI button, no keyboard words (css body.game.touch, game.txt)
-      const touch = () => document.body.classList.toggle('touch', AMB.game.touch());
-      touch(); if (window.matchMedia) { const q = matchMedia('(pointer: coarse)'); if (q.addEventListener) q.addEventListener('change', touch); }
+      this.applyTouch(); if (window.matchMedia) { const q = matchMedia('(pointer: coarse)'); if (q.addEventListener) q.addEventListener('change', () => this.applyTouch()); }
       const task = $('#lcdTask');
       if (task) {
         task.querySelector('.lcd-skip').addEventListener('click', () => {
