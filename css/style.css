@@ -584,6 +584,8 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
   background: hsl(calc(250 - var(--i) * 27) 55% calc(30% + var(--i) * 3.5%)); color: #ffffffb0; font: 600 11px var(--f-ui); }
 .pad.on { filter: brightness(1.5); transform: translateY(1px); }
 .pad.chord { box-shadow: 0 0 0 2px var(--lcd-fg) inset; }
+/* S5.2: lit by the Mélodie auto (what the machine plays), in the pad's own colour */
+.pad.auto { filter: brightness(1.9) saturate(1.3); box-shadow: 0 0 14px 2px hsl(calc(250 - var(--i) * 27) 85% 62%); }
 @media (pointer: coarse) { .pad span { display: none; } }
 @media (max-width: 560px) {
   .pads { grid-template-columns: repeat(10, 1fr); }
