@@ -31,7 +31,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
     await wait(500); g.setMode('free'); await wait(30);
     ok(css('#bigPlay','display')!=='none' && !d.querySelector('.tog.is-solo'), 'mode libre : « ▶ Lancer le paysage » et toutes les coupures, comme avant');
     PE('pointerdown',b); const fp=b.classList.contains('is-pressed'); PE('pointerup',b);
-    ok(!fp && !b.classList.contains('is-released'), 'mode libre : pas de retour de pression (intact)');
+    ok(fp && b.classList.contains('is-released'), 'S7.1 mode libre : le même retour de pression (le mouvement est l\'apparence de l\'app ; son et commandes intacts)');
     g.setMode('path'); g.reset(); A.perform.setMode('listen'); await wait(30); }
   // --- the instrument handed over (G6.3, S3.7): on the instrument, no dialog; the sound stays, the game interface goes
   { buyAll(); await wait(200); // macro positions settle (perform.js syncs them 60 ms after a change)

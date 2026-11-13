@@ -42,11 +42,15 @@
   const MODES = ['listen', 'sculpt', 'compose'];
   function setMode(mode) {
     if (!MODES.includes(mode)) mode = 'listen';
+    const prev = AMB.mode;
     for (const m of MODES) document.body.classList.toggle('mode-' + m, m === mode);
     document.querySelectorAll('[data-mode]').forEach((b) => { const on = b.dataset.mode === mode; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
     try { localStorage.setItem('ambient.mode', mode); } catch (e) {}
     AMB.mode = mode;
     window.dispatchEvent(new Event('resize')); // canvases re-measure when shown
+    // S7.1: the lit key slides to the new mode; the view that comes in cascades behind a scan (not at load)
+    const M = AMB.motion;
+    if (M) { M.slide(document.querySelector('.modes')); if (prev && prev !== mode) M.swap(MODES.indexOf(mode) - MODES.indexOf(prev)); }
   }
   // legacy API: setView(true) = listen, setView(false) = sculpt
   const setView = (simple) => setMode(simple ? 'listen' : 'sculpt');

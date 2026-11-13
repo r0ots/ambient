@@ -183,7 +183,7 @@
   // ---- S5.2 « Chaque note se voit »: the TRIGGER (which plant, who plays, how strong), apart from the drawing (a later
   // skin reads the same splashes and draws them its way: drawSplash only). The garden stays a reflection: nothing on the
   // scene is touchable. JUICE = the one knob for how much a note sets off (0 = calm, 1 = goofy default, 2 = way too much).
-  const JUICE = 1;
+  const JUICE = AMB.motion ? AMB.motion.JUICE : 1; // S7.1: the same knob as the interface's motion (js/motion.js)
   // per who: ring (wave brightness), parts (particles at vel 1), flash (plant lit), squash (squash & stretch), life (s)
   const SPLASH = {
     player: { ring: 1, parts: 24, flash: 1, squash: 0.28, life: 0.8 },
@@ -525,7 +525,9 @@
     skyKey: null, skyPrevKey: null, skyT: 0, skyQ: [], skies: new Map(), // S4.5w sky
     replay: null, lit: {}, // S4.5w finale
     LOOK, LOOK_ALL, ASPECTS, look, concerns, aim: null, cur: {}, kicks: {}, swPh: {}, lookDirty: true, // S4.6 settings → look
-    JUICE, SPLASH, WAVES_PER_PLANT, PARTS_MAX, splash, waves: [], squash: {}, zap: {}, shake: null, ox: 0, oy: 0, // S5.2 notes seen
+    // S7.1 the one knob lives in js/motion.js (css --juice, interface motion); GV.JUICE reads and sets it there
+    get JUICE() { return AMB.motion ? AMB.motion.JUICE : this._juice; }, set JUICE(v) { if (AMB.motion) AMB.motion.set({ juice: v }); else this._juice = v; }, _juice: JUICE,
+    SPLASH, WAVES_PER_PLANT, PARTS_MAX, splash, waves: [], squash: {}, zap: {}, shake: null, ox: 0, oy: 0, // S5.2 notes seen
     SCENE, scene, sc: {}, kick: {}, sAim: null, sPoll: {}, st: 0, speed: 1, fxc: {}, // S5.8 scene layers
     COMBO_FX, cx: {}, starNotes: [], // S5.10 combos: intensity per combo ON, the player's last notes (constellation)
     sprites: new Map(), glows: new Map(), labels: new Map(),

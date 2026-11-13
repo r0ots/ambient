@@ -24,12 +24,16 @@
     const track = document.createElementNS(svgNS, 'path');
     const arc = document.createElementNS(svgNS, 'path');
     const dot = document.createElementNS(svgNS, 'circle');
+    // S7.1: the needle turns (a group rotated around the centre: it follows with a light spring, css .k-needle); the arc
+    // has a glow twin that lights up while the knob is being turned (.knob.active / .turning)
+    const needle = document.createElementNS(svgNS, 'g'), glow = document.createElementNS(svgNS, 'path');
     track.setAttribute('class', 'k-track'); arc.setAttribute('class', 'k-arc'); dot.setAttribute('class', 'k-dot');
-    dot.setAttribute('r', '2.4');
-    if (color) arc.style.stroke = color;
+    needle.setAttribute('class', 'k-needle'); glow.setAttribute('class', 'k-glow');
+    dot.setAttribute('r', '2.4'); dot.setAttribute('cx', 30); dot.setAttribute('cy', 18); needle.append(dot);
+    if (color) { arc.style.stroke = color; glow.style.stroke = color; }
     const body = document.createElementNS(svgNS, 'circle');
     body.setAttribute('cx', 30); body.setAttribute('cy', 30); body.setAttribute('r', 17); body.setAttribute('class', 'k-body');
-    svg.append(track, arc, body, dot);
+    svg.append(track, glow, arc, body, needle);
     const val = h('div', 'k-val');
     const lab = h('div', 'k-lab', sp.label);
     wrap.append(svg, val, lab);
@@ -49,13 +53,18 @@
     };
     function render() {
       const n = norm(), a = A0 + (A1 - A0) * n;
-      arc.setAttribute('d', n > 0.001 ? arcPath(A0, a) : '');
-      const [x, y] = polar(a, 12);
-      dot.setAttribute('cx', x); dot.setAttribute('cy', y);
-      val.textContent = fmt(store.get(key));
+      const d = n > 0.001 ? arcPath(A0, a) : '';
+      arc.setAttribute('d', d); glow.setAttribute('d', d);
+      needle.style.transform = `rotate(${a.toFixed(1)}deg)`;
+      if (AMB.motion) AMB.motion.roll(val, fmt(store.get(key))); else val.textContent = fmt(store.get(key));
       wrap.setAttribute('aria-valuenow', +store.get(key).toFixed(3));
       wrap.setAttribute('aria-valuetext', String(val.textContent));
     }
+    // S7.1: a change by hand (drag, wheel, keys) — the knob reacts at each notch (squash, glow, sparks off the needle)
+    const userSet = (v) => {
+      const n0 = norm(); store.set(key, v, 'user'); const n1 = norm();
+      if (AMB.motion && n1 !== n0) AMB.motion.turn(wrap, n1 - n0, A0 + (A1 - A0) * n1);
+    };
     let startY = 0, startV = 0, dragging = false;
     wrap.addEventListener('pointerdown', (e) => {
       dragging = true; startY = e.clientY; startV = norm();
@@ -66,7 +75,7 @@
       if (!dragging) return;
       const sens = e.shiftKey ? 600 : 160;
       const n = Math.max(0, Math.min(1, startV + (startY - e.clientY) / sens));
-      store.set(key, sp.min + n * (sp.max - sp.min), 'user');
+      userSet(sp.min + n * (sp.max - sp.min));
     });
     const end = () => { dragging = false; wrap.classList.remove('active'); };
     wrap.addEventListener('pointerup', end);
@@ -75,16 +84,16 @@
     wrap.addEventListener('wheel', (e) => {
       e.preventDefault();
       const n = Math.max(0, Math.min(1, norm() - Math.sign(e.deltaY) * (e.shiftKey ? 0.005 : 0.03)));
-      store.set(key, sp.min + n * (sp.max - sp.min), 'user');
+      userSet(sp.min + n * (sp.max - sp.min));
     }, { passive: false });
     // keyboard accessibility
     wrap.tabIndex = 0;
     wrap.addEventListener('keydown', (e) => {
       const span = sp.max - sp.min;
       const d = { ArrowUp: 0.02, ArrowRight: 0.02, ArrowDown: -0.02, ArrowLeft: -0.02, PageUp: 0.1, PageDown: -0.1 }[e.key];
-      if (d) { e.preventDefault(); e.stopPropagation(); store.set(key, store.get(key) + d * (e.shiftKey ? 0.25 : 1) * span, 'user'); }
-      else if (e.key === 'Home') { e.preventDefault(); store.set(key, sp.min, 'user'); }
-      else if (e.key === 'End') { e.preventDefault(); store.set(key, sp.max, 'user'); }
+      if (d) { e.preventDefault(); e.stopPropagation(); userSet(store.get(key) + d * (e.shiftKey ? 0.25 : 1) * span); }
+      else if (e.key === 'Home') { e.preventDefault(); userSet(sp.min); }
+      else if (e.key === 'End') { e.preventDefault(); userSet(sp.max); }
     });
     widgets[key] = { render, el: wrap };
     render();

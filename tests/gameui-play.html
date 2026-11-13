@@ -57,7 +57,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
     A.game.reset(); }
   // --- feedback (G6.2)
   A.game.unlock('e.reverb'); await wait(400);
-  ok(/OUVERT : REVERB/.test(d.getElementById('lcdTop').textContent) && d.getElementById('lcdTop').classList.contains('lcd-flash'), 'LCD : « reverb ouvert » '+d.getElementById('lcdTop').textContent);
+  ok(/OUVERT : REVERB/.test(d.getElementById('lcdTop').textContent), 'LCD : « reverb ouvert » '+d.getElementById('lcdTop').textContent); // (S7.1: lcd-flash replaced by the typed-in text of motion.js)
   await A.ui.ensureStarted(); const ctx=A.engine.ctx; if (ctx.state!=='running') await ctx.resume();
   ok(ctx.state!=='running' || A.garden.chime('unlock')===4 && A.garden.chime('solve')===6, 'carillon joué ('+ctx.state+')');
   A.game.setMode('free'); ok(A.garden.chime('unlock')===0, 'pas de carillon en mode libre'); A.game.setMode('path');

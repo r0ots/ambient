@@ -419,7 +419,9 @@
   // ---------- share via URL ----------
   function toast(msg) {
     const t = $('#toast'); if (!t) return;
-    t.textContent = msg; t.classList.add('show');
+    const again = t.classList.contains('show');
+    t.textContent = msg; t.classList.add('show'); // S7.1: bounces in, is sucked away (css); a new one over it nudges it
+    if (again && AMB.motion) AMB.motion.pop(t, 'nudge');
     // S6.7: long enough to be read (a long sentence vanished before a child got through it)
     clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), Math.min(6500, Math.max(2200, String(msg).length * 65)));
   }
@@ -455,6 +457,8 @@
       setTimeout(() => { name.textContent = AMB.theory.chordName(c.midis); }, delay);
     });
     const upd = () => {
+      const beat = (60 / Math.max(20, store.get('global.tempo'))).toFixed(3) + 's'; // S7.1: ▶ pulses on the tempo (css --beat)
+      if (beat !== upd.beat) { upd.beat = beat; document.documentElement.style.setProperty('--beat', beat); }
       const bar = Math.floor(AMB.seq.step / 16) + 1;
       info.textContent = `${store.get('global.key')} ${store.get('global.scale')} · ${Math.round(store.get('global.tempo'))} bpm` +
         (started ? ` · mesure ${bar}` : '');
@@ -472,10 +476,11 @@
       // S4.3: in the path, the jargon (landscape name, key, scale, tempo, chord name) waits for the Tonalité node
       const G = AMB.game, plain = !!(G && G.path && !G.has('h.key'));
       document.body.classList.toggle('jargon-off', plain);
-      top.classList.toggle('lcd-flash', !!on);
       const txt = on ? m.text.toUpperCase().slice(0, 48) : (plain ? 'AMBIENT' : patch.toUpperCase().slice(0, 24)) + (rec ? '  ● REC' : '');
       const lw = top.parentElement ? top.parentElement.clientWidth : 0;
       if (top.textContent !== txt || lw !== top._lw) {
+        // S7.1: a new text is typed in (a cursor sweeps it, neon), a resize only re-fits it
+        if (top.textContent !== txt && top.textContent && AMB.motion) AMB.motion.pop(top, 'type');
         top.textContent = txt; top._lw = lw;
         // S5.7: a game message is never cut (« ENTRE LES TOU… »): too long for the screen, it gets smaller
         top.style.fontSize = '';
@@ -483,8 +488,12 @@
         if (on && room > 0 && top.scrollWidth > room) top.style.fontSize = Math.max(11, Math.floor(parseFloat(getComputedStyle(top).fontSize) * room / top.scrollWidth)) + 'px';
       }
       const bar = String(Math.floor(AMB.seq.step / 16) + 1).padStart(3, '0');
+      const was = line.textContent;
       line.textContent = plain ? (started ? `▶ M${bar}` : '■ STOP') : `${started ? '▶' : '■'} ${store.get('global.key')} ${abbr(store.get('global.scale'))} · ${String(Math.round(store.get('global.tempo'))).padStart(3, '0')} BPM` +
         (started ? ` · ${name.textContent} · M${bar}` : ' · STOP');
+      // S7.1: the 2nd line glitches when the sound's state changes (play, key, tempo, chord), not at every bar
+      const core = (x) => x.replace(/ ?· ?M\d+$|M\d+$/, '');
+      if (was && AMB.motion && core(was) !== core(line.textContent)) AMB.motion.glitch(line);
     };
     setInterval(lcd, 300); lcd();
   }

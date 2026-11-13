@@ -142,9 +142,8 @@ body.listen .hud { top: 28px; left: 32px; }
 .sc-auto { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
 .btn.flash { background: #8f7aff; color: #fff; }
 
-.toast { position: absolute; top: 12px; left: 50%; transform: translate(-50%, -10px); background: #1d1a38ee; border: 1px solid #8f7aff88;
-  color: #e9e4ff; padding: 8px 14px; border-radius: 10px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s; }
-.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast { position: absolute; top: 12px; left: 50%; background: #1d1a38ee; border: 1px solid #8f7aff88;
+  color: #e9e4ff; padding: 8px 14px; border-radius: 10px; font-size: 13px; opacity: 0; pointer-events: none; } /* (its motion: S7.1) */
 
 .modal { position: fixed; inset: 0; background: #05060bcc; backdrop-filter: blur(6px); display: grid; place-items: center; z-index: 50; padding: 16px; }
 .modal[hidden] { display: none; }
@@ -514,9 +513,6 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
   .lcd.lcd-glitch, .lcd.lcd-glitch-big, .lcd-score.bump { animation: none; }
   .lcd.lcd-glitch, .lcd.lcd-glitch-big { box-shadow: var(--bevel-in), 0 0 0 2px var(--lcd-fg); }
 }
-#lcdTop.lcd-flash { animation: lcd-flash 1.2s ease-out; text-shadow: 0 0 10px var(--lcd-fg); }
-@keyframes lcd-flash { 0%, 30% { opacity: 1; } 10%, 20% { opacity: .35; } 100% { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { #lcdTop.lcd-flash { animation: none; } }
 
 /* S5.9 juice central (garden.js FX): flash, pixel confetti over everything, shakes, punch, hopping buttons, arcade LCD,
    combo text. Individual transform properties (translate, scale, rotate) so nothing fights an element's own transform.
@@ -693,18 +689,7 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
   .pad:nth-child(6) { grid-column: 2 / span 2; }
 }
 
-/* S5.6 retour de pression (Parcours seulement, garden.pressFeedback) : enfoncé, puis petit rebond et lueur au relâché.
-   Animations (pas de transition) : rien ne remplace les transitions propres des éléments. */
-body.game .is-pressed { scale: .88; filter: brightness(1.45) drop-shadow(0 0 5px var(--lcd-fg, #ffb347)); animation: press-in .07s ease-out !important; } /* (!important : le doigt passe avant un saut de fête) */
-body.game .is-released { animation: press-out .42s cubic-bezier(.3, 1.6, .5, 1) !important; }
-@keyframes press-in { from { scale: 1; filter: none; } }
-@keyframes press-out { 0% { scale: .9; filter: brightness(1.6) drop-shadow(0 0 9px var(--lcd-fg, #ffb347)); } 45% { scale: 1.07; }
-  75% { scale: .98; } 100% { scale: 1; filter: none; } }
-@media (prefers-reduced-motion: reduce) {
-  body.game .is-pressed { animation: none !important; scale: none; filter: brightness(1.45) drop-shadow(0 0 5px var(--lcd-fg, #ffb347)); }
-  body.game .is-released { animation: press-glow .42s ease-out !important; }
-  @keyframes press-glow { 0% { filter: brightness(1.6) drop-shadow(0 0 9px var(--lcd-fg, #ffb347)); } 100% { filter: none; } }
-}
+/* (S5.6 retour de pression : remplacé par le système de mouvement S7.1, partout, voir la fin du fichier) */
 
 /* S5.7 (revues regard neuf) — Parcours seulement, le mode libre ne change pas */
 /* no permanent help line on the visual: the first move is a note on the pads */
@@ -833,3 +818,139 @@ body.game .lcd.lcd-pin .lcd-score { display: none; }
   body.game .stage { margin: 10px 0; }
   body.game .stage .hud { display: none; }
 }
+
+/* =====================================================================
+   S7.1 « Mouvement » — ONE motion system for every piece of interface, Parcours and free mode alike (js/motion.js:
+   tokens, utilities, particles, wiring). js/motion.js writes --juice (JUICE, the one knob), --m-t (time: 0 = every
+   motion off, in reduced motion or at JUICE 0) and --m-amp (amplitude: distances, squash, overshoot, glow = JUICE; 0 in
+   reduced motion). Rules: these tokens, never a duration or a curve of your own; transform / opacity (translate, scale,
+   rotate: individual properties, they compose with an element's own transform); the state changes at once, the motion
+   dresses it. Generic layer: every interactive control (button, summary, [role=button], .knob, select, range…).
+   ===================================================================== */
+:root {
+  --juice: 1; --m-t: 1; --m-amp: 1; --beat: 1s;
+  --m-fast: calc(110ms * var(--m-t)); --m-med: calc(220ms * var(--m-t)); --m-slow: calc(420ms * var(--m-t)); --m-stagger: calc(35ms * var(--m-t));
+  --m-spring: cubic-bezier(.34, 1.56, .64, 1); /* overshoots then settles: entries, needles, lit keys */
+  --m-snap: cubic-bezier(.2, 0, 0, 1); /* quick and dry: presses, beats */
+  --m-bounce: linear(0, .55 14%, 1.12 30%, .94 46%, 1.03 62%, .99 80%, 1); /* a ball that lands: toasts */
+  --m-out: cubic-bezier(.16, 1, .3, 1); /* decelerates: fades, hovers */
+  --m-in: cubic-bezier(.55, 0, .85, .25); /* accelerates away: exits (« aspirée ») */
+}
+@media (prefers-reduced-motion: reduce) { :root { --m-t: 0; --m-amp: 0; } } /* (before js; js writes the same) */
+.app { overflow-x: clip; } /* (a section sliding in never widens the page) */
+
+/* every control: transitions on the motion tokens (no specificity: an element's own transition wins) */
+:where(button, summary, select, label.btn, [role=button], .knob svg) {
+  transition: translate var(--m-fast) var(--m-out), scale var(--m-fast) var(--m-out), transform var(--m-fast) var(--m-out),
+    box-shadow var(--m-med) var(--m-out), filter var(--m-med) var(--m-out);
+}
+/* --m-sx / --m-sy = the squash of an element (wide and flat for buttons, a plain shrink for knobs and selects) */
+:where(button, summary, select, label.btn, [role=button]) { --m-sx: calc(1 + .06 * var(--m-amp)); --m-sy: calc(1 - .14 * var(--m-amp)); }
+.knob, .ctl.sel { --m-sx: calc(1 - .07 * var(--m-amp)); --m-sy: calc(1 - .07 * var(--m-amp)); }
+.pad { --m-sy: calc(1 - .2 * var(--m-amp)); }
+
+/* hover (a fine pointer): it lifts, glows in its own colour (--c) and casts a shadow; js (.m-tilt) leans it in 3D
+   towards the pointer. A finger gets the same glow when it presses (.is-pressed). */
+@media (hover: hover) {
+  :where(.btn, .mode-btn, .tog, .chip, label.btn, .song-chip, .chord-slot, .slot-tab, .sc-slot, .song-btns button, .loop-chip button):hover:not(:disabled) {
+    translate: 0 calc(-2px * var(--m-amp)); filter: brightness(1.12);
+    box-shadow: var(--bevel), 0 calc(6px * var(--m-amp)) calc(12px * var(--m-amp)) -4px #000d, 0 0 calc(14px * var(--m-amp)) -2px color-mix(in srgb, var(--c, var(--accent)) 75%, transparent);
+  }
+  select:hover { translate: 0 calc(-2px * var(--m-amp)); box-shadow: var(--bevel-in), 0 calc(6px * var(--m-amp)) calc(12px * var(--m-amp)) -4px #000d, 0 0 calc(14px * var(--m-amp)) -2px var(--lcd-glow); }
+  .knob:hover svg { translate: 0 calc(-2px * var(--m-amp)); filter: drop-shadow(0 calc(5px * var(--m-amp)) 3px #000a) drop-shadow(0 0 calc(6px * var(--m-amp)) color-mix(in srgb, var(--c, var(--accent)) 70%, transparent)); }
+}
+.m-tilt.m-tilt { transform: perspective(420px) rotateX(var(--m-rx, 0deg)) rotateY(var(--m-ry, 0deg)) translateZ(calc(5px * var(--m-amp))); }
+
+/* press: sinks and squashes while held, springs back with momentum when let go (and sparks: motion.burst) */
+.is-pressed { scale: var(--m-sx) var(--m-sy); translate: 0 calc(1px * var(--m-amp)); filter: brightness(1.3) drop-shadow(0 0 5px color-mix(in srgb, var(--c, var(--accent)) 80%, transparent));
+  animation: press-in var(--m-fast) var(--m-snap) !important; } /* (!important: the finger beats a party's hop) */
+.is-released { animation: press-out var(--m-slow) var(--m-out) !important; }
+@keyframes press-in { from { scale: 1; translate: 0 0; } }
+@keyframes press-out {
+  0% { scale: var(--m-sx) var(--m-sy); filter: brightness(1.45) drop-shadow(0 0 8px color-mix(in srgb, var(--c, var(--accent)) 80%, transparent)); }
+  35% { scale: calc(2 - var(--m-sx)) calc(2 - var(--m-sy)); translate: 0 calc(-2px * var(--m-amp)); }
+  65% { scale: calc(.7 + .3 * var(--m-sx)) calc(.7 + .3 * var(--m-sy)); translate: 0 0; }
+  100% { scale: 1; translate: 0 0; filter: none; }
+}
+
+/* toggles: the LED springs on (and shrinks off); a layer switched off fades its controls */
+.tog.on::before { animation: m-led-on var(--m-med) var(--m-spring); }
+.tog:not(.on)::before { animation: m-led-off var(--m-fast) var(--m-in); }
+@keyframes m-led-on { from { scale: calc(1 + 1.6 * var(--m-amp)); opacity: .3; } }
+@keyframes m-led-off { from { scale: calc(1 + .6 * var(--m-amp)); opacity: .7; } }
+.panel .ctls { transition: opacity var(--m-med) var(--m-out); }
+
+/* knobs: the needle follows with a light spring (closer while dragged), the arc glows while it turns, each notch
+   squashes the cap a little (motion.turn: sparks off the needle's tip), the value rolls */
+.k-needle { transform-box: view-box; transform-origin: 30px 30px; transition: transform var(--m-fast) var(--m-spring); }
+.knob.active .k-needle { transition-duration: calc(70ms * var(--m-t)); }
+.k-glow { fill: none; stroke: var(--c); stroke-width: 9; opacity: 0; filter: blur(2.5px); transition: opacity var(--m-slow) var(--m-out); pointer-events: none; }
+.knob.active .k-glow, .knob.m-turning .k-glow { opacity: .85; transition-duration: var(--m-fast); }
+.knob.active .k-arc, .knob.m-turning .k-arc { stroke-dasharray: none; }
+.knob.m-tick svg { animation: m-tick var(--m-fast) var(--m-snap); }
+@keyframes m-tick { from { scale: calc(1 + .05 * var(--m-amp)) calc(1 - .06 * var(--m-amp)); } }
+
+/* a slider's cap: grows under the pointer, squashes and lights up while dragged */
+input[type=range] { -webkit-appearance: none; appearance: none; height: 24px; background: transparent; cursor: pointer; }
+input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: #1a1918; box-shadow: var(--bevel-in); }
+input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: #1a1918; box-shadow: var(--bevel-in); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 20px; margin-top: -8px; border-radius: 2px; border: 1px solid #000;
+  background: linear-gradient(#5a5854, #2c2b29); box-shadow: var(--bevel); transition: scale var(--m-fast) var(--m-spring); }
+input[type=range]::-moz-range-thumb { width: 14px; height: 20px; border-radius: 2px; border: 1px solid #000; background: linear-gradient(#5a5854, #2c2b29); box-shadow: var(--bevel); transition: scale var(--m-fast) var(--m-spring); }
+input[type=range]:hover::-webkit-slider-thumb { scale: calc(1 + .15 * var(--m-amp)); box-shadow: var(--bevel), 0 0 10px var(--accent); }
+input[type=range]:active::-webkit-slider-thumb { scale: calc(1 + .3 * var(--m-amp)) calc(1 - .12 * var(--m-amp)); background: linear-gradient(var(--accent), #8a4d10); box-shadow: 0 0 14px var(--accent); }
+input[type=range]:active::-moz-range-thumb { scale: calc(1 + .3 * var(--m-amp)) calc(1 - .12 * var(--m-amp)); background: linear-gradient(var(--accent), #8a4d10); }
+
+/* a group where one key is lit (Écouter / Sculpter / Composer; motion.slide): the lit key slides behind the labels.
+   .m-placed = the key is in place; until then the buttons keep their own lit look */
+.modes { position: relative; }
+.m-ind { position: absolute; left: 0; top: 0; bottom: 0; width: 100px; transform-origin: 0 0; pointer-events: none; opacity: 0;
+  background: var(--lcd-bg); box-shadow: inset 0 2px 3px #000a, inset 0 -2px 0 var(--lcd-fg); transition: transform var(--m-med) var(--m-spring), opacity var(--m-fast); }
+.m-placed > .m-ind { opacity: 1; }
+.modes.m-placed { background: linear-gradient(#3a3936, #2c2b29); }
+.modes.m-placed > .mode-btn { position: relative; z-index: 1; background: transparent; box-shadow: none; }
+.modes.m-placed > .mode-btn:hover { box-shadow: none; }
+
+/* a view change (motion.swap): a neon scan crosses the window, the sections come in behind it (Web Animations) */
+.m-wipe { position: fixed; top: 0; bottom: 0; left: 0; width: 40vw; z-index: 45; pointer-events: none; opacity: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--lcd-fg) 8%, transparent) 55%, color-mix(in srgb, var(--lcd-fg) 30%, transparent) 94%, color-mix(in srgb, #fff 50%, var(--lcd-fg)) 97%, transparent); }
+
+/* one-shot classes (motion.pop): m-pop (springs in), m-glitch (neon jolt), m-type (a cursor types the text in),
+   m-nudge (a wobble: a new toast over the last one) */
+.m-pop { animation: m-pop var(--m-med) var(--m-spring); }
+@keyframes m-pop { from { scale: calc(1 - .25 * min(1, var(--m-amp))); opacity: .3; } }
+.menu.m-pop { transform-origin: 50% 0; animation-name: m-drop; }
+@keyframes m-drop { from { scale: 1 calc(1 - .7 * min(1, var(--m-amp))); opacity: 0; } }
+.m-glitch { animation: m-glitch var(--m-med) steps(1, end); }
+@keyframes m-glitch {
+  0% { translate: calc(-3px * var(--m-amp)) 0; opacity: .5; }
+  20% { translate: calc(3px * var(--m-amp)) calc(-1px * var(--m-amp)); scale: calc(1 + .04 * var(--m-amp)) calc(1 - .08 * var(--m-amp)); opacity: 1; }
+  40% { translate: calc(-1px * var(--m-amp)) 0; scale: 1; opacity: .75; }
+  60% { translate: calc(1px * var(--m-amp)) 0; opacity: 1; }
+  80%, 100% { translate: 0 0; }
+}
+.lcd { --lcd-face: var(--lcd-bg); }
+body.game .lcd { --lcd-face: var(--arc-bg); }
+#lcdTop, #lcdLine { position: relative; }
+.m-type { animation: m-type-jolt var(--m-med) steps(1, end); }
+.m-type::after { content: ""; position: absolute; inset: -1px -3px; pointer-events: none; background: var(--lcd-face, var(--lcd-bg));
+  border-left: .42em solid var(--lcd-fg); box-shadow: -3px 0 10px var(--lcd-glow); animation: m-type var(--m-med) steps(8, jump-end) both; }
+@keyframes m-type { from { translate: 0 0; } to { translate: 101% 0; } }
+@keyframes m-type-jolt { 0% { translate: calc(-2px * var(--m-amp)) 0; } 25% { translate: calc(2px * var(--m-amp)) 0; } 50%, 100% { translate: 0 0; } }
+.m-nudge { animation: m-nudge var(--m-med) var(--m-snap); }
+@keyframes m-nudge { 35% { rotate: calc(-2deg * var(--m-amp)); scale: calc(1 + .06 * var(--m-amp)); } 70% { rotate: calc(1.2deg * var(--m-amp)); } }
+
+/* toasts: bounce in, sucked away up into the screen's edge on the way out */
+.toast { translate: -50% calc(-22px * var(--m-amp)); scale: calc(1 - .65 * min(1, var(--m-amp))); transform-origin: 50% 0;
+  transition: opacity var(--m-med) var(--m-in), scale var(--m-med) var(--m-in), translate var(--m-med) var(--m-in); }
+.toast.show { translate: -50% 0; scale: 1; opacity: 1; transition: opacity var(--m-fast) linear, scale var(--m-slow) var(--m-bounce), translate var(--m-slow) var(--m-bounce); }
+
+/* ▶ while playing: a discreet pulse on the tempo (--beat, ui.js) */
+#play { position: relative; }
+body.playing #play { animation: m-beat var(--beat) var(--m-out) infinite; }
+body.playing #play::after { content: ""; position: absolute; inset: -2px; border-radius: inherit; pointer-events: none; opacity: 0;
+  box-shadow: 0 0 10px 1px var(--accent); animation: m-beat-glow var(--beat) var(--m-out) infinite; }
+@keyframes m-beat { 0% { scale: calc(1 + .035 * var(--m-amp)); } 40%, 100% { scale: 1; } }
+@keyframes m-beat-glow { 0% { opacity: calc(.75 * min(1, var(--m-amp))); } 60%, 100% { opacity: 0; } }
+.m-still body.playing #play, .m-still body.playing #play::after { animation: none; }
+@media (prefers-reduced-motion: reduce) { body.playing #play, body.playing #play::after { animation: none; } }
