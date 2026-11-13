@@ -56,7 +56,7 @@ f.addEventListener('load', async ()=>{
   Gd.select('t.macros');
   ok(/↺ Réponse « Premier reflet » \(3 notes\)/.test(op()) && !card().querySelector('.tree-buy, button'), 'Grands réglages : « '+op()+' », sans bouton (la Réponse se joue dans la musique)');
   Gd.select('m.phrase');
-  ok(/Réponse « Suite connue »/.test(op()) && /ou ✦ Secret : \?\?\?/.test(op()), 'Phrases : une Réponse ou un secret caché (« '+op()+' »)');
+  ok(/Réponse « Suite connue »/.test(op()) && /ou ✦ Découverte : \?\?\?/.test(op()), 'Phrases : une Réponse ou une découverte cachée (« '+op()+' »)');
   const spans=[...map.querySelectorAll('.tree-node')].map(b=>b.querySelector('span').textContent);
   ok(!spans.some(t=>/✧|\d/.test(t)) && spans.includes('↺ Réponse') && spans.includes('◇ défi') && spans.includes('✓'), 'nœuds : ✓, ◇ défi ou ↺ Réponse, aucun coût');
   ok(/^\d+\/32$/.test(d.querySelector('.tree-count').textContent), 'en-tête : nœuds ouverts '+d.querySelector('.tree-count').textContent);

@@ -146,7 +146,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY }
   A.garden.showTree(false);
   // S3.8: the path help is short and says how secrets work now (a node opened, hint 2 after 2 secrets, never with time)
   { d.getElementById('help').click(); const hp=d.querySelector('#helpDlg .help-path'), tx=hp.textContent;
-    ok(!hp.hidden && hp.querySelectorAll('.help-grid h4').length===4 && /nœud <b>prêt|nœud prêt/.test(tx) && /✦ Ouvrir/.test(tx) && /après 2 secrets/.test(tx) && /Réponse/.test(tx) && /À toi/.test(tx) && !/Écho/.test(tx) && !/avec le temps/.test(tx), 'aide du Parcours : 4 rubriques, secrets-clés, indice 2 après 2 secrets, Réponse');
+    ok(!hp.hidden && hp.querySelectorAll('.help-grid h4').length===4 && /nœud <b>prêt|nœud prêt/.test(tx) && /✦ Ouvrir/.test(tx) && /après 2 découvertes/.test(tx) && /Réponse/.test(tx) && /À toi/.test(tx) && !/Écho/.test(tx) && !/avec le temps/.test(tx), 'aide du Parcours : 4 rubriques, découvertes (combos et gestes), indice clair après 2 découvertes, Réponse');
     d.querySelector('#helpDlg [data-close]').click(); }
   g.setMode('free'); await wait(400); ok(!shown('#treeBtn') && !shown('#lcdTask') && !d.body.classList.contains('jargon-off'), 'pas d\'arbre ni de défi en libre, l\'écran garde tonalité et tempo');
 });

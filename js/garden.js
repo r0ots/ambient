@@ -111,7 +111,6 @@
       pop: { degs: [7], gap: 0.05 },
       ready: { degs: [4, 7], gap: 0.08 },
       defi: { degs: [0, 2, 4, 7, 4, 7, 11], gap: 0.06, boing: true },
-      secret: { degs: [7, 4, 9, 7, 11, 9, 14], gap: 0.055, boing: true },
       end: { degs: [0, 4, 7, 11, 14, 11, 14, 18, 21], gap: 0.09, boing: true },
       discovery: { degs: [0, 7, 4, 11, 7, 14, 11, 18, 14, 21], gap: 0.05, boing: true },
     },
@@ -137,7 +136,7 @@
       const at = run ? this.strongBeat(0.45) : null, now = run ? ctx.currentTime : 0;
       const ls = this.layersOf(id);
       this.lastBeat = { id, at, deg: ls.length ? this.LAYER_DEG[ls[0]] || 0 : 0 };
-      this.beats[id] = this.lastBeat; // several openings at once (a secret during a map sequence) keep their own beat
+      this.beats[id] = this.lastBeat; // several openings at once (a discovery during a map sequence) keep their own beat
       if (AMB.gardenVisual) AMB.gardenVisual.growAt(at != null ? at : null);
       if (!run) return this.lastBeat;
       for (const l of ls) { // tree.onUnlock already switched it on (level glides up): hold it at 0 until the beat
@@ -311,13 +310,12 @@
       streak: { rank: 3, flash: 0.25, confetti: 40, shake: 1, lcd: 'glitch', jingle: 'streak', pop: (o) => `×${o.n} !`, splash: 'streak', kick: ['twinkle', 'ripple'], say: (o) => `✓ Juste · série ${o.n}` },
       defi: { rank: 4, flash: 0.5, confetti: 140, shake: 1, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'defi', pop: 'DÉFI RÉUSSI !!!', kick: ['rays', 'twinkle', 'ripple'] },
       record: { rank: 5, flash: 0.55, confetti: 160, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1, jingle: 'record', pop: (o) => `★ RECORD ×${o.n} !`, splash: 'record', kick: ['aurora', 'twinkle', 'song'], say: (o) => `★ Record : série ${o.n} !` },
-      secret: { rank: 5, flash: 0.6, confetti: 180, shake: 2, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'secret', pop: '✦ SECRET !!', kick: ['aurora', 'fireflies', 'hue'] },
       tier: { rank: 6, flash: 0.65, confetti: 220, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1.5, jingle: 'tier', pop: (o) => `↑ ${String(o.name || 'palier').toUpperCase()} !!`, splash: 'tier', kick: ['aurora', 'rays', 'song', 'ripple'], say: (o) => `↑ Palier : ${o.name}` },
       open: { rank: 7, flash: 0.75, confetti: 260, shake: 2, lcd: 'arcade', bounce: 1, punch: 1.5, jingle: 'unlock', pop: 'OUVERT !!!', splash: 'tier', kick: ['rays', 'aurora', 'ripple', 'hue'] },
       end: { rank: 8, flash: 1, confetti: 380, shake: 2, lcd: 'arcade', bounce: 1, punch: 2, jingle: 'end', pop: 'À TOI !!!', beats: 3, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'hue'] },
       discovery: { rank: 9, flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => o.name ? `${String(o.name).toUpperCase()} !!!` : 'DÉCOUVERTE !!!', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `✦ Découverte${o.name ? ' : ' + o.name : ' !'}` },
     },
-    // the bus events that are moments (the others call fx() where they happen: an opening, a secret, the end, a first touch)
+    // the bus events that are moments (the others call fx() where they happen: an opening, a discovery, the end, a first touch)
     FX_ON: {
       'game:ready': (d) => {
         const c = d.by && AMB.contracts.byId[d.by], n = AMB.tree.byId[d.id];
@@ -445,7 +443,7 @@
     build() {
       this.hookActions();
       if (AMB.bus) {
-        // a node opens: by a challenge = the unlock sequence on the map (garden-tree.js); by a secret = chime + LCD
+        // a node opens: by a challenge = the unlock sequence on the map (garden-tree.js); by a discovery = chime + LCD
         AMB.bus.on('game:unlock', (d) => {
           const n = AMB.tree.byId[d.id]; if (!AMB.game.path || !n || !n.req.length) return;
           if (this.checkEnd()) return;
@@ -456,7 +454,7 @@
           if (d.by) this.unlockSeq(d.id);
         });
         // S5.9: the other moments of the bus (a challenge or a Réponse won, a node ready, the Réponse's series, record and
-        // tier) go through the juice table; a secret, the end and a first touch call fx() themselves
+        // tier) go through the juice table; a discovery (discoveries.js), the end and a first touch call fx() themselves
         for (const ev in this.FX_ON) AMB.bus.on(ev, (d) => { const m = this.FX_ON[ev](d || {}); if (m) this.fx(m[0], m[1]); });
         AMB.bus.on('game:puzzle', (e) => this.reponse(e));
         AMB.bus.on('panic', () => this.finaleEnd()); // ■ Stop also stops the replay of the finale (then the handover)

@@ -516,17 +516,21 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 }
 
 
-/* G10.1 secrets: folded panel inside the tree screen (path only) */
-.secrets { margin: 0 0 4px; border-radius: var(--radius, 4px); background: #0003; }
-.secrets[hidden] { display: none; }
-.sc-head { width: 100%; text-align: left; background: none; border: 0; color: var(--lcd-fg); font: 18px var(--f-lcd); padding: 3px 8px; cursor: pointer; letter-spacing: .05em; }
-.sc-head::before { content: '▾ '; }
-.secrets.min .sc-head::before { content: '▸ '; }
-.sc-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 14px; padding: 0 8px 8px; max-height: 28vh; overflow-y: auto; }
-.secrets.min .sc-body { display: none; }
-.modal-card .sc-item, .sc-item { margin: 0; display: grid; gap: 2px; font-size: 12px; line-height: 1.35; color: var(--muted); }
-.sc-item b { font: 15px var(--f-lcd); color: var(--lcd-dim); letter-spacing: .05em; }
-.sc-item.found b { color: var(--lcd-fg); }
+/* S5.10 the notebook of discoveries (was G10.1 secrets): folded panel inside the tree screen (path only); found ones, then riddles */
+.discoveries { margin: 0 0 4px; border-radius: var(--radius, 4px); background: #0003; }
+.discoveries[hidden] { display: none; }
+.dc-head { width: 100%; text-align: left; background: none; border: 0; color: var(--lcd-fg); font: 18px var(--f-lcd); padding: 3px 8px; cursor: pointer; letter-spacing: .05em; }
+.dc-head::before { content: '▾ '; }
+.discoveries.min .dc-head::before { content: '▸ '; }
+.dc-head.fresh { animation: ready-pulse 1.2s ease-in-out infinite; }
+.dc-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 14px; padding: 0 8px 8px; max-height: 30vh; overflow-y: auto; }
+.discoveries.min .dc-body { display: none; }
+.dc-item { margin: 0; display: grid; gap: 2px; font-size: 12px; line-height: 1.35; color: var(--muted); }
+.dc-item b { font: 15px var(--f-lcd); color: var(--lcd-dim); letter-spacing: .05em; }
+.dc-item.found b { color: var(--lcd-fg); }
+.dc-item.found.combo b { color: #5ff0ff; text-shadow: 0 0 6px #5ff0ff88; }
+.dc-item.riddle b { letter-spacing: .3em; opacity: .7; }
+@media (prefers-reduced-motion: reduce) { .dc-head.fresh { animation: none; text-decoration: underline; } }
 
 /* G8.5–G11.1 — tree as a talent map (LED nodes, SVG links, pan/zoom) + unlock sequence */
 .tree-card { max-width: 1180px; height: calc(100vh - 32px); max-height: 960px; display: flex; flex-direction: column; padding: 18px 22px 16px; }

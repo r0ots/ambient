@@ -4,7 +4,7 @@
 //   - it reacts to its own notes (bus `note` / `perc` / `grain` / `chord`): pulse of light + a leaf that pops out;
 //   - its height = the share of the tree nodes of its layer that are unlocked (a node belongs to a layer when one of
 //     its settings does: `<layer>.*`, js/tree.js);
-//   - rare plants (glowing crystals) = secrets found, on the ground between two plants;
+//   - rare plants (glowing crystals) = discoveries found (S5.10, js/discoveries.js), on the ground between two plants;
 //   - S4.2 « Réponse » (js/puzzles.js view()): the Melody plant blinks while the marked phrase plays, stays lit while it
 //     waits for the answer, and grows one leaf per note played back (green = right, red = wrong).
 // Mode policy (wraps AMB.visual, visual.js is untouched): « Jardin » exists only in the Parcours, where it is the
@@ -24,6 +24,7 @@
 // S5.8 « Chaque bouton a un impact visuel »: every control the plants do not show drives a layer of the scene (one table,
 // SCENE: sky tint, clouds, stars, aurora, rays, fireflies, mist, snow, frost, ground ripple, echo ghosts, tape, grain,
 // lens, playback veil, song), each an intensity 0..1 (layers()) plus an impulse when touched; the tempo is its speed.
+// S5.10 « Combos »: a combo ON (js/discoveries.js) draws its own emergent effect (COMBO_FX), only while it holds.
 // Perf: LED sprites pre-rendered in offscreen canvases (cache by species / size / pixel size), cached
 // background and labels, real dt, nothing drawn while the tab is hidden or the canvas off screen, reduced motion =
 // no sway nor particles. stats() gives the cost per frame (ms).
@@ -340,6 +341,143 @@
   const GROW = 1.2, SKY_FADE = 2; // s
   const ease = (q) => q * q * (3 - 2 * q) + 0.1 * Math.sin(Math.PI * q) * q * q; // slow start, a slight overshoot at the end
 
+  // ---- S5.10 « Combos »: the EMERGENT effect of each combo of js/discoveries.js (COMBOS), drawn only while that combo is
+  // ON (intensity a 0..1, in and out in ~0.25 s): a new picture, not the sum of the layers. Only these functions draw them:
+  // a later skin swaps this table and nothing else. pass 'back' = over the sky and the ground, behind the plants; 'front' =
+  // over the plants, under the full-screen filters. T = the scene's time (the tempo is its speed; frozen in reduced motion).
+  const q = (x, px) => Math.round(x / px) * px;
+  const COMBO_FX = {
+    monolithe: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // a black obelisk, its edges lit on the beat, glyphs running up
+      const w = Math.max(4 * px, q(W * 0.05, px)), x0 = q(W / 2 - w / 2, px), top = q(gd * 0.26, px), h = gd - top;
+      g.globalAlpha = Math.min(1, a); g.fillStyle = '#06040b'; g.fillRect(x0, top, w, h);
+      for (let i = 1; i <= 3; i++) g.fillRect(x0 + i * px, top - i * px, Math.max(px, w - 2 * i * px), px);
+      g.globalCompositeOperation = 'lighter'; g.fillStyle = '#5ff0ff';
+      g.globalAlpha = Math.min(1, a * (0.45 + 0.25 * Math.sin(T * 2) + 2 * (v.pulse || 0)));
+      g.fillRect(x0 - px, top, px, h); g.fillRect(x0 + w, top, px, h);
+      for (let i = 0; i < 6; i++) g.fillRect(x0 + q(w / 2 - px, px), q(gd - ((T * 14 * px + i * h / 6) % h), px), 2 * px - 1, px - 1);
+    } },
+    soleil: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // two suns turning around each other
+      const R = Math.max(4, q(gd * 0.08, px)), an = T * 0.7;
+      g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, a);
+      [[255, 196, 110], [255, 110, 190]].forEach((col, i) => {
+        const s = i ? -1 : 1, x = W / 2 + s * Math.cos(an) * R * 1.7, y = gd * 0.3 + s * Math.sin(an) * R * 0.55;
+        const gl = v.glow(col, 2 * R); g.drawImage(gl, Math.round(x - 2 * R), Math.round(y - 2 * R));
+        const disc = v.fx('sun' + i, R, R, () => { const c = v.canvas(2 * R, 2 * R), x2 = c.getContext('2d'); x2.fillStyle = rgb(col, 1.15); for (let yy = 0; yy < 2 * R; yy += px) for (let xx = 0; xx < 2 * R; xx += px) if (Math.hypot(xx + px / 2 - R, yy + px / 2 - R) < R * 0.62) x2.fillRect(xx, yy, px - 1, px - 1); return c; });
+        g.drawImage(disc, Math.round(x - R), Math.round(y - R));
+      });
+    } },
+    constellation: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // the player's last notes as stars (pitch = height), linked
+      const n = v.starNotes.length; if (!n) return;
+      const pts = v.starNotes.map((s, i) => [q(W * (0.08 + 0.84 * (i + 0.5) / n), px), q(gd * (0.78 - 0.62 * s.p), px)]);
+      g.globalCompositeOperation = 'lighter'; g.fillStyle = '#bfe6ff';
+      for (let i = 1; i < n; i++) { // dotted pixel lines
+        const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], k = Math.max(1, Math.round(Math.hypot(x1 - x0, y1 - y0) / (2 * px)));
+        g.globalAlpha = Math.min(1, a * 0.55);
+        for (let j = 1; j < k; j++) g.fillRect(q(x0 + (x1 - x0) * j / k, px), q(y0 + (y1 - y0) * j / k, px), Math.max(1, px - 1), Math.max(1, px - 1));
+      }
+      g.fillStyle = '#fff4d6';
+      pts.forEach(([x, y], i) => { g.globalAlpha = Math.min(1, a * (0.7 + 0.3 * Math.sin(T * 4 + i))); g.fillRect(x - px, y, 3 * px - 1, px - 1); g.fillRect(x, y - px, px - 1, 3 * px - 1); });
+    } },
+    portail: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // a ring of LEDs turning in the middle, a glow inside
+      const R = gd * 0.24 * (0.92 + 0.08 * Math.sin(T * 3)), cx = W / 2, cy = gd * 0.46, n = 28, gl = v.glow([140, 120, 255], q(R, px) || px);
+      g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, a * 0.8); g.drawImage(gl, Math.round(cx - gl.width / 2), Math.round(cy - gl.height / 2));
+      for (let i = 0; i < n; i++) { const an = i / n * 6.283 + T * 1.2; g.globalAlpha = Math.min(1, a * (0.5 + 0.5 * Math.sin(i * 0.9 - T * 6))); g.fillStyle = i % 2 ? '#a58cff' : '#5ff0ff'; g.fillRect(q(cx + Math.cos(an) * R, px), q(cy + Math.sin(an) * R, px), 2 * px - 1, 2 * px - 1); }
+    } },
+    brume: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // neon fog: pink and cyan bands rolling at the foot of the plants, scanlines
+      const bh = Math.round(H * 0.34), cv = v.fx('neonfog', W, H, (w) => {
+        const c = v.canvas(w / 4, bh / 4), x = c.getContext('2d'), r = mulberry(83);
+        for (let i = 0; i < 18; i++) { const cx = r() * c.width, cy = c.height * (0.3 + 0.5 * r()), R = c.height * (0.25 + 0.35 * r()), gg = x.createRadialGradient(cx, cy, 0, cx, cy, R), col = i % 2 ? '255,79,160' : '79,224,255'; gg.addColorStop(0, `rgba(${col},0.45)`); gg.addColorStop(1, `rgba(${col},0)`); x.fillStyle = gg; x.fillRect(cx - R, cy - R, 2 * R, 2 * R); }
+        return c;
+      });
+      const off = ((T * px * 7) % W + W) % W, y = gd - bh * 0.62;
+      g.globalCompositeOperation = 'lighter'; g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, a);
+      g.drawImage(cv, off, y, W, bh); g.drawImage(cv, off - W, y, W, bh); g.imageSmoothingEnabled = false;
+      g.globalCompositeOperation = 'source-over'; g.fillStyle = '#000'; g.globalAlpha = Math.min(1, 0.25 * a);
+      for (let yy = q(y, px); yy < y + bh; yy += 3 * px) g.fillRect(0, yy, W, Math.max(1, px >> 1));
+    } },
+    maree: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // slow waves of light rising from the ground
+      g.globalCompositeOperation = 'lighter'; const st = 2 * px;
+      for (let j = 0; j < 3; j++) {
+        const lift = gd * (0.08 + 0.12 * j) * (0.6 + 0.4 * Math.sin(T * 0.35 + j * 2)), A = gd * 0.05;
+        g.fillStyle = ['#4fe0ff', '#7fd6ff', '#c7f0ff'][j]; g.globalAlpha = Math.min(1, a * (0.5 - 0.12 * j));
+        for (let x = 0; x < W; x += st) g.fillRect(x, q(gd - lift + Math.sin(x * 0.006 + T * (0.6 + 0.2 * j) + j) * A, px), st - 1, px);
+      }
+    } },
+    miroir: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // the garden reflected under the ground, rippling
+      g.globalAlpha = Math.min(1, a * 0.32);
+      for (const p of v.plants) {
+        const s = v.sprite(p, px), k = p.k || 1, sz = p.sz || 1, gy = p.gy == null ? 1 : p.gy; if (gy < 0.05) continue;
+        g.setTransform(k * sz, 0, 0, -k * sz * gy * 0.7, p.x + Math.sin(T * 1.7 + p.x * 0.02) * px * 2 + (v.ox || 0), p.y + px * 2 + (v.oy || 0)); g.drawImage(s.cv, -s.w / 2, -s.h);
+      }
+      g.setTransform(1, 0, 0, 1, v.ox || 0, v.oy || 0); g.globalCompositeOperation = 'lighter'; g.fillStyle = '#7fd6ff';
+      for (let i = 0; i < 5; i++) { g.globalAlpha = Math.min(1, a * 0.25); const y = q(gd + (H - gd) * (0.15 + 0.17 * i), px), x = q(((T * (20 + 9 * i) * px) % W), px); g.fillRect(x - W * 0.2, y, W * 0.4, Math.max(1, px >> 1)); }
+    } },
+    blizzard: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // a whirl of frost pixels
+      const cx = W / 2, cy = gd * 0.55, R = Math.min(W, gd) * 0.5, s = Math.max(1, px - 1);
+      g.globalCompositeOperation = 'lighter'; g.fillStyle = '#e4f4ff';
+      for (let i = 0; i < 150; i++) { const k = ((i * 0.618 + T * 0.12) % 1), r = R * (1 - k), an = i * 2.4 + T * (1 + 3 * k); g.globalAlpha = Math.min(1, a * (0.3 + 0.7 * k)); g.fillRect(q(cx + Math.cos(an) * r, px), q(cy + Math.sin(an) * r * 0.55, px), s, s); }
+    } },
+    cathedrale: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // pillars of stained glass light
+      const cv = v.fx('vitrail', W, gd, (w, h) => {
+        const c = v.canvas(w / 4, h / 4), x = c.getContext('2d'), r = mulberry(97), cw = c.width / 7;
+        for (let i = 0; i < 7; i++) for (let y = 0; y < c.height; y += 6) { const hue = (i * 51 + Math.floor(r() * 40)) % 360, fall = 1 - y / c.height; x.fillStyle = `hsla(${hue},90%,65%,${(0.5 * fall).toFixed(2)})`; x.fillRect(Math.round(i * cw + cw * 0.25), y, Math.round(cw * 0.5), 5); }
+        return c;
+      });
+      g.globalCompositeOperation = 'lighter'; g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, a * (0.75 + 0.25 * Math.sin(T * 0.8)));
+      g.drawImage(cv, 0, 0, W, gd); g.imageSmoothingEnabled = false;
+      const sx = q(((T * 0.15) % 1.4 - 0.2) * W, px); g.globalAlpha = Math.min(1, a * 0.3); g.fillStyle = '#fff4d6'; g.fillRect(sx, 0, q(W * 0.03, px) || px, gd); // a light sweeping through
+    } },
+    vhs: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // the picture derails: red / blue edges, a rolling band, « ● REC 2089 »
+      const r = mulberry(Math.floor(T * 8)), fs = Math.max(12, Math.round(px * 5));
+      g.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 9; i++) { const y = q(r() * H, px), h = q(px * (1 + r() * 5), px) || px, dx = q((r() - 0.5) * px * 16, px); g.globalAlpha = Math.min(1, a * 0.35); g.fillStyle = '#ff3050'; g.fillRect(dx, y, W, h); g.fillStyle = '#30b0ff'; g.fillRect(-dx, y + px, W, h); }
+      g.globalCompositeOperation = 'source-over'; g.globalAlpha = Math.min(1, a * 0.3); g.fillStyle = '#000'; g.fillRect(0, q(((T * 0.2) % 1) * H, px), W, q(H * 0.05, px));
+      g.globalAlpha = Math.min(1, a); g.font = `${fs}px VT323, monospace`; g.fillStyle = '#f0f0f0'; g.fillText('REC 2089', Math.round(px * 6 + fs), Math.round(H - px * 4));
+      if (Math.floor(T * 2) % 2 === 0) { g.fillStyle = '#ff3050'; g.fillRect(Math.round(px * 4), Math.round(H - px * 4 - fs * 0.6), Math.round(fs * 0.55), Math.round(fs * 0.55)); }
+    } },
+    kaleido: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // the sky as a kaleidoscope: 8 mirrored wedges turning, the hue turning
+      const cx = W / 2, cy = gd * 0.45, R = Math.min(W, gd) * 0.55, h0 = (T * 40) % 360;
+      g.globalCompositeOperation = 'lighter';
+      for (let k = 0; k < 8; k++) {
+        const an = k / 8 * 6.283 + T * 0.3, b = an + 0.39;
+        g.globalAlpha = Math.min(1, a * 0.22); g.fillStyle = `hsl(${(h0 + k * 45) % 360},90%,60%)`;
+        g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(an) * R, cy + Math.sin(an) * R * 0.8); g.lineTo(cx + Math.cos(b) * R * 0.6, cy + Math.sin(b) * R * 0.48); g.closePath(); g.fill();
+      }
+    } },
+    eclipse: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // a black moon over a corona, the sky darker
+      const R = Math.max(4, q(gd * 0.11, px)), cx = W * 0.62, cy = gd * 0.32;
+      g.globalAlpha = Math.min(1, a * 0.4); g.fillStyle = '#000'; g.fillRect(0, 0, W, gd);
+      g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, a); const gl = v.glow([255, 200, 150], 3 * R); g.drawImage(gl, Math.round(cx - 3 * R), Math.round(cy - 3 * R));
+      g.globalCompositeOperation = 'source-over'; g.fillStyle = '#030204'; g.beginPath(); g.arc(cx, cy, R, 0, 6.283); g.fill();
+      const an = T * 0.5; g.globalCompositeOperation = 'lighter'; g.fillStyle = '#fff'; g.fillRect(q(cx + Math.cos(an) * R, px) - px, q(cy + Math.sin(an) * R, px) - px, 2 * px, 2 * px); // the diamond ring
+    } },
+    quintes: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // the twelve fifths: a {12/5} star turning, a LED on each point
+      const cx = W / 2, cy = gd * 0.42, R = Math.min(W, gd) * 0.3, an = (i) => i / 12 * 6.283 + T * 0.2 - 1.571, pt = (i) => [cx + Math.cos(an(i)) * R, cy + Math.sin(an(i)) * R * 0.85];
+      g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, a * 0.6); g.strokeStyle = '#ffd36b'; g.lineWidth = Math.max(1, px >> 1);
+      g.beginPath(); for (let i = 0, j = 0; i <= 12; i++, j = (j + 5) % 12) { const [x, y] = pt(j); if (i) g.lineTo(x, y); else g.moveTo(x, y); } g.stroke();
+      for (let i = 0; i < 12; i++) { const [x, y] = pt(i); g.globalAlpha = Math.min(1, a * (0.6 + 0.4 * Math.sin(T * 3 + i * 7))); g.fillStyle = '#fff3c4'; g.fillRect(q(x, px) - px, q(y, px) - px, 2 * px, 2 * px); }
+    } },
+    grille: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // a neon grid running to the horizon, a striped sun behind it
+      const R = Math.max(6, q(gd * 0.16, px)), sun = v.fx('synthsun', R, R, () => { const c = v.canvas(2 * R, R), x = c.getContext('2d'), grd = x.createLinearGradient(0, 0, 0, R); grd.addColorStop(0, '#ffd36b'); grd.addColorStop(1, '#ff4fa0'); x.fillStyle = grd; x.beginPath(); x.arc(R, R, R, Math.PI, 0); x.fill(); x.globalCompositeOperation = 'destination-out'; for (let i = 0; i < 6; i++) x.fillRect(0, R * (0.45 + i * 0.1), 2 * R, Math.max(1, R * 0.02 * (i + 1))); return c; });
+      g.globalAlpha = Math.min(1, a); g.drawImage(sun, Math.round(W / 2 - R), gd - R);
+      g.globalCompositeOperation = 'lighter'; g.strokeStyle = '#ff4fa0'; g.lineWidth = Math.max(1, px >> 1); g.globalAlpha = Math.min(1, a * (0.6 + 1.5 * (v.pulse || 0)));
+      g.beginPath();
+      for (let k = -10; k <= 10; k++) { g.moveTo(W / 2 + k * W * 0.015, gd); g.lineTo(W / 2 + k * W * 0.12, H); }
+      for (let i = 0; i < 8; i++) { const z = ((i / 8 + T * 0.25) % 1), y = gd + (H - gd) * z * z; g.moveTo(0, Math.round(y)); g.lineTo(W, Math.round(y)); }
+      g.stroke();
+    } },
+    reseau: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // arcs of light between the plants, a spark running on each
+      const ps = v.plants.slice().sort((u, w) => u.x - w.x).map((p) => [p.x, p.y - v.heightCells(p) * px * (p.sz || 1) * (p.gy == null ? 1 : p.gy) * 0.8]);
+      g.globalCompositeOperation = 'lighter'; g.strokeStyle = '#5ff0ff'; g.lineWidth = Math.max(1, px >> 1);
+      for (let i = 1; i < ps.length; i++) {
+        const [x0, y0] = ps[i - 1], [x1, y1] = ps[i], mx = (x0 + x1) / 2, my = Math.min(y0, y1) - gd * 0.12;
+        g.globalAlpha = Math.min(1, a * 0.45); g.beginPath(); g.moveTo(x0, y0); g.quadraticCurveTo(mx, my, x1, y1); g.stroke();
+        const t = (T * 0.6 + i * 0.37) % 1, u = 1 - t, x = u * u * x0 + 2 * u * t * mx + t * t * x1, y = u * u * y0 + 2 * u * t * my + t * t * y1;
+        g.globalAlpha = Math.min(1, a); g.fillStyle = '#fff'; g.fillRect(q(x, px) - px, q(y, px) - px, 2 * px, 2 * px);
+      }
+    } },
+  };
+
   const gv = {
     LAYERS, byLayer, layout, cells, hash, GROW,
     grow: {}, prevH: {}, growStart: null, growNext: false, // S4.5w growth: plant id -> {from (0..1 of its height), start}
@@ -348,6 +486,7 @@
     LOOK, LOOK_ALL, ASPECTS, look, concerns, aim: null, cur: {}, kicks: {}, swPh: {}, lookDirty: true, // S4.6 settings → look
     JUICE, SPLASH, WAVES_PER_PLANT, PARTS_MAX, splash, waves: [], squash: {}, zap: {}, shake: null, ox: 0, oy: 0, // S5.2 notes seen
     SCENE, scene, sc: {}, kick: {}, sAim: null, sPoll: {}, st: 0, speed: 1, fxc: {}, // S5.8 scene layers
+    COMBO_FX, cx: {}, starNotes: [], // S5.10 combos: intensity per combo ON, the player's last notes (constellation)
     sprites: new Map(), glows: new Map(), labels: new Map(),
     plants: [], rares: [], parts: [], pending: [],
     energy: {}, // plant id -> 0..1 pulse
@@ -813,6 +952,25 @@
       g.globalAlpha = 1;
     },
 
+    // ---- S5.10 combos: each one ON in js/discoveries.js fades in (~0.25 s), and out when it falls; drawn by COMBO_FX ----
+    updateCombos(dt) {
+      const D = AMB.discoveries, on = D && D.on, kT = this.reduced ? 1 : 1 - Math.exp(-dt / 0.25);
+      for (const id in COMBO_FX) {
+        const want = on && on.has(id) ? 1 : 0, c = this.cx[id] || 0, n = c + (want - c) * kT;
+        if (!want && n < 0.01) delete this.cx[id]; else this.cx[id] = n;
+      }
+    },
+    drawCombos(g, W, H, gd, pass) {
+      let n = 0;
+      for (const id in this.cx) {
+        const F = COMBO_FX[id], a = this.cx[id]; if (!F || F.pass !== pass || a < 0.01) continue;
+        g.setTransform(1, 0, 0, 1, this.ox || 0, this.oy || 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+        F.draw(this, g, W, H, gd, a, this.st, this.px || 3); n++;
+      }
+      g.setTransform(1, 0, 0, 1, this.ox || 0, this.oy || 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; g.imageSmoothingEnabled = false;
+      return n;
+    },
+
     // ---- events: queued with their audio time, applied when they sound ----
     onEvent(layer, time, vel) {
       if (!this.running() || this.replay) return; // the finale lights the plants from the recorded song only
@@ -917,7 +1075,7 @@
       const dt = this.lastT == null ? 1 / 60 : Math.max(0, Math.min(0.1, (t0 - this.lastT) / 1000));
       this.lastT = t0; this.t = (this.t || 0) + dt;
       const now = this.clock();
-      this.watch(); this.updateScene(dt); this.updateLook(dt);
+      this.watch(); this.updateScene(dt); this.updateLook(dt); this.updateCombos(dt);
       for (let i = this.pending.length - 1; i >= 0; i--) { const e = this.pending[i]; if (e.time <= now + 0.02) { this.pending.splice(i, 1); this.hit(e.layer, e.vel); } }
       const ans = this.answer(now);
       if (ans) this.lightAnswer(ans);
@@ -942,6 +1100,7 @@
       g.globalAlpha = 1 - dawn * 0.85; g.drawImage(bg.stars, 0, 0);
       g.globalAlpha = 1; this.drawSky(g, W, gd); // S5.8 sky layers
       g.drawImage(bg.ground, 0, gd); this.drawGround(g, W, H, gd);
+      this.drawCombos(g, W, H, gd, 'back'); // S5.10 combos behind the plants
       const px = this.px, red = this.reduced, fs = Math.round(Math.max(11 * dpr, px * 2.6));
       this.dpr = dpr;
       // the ground breathes on the beat (stronger on beats 1 and 3); still in reduced motion and during the finale
@@ -1012,7 +1171,7 @@
         g.fillRect(Math.round(q.x / px) * px, Math.round(q.y / px) * px, px * q.s - 1, px * q.s - 1);
       }
       g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
-      this.drawFront(g, W, H, gd); g.setTransform(1, 0, 0, 1, 0, 0); this.drawPost(g, W, H); // S5.8 scene layers in front, then the filters
+      this.drawFront(g, W, H, gd); this.drawCombos(g, W, H, gd, 'front'); g.setTransform(1, 0, 0, 1, 0, 0); this.drawPost(g, W, H); // S5.8 scene layers in front, then the filters
       g.imageSmoothingEnabled = true; // nearest-neighbour above: crisp LEDs, cheaper shear
       for (const id in this.zap) this.zap[id] = Math.max(0, this.zap[id] - dt * 3.5);
       for (const id in this.energy) this.energy[id] = Math.max(0, this.energy[id] - dt * (red ? 1.2 : 1.6));
@@ -1081,7 +1240,7 @@
       bus.on('note', (n) => { if (n) { this.onEvent(n.layer, n.time, n.vel); this.onSplash('note', n); } });
       bus.on('grain', (n) => n && this.onEvent('grains', n.time, n.vel));
       bus.on('perc', (n) => { if (n) { this.onEvent('perc', n.time, n.vel); this.onSplash('perc', n); } });
-      bus.on('live', (n) => this.onSplash('live', n)); // S5.2: the player's notes, held until 'liveOff'
+      bus.on('live', (n) => { this.onSplash('live', n); if (n && this.running()) { this.starNotes.push({ p: pitchK(n.midi) }); if (this.starNotes.length > 12) this.starNotes.shift(); } }); // S5.2: the player's notes, held until 'liveOff'; S5.10: the constellation's stars
       bus.on('liveOff', (n) => n && this.release(n.id, n.time));
       bus.on('panic', () => this.release(null));
       bus.on('chord', (c) => {
@@ -1090,7 +1249,7 @@
       });
       for (const n in SCENE) if (SCENE[n].ev) bus.on(SCENE[n].ev, () => { if (this.running()) this.kick[n] = 1; }); // S5.8: Gel, section
       bus.on('game:puzzle', (e) => { if (e && e.peg && e.peg.state === 'ok') this.onEvent('bells', 0, 0.9); }); // a right note: a spark
-      ['game:unlock', 'game:reset', 'game:secret'].forEach((ev) => bus.on(ev, () => { this.sig = null; }));
+      ['game:unlock', 'game:reset', 'game:discovery'].forEach((ev) => bus.on(ev, () => { this.sig = null; }));
     },
   };
 

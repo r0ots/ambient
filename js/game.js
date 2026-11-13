@@ -1,5 +1,5 @@
 // « Jardin sonore » : progression state for the gamified path.
-// S4.3: no currency. Each challenge (contract or Réponse gate, js/contracts.js) or secret (js/secrets.js) opens a node of the
+// S4.3: no currency. Each challenge (contract or Réponse gate, js/contracts.js) or discovery (js/discoveries.js) opens a node of the
 // tree directly. "Free mode" unlocks everything (the classic app).
 (function () {
   const AMB = (window.AMB = window.AMB || {});
@@ -13,13 +13,13 @@
     v: 1,
     mode: null, // null = not chosen yet (behaves as free until asked), 'path' or 'free'
     nodes: [], // unlocked node ids
-    ready: [], // S4.6: won (challenge, Réponse, secret), waiting for the player to open them, in order: [{id, by}]
+    ready: [], // S4.6: won (challenge, Réponse, discovery), waiting for the player to open them, in order: [{id, by}]
     contracts: [], // challenges done (contracts and Réponse gates)
     resp: null, // « Réponse » (S4.2, puzzles.js): length reached, successes in a row, misses per gate
     active: [], prog: {}, // the active challenge (one at a time) and its progress (contracts.js)
     skipped: [], // challenges passed (back of the queue)
     rng: null, // seed of the Réponse phrases (contracts.js)
-    secrets: null, // secrets state (secrets.js)
+    secrets: null, // discoveries state (discoveries.js; the field keeps its old name: older saves' secrets are discoveries)
     ended: false, // whole tree owned: the instrument was handed over (S3.7), no game interface any more
   });
 
@@ -48,7 +48,7 @@
 
     // mode
     get path() { return this.s.mode === 'path'; },
-    // the path's effects may apply now (challenges, secrets): never in free mode nor once the instrument is handed over
+    // the path's effects may apply now (challenges, discoveries): never in free mode nor once the instrument is handed over
     counts() { return this.path && !this.s.ended; },
     setMode(m) {
       if (m !== 'path' && m !== 'free') return;
@@ -76,7 +76,7 @@
       this.emit('ready', { id, by });
       return true;
     },
-    // the next one the player can open: the first of the queue whose prerequisites are open (a secret queues them first)
+    // the next one the player can open: the first of the queue whose prerequisites are open (a discovery queues them first)
     canOpen(id) { const n = AMB.tree && AMB.tree.byId[id]; return this.isReady(id) && (!n || n.req.every((x) => this.has(x))); },
     nextReady() { return (this.s.ready || []).find((r) => this.canOpen(r.id)) || null; },
     // open a waiting node (nextReady by default); never before its prerequisites are open

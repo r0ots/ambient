@@ -1,6 +1,6 @@
 <!doctype html><html><head><meta charset="utf-8"></head><body>
 <!-- Pace of the Parcours (S4.3, no currency): scripted players run through the path on the REAL data (tree, contracts.OPENS,
-     contracts.eligible / refill order, Écho lengths, secrets.OPENS) with a time model per activity. Each challenge opens its
+     contracts.eligible / refill order, Écho lengths, discoveries.OPENS) with a time model per activity. Each challenge opens its
      node; a secret opens its own node (or, already owned, the next node of the path).
      Targets: typical full path ≤ 45 min, never more than 3 min without a new node, no dead end whatever the order the
      challenges are played in (↷), the musician who finds the key secrets is faster; the slow player is reported.
@@ -23,7 +23,7 @@ document.getElementById('f').addEventListener('load', async () => {
     const fmt = (s) => (s / 60).toFixed(1);
     // a key secret is reachable once its node is owned (Lenteur céleste also plays Halo and Tempo); MIDI-only ones for the musician
     const SECRET_NEED = { lent: ['e.halo', 'm.tempo'] };
-    const SECRETS = A.secrets.DEFS.map((d) => ({ id: d.id, need: [d.node, ...(SECRET_NEED[d.id] || [])], opens: A.secrets.OPENS[d.id], midi: d.midi }));
+    const SECRETS = A.discoveries.GESTES.map((d) => ({ id: d.id, need: [...d.need, ...(SECRET_NEED[d.id] || [])], opens: A.discoveries.OPENS[d.id], midi: d.midi })); // the gestures (former secrets); the combos are not modelled
 
     // one scripted player. opts: {k, seed, jitter, random (plays any eligible challenge, ↷ at random), secrets, midi}
     function sim(opts) {

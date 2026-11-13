@@ -66,9 +66,9 @@
       if (!on && this.seq) { this.seqFinish(); return; } // closing during the unlock sequence = finish it now
       d.hidden = !on;
       if (this.resetPointers) this.resetPointers(); // no finger left over from the last visit
-      if (on) { this.select(null); this.renderTree(); this.fitTree(); if (AMB.secrets) AMB.secrets.render(); }
+      if (on) { this.select(null); this.renderTree(); this.fitTree(); if (AMB.discoveries) AMB.discoveries.render(); }
     },
-    // ---- the screen: header (nodes open, secrets) + the map, built once and repainted ----
+    // ---- the screen: header (nodes open, discoveries) + the map, built once and repainted ----
     renderTree() {
       const map = $('#treeDlg .tree-map'); if (!map) return;
       const T = AMB.tree, g = AMB.game;
@@ -76,11 +76,11 @@
       if (!map.querySelector('.tree-stage') || map.dataset.n !== String(T.NODES.length)) this.buildMap(map);
       this.paintTree();
     },
-    // what opens a node: its challenge, or a secret (S4.3) — « ◇ Joue 6 notes », « ↺ Réponse « Premier reflet » (3 notes) », « ✦ Secret : ??? »
+    // what opens a node: its challenge, or a discovery (S4.3, S5.10) — « ◇ Joue 6 notes », « ↺ Réponse « Premier reflet » (3 notes) », « ✦ Découverte : ??? »
     openers(id) {
-      const K = AMB.contracts, S = AMB.secrets, d = K && K.forNode(id), out = [];
+      const K = AMB.contracts, S = AMB.discoveries, d = K && K.forNode(id), out = [];
       if (d) out.push({ kind: d.kind === 'reponse' ? 'reponse' : 'défi', d, text: d.kind === 'reponse' ? `↺ Réponse « ${d.title} » (${AMB.puzzles.need(d)} notes)` : `◇ ${d.title}` });
-      if (S) for (const [sid, nid] of Object.entries(S.OPENS)) if (nid === id) out.push({ kind: 'secret', text: `✦ Secret : ${S.has(sid) ? S.byId[sid].title : '???'}` });
+      if (S) for (const [sid, nid] of Object.entries(S.OPENS)) if (nid === id) out.push({ kind: 'secret', text: `✦ Découverte : ${S.has(sid) ? S.byId[sid].name : '???'}` });
       return out;
     },
     // the stage: SVG links under absolutely placed LED buttons, in layout units (pan/zoom = one transform)

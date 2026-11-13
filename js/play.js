@@ -227,7 +227,7 @@
         midiAccess.inputs.forEach((inp) => { inp.onmidimessage = onMidi; n++; });
         btn.classList.toggle('on', n > 0);
         btn.textContent = n ? `MIDI · ${n}` : 'MIDI';
-        if (n && AMB.bus) AMB.bus.emit('act', 'midiConnect'); // a keyboard is there (the MIDI secrets show their hints)
+        if (n && AMB.bus) AMB.bus.emit('act', 'midiConnect'); // a keyboard is there (the MIDI gestures show their hints)
         return n;
       };
       midiAccess.onstatechange = (e) => { if (e && e.port && e.port.state === 'disconnected') panic(); bind(); };

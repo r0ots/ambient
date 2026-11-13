@@ -130,8 +130,8 @@
     E('p.espace', ['e.tape', 'm.bells'], 'La grotte'),
     E('p.mouvement', ['m.evolve', 'm.bells'], 'Pluie de notes'),
   ];
-  // S4.3 — THE table: which challenge opens which node, in the order of the path (the queue follows it). Secrets open
-  // their own nodes too (js/secrets.js OPENS). A node waits for its prerequisites and for what its challenge plays with
+  // S4.3 — THE table: which challenge opens which node, in the order of the path (the queue follows it). Discoveries open
+  // their own nodes too (js/discoveries.js OPENS). A node waits for its prerequisites and for what its challenge plays with
   // (`need`); that graph has no cycle (tests/game.html), so no order of play can block the path (tests/balance.html).
   const OPENS = {
     'm.bells': 'k.xy', 'h.pad': 'm.notes', 't.son': 'k.couleur', 'e.reverb': 'm.monte', 't.viz': 'm.descend',
@@ -225,11 +225,11 @@
       if (d.node) g.ready(d.node, id);
       this.refill(g);
     },
-    // S4.6, older saves: a challenge done (or a secret found, secrets.migrate) whose node is not open becomes ready
+    // S4.6, older saves: a challenge done (or a discovery found, discoveries.migrate) whose node is not open becomes ready
     migrate(g = AMB.game) {
       if (!g.path) return;
       for (const id of g.s.contracts || []) { const d = byId[id]; if (d && d.node && !g.has(d.node) && !g.isReady(d.node)) g.ready(d.node, id); }
-      if (AMB.secrets) AMB.secrets.migrate(g);
+      if (AMB.discoveries) AMB.discoveries.migrate(g);
     },
     // a stuck challenge can be put back at the end of the queue
     skip(id, g = AMB.game) {
