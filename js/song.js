@@ -20,7 +20,7 @@
   const EMPTY = { 'seq.pattern': '', 'seq.patB': '', 'seq.patC': '', 'seq.patD': '', 'seq.chain': '', 'bass.pattern': ROWS0, 'perc.pattern': ROWS0 };
   const NAMES = ['Intro', 'Couplet', 'Montée', 'Refrain', 'Pont', 'Fin'];
   const BARS = [2, 4, 8, 16, 32, 64];
-  // `loops`: S6.4's looper will keep the loops recorded in a section here (played whenever the section plays)
+  // `loops`: the looper's layers recorded in this section (js/looper.js), played whenever the section plays
   const make = (name, bars, snap) => ({ name, bars, snap, loops: [] });
 
   const song = {
@@ -243,6 +243,7 @@
       const lp = panel.querySelector('[data-s=loop]');
       lp.checked = this.loop;
       lp.addEventListener('change', () => { this.loop = lp.checked; this.save(); });
+      if (AMB.looper) AMB.looper.build(panel); // S6.4: the selected section's loops, a row above the transport
       this.render();
     },
     render() {
@@ -275,6 +276,7 @@
       }
       this.renderMeta();
       this.renderProgress();
+      if (AMB.looper) AMB.looper.render();
     },
     // what the selected section holds, in a few words
     renderMeta() {
@@ -283,7 +285,7 @@
       const notes = PR ? ['seq.pattern', 'seq.patB', 'seq.patC', 'seq.patD'].reduce((a, k) => a + PR.parse(g(k)).length, 0) : 0;
       const hits = (k) => g(k.split('.')[0] + '.on') && /[1-9a-f]/i.test(String(g(k)).replace(/\./g, ''));
       const prog = g('pad.prog') === 'Perso' ? String(g('pad.custom')).trim() : g('pad.prog');
-      el.textContent = [`${notes} note${notes > 1 ? 's' : ''}`, hits('bass.pattern') && 'basse', hits('perc.pattern') && 'pulsations', `accords ${prog}`].filter(Boolean).join(' · ');
+      el.textContent = [`${notes} note${notes > 1 ? 's' : ''}`, hits('bass.pattern') && 'basse', hits('perc.pattern') && 'pulsations', `accords ${prog}`, s.loops && s.loops.length && `${s.loops.length} boucle${s.loops.length > 1 ? 's' : ''}`].filter(Boolean).join(' · ');
     },
     renderProgress() {
       if (!this.strip) return;

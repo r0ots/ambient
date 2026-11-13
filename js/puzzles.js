@@ -149,6 +149,7 @@
       if (!gate && !store.get('bells.on')) return false; // the mastery loop needs the Melody heard
       if (AMB.pianoRoll && AMB.pianoRoll.roll && AMB.pianoRoll.roll.recording) return false; // Rec live: the notes are the roll's
       if (songRec) return false;
+      if (AMB.looper && AMB.looper.busy()) return false; // S6.4: a loop take, the notes are the loop's
       return this.launch(time, sd, gate);
     },
     // the marked phrase (or chords), on the grid of the bar starting at `time`, on the Melody voice

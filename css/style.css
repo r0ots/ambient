@@ -257,6 +257,21 @@ canvas.auto-lane { display: block; width: 100%; border-radius: 8px; border: 1px 
 .song-btns { display: flex; gap: 4px; }
 .song-btns button { min-width: 40px; min-height: 36px; background: #1d2133; border: 1px solid #2a2f45; color: var(--muted); border-radius: 6px; font-size: 13px; cursor: pointer; }
 .song-btns button:hover:not(:disabled) { color: var(--text); }
+/* S6.4 looper: one row of the Morceau panel, the selected section's loop layers as chips (tap = mute, ✕ = erase) */
+.looper { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 2px 8px; border-top: 1px solid #23273a; }
+.loop-label { font-size: 12px; font-weight: 600; color: var(--c); margin-right: 2px; }
+.loop-len { font-size: 12px; min-height: 36px; padding: 3px 6px; min-width: 6.5em; }
+.looper .btn.small { min-height: 36px; }
+.looper .btn:disabled { opacity: .4; cursor: default; }
+.loop-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 100%; }
+.loop-empty { font-size: 11px; color: var(--muted); padding: 4px 2px; }
+.loop-chip { display: inline-flex; border: 1px solid var(--c); border-radius: 8px; overflow: hidden; background: color-mix(in srgb, var(--c) 12%, #12141c); }
+.loop-chip button { background: none; border: 0; color: var(--text); font: inherit; font-size: 12px; min-height: 36px; padding: 0 10px; cursor: pointer; white-space: nowrap; }
+.loop-chip button b { color: var(--c); margin-right: 4px; }
+.loop-chip button[data-x] { color: var(--muted); padding: 0 9px; border-left: 1px solid #2a2f45; }
+.loop-chip.mute { border-color: #2a2f45; background: #12141c; opacity: .55; }
+.loop-chip.mute button[data-k] { text-decoration: line-through; }
+.loop-chip.rec { border-color: #ff5e7a; box-shadow: 0 0 10px rgba(255, 94, 122, .45); }
 
 footer { text-align: center; font-size: 11px; color: #4c5272; padding: 20px 0 8px; }
 

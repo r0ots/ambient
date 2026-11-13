@@ -78,7 +78,7 @@
     can(g = AMB.game) {
       const P = AMB.puzzles, R = AMB.pianoRoll && AMB.pianoRoll.roll;
       return !!g && g.counts() && !!(AMB.seq && AMB.seq.playing) && !(P && P.busy()) && !g.nextReady() && !(R && R.recording)
-        && !(AMB.rec && AMB.rec.songRecording()) && this.seen();
+        && !(AMB.rec && AMB.rec.songRecording()) && !(AMB.looper && AMB.looper.busy()) && this.seen();
     },
     // S5.7: an ask is only launched where it can be seen: the LCD in the window (an opening scrolls to what it opened)
     seen() {

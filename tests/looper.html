@@ -1,0 +1,114 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../css/style.css"></head><body>
+<script src="lib.js"></script><script src="fake-midi.js"></script>
+<div id="scenes"></div><div id="journal"></div><div id="layers"></div><div id="seqrow"></div><div id="macros"></div><div id="globals"></div><button data-mode="listen"></button><button data-mode="sculpt"></button><button data-mode="compose"></button>
+<button id="play"></button><button id="bigPlay"></button><div id="chordName"></div><div id="hudInfo"></div><select id="preset"></select><button id="dice"></button><button id="save"></button><button id="rec"></button><select id="recFmt"><option value="wav">w</option></select><select id="recDur"><option value="0">0</option></select><button id="share"></button><div id="toast"></div><button id="midi"></button><select id="sleep"></select><span id="sleepLeft"></span><canvas id="viz" style="width:400px;height:200px"></canvas>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/presets.js"></script><script src="../js/generator.js"></script><script src="../js/visual.js"></script><script src="../js/scenes.js"></script><script src="../js/journal.js"></script><script src="../js/pianoroll.js"></script><script src="../js/pulses.js"></script><script src="../js/bass.js"></script><script src="../js/chords.js"></script><script src="../js/midi.js"></script><script src="../js/automation.js"></script><script src="../js/song.js"></script><script src="../js/looper.js"></script><script src="../js/widgets.js"></script><script src="../js/perform.js"></script><script src="../js/rec.js"></script><script src="../js/ui.js"></script><script src="../js/play.js"></script>
+<script>
+// S6.4 Looper: a played loop on the bar (count-in), replayed where it was played (latency), layered (new layer, overdub),
+// mute / erase / undo, ⤓ Garder (moved from the piano roll), owned by the selected section, key-following, saved, MIDI export.
+window.addEventListener('load', async ()=>{
+  try{
+  const st=AMB.store, SG=AMB.song, LP=AMB.looper, seq=AMB.seq, q=(s)=>document.querySelector(s), qa=(s)=>[...document.querySelectorAll(s)];
+  const untilAudio=async(sec,cond)=>{const ctx=AMB.engine.ctx; const t=ctx.currentTime+sec; while(ctx.currentTime<t&&!(cond&&cond())) await wait(20);};
+  const kb=fakeMidi(window); await kb.connect();
+  SG.replace({sections:[]}); localStorage.removeItem('ambient.song.v1');
+  st.setMany({'global.tempo':140,'global.key':'C','global.scale':'Ionien (majeur)','bells.on':false,'seq.on':false,'perc.on':false,'bass.on':false,'pad.prog':'Plane (I)','global.humanize':0},'user');
+  const sd=()=>seq.stepDur(), at=(k)=>seq.nextTime+(k-seq.step)*sd();
+  let id=500; const play=(k,midi,len,vel=0.8,raw=null,late=0.04)=>{ id++; const i=id; AMB.bus.emit('live',{midi,time:at(k)+late,played:at(k),vel,raw,id:i}); if(len!=null) AMB.bus.emit('liveOff',{id:i,midi,time:at(k+len)+late,played:at(k+len)}); return i; };
+  ok(q('.song-panel .looper') && q('.looper [data-l=rec]') && q('.loop-empty') && !q('[data-act=keep]'), 'une rangée « Boucles » dans le panneau Morceau ; plus de ⤓ Garder dans le piano roll');
+
+  // --- ● Boucle from stopped: the playback starts, a section is made to hold the loop, count-in to the next 1
+  q('.loop-len').value='1'; q('.loop-len').dispatchEvent(new Event('change'));
+  q('[data-l=rec]').click(); await untilAudio(0.25);
+  ok(seq.playing && SG.sections.length===1 && SG.idx===0 && LP.state==='count' && LP.layers().length===1, '● Boucle à l\'arrêt : lecture lancée, 1re section créée, décompte ('+LP.state+')');
+  const clicks=[]; const oc=AMB.pianoRoll.click; AMB.pianoRoll.click=(t,a)=>{clicks.push({t,a}); oc(t,a);};
+  await untilAudio(4, ()=>LP.state==='rec');
+  const from=LP.take.from;
+  ok(LP.state==='rec' && (from-(seq.origin||0))%16===0 && from>=16, 'la prise part sur un 1 (pas '+from+'), après un décompte');
+  ok(clicks.length>=1 && /■/.test(q('[data-l=rec]').textContent), 'décompte : clics sur les temps ('+clicks.length+'), puis bouton « '+q('[data-l=rec]').textContent+' »');
+  ok(LP.busy(), 'pendant une prise : busy() (ni Demande ni Réponse)');
+  // notes heard at these places (played = the moment heard, handled 40 ms later): early on the 1, between 16ths, held
+  play(from-1.5,72,1);            // before the count's end: not in the loop
+  play(from-0.3,60,2);            // a hair early → on the 1
+  play(from+4.4,62,1,0.6);        // between 16ths: the played timing stays
+  const held=play(from+8,64,null,0.9,0.9); // MIDI velocity (brightness), released later
+  AMB.bus.emit('liveOff',{id:held,midi:64,time:at(from+11)+0.04,played:at(from+11)});
+  await untilAudio(4, ()=>LP.state==='idle');
+  const L0=SG.sections[0].loops[0], ns=(L0&&L0.notes||[]).slice().sort((a,b)=>a.s-b.s);
+  ok(LP.state==='idle' && L0 && L0.bars===1 && ns.length===3, 'fin automatique après 1 mesure : couche de '+ns.length+' notes');
+  ok(ns[0] && ns[0].s===0 && ns[0].d===28 && ns[0].a===0 && ns[0].l===2, 'note un peu en avance = sur le 1, en degré (C4 = degré 28), longueur jouée '+JSON.stringify(ns[0]));
+  ok(ns[1] && Math.abs(ns[1].s-4.4)<0.011 && ns[1].v===0.6, 'entre deux doubles croches : le placement joué est gardé (pas de grille) '+JSON.stringify(ns[1]));
+  ok(ns[2] && ns[2].s===8 && ns[2].l===3 && ns[2].b===0.9, 'vélocité MIDI gardée (éclat), longueur au relâchement '+JSON.stringify(ns[2]));
+  ok(/1 boucle/.test(q('.song-meta').textContent) && qa('.loop-chip').length===1 && /1 mes\. · 3 ♪/.test(q('.loop-chip').textContent), 'puce de couche « '+q('.loop-chip').textContent.trim()+' », résumé de la section');
+
+  // --- replay: on the grid of the section, at the played places (fractional too), in the key of the moment
+  const heardL=[]; const onN=(n)=>{ if(n.loop) heardL.push(n); }; AMB.bus.on('note',onN);
+  await untilAudio(2.4);
+  const t44=heardL.find(n=>n.midi===62 && heardL.some(m=>m.midi===60 && m.time<n.time)), t0=t44 && heardL.filter(n=>n.midi===60 && n.time<t44.time).pop();
+  ok(heardL.length>=3 && t0 && t44 && !heardL.some(n=>n.live), 'la boucle tourne ('+heardL.length+' notes rejouées, voix Mélodie, pas des notes « du joueur »)');
+  if(t0&&t44) ok(Math.abs((t44.time-t0.time)/sd()-4.4)<0.02, 'rejouée au placement joué : '+((t44.time-t0.time)/sd()).toFixed(2)+' doubles croches après le 1');
+  st.set('global.key','D','user'); heardL.length=0; await untilAudio(2.2, ()=>heardL.some(n=>n.vel===0.8));
+  ok(heardL.some(n=>n.midi===62 && n.vel===0.8) && !heardL.some(n=>n.midi===60), 'elle suit la tonalité (ré : le 1er degré sonne D4)');
+  st.set('global.key','C','user');
+
+  // --- mute, overdub (several passes), undo, erase
+  q('.loop-chip [data-k="0"]').click();
+  ok(L0.mute && q('.loop-chip.mute'), 'toucher la puce : couche muette');
+  heardL.length=0; await untilAudio(1.9); ok(!heardL.length, 'muette : plus rien de rejoué');
+  q('.loop-chip [data-k="0"]').click(); ok(!L0.mute, 'retoucher : elle revient');
+  q('[data-l=dub]').click(); ok(LP.state==='dub' && q('[data-l=dub]').classList.contains('rec'), '⊕ Overdub : tout de suite, sur la dernière couche');
+  const s0=seq.step+20; play(s0,67,1); play(s0+16+2,69,1); // two passes
+  await untilAudio(0.1); q('[data-l=dub]').click();
+  ok(LP.state==='idle' && L0.notes.length===5 && L0.notes.some(n=>n.d===32) && L0.notes.some(n=>n.d===33), 'overdub sur plusieurs tours : '+L0.notes.length+' notes dans la couche');
+  q('[data-l=undo]').click(); ok(SG.sections[0].loops[0].notes.length===3, '↶ annule la dernière prise (l\'overdub entier)');
+  // new layers up to 4, then refused
+  for(let i=0;i<3;i++){ SG.sections[0].loops.push({bars:2,mute:false,notes:[{s:i,d:30,a:0,l:1,v:0.5}]}); }
+  LP.render(); q('[data-l=rec]').click();
+  ok(LP.state==='idle' && LP.layers().length===4, '4 couches au plus : ● refusé avec un message');
+  q('.loop-chip [data-x="3"]').click(); ok(LP.layers().length===3, '✕ efface une couche');
+  q('[data-l=undo]').click(); ok(LP.layers().length===4, '↶ la ramène');
+  SG.sections[0].loops.splice(1); LP.render();
+  // light quantisation (optional): 60 % of the way to the nearest 16th
+  LP.quant=true; ok(LP.place((seq.origin||0)+4.4,16)===4.16, '« Caler » : rapproche légèrement de la double croche (4,4 → 4,16)'); LP.quant=false;
+
+  // --- ⤓ Garder: what was just played, without pressing ●, becomes a layer (moved from the piano roll)
+  const b0=(seq.origin||0)+Math.floor((seq.step-(seq.origin||0))/16)*16-32; // a bar fully heard
+  play(b0+2,65,1); play(b0+6.5,67,2); play(b0+12,69,1);
+  ok(LP.canKeep(), '⤓ Garder possible après des notes jouées');
+  const kl=LP.keep(); const kn=kl?kl.notes.map(n=>n.s).sort((a,b)=>a-b).join(','):'';
+  ok(kl && kl.bars===1 && kn==='2,6.5,12' && LP.layers().length===2, '⤓ Garder : la dernière mesure jouée devient une couche ('+kn+')');
+
+  // --- MIDI keyboard: CC 80 = ● Boucle (cancelled by a second press during the count), a note's own timestamp counts
+  kb.send([0xb0,80,127]); ok(LP.state==='count', 'MIDI CC 80 : ● Boucle');
+  kb.send([0xb0,80,127]); ok(LP.state==='idle' && LP.layers().length===2, 'CC 80 encore pendant le décompte : annulé, pas de couche vide');
+  q('[data-l=rec]').click(); await untilAudio(4, ()=>LP.state==='rec');
+  await untilAudio(5*sd());
+  const ctx=AMB.engine.ctx, out=ctx.outputLatency||ctx.baseLatency||0;
+  const want=seq.step+(ctx.currentTime-0.08-out-seq.nextTime)/sd(); // heard 80 ms before it is handled
+  kb.on(76,127,performance.now()-80); kb.off(76);
+  const ln=LP.take&&LP.take.layer.notes.find(n=>n.d===37);
+  ok(ln && Math.abs(ln.s-(((want-(seq.origin||0))%16)+16)%16)<0.25 && ln.b===1, 'note MIDI : placée à l\'instant joué (horodatage − latence de sortie '+(out*1000).toFixed(0)+' ms), vélocité '+(ln&&ln.b));
+  document.dispatchEvent(new KeyboardEvent('keydown',{code:'Digit0',key:'0',bubbles:true}));
+  ok(LP.state==='idle' && LP.layers().length===3, 'touche 0 pendant la prise : la boucle s\'arrête là, gardée');
+  document.dispatchEvent(new KeyboardEvent('keydown',{code:'Digit9',key:'9',bubbles:true}));
+  ok(LP.state==='dub', 'touche 9 : ⊕ Overdub'); document.dispatchEvent(new KeyboardEvent('keydown',{code:'Digit9',key:'9',bubbles:true}));
+  ok(LP.state==='idle', 'touche 9 encore : fin de l\'overdub');
+
+  // --- a loop belongs to its section; saved and exported with it
+  q('[data-s=add]').click();
+  ok(SG.idx===1 && !LP.layers().length && q('.loop-empty'), 'nouvelle section : ses boucles à elle (aucune)');
+  heardL.length=0; await untilAudio(1.9); ok(!heardL.length, 'la section 2 ne joue pas les boucles de la 1');
+  qa('.song-chip[data-i]')[0].click(); await untilAudio(4, ()=>SG.idx===0);
+  ok(LP.layers().length===3 && qa('.loop-chip').length===3, 'retour à la 1 : ses 3 couches');
+  SG.save(); const saved=JSON.parse(localStorage.getItem('ambient.song.v1'));
+  ok(saved.sections[0].loops.length===3 && saved.sections[0].loops[0].notes[0].d!=null, 'sauvegarde : les boucles avec leur section');
+  const exp=AMB.midiExport.build(), txt=String.fromCharCode(...exp.bytes);
+  ok(exp.song && /Boucles/.test(txt), 'export MIDI : une piste « Boucles » ('+exp.tracks+' pistes)');
+  // ■ Stop during a take
+  q('[data-l=dub]').click(); play(seq.step+3,60,1); AMB.ui.stop();
+  ok(LP.state==='idle' && !LP.busy(), '■ Stop pendant une prise : elle s\'arrête');
+  AMB.bus.fns.note=AMB.bus.fns.note.filter(f=>f!==onN); AMB.pianoRoll.click=oc;
+  await wait(100); log('DONE');
+  }catch(e){log('EXC '+e.stack)}
+});
+</script></body></html>

@@ -74,7 +74,7 @@
     AMB.layers.seq.note(uniq[idx], Math.max(time, time + swing + hu.dt), vel * hu.dv, true, every * sd * 0.9);
   }
 
-  // soft metronome click straight into the dry bus (independent of the Pulsations layer)
+  // soft metronome click straight into the dry bus (independent of the Pulsations layer); also the looper's count-in
   function click(time, accent) {
     const E = AMB.engine, ctx = E.ctx;
     const o = ctx.createOscillator(), g = ctx.createGain();
@@ -176,77 +176,6 @@
     if (l !== n.l) { n.l = l; roll.save(notes); }
   });
 
-  // ---------- retroactive capture (« ⤓ Garder »): the last notes played live are always kept in memory ----------
-  // Nothing played lately: Garder keeps the auto Melody's last bars instead (its own ring, `auto`, filled while playing).
-  // A small ring of {midi, at, end, vel, abs, deg}: `at`/`end` = audio time played / released, `abs` = absolute
-  // sequencer step (float) when the music was playing (null when stopped), `deg` = chord degree then.
-  const KEEP_BARS = 4, BUF_BARS = 8, BUF_MAX = 256;
-  const heard = [], heardById = new Map();
-  const bufSpan = () => BUF_BARS * 16 * AMB.seq.stepDur();
-  AMB.bus.on('live', (ev) => {
-    const seq = AMB.seq, at = ev.played != null ? ev.played : ev.time;
-    const e = { id: ev.id, midi: ev.midi, at, end: null, vel: ev.vel, abs: seq.playing ? seq.step + (at - seq.nextTime) / seq.stepDur() : null, deg: seq.chordDeg || 0 };
-    heard.push(e);
-    if (ev.id) heardById.set(ev.id, e);
-    while (heard.length > BUF_MAX || heard[0].at < at - bufSpan()) heardById.delete(heard.shift().id);
-  });
-  const auto = [];
-  AMB.bus.on('note', (ev) => {
-    const seq = AMB.seq;
-    if (ev.layer !== 'bells' || ev.live || !seq.playing) return;
-    auto.push({ midi: ev.midi, at: ev.time, end: ev.time + Math.min(ev.dur, 4 * seq.stepDur()), vel: ev.vel, abs: seq.step + (ev.time - seq.nextTime) / seq.stepDur(), deg: seq.chordDeg || 0 });
-    while (auto.length > BUF_MAX || auto[0].at < ev.time - bufSpan()) auto.shift();
-  });
-  AMB.bus.on('liveOff', (ev) => {
-    const e = heardById.get(ev.id);
-    if (!e) return;
-    heardById.delete(ev.id);
-    e.end = ev.played != null ? ev.played : ev.time;
-  });
-  const now = () => (AMB.engine.ctx ? AMB.engine.ctx.currentTime : 0);
-  const recent = (ring) => ring.filter((e) => e.at > now() - bufSpan());
-  function canKeep() { return [heard, auto].some((r) => r.length > 0 && r[r.length - 1].at > now() - bufSpan()); }
-  // the last 4 bars played (ending at the bar of the last note), snapped to the grid, into the edited motif if it is
-  // empty, otherwise into the next empty one (switched to); all 4 full = the edited one is replaced. One undo step.
-  // src: 'melody' = the auto Melody even if notes were played (tests); default = what was played, else the Melody
-  function keep(src) {
-    const seq = AMB.seq, sd = seq.stepDur(), t = now();
-    let ph = src === 'melody' ? [] : recent(heard);
-    const mel = !ph.length;
-    if (mel) ph = recent(auto).filter((e) => e.at <= t); // (notes scheduled ahead are not heard yet)
-    if (!ph.length) { AMB.ui.toast('Rien à garder : joue d\'abord quelques notes'); return null; }
-    // with the music: the sequencer's grid and bars; stopped: the first note of the phrase starts the motif
-    const grid = ph[ph.length - 1].abs != null;
-    ph = ph.filter((e) => (e.abs != null) === grid);
-    const origin = grid ? seq.origin || 0 : 0;
-    const t0 = grid ? 0 : ph.find((e) => e.at >= ph[ph.length - 1].at - KEEP_BARS * 16 * sd).at;
-    const pos = (e) => Math.round(grid ? e.abs : (e.at - t0) / sd);
-    const bar = (p) => origin + Math.floor((p - origin) / 16) * 16;
-    const end = bar(pos(ph[ph.length - 1])) + 16; // end of the bar of the last note
-    ph = ph.filter((e) => pos(e) >= end - KEEP_BARS * 16);
-    const start = bar(Math.min(...ph.map(pos)));
-    const span = end - start, len = Math.max(steps(), span <= 16 ? 16 : span <= 32 ? 32 : 64);
-    const out = [];
-    for (const e of ph) {
-      const s = pos(e) - start;
-      const c = cellFor(e.midi, store.get('seq.follow') ? e.deg : 0);
-      const l = Math.max(1, Math.min(len - s, Math.round(((e.end != null ? e.end : t) - e.at) / sd)));
-      const i = out.findIndex((x) => x.s === s && x.r === c.r);
-      if (i >= 0) out.splice(i, 1); // same cell twice: the later one stays
-      out.push(cellNote(s, c, l, velOf(e)));
-    }
-    const cur = store.get('seq.slot'), order = ['A', 'B', 'C', 'D'], from = order.indexOf(cur);
-    const free = [0, 1, 2, 3].map((k) => order[(from + k) % 4]).find((x) => !parse(store.get(SLOTKEY[x])).length);
-    const slot = free || cur;
-    if (len !== steps()) store.set('seq.steps', String(len), 'user');
-    store.set(SLOTKEY[slot], encode(out), 'user');
-    if (slot !== cur) store.set('seq.slot', slot, 'user');
-    if (!store.get('seq.on')) store.set('seq.on', true, 'user');
-    if (store.get('seq.mode') !== 'Piano roll') store.set('seq.mode', 'Piano roll', 'user');
-    AMB.ui.toast(`${out.length} note(s)${mel ? ' de la Mélodie auto' : ''} gardée(s) dans le motif ${slot}` + (free ? '' : ' (remplacé · ⌘Z pour annuler)'));
-    return { slot, notes: out, len };
-  }
-
   // ---------- editor ----------
   const roll = {
     playStep: -1,
@@ -260,9 +189,8 @@
           <button class="btn small" data-act="dup" title="Copier ce motif dans le prochain emplacement libre">⧉ Dupliquer</button>
           <button class="btn small" data-act="clear" title="Effacer toutes les notes">Effacer</button>
           <button class="btn small" data-act="random" title="Motif aléatoire dans la gamme">⚄ Motif</button>
-          <label class="btn small" title="Clic doux sur les temps pendant l'enregistrement"><input type="checkbox" data-metro checked> Métronome</label>
+          <label class="btn small" title="Clic doux sur les temps pendant l'enregistrement (Rec live, boucles)"><input type="checkbox" data-metro checked> Métronome</label>
           <button class="btn small rec-btn" data-act="liverec" title="Enregistre ce que tu joues au clavier (A–L, Q–P) ou en MIDI dans ce motif, quantifié, en boucle (overdub)">● Rec live</button>
-          <button class="btn small" data-act="keep" disabled title="Garde les 4 dernières mesures que tu as jouées (A–L, MIDI), même sans Rec, dans ce motif ou le suivant libre ; sans note jouée, celles de la Mélodie auto">⤓ Garder</button>
           <button class="btn small" data-act="shiftL" title="Décaler à gauche">◀</button>
           <button class="btn small" data-act="shiftR" title="Décaler à droite">▶</button>
           <button class="btn small" data-act="up" title="Monter d'un degré">▲</button>
@@ -291,10 +219,8 @@
       this.bindMouse();
       store.on((k) => { if (k.startsWith('seq.') || k === 'global.key' || k === 'global.scale') this.draw(); });
       window.addEventListener('resize', () => this.draw());
-      this.keepBtn = wrap.querySelector('[data-act=keep]');
       const loop = () => {
         if (this.playStep !== this.lastDrawn || this.playSlot !== this.lastSlot) { this.draw(); this.lastSlot = this.playSlot; }
-        if (this.keepBtn.disabled === canKeep()) this.keepBtn.disabled = !canKeep(); // greyed when nothing to keep
         requestAnimationFrame(loop);
       };
       requestAnimationFrame(loop);
@@ -474,7 +400,6 @@
       else if (a === 'random') notes = randomPattern(n);
       else if (a === 'shiftL' || a === 'shiftR') notes.forEach((x) => { x.s = (x.s + (a === 'shiftR' ? 1 : n - 1)) % n; });
       else if (a === 'up' || a === 'down') notes = notes.map((x) => ({ ...x, r: x.r + (a === 'up' ? 1 : -1) })).filter((x) => x.r >= 0 && x.r < ROWS);
-      else if (a === 'keep') return keep();
       else if (a === 'liverec') {
         if (this.recording) return this.stopRecording();
         this.recording = !this.recording;
@@ -625,5 +550,5 @@
     g.stroke(); g.restore();
   }
 
-  AMB.pianoRoll = { originals: () => ({ ...original }), roll, resetLatch, cellFor, canKeep, keep, parse, encode, onStep, arpStep, randomPattern, mutate, slotAt, chainList, SLOTKEY, ROWS };
+  AMB.pianoRoll = { originals: () => ({ ...original }), roll, resetLatch, cellFor, click, parse, encode, onStep, arpStep, randomPattern, mutate, slotAt, chainList, SLOTKEY, ROWS };
 })();

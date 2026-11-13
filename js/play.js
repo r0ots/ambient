@@ -221,6 +221,8 @@
       const v = d2 / 127;
       if (d1 === 64) { setPedal(d2 >= 64, msg.timeStamp); return letChordGo(); } // sustain pedal (holds notes and the forced chord)
       if (d1 === 123 || d1 === 120) return panic(); // All Notes Off / All Sound Off
+      // S6.4: CC 80 = ● Boucle, CC 81 = ⊕ Overdub (a footswitch or a pad: pressed = value ≥ 64), where the Morceau is open
+      if ((d1 === 80 || d1 === 81) && AMB.looper) { if (d2 >= 64 && (!AMB.tree || AMB.tree.uiUnlocked('song'))) d1 === 80 ? AMB.looper.rec() : AMB.looper.dub(); return; }
       // CCs drive the macros (perform.setMacro, source 'cc'): CC1 (mod wheel) = Densité, CC74 = Lumière, CC91 = Espace, CC93 = Nostalgie
       const cc = { 1: 'macro.density', 74: 'macro.light', 91: 'macro.space', 93: 'macro.nostalgia' }[d1];
       if (cc) AMB.perform.setMacro(cc, v);

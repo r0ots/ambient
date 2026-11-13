@@ -137,16 +137,17 @@
     // Player-forced chord (keyboard / MIDI): plays now and holds for one chord length.
     // hold (MIDI keys or sustain pedal down): the chord also stays past that, re-struck at each chord boundary like a
     // natural chord, until releaseChord() (keys and pedal up); then the progression resumes at the next boundary.
-    forceChord(deg, hold = false) {
+    // at (S6.4): a chord of a loop (js/looper.js), scheduled at that audio time: not the player's gesture (no act, not forced)
+    forceChord(deg, hold = false, at = null) {
       if (!this.playing) return;
-      if (AMB.bus) AMB.bus.emit('act', 'chord');
-      const ctx = AMB.engine.ctx, t = ctx.currentTime + 0.03;
+      if (AMB.bus && at == null) AMB.bus.emit('act', 'chord');
+      const ctx = AMB.engine.ctx, t = at != null ? at : ctx.currentTime + 0.03;
       const barLen = store.get('pad.length');
       this.chordDeg = deg;
       const midis = this.applyHarmony(t);
       AMB.layers.pad.releaseAll(t);
       AMB.layers.pad.playChord(midis, t, this.stepDur() * 16 * barLen + 0.5);
-      AMB.bus.emit('chord', { time: t, deg, midis, forced: true });
+      AMB.bus.emit('chord', at != null ? { time: t, deg, midis, forced: false, loop: true } : { time: t, deg, midis, forced: true });
       // hold until the next natural chord boundary after a full chord length
       const span = 16 * barLen;
       this.lockUntil = Math.ceil((this.step + span * 0.5) / span) * span;
@@ -275,6 +276,7 @@
       else this.randomMelodyStep(step, time, sd);
 
       // ---- step sequencer / piano roll ----
+      if (AMB.looper) AMB.looper.onStep(step, time, sd); // S6.4: the section's loops (their chords first)
       if (AMB.pianoRoll) AMB.pianoRoll.onStep(step, time, sd, this.chordDeg);
       if (AMB.pulses) AMB.pulses.onStep(step, time, sd);
       if (AMB.bassSeq) AMB.bassSeq.onStep(step, time, sd, this.chordDeg);
