@@ -22,11 +22,11 @@
     return T.degreeToMidi(nextDeg + (nextDeg > chordDeg ? -1 : 1), seq.root, seq.scale, oct);
   }
 
-  let playStep = -1;
+  const marks = []; // S7.2: [scheduled step, its cell] — the grid lights the step heard (AMB.gridMotion, js/pulses.js)
   function onStep(step, time, sd, chordDeg) {
     if (!store.get('bass.on') || !AMB.layers.bass) return;
     const rel = step - (AMB.seq.origin || 0);
-    const i = rel % N; playStep = i;
+    const i = rel % N; marks.push([step, i]); if (marks.length > 48) marks.shift();
     const g = parse(store.get('bass.pattern'));
     const seq = AMB.seq, prog = seq.progression && seq.progression();
     // aim at the next chord only during the last bar before it changes
@@ -74,17 +74,23 @@
       });
       wrap.append(tools, grid); panel.append(wrap);
       store.on((k) => { if (k.startsWith('bass.')) this.render(); });
-      const loop = () => { if (playStep !== this.last) this.render(); requestAnimationFrame(loop); };
+      const G = AMB.gridMotion, loop = () => { const v = G.heardMark(marks, store.get('bass.on')); if (v !== this.last) this.beat(v); requestAnimationFrame(loop); };
       requestAnimationFrame(loop);
       this.render();
     },
     render() {
-      const g = parse(store.get('bass.pattern'));
-      const show = AMB.seq.playing && store.get('bass.on') ? playStep : -1;
-      this.cells.forEach((row, r) => row.forEach((b, s) => { b.classList.toggle('on', g[r][s]); b.classList.toggle('now', s === show); }));
-      this.last = playStep;
+      const g = parse(store.get('bass.pattern')), lit = [];
+      this.cells.forEach((row, r) => row.forEach((b, s) => { if (g[r][s] && !b.classList.contains('on') && this.drawn) lit.push([b, s]); b.classList.toggle('on', g[r][s]); }));
+      this.drawn = true;
+      AMB.gridMotion.stepsLit(lit);
+      this.beat(AMB.gridMotion.heardMark(marks, store.get('bass.on')));
+    },
+    // S7.2: only the column that plays changes, each step
+    beat(v) {
+      for (const row of this.cells) { const o = row[this.last], b = row[v]; if (o && o !== b) o.classList.remove('now'); if (b) b.classList.add('now'); }
+      this.last = v;
     },
   };
 
-  AMB.bassSeq = { build: bass.build.bind(bass), render: bass.render.bind(bass), onStep, parse, encode, noteFor, PRESETS, ROLES };
+  AMB.bassSeq = { build: bass.build.bind(bass), render: bass.render.bind(bass), beat: bass.beat.bind(bass), onStep, parse, encode, noteFor, PRESETS, ROLES };
 })();

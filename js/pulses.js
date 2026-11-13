@@ -36,11 +36,11 @@
     return rows.map((row) => row.map((on, s) => (on ? (s % 4 === 0 ? 3 : s % 2 === 0 ? 2 : 1 + (Math.random() < 0.5 ? 1 : 0)) : 0)));
   }
 
-  let playStep = -1;
+  const marks = []; // S7.2: [scheduled step, its cell] — the grid lights the step the listener HEARS (seq.heard)
   function onStep(step, time, sd) {
     if (!store.get('perc.on')) return;
     const n = nSteps(), i = (step - (AMB.seq.origin || 0)) % n;
-    playStep = i;
+    marks.push([step, i]); if (marks.length > 48) marks.shift();
     const grid = parse(store.get('perc.pattern'), n);
     const prob = store.get('perc.prob');
     const swing = i % 2 === 1 ? Math.min(1, store.get('global.swing') + store.get('perc.swing')) * sd * 0.5 : 0;
@@ -85,7 +85,7 @@
         if (k === 'perc.steps' || k === 'perc.kit') this.buildCells();
         if (k === 'perc.pattern' || k === 'perc.on') this.render();
       });
-      const loop = () => { if (playStep !== this.lastStep) this.render(); requestAnimationFrame(loop); };
+      const loop = () => { const v = heardMark(marks, store.get('perc.on')); if (v !== this.lastStep) this.beat(v); requestAnimationFrame(loop); };
       requestAnimationFrame(loop);
       this.buildCells();
     },
@@ -117,17 +117,40 @@
     },
     render() {
       if (!this.cells) return;
-      const g = parse(store.get('perc.pattern'), nSteps());
-      const show = AMB.seq.playing && store.get('perc.on') ? playStep : -1;
+      const g = parse(store.get('perc.pattern'), nSteps()), lit = [];
       this.cells.forEach((row, t) => row.forEach((b, s) => {
         const lvl = g[t] ? g[t][s] : 0;
+        if (lvl && !b.classList.contains('on') && this.drawn) lit.push([b, s]);
         b.classList.toggle('on', !!lvl);
-        b.dataset.lvl = lvl;
-        b.classList.toggle('now', s === show);
+        if (b.dataset.lvl !== String(lvl)) b.dataset.lvl = lvl;
       }));
-      this.lastStep = playStep;
+      this.drawn = true;
+      stepsLit(lit);
+      this.beat(heardMark(marks, store.get('perc.on')));
+    },
+    // the column that plays (only its cells change: no work on the others, every step)
+    beat(v) {
+      if (!this.cells) return;
+      for (const row of this.cells) { const o = row[this.lastStep], b = row[v]; if (o && o !== b) o.classList.remove('now'); if (b) b.classList.add('now'); }
+      this.lastStep = v;
     },
   };
 
-  AMB.pulses = { ...pulses, build: pulses.build.bind(pulses), render: pulses.render.bind(pulses), buildCells: pulses.buildCells.bind(pulses), onStep, parse, encode, euclid, euclidPattern, TRACKS };
+  // S7.2 (shared with js/bass.js): the cell heard now (-1: stopped, layer off), from the marks the scheduler left
+  function heardMark(m, on) {
+    const S = AMB.seq; if (!on || !S.playing || !m.length) return -1;
+    const h = S.heard(); let v = -1;
+    for (let k = m.length - 1; k >= 0; k--) if (m[k][0] <= h) { v = m[k][1]; break; }
+    return v;
+  }
+  // steps switched on: one pops (sparks); many (a pattern, a preset, a section) light up in a wave, column by column
+  function stepsLit(lit) {
+    const M = AMB.motion; if (!M || !lit.length || !M.on()) return;
+    if (!lit[0][0].offsetParent) return;
+    if (lit.length === 1) { const [b] = lit[0]; M.fx(b, (a) => [{ scale: 1 + 0.9 * a, filter: 'brightness(2.4)' }, { scale: 1, filter: 'brightness(1)' }], { dur: 'slow', ease: 'bounce' }); M.burst(b, { n: 8, speed: 240, life: 0.35 }); return; }
+    for (const [b, s] of lit) M.fx(b, (a) => [{ scale: 0.2, opacity: 0 }, { scale: 1 + 0.35 * a, opacity: 1, offset: 0.5 }, { scale: 1, opacity: 1 }], { dur: 'med', ease: 'spring', delay: M.ms(M.MS.stagger) * 0.5 * s });
+  }
+  AMB.gridMotion = { heardMark, stepsLit };
+
+  AMB.pulses = { ...pulses, build: pulses.build.bind(pulses), render: pulses.render.bind(pulses), beat: pulses.beat.bind(pulses), buildCells: pulses.buildCells.bind(pulses), onStep, parse, encode, euclid, euclidPattern, TRACKS };
 })();

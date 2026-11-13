@@ -60,7 +60,8 @@
       this.dursEl = panel.querySelector('.chord-durs');
       panel.querySelectorAll('[data-c]').forEach((b) => b.addEventListener('click', () => this.act(b.dataset.c)));
       store.on((k) => { if (['pad.custom', 'pad.prog', 'global.key', 'global.scale', 'pad.length'].includes(k)) this.render(); });
-      AMB.bus.on('chord', () => setTimeout(() => this.render(), 50));
+      // S7.2: the slot that plays lights when the chord is HEARD (the scheduler runs ahead of the ear)
+      AMB.bus.on('chord', (c) => { const x = AMB.engine.ctx, lat = x ? x.outputLatency || x.baseLatency || 0 : 0; setTimeout(() => this.render(), Math.max(50, x && c && c.time ? (c.time + lat - x.currentTime) * 1000 : 0)); });
       AMB.bus.on('section', () => this.render()); // S6.7: chord lengths fit the selected song section
       this.render();
     },
@@ -93,6 +94,7 @@
       else {
         while (list.length < this.sel) list.push({ d: (list[list.length - 1] || { d: 1 }).d, b: null });
         list[this.sel] = { d: deg, b: list[this.sel] ? list[this.sel].b : null };
+        this.dropped = this.sel; // S7.2: this slot's chord falls in
         this.sel = Math.min(SLOTS - 1, this.sel + 1);
       }
       this.write(list);
@@ -119,6 +121,10 @@
         : [`${sl.length} accords · ${total} mesures`, heard < list.length ? `« ${sec.name} » (${sec.bars} mes.) n'en joue que ${heard} : allonge la section`
           : fitted && `durées réduites pour tenir dans « ${sec.name} » (${sec.bars} mes.)`].filter(Boolean).join(' · ');
       // mode chips (single source of truth for the progression)
+      // S7.2: the rows of buttons are rebuilt only when what they show changes (a chord change while playing keeps
+      // them, their hover and their motion)
+      const sigM = [mode, AMB.seq.root, store.get('global.scale'), mine.length].join('|');
+      if (this.modesEl._sig !== sigM) { this.modesEl._sig = sigM;
       this.modesEl.innerHTML = '<span class="roll-hint" style="margin:0 6px 0 0">Mode :</span>';
       for (const m of MODES) {
         const b = document.createElement('button');
@@ -129,20 +135,40 @@
         } else b.textContent = MODE_LABEL[m] || m;
         b.addEventListener('click', () => { if (m === 'Perso' && !mine.length) this.write([1, 6, 4, 5]); store.set('pad.prog', m, 'user'); });
         this.modesEl.append(b);
-      }
+      } }
       this.panel.classList.toggle('chords-auto', !active);
       const playing = AMB.seq.playing && active && list.length ? (AMB.seq.progIdx || 0) % list.length : -1;
-      this.slotsEl.innerHTML = '';
-      for (let i = 0; i < SLOTS; i++) {
-        const d = list[i];
-        const b = document.createElement('button');
-        b.className = 'chord-slot' + (i === this.sel ? ' is-sel' : '') + (i === playing ? ' now' : '') + (d ? '' : ' empty');
-        b.className += d && i >= heard ? ' unheard' : '';
-        b.innerHTML = d ? `<b>${chordLabel(d)}</b><span>${roman(d)}</span><em>${eff[i]} mes.</em>` : `<b>+</b><span>${i < list.length + 1 ? 'ajouter' : ''}</span>`;
-        if (d && i >= heard) b.title = `Pas joué : « ${sec.name} » s'arrête avant`;
-        b.addEventListener('click', () => { this.sel = Math.min(i, list.length); this.render(); });
-        this.slotsEl.append(b);
+      // S7.2: the 8 slots are kept (updated in place): a chord that falls in, the one that plays, keep their motion
+      if (!this.slotEls) {
+        this.slotsEl.innerHTML = '';
+        this.slotEls = Array.from({ length: SLOTS }, (_, i) => {
+          const b = document.createElement('button');
+          b.addEventListener('click', () => this.select(Math.min(i, shown().length)));
+          this.slotsEl.append(b); return b;
+        });
       }
+      const M = AMB.motion, was = this.slotEls.findIndex((b) => b.classList.contains('now'));
+      if (playing >= 0 && playing !== was) this.slotsEl.style.setProperty('--beat-ph', AMB.seq.beatPhase()); // its glow on the beat heard
+      this.slotEls.forEach((b, i) => {
+        const d = list[i];
+        const cls = 'chord-slot' + (i === this.sel ? ' is-sel' : '') + (i === playing ? ' now' : '') + (d ? '' : ' empty') + (d && i >= heard ? ' unheard' : '');
+        const keep = [...b.classList].filter((c) => /^(m-|is-)/.test(c)).join(' '); // (motion classes stay)
+        b.className = cls + (keep ? ' ' + keep : '');
+        const html = d ? `<b>${chordLabel(d)}</b><span>${roman(d)}</span><em>${eff[i]} mes.</em>` : `<b>+</b><span>${i < list.length + 1 ? 'ajouter' : ''}</span>`;
+        if (b._html !== html) { b.innerHTML = html; b._html = html; }
+        b.title = d && i >= heard ? `Pas joué : « ${sec.name} » s'arrête avant` : '';
+      });
+      // a chord just placed falls into its slot and bounces (sparks where it lands); the slot that starts playing flashes
+      if (M && this.dropped != null) {
+        const b = this.slotEls[this.dropped]; this.dropped = null;
+        const an = M.fx(b.querySelector('b'), (a) => [{ translate: `0 ${-34 * a}px`, scale: `${1 - 0.2 * Math.min(1, a)} ${1 + 0.3 * Math.min(1, a)}`, opacity: 0 }, { opacity: 1, offset: 0.25 }, { translate: '0 0', scale: '1' }], { dur: 'slow', ease: 'bounce' });
+        if (an) { M.fx(b, (a) => [{ scale: '1' }, { scale: `${1 + 0.1 * a} ${1 - 0.14 * a}`, offset: 0.3 }, { scale: '1' }], { dur: 'slow', ease: 'out' });
+          setTimeout(() => M.burst(b, { n: 12, angle: -Math.PI / 2, spread: 2.8, speed: 260 }), M.ms('slow') * 0.3); }
+      }
+      if (M && playing >= 0 && playing !== was) M.fx(this.slotEls[playing], (a) => [{ scale: 1 + 0.12 * a, filter: 'brightness(2)' }, { scale: 1, filter: 'brightness(1)' }], { dur: 'slow', ease: 'out' });
+      const sigP = [AMB.seq.root, store.get('global.scale')].join('|');
+      if (this.paletteEl._sig === sigP) return this.renderDurs(sl, eff);
+      this.paletteEl._sig = sigP;
       this.paletteEl.innerHTML = '';
       for (let d = 1; d <= 7; d++) {
         const b = document.createElement('button');
@@ -156,7 +182,18 @@
       cut.title = 'Couper la progression à cette case';
       cut.addEventListener('click', () => this.pick(0));
       this.paletteEl.append(cut);
-      // duration of the selected chord
+      this.renderDurs(sl, eff);
+    },
+    // the selected slot hops when picked
+    select(i) {
+      this.sel = i; this.render();
+      const b = this.slotEls && this.slotEls[i]; if (b && AMB.motion) AMB.motion.fx(b, (a) => [{ translate: '0 0' }, { translate: `0 ${-10 * a}px`, offset: 0.35 }, { translate: '0 0' }], { dur: 'slow', ease: 'out' });
+    },
+    // duration of the selected chord
+    renderDurs(sl, eff) {
+      const sigD = [this.sel, sl.length, eff.join(',')].join('|');
+      if (this.dursEl._sig === sigD) return;
+      this.dursEl._sig = sigD;
       this.dursEl.innerHTML = '<span class="roll-hint" style="margin:0 6px 0 0">Durée de la case :</span>';
       const cur = sl[Math.min(this.sel, sl.length - 1)];
       for (const n of [1, 2, 4, 8]) {

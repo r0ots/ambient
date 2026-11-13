@@ -226,7 +226,6 @@ canvas.roll { display: block; cursor: pointer; touch-action: none; }
 .slot-tab { width: 28px; height: 26px; border-radius: 7px; border: 1px dashed #3c4262; background: transparent; color: var(--muted); font: inherit; font-weight: 700; cursor: pointer; }
 .slot-tab.filled { border-style: solid; color: var(--text); }
 .slot-tab.is-sel { border-color: var(--c); color: var(--c); box-shadow: 0 0 0 1px var(--c) inset; }
-.slot-tab.queued { animation: blink .5s steps(2) infinite; }
 @keyframes blink { 50% { opacity: .35; } }
 .slot-tab.now { background: color-mix(in srgb, var(--c) 25%, transparent); }
 
@@ -243,8 +242,7 @@ canvas.auto-lane { display: block; width: 100%; border-radius: 8px; border: 1px 
 .song-chip small { font-size: 10px; color: var(--muted); }
 .song-chip.sel { border-color: var(--c); color: var(--c); box-shadow: 0 0 0 1px var(--c) inset; }
 .song-chip.now { box-shadow: 0 0 0 1px var(--c) inset, 0 0 12px color-mix(in srgb, var(--c) 45%, transparent); }
-.song-chip.next { border-style: dashed; border-color: var(--c); animation: song-next .5s steps(2) infinite; }
-@keyframes song-next { 50% { border-color: transparent; } }
+.song-chip.next { border-style: dashed; border-color: var(--c); } /* (blinks on the beat: S7.2) */
 .song-chip.song-add { color: var(--muted); border-style: dashed; align-items: center; }
 .song-chip .song-prog { position: absolute; left: 8px; right: 8px; bottom: 4px; height: 2px; background: #262a3d; border-radius: 2px; overflow: hidden; }
 .song-chip .song-prog i { display: block; height: 100%; width: 0; background: var(--c); transition: width .3s; }
@@ -1199,4 +1197,63 @@ body.playing #play::after { content: ""; position: absolute; inset: -2px; border
 @media (prefers-reduced-motion: reduce) {
   :is(.tree-node.st-ready, .open-actions .open-go, .lcd-task.ready .lcd-task-txt, .dc-item.riddle b, .hs-list li.pend, .is-new),
   .tree-node.st-ready .led::after, .tree-btn.has-ready::after, .tree-btn.has-hs::before, .is-new-first::after { animation: none !important; }
+}
+/* =====================================================================
+   S7.2 « Composer en mouvement » — the Composer's pieces on the S7.1 system (tokens --m-*, AMB.motion: fx, shatter,
+   flip, burst). What plays on the tempo is light (classes on a few cells, composited opacity / scale) and follows the
+   beat HEARD: --beat-ph (seq.beatPhase) puts an infinite --beat animation on it; the grids light the step heard.
+   ===================================================================== */
+/* hover, clearly: higher, brighter, a wide glow of the piece's colour and a deep shadow */
+@media (hover: hover) {
+  .seqrow :is(.song-chip, .chord-slot, .slot-tab, .song-btns button, .btn, .loop-chip):is(:hover, .m-tilt):not(:disabled) {
+    position: relative; z-index: 2; translate: 0 calc(-5px * var(--m-amp)); filter: brightness(1.35) saturate(1.15);
+    box-shadow: var(--bevel), 0 calc(12px * var(--m-amp)) calc(18px * var(--m-amp)) -6px #000, 0 0 calc(26px * var(--m-amp)) calc(3px * var(--m-amp)) color-mix(in srgb, var(--c, var(--accent)) 85%, transparent);
+  }
+  .seqrow :is(.song-chip.sel, .chord-slot.is-sel, .slot-tab.is-sel):is(:hover, .m-tilt) { box-shadow: 0 0 0 1px var(--c) inset, 0 calc(12px * var(--m-amp)) calc(18px * var(--m-amp)) -6px #000, 0 0 calc(30px * var(--m-amp)) calc(4px * var(--m-amp)) var(--c); }
+  .loop-chip { transition: translate var(--m-fast) var(--m-out), box-shadow var(--m-med) var(--m-out), filter var(--m-med) var(--m-out); }
+  .pulse-cell:is(:hover, .m-tilt) { z-index: 2; scale: calc(1 + .3 * var(--m-amp)); filter: brightness(1.5);
+    box-shadow: 0 0 calc(14px * var(--m-amp)) calc(2px * var(--m-amp)) color-mix(in srgb, var(--c, var(--accent)) 80%, transparent), 0 calc(6px * var(--m-amp)) 8px -3px #000; }
+}
+
+/* the grids (Pulsations, Basse): a lit step that plays flashes white and spills its glow; the step jumps */
+.pulse-cell { position: relative; }
+.pulse-cell.beat.on { background: var(--c); } /* (a lit step on a beat was drawn dark by the skin's .beat) */
+.pulse-cell.on.now { animation: s72-hit var(--m-med) var(--m-snap); }
+.pulse-cell.on.now::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none; opacity: 0;
+  background: #fff; box-shadow: 0 0 10px 2px var(--c); animation: s72-flash var(--m-slow) var(--m-out); }
+@keyframes s72-hit { from { scale: calc(1 + .3 * var(--m-amp)) calc(1 + .45 * var(--m-amp)); } }
+@keyframes s72-flash { from { opacity: calc(.85 * min(1, var(--m-amp))); scale: calc(1 + .15 * var(--m-amp)); } to { opacity: 0; scale: 1; } }
+
+/* on the beat heard: the section playing, the chord playing (a glow that falls each beat, a bump), the take (red) */
+.chord-slot { position: relative; }
+.song-chip.now, .chord-slot.now b, .loop-chip.rec, .looper .btn.rec { animation: s72-bump var(--beat) var(--m-out) infinite; animation-delay: var(--beat-ph, 0s); }
+.song-chip.now::after, .chord-slot.now::after, .loop-chip.rec::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none; opacity: 0;
+  box-shadow: 0 0 18px 3px var(--c), inset 0 0 12px var(--c); animation: s72-glow var(--beat) var(--m-out) infinite; animation-delay: var(--beat-ph, 0s); }
+.loop-chip { position: relative; }
+.loop-chip.rec { --c: #ff5e7a; }
+.loop-chip.rec { box-shadow: 0 0 calc(14px * var(--m-amp)) #ff5e7a; }
+.loop-chip.rec::after { inset: 0; background: color-mix(in srgb, #ff5e7a 55%, transparent); box-shadow: inset 0 0 16px 3px #ff9aac; }
+@keyframes s72-bump { 0% { scale: calc(1 + .09 * var(--m-amp)); } 45%, 100% { scale: 1; } }
+@keyframes s72-glow { 0% { opacity: calc(.95 * min(1, var(--m-amp))); } 70%, 100% { opacity: 0; } }
+/* queued for the next bar: blinks on the beat (was a fixed .5 s) */
+.song-chip.next, .slot-tab.queued { animation: s72-blink var(--beat) steps(1, end) infinite; animation-delay: var(--beat-ph, 0s); }
+@keyframes s72-blink { 50% { border-color: transparent; opacity: .55; } }
+
+/* the looper's giant count-in, over the row (nothing under it moves); REC in red */
+.looper { position: relative; }
+.loop-count { position: absolute; left: 50%; top: 50%; translate: -50% -55%; z-index: 6; pointer-events: none; opacity: 0; white-space: nowrap;
+  font: 76px/1 var(--f-lcd); color: var(--lcd-fg); letter-spacing: .04em;
+  text-shadow: 0 0 10px var(--lcd-fg), 0 0 34px var(--lcd-fg), 4px 4px 0 #000, -2px -2px 0 #000; }
+.loop-count.is-rec { color: #ff5e7a; text-shadow: 0 0 10px #ff5e7a, 0 0 38px #ff2a4a, 4px 4px 0 #000, -2px -2px 0 #000; }
+@media (max-width: 560px) { .loop-count { font-size: 60px; } }
+
+/* a ghost (motion.shatter: a section, a loop layer that goes) plays only its own squash */
+.m-ghost, .m-ghost::after, .m-ghost * { animation: none !important; transition: none !important; }
+
+/* motion off: nothing beats, the state stays (lit, queued) */
+.m-still :is(.song-chip.now, .chord-slot.now b, .loop-chip.rec, .looper .btn.rec, .pulse-cell.on.now, .song-chip.next, .slot-tab.queued),
+.m-still :is(.song-chip.now, .chord-slot.now, .loop-chip.rec, .pulse-cell.on.now)::after { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  :is(.song-chip.now, .chord-slot.now b, .loop-chip.rec, .looper .btn.rec, .pulse-cell.on.now, .song-chip.next, .slot-tab.queued),
+  :is(.song-chip.now, .chord-slot.now, .loop-chip.rec, .pulse-cell.on.now)::after { animation: none; }
 }

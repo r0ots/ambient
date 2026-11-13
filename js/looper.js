@@ -16,6 +16,10 @@
   const T = AMB.theory;
   const MAX = 4, LENS = [1, 2, 4, 8], UNDO = 12, BUF_MAX = 256;
   const r2 = (x) => Math.round(x * 100) / 100;
+  // S7.2: a layer's chip keeps its key across re-renders (FLIP: a new layer springs in, the others glide)
+  const keys = new WeakMap(); let nextKey = 1;
+  const keyOf = (l) => { if (!keys.has(l)) keys.set(l, nextKey++); return keys.get(l); };
+  const M = () => AMB.motion;
 
   // a pitch as scale degree (+ sharp) from octave 0 of the key, and back: a loop follows the key and the scale
   function toDeg(midi) {
@@ -123,7 +127,7 @@
       if (ev.raw != null) n.b = r2(ev.raw);
       k.layer.notes.push(n); k.n++;
       if (ev.id) k.held.set(ev.id, { n, abs: e.abs });
-      this.renderChips();
+      this.renderChips(); this.spark();
     },
     onLiveOff(ev) {
       const at = ev.played != null ? ev.played : ev.time;
@@ -139,7 +143,7 @@
       heard.push({ chord: c.deg, at, abs }); trim(heard, at);
       const k = this.take; if (!k || this.state === 'count' || abs < k.from - 0.5 || abs >= k.to - 0.5) return;
       k.layer.notes.push({ s: this.place(Math.max(abs, k.from), k.layer.bars * 16), c: c.deg }); k.n++;
-      this.renderChips();
+      this.renderChips(); this.spark();
     },
 
     // ---- called by the sequencer on every 16th (after the melody, before the piano roll) ----
@@ -209,10 +213,18 @@
     canKeep() { const t = now(); return [heard, auto].some((r) => r.length > 0 && r[r.length - 1].at > t - bufSpan()); },
 
     // ---- layers: mute, erase, undo the last take ----
-    mute(i) { const l = this.layers()[i]; if (!l) return; l.mute = !l.mute; this.save(); this.render(); },
+    mute(i) {
+      const l = this.layers()[i]; if (!l) return; l.mute = !l.mute; this.save(); this.render();
+      // S7.2: a muted layer goes out like a neon tube (flickers, then dims); back on, it flickers alight
+      const c = this.chips && this.chips.children[i];
+      if (c && M()) M().fx(c, l.mute ? [{ opacity: 1, filter: 'brightness(1.6)' }, { opacity: 0.15, offset: 0.15 }, { opacity: 0.9, offset: 0.3 }, { opacity: 0.1, offset: 0.5 }, { opacity: 0.7, offset: 0.62 }, { opacity: 0.55, filter: 'brightness(1)' }]
+        : [{ opacity: 0.2 }, { opacity: 1, filter: 'brightness(2)', offset: 0.12 }, { opacity: 0.3, offset: 0.25 }, { opacity: 1, filter: 'brightness(1.8)', offset: 0.45 }, { opacity: 1, filter: 'brightness(1)' }], { dur: 'slow', ease: 'linear' });
+      if (c && !l.mute && M()) M().burst(c, { n: 8 });
+    },
     erase(i) {
       const sec = this.sec(), l = sec && sec.loops[i]; if (!l) return;
       if (this.take && this.take.layer === l) this.end(true);
+      if (M() && this.chips) M().shatter(this.chips.querySelector(`[data-k="${keyOf(l)}"]`), { n: 26 }); // S7.2: it explodes
       this.pushUndo(sec); sec.loops.splice(i, 1); this.save(); this.render();
     },
     pushUndo(sec) { this.undos.push({ sec, loops: JSON.stringify(sec.loops || []) }); if (this.undos.length > UNDO) this.undos.shift(); },
@@ -223,6 +235,11 @@
       if (AMB.song && !AMB.song.sections.includes(u.sec)) return this.undo(); // a section deleted since
       AMB.ui.toast('↶ Dernière prise annulée');
       this.save(); this.render();
+      // S7.2: ↶ spins backwards, the layers rewind (a VHS smear from the right)
+      if (M()) {
+        M().fx(this.btnUndo, (a) => [{ rotate: '0deg' }, { rotate: `${-360 * Math.min(1, a)}deg` }], { dur: 'slow', ease: 'out' });
+        M().fx(this.chips, (a) => [{ translate: `${48 * a}px 0`, transform: `skewX(${-18 * a}deg)`, opacity: 0.3 }, { translate: `${-6 * a}px 0`, transform: 'skewX(0deg)', opacity: 1, offset: 0.6 }, { translate: '0 0', transform: 'none', opacity: 1 }], { dur: 'slow', ease: 'out' });
+      }
     },
     save() { if (AMB.song) { AMB.song.saveSoon(); AMB.song.renderMeta(); } },
 
@@ -240,6 +257,9 @@
         <span class="loop-chips" aria-label="Couches de boucle"></span>`;
       const ref = panel.querySelector('.roll-tools');
       panel.insertBefore(row, ref);
+      // S7.2: the giant count-in (3… 2… 1… REC), slammed on each beat over the row (nothing moves under it)
+      this.countEl = document.createElement('b'); this.countEl.className = 'loop-count'; this.countEl.setAttribute('aria-hidden', 'true');
+      row.append(this.countEl);
       this.row = row; this.chips = row.querySelector('.loop-chips');
       this.btnRec = row.querySelector('[data-l=rec]'); this.btnDub = row.querySelector('[data-l=dub]');
       this.btnKeep = row.querySelector('[data-l=keep]'); this.btnUndo = row.querySelector('[data-l=undo]');
@@ -271,18 +291,41 @@
     },
     renderChips() {
       if (!this.chips) return;
-      const ls = this.layers(), cur = this.take && this.take.layer;
-      this.chips.innerHTML = ls.map((l, i) => {
+      const ls = this.layers(), cur = this.take && this.take.layer, m = M(), seen = m && this.chips.offsetParent;
+      const before = new Set([...this.chips.children].map((c) => c.dataset.k));
+      const fill = () => { this.chips.innerHTML = ls.map((l, i) => {
         const notes = l.notes.filter((n) => n.c == null).length, ch = l.notes.length - notes;
         const what = [notes && `${notes} ♪`, ch && `${ch} acc.`].filter(Boolean).join(' ') || 'vide';
-        return `<span class="loop-chip${l.mute ? ' mute' : ''}${l === cur ? ' rec' : ''}"><button data-k="${i}" aria-pressed="${!l.mute}" title="${l.mute ? 'Remettre' : 'Couper'} la couche ${i + 1}"><b>${i + 1}</b> ${l.bars} mes. · ${what}</button><button data-x="${i}" title="Effacer la couche ${i + 1}" aria-label="Effacer la couche ${i + 1}">✕</button></span>`;
-      }).join('') || '<span class="loop-empty">Joue, puis ● ou ⤓</span>';
+        return `<span class="loop-chip${l.mute ? ' mute' : ''}${l === cur ? ' rec' : ''}" data-k="${keyOf(l)}"><button data-k="${i}" aria-pressed="${!l.mute}" title="${l.mute ? 'Remettre' : 'Couper'} la couche ${i + 1}"><b>${i + 1}</b> ${l.bars} mes. · ${what}</button><button data-x="${i}" title="Effacer la couche ${i + 1}" aria-label="Effacer la couche ${i + 1}">✕</button></span>`;
+      }).join('') || '<span class="loop-empty">Joue, puis ● ou ⤓</span>'; };
+      if (seen) m.flip(this.chips, fill, { key: (el) => el.dataset.k || el.className }); else fill();
+      if (cur) this.row.style.setProperty('--beat-ph', AMB.seq.beatPhase()); // the take pulses red on the beat heard
+      // a layer that appears drops in with a bounce and sparks
+      if (seen && before.size) for (const c of this.chips.children) if (c.dataset.k && !before.has(c.dataset.k)) {
+        m.fx(c, (a) => [{ translate: `0 ${-26 * a}px`, scale: `${1 - 0.3 * Math.min(1, a)}`, opacity: 0 }, { translate: '0 0', scale: '1', opacity: 1 }], { dur: 'slow', ease: 'bounce' });
+        setTimeout(() => m.burst(c, { n: 14 }), m.ms('slow') * 0.3);
+      }
+    },
+    // a note lands in the take: a few sparks off the recording chip
+    spark() { const c = this.chips && this.chips.querySelector('.loop-chip.rec'); if (c && M()) M().burst(c, { n: 4, speed: 220, color: '#ff5e7a' }); },
+    // the giant count: the number slams in on its beat, then fades before the next one; REC slams at the 1
+    slam(txt, rec) {
+      const el = this.countEl, m = M(); if (!el) return;
+      el.textContent = txt; el.classList.toggle('is-rec', !!rec);
+      const b = this.btnRec; el.style.left = b.offsetLeft + b.offsetWidth / 2 + 'px'; el.style.top = b.offsetTop + b.offsetHeight / 2 + 'px'; // (over ● Boucle)
+      if (!m) return;
+      const beat = 4 * seq().stepDur() * 1000;
+      const an = m.fx(el, (a) => [{ scale: 1 + 2.2 * a, rotate: `${-10 * a}deg`, opacity: 0 }, { scale: 1 - 0.12 * Math.min(1, a), rotate: `${2 * a}deg`, opacity: 1, offset: 0.18 }, { scale: 1, rotate: '0deg', opacity: 1, offset: 0.4 }, { scale: 1 + 0.15 * a, opacity: 0 }],
+        { dur: Math.max(m.MS.med, Math.min(rec ? 1200 : 900, rec ? beat * 2 : beat * 0.95)), ease: 'snap' });
+      if (!an) return;
+      setTimeout(() => { m.burst(el, { n: rec ? 26 : 12, spread: Math.PI * 2, speed: rec ? 420 : 300, color: rec ? '#ff5e7a' : null }); m.fx(this.row, (a) => [{ translate: `0 ${3 * a}px` }, { translate: '0 0' }], { dur: 'fast', ease: 'snap' }); }, 50);
     },
     // the count-in (beats to the 1) and the take's bar, on the button
     renderStatus(h) {
       const k = this.take; if (!k || !this.btnRec) return;
-      if (this.state === 'count' && k.from != null) { const b = Math.max(1, Math.ceil((k.from - h) / 4)); this.btnRec.textContent = `● ${b}…`; }
-      else if (this.state === 'rec') this.btnRec.textContent = `■ ${Math.max(1, Math.min(k.layer.bars, Math.floor((h - k.from) / 16) + 1))}/${k.layer.bars}`;
+      if (this.state === 'count' && k.from != null) { const b = Math.max(1, Math.ceil((k.from - h) / 4)); this.btnRec.textContent = `● ${b}…`; if (h >= k.from - 16 && k.slam !== b) { k.slam = b; this.slam(String(b)); } }
+      else if (this.state === 'rec' && h >= k.from && !k.slammed) { k.slammed = true; this.slam('REC', true); }
+      if (this.state === 'rec') this.btnRec.textContent = `■ ${Math.max(1, Math.min(k.layer.bars, Math.floor((h - k.from) / 16) + 1))}/${k.layer.bars}`;
     },
   };
 

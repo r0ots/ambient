@@ -84,6 +84,34 @@
       return true;
     },
     glitch(el) { return this.pop(el, 'glitch'); },
+    // ---- S7.2: a one-shot Web Animation over the css ones (it plays on top of a press's spring, which keeps running
+    // under it). `frames(a)` builds the keyframes from the amplitude a (= JUICE, 2 at most); o = {dur (token or ms),
+    // ease (EASE key or curve), delay}. Off when motion is off; nothing stays (no fill). Returns the animation.
+    fx(el, frames, o = {}) {
+      if (!el || !el.animate || !el.isConnected || !this.on()) return null;
+      const f = typeof frames === 'function' ? frames(Math.min(2, this.amp())) : frames;
+      return el.animate(f, { duration: this.ms(o.dur || 'med'), delay: o.delay || 0, easing: EASE[o.ease] || o.ease || EASE.spring });
+    },
+    // ---- S7.2: an element that goes (a song section, a loop layer): it is removed at once by the caller; a ghost copy
+    // over its old place squashes flat, then bursts into sparks of its colour. Call it BEFORE removing the element.
+    shatter(el, o = {}) {
+      if (!el || !this.on() || !el.isConnected) return null;
+      const r = el.getBoundingClientRect(); if (!r.width) return null;
+      const g = el.cloneNode(true), c = sparkColor(el) || '#ffb347';
+      g.classList.add('m-ghost'); g.classList.remove('is-pressed', 'is-released', 'm-tilt'); g.removeAttribute('id');
+      g.setAttribute('aria-hidden', 'true');
+      Object.assign(g.style, { position: 'fixed', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', margin: '0', zIndex: 60, pointerEvents: 'none', boxSizing: 'border-box' });
+      g.style.setProperty('--c', c);
+      document.body.append(g);
+      const a = Math.min(2, this.amp()), an = g.animate([
+        { scale: '1 1', translate: '0 0', opacity: 1, filter: 'brightness(1)' },
+        { scale: `${1 + 0.3 * a} ${1 - 0.55 * Math.min(1, a)}`, translate: `0 ${4 * a}px`, opacity: 1, filter: 'brightness(1.8)', offset: 0.4 },
+        { scale: `${1 + 0.7 * a} 0.04`, translate: `0 ${6 * a}px`, opacity: 0, filter: 'brightness(3)' },
+      ], { duration: this.ms('slow'), easing: EASE.in });
+      an.onfinish = an.oncancel = () => g.remove();
+      setTimeout(() => this.burst({ x: r.left + r.width / 2, y: r.top + r.height / 2 }, { n: o.n || 22, spread: Math.PI * 2, speed: 380, life: 0.6, color: c }), this.ms('slow') * 0.4);
+      return an;
+    },
     // stops a one-shot class now (shot pages freeze a moment instead)
     unpop(el, kind) {
       const cls = POP[kind] ? 'm-' + kind : kind, m = el && timers.get(el);
