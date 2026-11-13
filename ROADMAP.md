@@ -402,7 +402,7 @@ Vague 1
 Vague 2 (en parallèle)
 - [ ] S7.2 Composer en mouvement : panneaux qui s'ouvrent en cascade, puces de sections (ajout, réordonnancement, suppression animés), looper (décompte, prise, couches), cases d'accords, piano roll (notes posées / effacées), grilles de basse et de pulsations (pas qui s'allument), automation
 - [ ] S7.3 Parcours en mouvement : Arbre (ouverture, nœuds prêts, liens qui se tracent), cartes d'ouverture et d'explication, carnet des découvertes, HIGH SCORES, INSERT COIN, contrôles qui entrent « Nouveau », LCD des demandes et de la Réponse
-- [ ] S7.4 Barre, Sculpter et fenêtres : paysages et humeurs, Rec, ⋯, aide, fenêtres et menus, Grands réglages, Effets, couches (pastilles de couche qui s'allument / se coupent), Plein écran
+- [x] S7.4 (v1.30) Barre, Sculpter et fenêtres : paysages et humeurs, Rec, ⋯, aide, fenêtres et menus, Grands réglages, Effets, couches (pastilles de couche qui s'allument / se coupent), Plein écran Décision : survol renforcé pour toute l’app (jetons `--m-lift`, `--m-z`, `--m-drop`, `--m-glow`, inclinaison 22°) ; ✦ Nouveau paysage = dé qui roule, étincelles, nom en rouleau de machine à sous ; ● Rec pulse puis explose à l’arrêt ; ⋯ en cascade ; MIDI en éclair ; potentiomètre tourné fort = onde de choc ; couche coupée = néon qui grésille, rallumée = claquement ; Scènes A/B avec comète ; fenêtres en tube cathodique, sortie aspirée (l’état change tout de suite) ; selects natifs habillés.
 
 Vague 3
 - [ ] S7.5 Revue du mouvement image par image (bureau et 390 px), coût par image, reduced-motion, puis corrections ; fin de la saison 7
