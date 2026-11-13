@@ -255,6 +255,7 @@ f.addEventListener('load', async ()=>{
     const blob=new w.Blob([ab],{type:'audio/wav'}), GV=A.gardenVisual, dl=[], od=A.rec.download, top=d.getElementById('lcdTop');
     A.rec.download=(b,e)=>dl.push([b,e]);
     A.garden.songTape={t0:5,ev:[{layer:'pad',t:0.3,vel:0.8},{layer:'chord',t:0.2,deg:3},{layer:'bass',t:2.6,vel:0.8}]};
+    d.getElementById('viz').scrollIntoView({block:'center'}); await wait(100); // the garden must be on screen to light up (IntersectionObserver)
     A.bus.emit('act','songRec'); const kept=A.garden.keepSong(blob);
     ok(kept && A.game.s.ended && !dl.length, 'morceau enregistré qui finit le Parcours : gardé pour la fin, pas téléchargé tout de suite');
     for (let i=0;i<80 && !GV.replay;i++) await wait(50);

@@ -1,6 +1,8 @@
 <!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
 <!-- Jardin visuel (G11.2): positions from the state (deterministic), reaction to the bus events, no gain, pause off
-     screen / hidden tab, Parcours-only mode (free mode intact), reduced motion, cost per frame at 1280×800. No audio. -->
+     screen / hidden tab, Parcours-only mode (free mode intact), reduced motion, cost per frame at 1280×800. No audio.
+     S4.6: each plant shows its layer's settings (real store and schema: Niveau → size, Lumière → colour, Timbre → shape,
+     Espace → halo), a touched control kicks its plant, reduced motion keeps the shapes and drops the motion. -->
 <script src="lib.js"></script>
 <script>
 window.AMB_GAME_KEY = 'ambient.game.test-gv';
@@ -10,14 +12,14 @@ testBus(); AMB.engine = {}; // no audio: the visual's classic modes draw without
 AMB.tree = { NODES: [['racine', 'drone.on'], ['t.son', 'drone.wave'], ['h.drone', 'drone.follow'], ['h.pad', 'pad.on'], ['h.pad2', 'pad.attack'], ['h.prog', 'pad.prog'],
   ['m.bells', 'bells.on'], ['m.phrase', 'bells.mode'], ['m.grains', 'grains.on'], ['c.seq', 'seq.on'], ['c.rythme', 'bass.*'], ['c.rythme', 'perc.*'], ['e.texture', 'texture.*'], ['e.reverb', '*.send']].map(([id, p]) => ({ id, params: [p] })) };
 </script>
-<script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script>
 <canvas id="c" width="1280" height="800" style="width:640px;height:400px;display:block"></canvas>
 <script>
 window.addEventListener('load', async () => {
   try {
     const G = AMB.game, V = AMB.visual, GV = AMB.gardenVisual, cv = document.getElementById('c');
     V.c = cv; V.g = cv.getContext('2d'); V.dpr = 1;
-    const frame = () => V.draw();
+    const frame = () => V.draw(), REAL = AMB.store;
 
     // --- mode policy: Parcours only, default there; free mode untouched
     ok(V.mode === 'Orbes' && !V.MODES.includes('Jardin'), 'mode non choisi = libre : Orbes, Jardin absent de la liste classique');
@@ -153,6 +155,59 @@ window.addEventListener('load', async () => {
     G.s.nodes = ['racine', 'h.pad', 'm.bells']; delete G.s.secrets;
     ok(localStorage.getItem(G.key) === before.lg, 'aucune sauvegarde du jeu écrite par le jardin');
 
+    // --- S4.6 settings → look (the real store; a fake clock: 16 ms per frame)
+    { AMB.store = REAL; const St = REAL, real = GV.now; let fake = performance.now(); GV.now = () => fake;
+      const step = (n = 1, ms = 16) => { for (let i = 0; i < n; i++) { fake += ms; frame(); } };
+      G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.rythme', 'e.texture']; GV.grow = {}; GV.sig = null; step(2);
+      const P = (id = 'pad') => GV.plants.find((p) => p.id === id);
+      ok(GV.concerns('pad.vol').join() === 'pad' && GV.concerns('fx.space').length === 8 && GV.concerns('global.volume').length === 8 && !GV.concerns('macro.light').length && !GV.concerns('mod.l1rate').length,
+        'table : un réglage de couche concerne sa plante, Reverb et Volume général toutes les plantes, un grand réglage passe par les réglages qu\'il bouge');
+      const dflt = GV.look(() => undefined), same = GV.look((k) => St.get(k));
+      ok(JSON.stringify(dflt) === JSON.stringify(same) && GV.ASPECTS.every((k) => Object.values(dflt).every((a) => a[k] >= 0 && a[k] <= 1)), 'look() pur : valeurs par défaut = schéma, 7 aspects entre 0 et 1');
+      // Niveau → size, smoothed (no jump), settled in ~0.5 s
+      St.set('pad.vol', 0.05, 'user'); step(40); const small = P().sz, hS = GV.sprite(P(), GV.px).h * small;
+      St.set('pad.vol', 1, 'user'); step(1); const mid = P().sz; step(36); const big = P().sz, hB = GV.sprite(P(), GV.px).h * big;
+      ok(big > small * 1.6 && hB > hS * 1.6, 'Niveau → taille : ' + small.toFixed(2) + ' → ' + big.toFixed(2) + ' (hauteur dessinée ' + Math.round(hS) + ' → ' + Math.round(hB) + ' px)');
+      ok(mid > small && mid < small + (big - small) * 0.3, 'pas de saut : après une image, ' + ((mid - small) / (big - small) * 100).toFixed(0) + ' % du chemin');
+      { St.set('pad.vol', 0.3, 'user'); step(); let n = 1; while (Math.abs(P().sz - (0.45 + 0.55 * GV.aim.pad.size)) > 0.01 && n < 100) { step(); n++; } ok(n * 16 >= 250 && n * 16 <= 650, 'se stabilise en ' + n * 16 + ' ms (cible 300–600 ms)'); }
+      // Lumière → colour (sprite brightness), petals open
+      const lum = (s) => { const d = s.cv.getContext('2d').getImageData(0, 0, s.w, s.h).data; let t = 0, n = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 3]) { t += d[i] + d[i + 1] + d[i + 2]; n++; } return t / Math.max(1, n) / 3; };
+      St.set('pad.tone', 0, 'user'); step(40); const dark = GV.sprite(P(), GV.px);
+      St.set('pad.tone', 1, 'user'); step(40); const light = GV.sprite(P(), GV.px);
+      ok(lum(light) > lum(dark) * 1.5 && dark.key !== light.key, 'Lumière → couleur : luminosité moyenne ' + lum(dark).toFixed(0) + ' → ' + lum(light).toFixed(0));
+      // Timbre → shape: pointed petals and toothed leaves = more tips (cells with a single neighbour)
+      const tips = (q) => { const cl = GV.cells('bush', 40, GV.hash('pad'), q), set = new Set(cl.map((c) => c[0] + ',' + c[1])); return cl.filter(([x, y]) => [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]].filter(([a, b]) => set.has((x + a) + ',' + (y + b))).length <= 1).length; };
+      St.set('pad.wave', 'Nappe', 'user'); step(40); const qR = GV.quant(P().look), sR = GV.sprite(P(), GV.px).key;
+      St.set('pad.wave', 'FM', 'user'); step(40); const qP = GV.quant(P().look), sP = GV.sprite(P(), GV.px).key;
+      ok(qR.shape === 0 && qP.shape === 1 && sR !== sP && tips(qP) > tips(qR) + 4, 'Timbre → forme : Nappe ronde (' + tips(qR) + ' pointes) → FM pointue (' + tips(qP) + ' pointes)');
+      St.set('pad.voicing', 0, 'user'); step(40); const b0 = GV.quant(P().look).bloom; St.set('pad.voicing', 1, 'user'); step(40);
+      ok(b0 === 1 && GV.quant(P().look).bloom === 4, 'Accords riches → fleurs : ' + b0 + ' → 4');
+      // Espace (layer) × Reverb (all): halo
+      St.set('fx.space', 0, 'user'); step(40); const h0 = P('bells').look.halo; St.set('fx.space', 1, 'user'); step(40);
+      ok(P('bells').look.halo > h0 + 0.3 && P('pad').look.halo > 0.4, 'Reverb → halo de toutes les plantes (' + h0.toFixed(2) + ' → ' + P('bells').look.halo.toFixed(2) + ')');
+      // a touched control: an impulse (bounce, wider sway, lit), on its plant only; the drift (lfo) reshapes without a kick
+      GV.kicks = {}; step(10);
+      St.set('pad.tone', 0.4, 'lfo'); step(1); ok(!GV.kicks.pad, 'Dérive / mouvements lents : la forme suit, sans impulsion');
+      St.set('pad.tone', 0.7, 'user'); step(1); const k1 = P();
+      ok(GV.kicks.pad && !GV.kicks.bells && Math.abs(k1.bounce) > 0.08 && k1.hot > 0.9, 'toucher un contrôle : impulsion sur sa plante seulement (rebond ' + k1.bounce.toFixed(2) + ', mise en évidence ' + k1.hot.toFixed(2) + ')');
+      { let mx = 0; for (let i = 0; i < 12; i++) { step(); mx = Math.max(mx, Math.abs(P().sway)); } let mq = 0; for (let i = 0; i < 6; i++) { step(); mq = Math.max(mq, Math.abs(P('bells').sway)); }
+        ok(mx > 0.06 && mx > mq * 1.5, 'ondulation plus forte sur la plante touchée (' + mx.toFixed(3) + ' contre ' + mq.toFixed(3) + ')'); }
+      step(60); ok(!GV.kicks.pad && P().bounce === 0 && P().hot === 0, 'puis elle se calme (impulsion finie en moins d\'1 s)');
+      St.set('pad.tone', 0.3, 'macro'); step(1); ok(GV.kicks.pad && GV.kicks.bells === undefined, 'un grand réglage (source macro) fait réagir les plantes qu\'il touche');
+      // a slider held: one bounce, then the plant follows continuously
+      St.set('pad.vol', 0.1, 'preset'); step(40); GV.kicks = {}; const sz = []; let t0s = new Set();
+      for (let i = 0; i <= 20; i++) { St.set('pad.vol', 0.14 + i * 0.04, 'user'); step(2); sz.push(P().sz); t0s.add(GV.kicks.pad.t0); }
+      ok(t0s.size === 1 && sz.every((v, i) => !i || v >= sz[i - 1] - 1e-9) && sz[20] > sz[0] + 0.3, 'curseur glissé : la plante grandit en continu (' + sz[0].toFixed(2) + ' → ' + sz[20].toFixed(2) + '), un seul rebond');
+      // off screen: no kick kept
+      GV.kicks = {}; GV.visible = false; St.set('pad.tone', 0.9, 'user'); GV.visible = true; ok(!GV.kicks.pad, 'hors écran : aucune impulsion gardée');
+      // reduced motion: shapes yes, motion no
+      GV.reduced = true; GV.kicks = {}; St.set('pad.wave', 'Nappe', 'user'); step(1);
+      ok(GV.quant(P().look).shape === 0 && Math.abs(P().sz - (0.45 + 0.55 * GV.aim.pad.size)) < 1e-9, 'mouvement réduit : la forme change tout de suite (Timbre, taille)');
+      let still = true; for (let i = 0; i < 20; i++) { St.set('pad.tone', i / 20, 'user'); step(); still = still && GV.plants.every((p) => p.sway === 0 && !p.bounce); }
+      ok(still && P().hot > 0.9, 'mouvement réduit : ni ondulation ni rebond, la plante touchée reste mise en évidence');
+      GV.reduced = false; GV.now = real; GV.lastT = null; GV.kicks = {};
+      Object.entries(AMB.SCHEMA).forEach(([sec, d]) => Object.entries(d.params).forEach(([k, sp]) => St.set(sec + '.' + k, sp.def, 'preset'))); }
+
     // --- cost per frame at 1280×800 (advanced garden, notes every frame), real rAF
     G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.rythme', 'e.texture'];
     G.s.secrets = { found: { jazz: 1, tons: 1, dim: 1, lent: 1 } };
@@ -161,12 +216,12 @@ window.addEventListener('load', async () => {
     AMB.seq = { playing: true, step: 64, nextTime: GV.clock(), origin: 0, stepDur: () => 0.25 };
     GV.prevH = {}; GV.growAt(null); GV.stSig = null; GV.sig = null;
     const layers = ['pad', 'bells', 'seq', 'bass'];
-    await new Promise((res) => { let n = 0; const step = () => { AMB.bus.emit('note', { layer: layers[n % 4], time: 0, vel: 0.8 }); if (n % 3 === 0) AMB.bus.emit('perc', { time: 0, vel: 0.7 }); if (n % 20 === 0) AMB.bus.emit('chord', { time: 0, deg: n / 20 }); frame(); if (++n < 60) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); });
+    await new Promise((res) => { let n = 0; const step = () => { AMB.bus.emit('note', { layer: layers[n % 4], time: 0, vel: 0.8 }); AMB.store.set('pad.tone', (n % 30) / 30, 'user'); AMB.store.set('fx.space', 0.5 + 0.5 * Math.sin(n / 5), 'user'); if (n % 15 === 0) AMB.store.set('bells.wave', ['Cloche', 'Pluck', 'Doux', 'Verre'][(n / 15) % 4], 'user'); if (n % 3 === 0) AMB.bus.emit('perc', { time: 0, vel: 0.7 }); if (n % 20 === 0) AMB.bus.emit('chord', { time: 0, deg: n / 20 }); frame(); if (++n < 60) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); });
     log('S4.5w : ' + Object.keys(GV.grow).length + ' plantes en croissance au départ, ciel ' + GV.skyKey + ', pulsation ' + (GV.pulse || 0).toFixed(2));
     delete AMB.seq;
     const s = GV.stats();
-    log('PERF 1280×800 : moyenne ' + s.avg.toFixed(2) + ' ms, p95 ' + s.p95.toFixed(2) + ' ms, max ' + s.max.toFixed(2) + ' ms (' + s.frames + ' images, ' + s.sprites + ' sprites en cache)');
-    ok(s.p95 < 4, 'coût par image raisonnable (p95 ' + s.p95.toFixed(2) + ' ms, cible < 2 ms)');
+    log('PERF 1280×800 (S4.6 : curseurs bougés à chaque image, toutes les plantes en impulsion) : moyenne ' + s.avg.toFixed(2) + ' ms, p95 ' + s.p95.toFixed(2) + ' ms, max ' + s.max.toFixed(2) + ' ms (' + s.frames + ' images, ' + s.sprites + ' sprites en cache)');
+    ok(s.p95 < 4 && s.avg < 2, 'coût par image : moyenne ' + s.avg.toFixed(2) + ' ms (cible < 2 ms), p95 ' + s.p95.toFixed(2) + ' ms');
     done();
   } catch (e) { fail(e); }
 });
