@@ -296,9 +296,9 @@
         lcd.classList.remove('lcd-glitch', 'lcd-glitch-big'); void lcd.offsetWidth; lcd.classList.add(cls);
         clearTimeout(this._glT); this._glT = setTimeout(() => lcd.classList.remove(cls), kind === 'streak' ? 700 : 1400);
       }
-      this.chime(kind, { at: this.strongBeat(0.08, undefined, undefined, 4), n });
-      const GV = AMB.gardenVisual;
-      if (GV && GV.kicks) { const t = GV.t || 0; GV.kicks.bells = { t0: t, last: t + (kind === 'streak' ? 0 : 0.6) }; GV.energy.bells = Math.max(GV.energy.bells || 0, kind === 'streak' ? 0.7 : 1); }
+      const at = this.strongBeat(0.08, undefined, undefined, 4);
+      this.chime(kind, { at, n });
+      if (AMB.gardenVisual) AMB.gardenVisual.cheer(kind, at); // the S5.2 splashes (one JUICE knob), on the jingle's beat
       return cls;
     },
 

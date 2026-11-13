@@ -5,9 +5,14 @@
 <script>
 // Drives the real app (full DOM) through its buttons and reports errors.
 const f=document.getElementById('f');
+let reloads=0;
 f.addEventListener('load', async ()=>{
   try{
   const w=f.contentWindow, d=f.contentDocument, A=w.AMB;
+  // under the parallel suite a script of the app can fail to load (busy test server): then whole modules are missing
+  // (AMB.pianoRoll → no .roll-wrap → « ui sans élément pianoroll… »). Reload the app once before judging the DOM.
+  const missing=['pianoRoll','chords','song','automation','tree','game','seq'].filter(k=>!A||!A[k]);
+  if(missing.length && reloads<2){ reloads++; log('reload (modules not loaded: '+missing.join(',')+')'); w.location.reload(); return; }
   w.addEventListener('error',e=>log('ERROR '+e.message+' @'+e.filename+':'+e.lineno+' '+(e.error&&e.error.stack||'').slice(0,300)));
   // Jardin sonore (G1.3): every control and feature is tied to an unlock node
   const untagged=[...d.querySelectorAll('[data-key]:not([data-node])')].map(e=>e.dataset.key);

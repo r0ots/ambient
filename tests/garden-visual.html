@@ -259,6 +259,10 @@ window.addEventListener('load', async () => {
       AMB.bus.emit('chord', { time: T, deg: 3, midis: [53, 57, 60], forced: true }); step(2);
       ok(GV.waves.some((w) => w.plant === 'pad' && w.who === 'chord') && GV.shake && (GV.ox || GV.oy), 'accord forcé : onde sur le Pad et secousse de la scène (' + GV.ox + ', ' + GV.oy + ' px)');
       step(30); ok(!GV.shake && !GV.ox && !GV.oy, 'la secousse est brève'); reset();
+      // S5.3 celebrations (palier, record) go through the same splashes and the same JUICE: bigger than a note
+      GV.cheer('tier', T); step(1); const wt = GV.waves[0], pTier = GV.parts.length;
+      ok(wt && wt.plant === 'bells' && wt.who === 'tier' && pTier > pPlayer && GV.shake && GV.squash.bells.amp > GV.SPLASH.player.squash * GV.JUICE && GV.SPLASH.record.parts > GV.SPLASH.streak.parts && !GV.cheer('nope'),
+        'fête de palier : éclat de la plante Mélodie plus fort qu\'une note (' + pTier + ' particules contre ' + pPlayer + '), secousse, même table SPLASH et même JUICE'); step(30); reset();
       for (let i = 0; i < 5; i++) AMB.bus.emit('live', { midi: 60 + i, time: T, vel: 0.8, id: 20 + i });
       AMB.bus.emit('note', { layer: 'bells', midi: 72, time: T, vel: 0.8 });
       ok(GV.waves.length === GV.WAVES_PER_PLANT && GV.waves.every((w) => w.who === 'player'), 'au plus ' + GV.WAVES_PER_PLANT + ' ondes par plante ; une note de la machine ne chasse pas celles du joueur');

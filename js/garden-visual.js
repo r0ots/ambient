@@ -112,8 +112,12 @@
   // per who: ring (wave brightness), parts (particles at vel 1), flash (plant lit), squash (squash & stretch), life (s)
   const SPLASH = {
     player: { ring: 1, parts: 24, flash: 1, squash: 0.28, life: 0.8 },
-    chord: { ring: 1, parts: 36, flash: 1, squash: 0.36, life: 1 },
+    chord: { ring: 1, parts: 36, flash: 1, squash: 0.36, life: 1, spread: 4.2 },
     machine: { ring: 0.45, parts: 4, flash: 0.35, squash: 0.08, life: 0.5 },
+    // S5.3 celebrations of the Réponse on the Melody plant (cheer()): a series that grows, a record, a new tier
+    streak: { ring: 1, parts: 30, flash: 1, squash: 0.32, life: 0.9, spread: 4.2 },
+    record: { ring: 1, parts: 60, flash: 1, squash: 0.45, life: 1.1, spread: 6.3, shake: 0.6 },
+    tier: { ring: 1, parts: 90, flash: 1, squash: 0.55, life: 1.3, spread: 6.3, shake: 1 },
   };
   const WAVES_PER_PLANT = 3, PARTS_MAX = 260, LOUD = 0.85, HELD_MAX = 30; // s: a release that never comes
   const MACHINE = new Set(['bells', 'seq', 'bass']); // the machine's melodies and bass (+ the rhythm, 'perc')
@@ -134,6 +138,7 @@
       return { plant: 'pad', who: 'chord', vel: 0.9, pitch: pitchK(m), held: 'chord', shake: 1, time: t };
     }
     if (ev === 'note' && !d.live && MACHINE.has(d.layer)) return { plant: d.layer, who: 'machine', vel: d.vel == null ? 0.7 : d.vel, pitch: pitchK(d.midi), held: null, shake: 0, time: t };
+    if (ev === 'cheer') return SPLASH[d.kind] ? { plant: 'bells', who: d.kind, vel: 1, pitch: 0.8, held: null, shake: SPLASH[d.kind].shake || 0, time: t } : null;
     if (ev === 'perc') return { plant: 'perc', who: 'machine', vel: d.vel == null ? 0.7 : d.vel, pitch: 0.15 + 0.2 * ((d.track | 0) % 4), held: null, shake: 0, time: t };
     return null;
   }
@@ -566,6 +571,13 @@
       }
       this.waves.push({ ...s, t0: s.time, off: null, fired: false });
     },
+    // S5.3 → S5.2: a Réponse celebration (kind = 'streak' | 'record' | 'tier', SPLASH) bursts from the Melody plant at
+    // audio time `at` (the jingle's beat), through the same splashes and the same JUICE as the notes
+    cheer(kind, at) {
+      const S = SPLASH[kind]; if (!S) return false;
+      this.onSplash('cheer', { kind, time: at == null ? this.clock() : at });
+      return true;
+    },
     // a held note let go (liveOff id), or every note (panic: id null)
     release(id, time) { const t = time == null ? this.clock() : time; for (const w of this.waves) if (w.off == null && w.held != null && (id == null || w.held === id)) w.off = t; },
     // brightness a (0..1) and ring radius r (0..1) of a splash now; null = over. A held note stays lit until released.
@@ -595,7 +607,7 @@
       const S = SPLASH[w.who], v = 0.4 + 0.6 * w.vel, o = this.origin(p, w.pitch), px = this.px, r = this.rng || (this.rng = mulberry(99));
       const col = this.tint(p.col, w.pitch), n = Math.round(S.parts * JUICE * v);
       for (let k = 0; k < n; k++) {
-        const an = -Math.PI / 2 + (r() - 0.5) * (w.who === 'chord' ? 4.2 : 2.8), sp = (9 + r() * 24) * px * (0.6 + 0.5 * v) * (0.7 + 0.3 * JUICE);
+        const an = -Math.PI / 2 + (r() - 0.5) * (S.spread || 2.8), sp = (9 + r() * 24) * px * (0.6 + 0.5 * v) * (0.7 + 0.3 * JUICE);
         const c = r(), big = w.who !== 'machine' ? (r() < 0.35 ? 3 : 2) : 1;
         this.parts.push({ x: o.x, y: o.y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, life: 1, decay: 1 + r() * 0.7, g: 24, col: c < 0.3 ? [255, 240, 200] : c < 0.65 ? col : p.col, s: big });
       }

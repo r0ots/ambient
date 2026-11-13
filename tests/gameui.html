@@ -267,7 +267,8 @@ f.addEventListener('load', async ()=>{
       stR.lvl=11; stR.streak=4; stR.best=6; let tierEv=null; A.bus.on('resp:tier',e=>tierEv=e);
       P.launch(ctx.currentTime+0.05, sd); const c3=P.cur; c3.want.forEach((m,i)=>A.bus.emit('live',{midi:m,time:0,vel:0.85,raw:null,played:c3.ans+c3.steps[i]*sd})); await wait(30);
       ok(tierEv && tierEv.name==='Accords' && A.lcdMsg.text==='↑ Palier : Accords' && lcdEl.classList.contains('lcd-glitch-big') && /ACCORDS · SÉRIE 5 · RECORD 6/.test(sc.textContent), 'palier franchi : « '+A.lcdMsg.text+' », le LCD passe en glitch, « '+sc.textContent+' »');
-      ok(gv.kicks.bells && (gv.energy.bells||0)>=0.99 && P.mark()===4, 'la plante Mélodie rebondit et s\'éclaire ; repère de palier : '+P.mark());
+      const wv=gv.waves.find(w=>w.who==='tier');
+      ok(wv && wv.plant==='bells' && wv.shake===1 && P.mark()===4, 'la fête du palier passe par les éclats S5.2 de la plante Mélodie (vague '+(wv&&wv.who)+', secousse) ; repère de palier : '+P.mark());
       const cv2=d.createElement('canvas'); cv2.width=480; cv2.height=320; const g3=cv2.getContext('2d'); gv.refresh(480,320,true);
       const marks=gv.drawMark(g3, 14); A.game.setMode('free'); const freeMark=P.mark(), freeScore=shown('#lcdScore'); A.game.setMode('path');
       ok(marks===4 && freeMark===0 && !freeScore, 'repère de palier dessiné près du nom (4) ; ni repère ni score en mode libre');

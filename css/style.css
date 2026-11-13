@@ -457,7 +457,7 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 @media (prefers-reduced-motion: reduce) { .lcd-task.ready .lcd-task-txt, .tree-btn.has-ready::after, .open-actions .open-go, .open-dlg:not([hidden]) .open-card { animation: none; } }
 @media (prefers-reduced-motion: reduce) { .lcd-task.bump { animation: none; } }
 /* S5.3 Réponse: score row (path), glitch when a series grows, a record falls or a tier is reached */
-.lcd-score { font-size: 15px; letter-spacing: .04em; color: #b38a4f; justify-self: start; }
+.lcd-score { font-size: 15px; letter-spacing: .04em; color: #b38a4f; justify-self: start; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .lcd-score[hidden], body:not(.game) .lcd-score { display: none; }
 .lcd-score.bump { animation: lcd-bump .6s; transform-origin: left center; }
 .lcd.lcd-glitch { animation: lcd-glitch .7s steps(2, end); }
