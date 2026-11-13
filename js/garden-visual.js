@@ -21,6 +21,9 @@
 // where the pitch sits on the stem (lit while held), particles, a flash, squash & stretch, a shake on chords and loud
 // MIDI notes; the machine's (Mélodie auto, Mélodie écrite, Basse, Pulsations) the same, smaller. Reduced motion: a
 // fixed, brief glow only. Still a reflection: nothing on the scene can be touched.
+// S5.8 « Chaque bouton a un impact visuel »: every control the plants do not show drives a layer of the scene (one table,
+// SCENE: sky tint, clouds, stars, aurora, rays, fireflies, mist, snow, frost, ground ripple, echo ghosts, tape, grain,
+// lens, playback veil, song), each an intensity 0..1 (layers()) plus an impulse when touched; the tempo is its speed.
 // Perf: LED sprites pre-rendered in offscreen canvases (cache by species / size / pixel size), cached
 // background and labels, real dt, nothing drawn while the tab is hidden or the canvas off screen, reduced motion =
 // no sway nor particles. stats() gives the cost per frame (ms).
@@ -606,7 +609,9 @@
       this.speed = (0.5 + 1.5 * tp) * (fl ? 0.6 : 1);
       if (!this.reduced) this.st += dt * this.speed;
     },
-    amt(n) { return Math.min(1, (this.sc[n] || 0) + 0.8 * (this.kick[n] || 0)); },
+    // how much of a layer is drawn: its intensity squared (the default settings keep a calm scene, the ends are loud),
+    // plus the impulse of a touch
+    amt(n) { const v = this.sc[n] || 0; return Math.min(1, v * v + 0.8 * (this.kick[n] || 0)); },
     // cached canvases of the scene, rebuilt only when the size changes
     fx(name, W, H, build) {
       const key = name + '|' + W + 'x' + H + '|' + (this.px || 3);
@@ -692,7 +697,7 @@
     },
     // S5.8 echo: faded copies of a plant trailing to its right (Écho: how many, how far)
     drawEcho(g, p, s, kx, ky, sway, gy, ox, oy) {
-      const a = this.amt('echo'); if (a < 0.05 || gy < 0.05) return;
+      const a = this.amt('echo'); if (a < 0.1 || gy < 0.05) return;
       const n = 1 + Math.round(a * 2), d = this.px * (3 + 7 * a);
       for (let i = n; i >= 1; i--) {
         g.globalAlpha = Math.min(1, (0.08 + 0.3 * a) / i);
@@ -713,7 +718,7 @@
           return c;
         });
         const off = red ? 0 : ((T * px * 4) % W + W) % W, y = gd - bh * 0.7;
-        g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.6 * a);
+        g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.9 * a);
         g.drawImage(cv, off, y, W, bh); g.drawImage(cv, off - W, y, W, bh); g.imageSmoothingEnabled = false;
       }
       g.globalCompositeOperation = 'lighter';
@@ -779,7 +784,7 @@
         const y = red ? H * 0.6 : ((T * H * 0.12) % (H + bh)) - bh;
         g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, 0.2 + 0.7 * a); g.imageSmoothingEnabled = true;
         g.drawImage(cv, 0, Math.round(y), W, bh); g.imageSmoothingEnabled = false; g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
-        if (a > 0.08) for (let i = 0; i < 3; i++) { // tracking lines: a dark and a coloured line that jitter (no read-back of the canvas: it would stall)
+        if (a > 0.2) for (let i = 0; i < 3; i++) { // tracking lines: a dark and a coloured line that jitter (no read-back of the canvas: it would stall)
           const sy = Math.round(((T * (40 + 30 * i) * px + i * H / 3) % H) / px) * px, dx = red ? 0 : Math.round(Math.sin(T * 9 + i * 2) * a * px * 6);
           g.globalAlpha = Math.min(1, 0.5 * a); g.fillStyle = 'rgba(0,0,0,0.8)'; g.fillRect(0, sy, W, px);
           g.globalCompositeOperation = 'lighter'; g.fillStyle = i % 2 ? 'rgba(255,70,90,0.6)' : 'rgba(70,200,255,0.6)'; g.fillRect(dx, sy + px, W, Math.max(1, px >> 1)); g.globalCompositeOperation = 'source-over';
@@ -798,7 +803,7 @@
           gg.addColorStop(0, 'rgba(20,10,0,0)'); gg.addColorStop(1, 'rgba(20,10,0,0.9)'); x.fillStyle = gg; x.fillRect(0, 0, c.width, c.height); return c;
         });
         g.globalAlpha = Math.min(1, 0.15 + 0.85 * a); g.drawImage(cv, 0, 0, W, H);
-        g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.9 * a); g.drawImage(vg, 0, 0, W, H); g.imageSmoothingEnabled = false;
+        g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.75 * a); g.drawImage(vg, 0, 0, W, H); g.imageSmoothingEnabled = false;
       }
       const pl = this.sc.play == null ? 1 : this.sc.play, pk = this.kick.play || 0;
       if (pl < 0.98) { g.globalAlpha = 1; g.fillStyle = `rgba(6,4,2,${(0.3 * (1 - pl)).toFixed(3)})`; g.fillRect(0, 0, W, H); }

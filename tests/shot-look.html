@@ -1,6 +1,8 @@
 <!doctype html><html><head><!-- Dev captures (not in the suite), S4.6 settings → look: ?w=390&h=780 for phone width.
   #small (every layer: low level, dark, round timbre, dry, few notes), #big (loud, bright, pointed timbre, wide space, dense),
-  #kick (default settings, the Pad plant held in the middle of its impulse, as just touched). --><meta charset="utf-8"><style>body{margin:0}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body>
+  #kick (default settings, the Pad plant held in the middle of its impulse, as just touched).
+  S5.8 scene layers: #scene (3 contrasted settings at once: Usure at its maximum, Reverb at its maximum, fast tempo; playing),
+  #scene-default (the same scene, default settings, playing), #scene-lofi / #scene-reverb / #scene-fast (one at a time). --><meta charset="utf-8"><style>body{margin:0}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body>
 <script>localStorage.removeItem('ambient.game.shot-look');</script>
 <iframe id="f" src="../index.html?gamekey=ambient.game.shot-look"></iframe>
 <script>{const q=new URLSearchParams(location.search),f=document.getElementById('f');if(q.get('w'))f.style.width=q.get('w')+'px';if(q.get('h'))f.style.height=q.get('h')+'px';}</script>
@@ -20,6 +22,14 @@ document.getElementById('f').addEventListener('load', () => {
         ? { 'drone.wave': 'Sub', 'pad.wave': 'Nappe', 'bells.wave': 'Doux', 'seq.wave': 'Doux', 'bass.wave': 'Sub', 'perc.kit': 'Feutré', 'texture.type': 'Océan', 'grains.size': 1, 'fx.space': 0.1, 'pad.voicing': 0, 'bells.density': 0, 'grains.density': 0, 'fx.tape': 0.9, 'fx.lofi': 0.6 }
         : { 'drone.wave': 'Orgue', 'pad.wave': 'FM', 'bells.wave': 'Pluck', 'seq.wave': 'Pluck', 'bass.wave': 'Pluck', 'perc.kit': 'Organique', 'texture.type': 'Feu', 'grains.size': 0, 'fx.space': 1, 'pad.voicing': 1, 'bells.density': 1, 'grains.density': 1, 'fx.tape': 0, 'fx.lofi': 0, 'seq.pattern': Array.from({ length: 16 }, (_, i) => (i * 2).toString(36) + '.' + (i % 7).toString(36) + '.1').join(',') });
       S.setMany(v, 'game');
+    }
+    if (h.includes('scene')) {
+      const all = h === '#scene', lofi = all || h.includes('lofi'), rev = all || h.includes('reverb'), fast = all || h.includes('fast');
+      const sc = {};
+      if (lofi) Object.assign(sc, { 'fx.lofi': 1 });
+      if (rev) Object.assign(sc, { 'fx.space': 1, 'fx.size': 1, 'fx.revType': 'Cloud', 'fx.predelay': 1 });
+      if (fast) Object.assign(sc, { 'global.tempo': 140 });
+      S.setMany(sc, 'game'); A.seq.playing = true; A.bus.emit('chord', { time: 0, deg: 0, midis: [] }); GV.skyT = -99;
     }
     if (h.includes('kick')) setInterval(() => { GV.kicks.pad = { t0: GV.t - 0.05, last: GV.t }; }, 10); // held at 50 ms into the bounce
     setInterval(() => A.visual.draw(), 40); // headless captures barely run requestAnimationFrame: draw on a timer

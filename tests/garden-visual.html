@@ -163,7 +163,7 @@ window.addEventListener('load', async () => {
       ok(GV.concerns('pad.vol').join() === 'pad' && GV.concerns('fx.space').length === 8 && GV.concerns('global.volume').length === 8 && !GV.concerns('macro.light').length && !GV.concerns('mod.l1rate').length,
         'table : un réglage de couche concerne sa plante, Reverb et Volume général toutes les plantes, un grand réglage passe par les réglages qu\'il bouge');
       const dflt = GV.look(() => undefined), same = GV.look((k) => St.get(k));
-      ok(JSON.stringify(dflt) === JSON.stringify(same) && GV.ASPECTS.every((k) => Object.values(dflt).every((a) => a[k] >= 0 && a[k] <= 1)), 'look() pur : valeurs par défaut = schéma, 7 aspects entre 0 et 1');
+      ok(JSON.stringify(dflt) === JSON.stringify(same) && GV.ASPECTS.every((k) => Object.values(dflt).every((a) => a[k] >= 0 && a[k] <= 1)), 'look() pur : valeurs par défaut = schéma, ' + GV.ASPECTS.length + ' aspects entre 0 et 1');
       // Niveau → size, smoothed (no jump), settled in ~0.5 s
       St.set('pad.vol', 0.05, 'user'); step(40); const small = P().sz, hS = GV.sprite(P(), GV.px).h * small;
       St.set('pad.vol', 1, 'user'); step(1); const mid = P().sz; step(36); const big = P().sz, hB = GV.sprite(P(), GV.px).h * big;
