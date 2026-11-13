@@ -256,7 +256,7 @@ canvas.auto-lane { display: block; width: 100%; border-radius: 8px; border: 1px 
 /* S6.4 looper: one row of the Morceau panel, the selected section's loop layers as chips (tap = mute, ✕ = erase) */
 .looper { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 2px 8px; border-top: 1px solid #23273a; }
 .loop-label { font-size: 12px; font-weight: 600; color: var(--c); margin-right: 2px; }
-.loop-len { font-size: 12px; min-height: 36px; padding: 3px 6px; }
+.loop-len { font-size: 12px; min-height: 36px; padding: 3px 6px; min-width: 6.5em; }
 .looper .btn.small { min-height: 36px; }
 .looper .btn:disabled { opacity: .4; cursor: default; }
 .loop-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 100%; }
