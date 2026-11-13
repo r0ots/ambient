@@ -45,9 +45,15 @@ f.addEventListener('load', async () => {
         'S5.7 : 19 nœuds à 390 px, les pastilles restent visibles (' + Math.round(pr.top) + '–' + Math.round(pr.bottom) + ' / ' + w.innerHeight + ')');
 
     // --- 1. an ask only when the LCD is seen (an opening scrolls to what it opened)
-    A.perform.setMode('sculpt'); await wait(30); w.scrollTo(0, 3000); await wait(30);
-    const out = D.seen(); w.scrollTo(0, 0); await wait(30);
-    ok(!out && D.seen(), 'S5.7 : LCD hors de la fenêtre → aucune demande lancée ; revenu en vue → oui');
+    // S6.7: the rule stays (an ask waits for a visible LCD), but the LCD no longer leaves the window: pinned on top
+    { A.perform.setMode('sculpt'); await wait(30); const lcd = d.getElementById('lcd'), y0 = lcd.getBoundingClientRect().top, bar0 = d.querySelector('.transport').getBoundingClientRect().height;
+      w.scrollTo(0, 3000); await wait(30); Gd._pin.check(); const r = lcd.getBoundingClientRect(), pinned = lcd.classList.contains('lcd-pin');
+      const ph = d.querySelector('.lcd-ph').getBoundingClientRect();
+      w.scrollTo(0, 0); await wait(30); Gd._pin.check();
+      ok(pinned && Math.abs(r.top) < 2 && r.width > 300 && D.seen() && Math.round(ph.height) >= 60 && !lcd.classList.contains('lcd-pin') && Math.abs(lcd.getBoundingClientRect().top - y0) < 1,
+        'S6.7 : page défilée → LCD collé en haut (' + Math.round(r.top) + ' px, ' + Math.round(r.width) + ' px de large), demandes possibles (seen) ; revenu en haut → à sa place (' + Math.round(y0) + ' px, barre ' + Math.round(bar0) + ' px)');
+      lcd.style.display = 'none'; const hid = D.seen(); lcd.style.display = '';
+      ok(!hid, 'la règle reste : un LCD invisible → aucune demande'); }
     A.perform.setMode('listen');
 
     // --- 2. the countdown: « prêt ? », 3, 2, 1, « MAINTENANT ! » on the 1 (never « sur le 1 » in the texts)

@@ -105,7 +105,8 @@ window.addEventListener('load', async ()=>{
     const S0=AMB.seq, step0=S0.step, bassNote=(bar)=>()=>{ S0.step=(S0.origin||0)+bar*16+3; AMB.bus.emit('note',{layer:'bass',midi:36,time:0,vel:0.8,dur:0.2}); };
     run('c.groove',[S('bass.pattern','groove-test','user'),bassNote(0),bassNote(1),bassNote(1),bassNote(2),bassNote(3)],[bassNote(0),bassNote(1),bassNote(2),bassNote(3),bassNote(4),S('bass.pattern','preset-test','preset')]);
     S0.step=step0;
-    run('c.morceau',[()=>AMB.bus.emit('act','songRec')],[()=>AMB.bus.emit('act','song'),()=>AMB.bus.emit('rec:done',40),()=>AMB.bus.emit('act','section')]);
+    run('c.morceau',[()=>AMB.bus.emit('act','songRec')],[()=>AMB.bus.emit('act','song'),()=>AMB.bus.emit('rec:done',2),()=>AMB.bus.emit('act','section')]);
+    g.s.contracts=g.s.contracts.filter(x=>x!=='c.morceau'); run('c.morceau',[()=>AMB.bus.emit('rec:done',4)],[()=>AMB.bus.emit('rec:done',1)]); // S6.7: the bar's ● Rec (3 s or more) records the song too
     ok(K.byId['c.morceau'].first && K.DEFS.filter(d=>d.first).length===1, 'le dernier défi du Parcours : « '+K.byId['c.morceau'].title+' »');
     // S4.2: a Réponse of the mastery loop never steals the notes of the challenge in progress (one challenge at a time)
     force('m.notes'); Pz.cur={ midis:[60,62,64], steps:[0,4,8], len:3, row:[], from:-1, until:1e9, t0:0, sd:0.25 }; lives(3)();

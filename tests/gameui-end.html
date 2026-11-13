@@ -27,7 +27,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
     ok(flying && L.hidden && !A.garden.confetti.n && !L.querySelector('.fx-pop'), 'fenêtre ouverte (Arbre, carnet) : les confettis d\'une fête précédente disparaissent');
     A.garden.showTree(false);
     { const say=A.garden.FX_ON['resp:place']({ id:'musicien', name:'Musicien', nodes:['h.pad','h.drone','h.key'] })[1];
-      ok(say.toast==='Tu joues déjà : 3 nœuds prêts. Ouvre-les un par un avec ✦ Ouvrir.', 'placement : le toast résume la file (« '+say.toast+' »)'); }
+      ok(say.toast==='Tu joues déjà : 3 nœuds prêts → ✦ Ouvrir sur l\'écran du haut', 'placement : le toast résume la file (« '+say.toast+' »)'); }
     await wait(500); g.setMode('free'); await wait(30);
     ok(css('#bigPlay','display')!=='none' && !d.querySelector('.tog.is-solo'), 'mode libre : « ▶ Lancer le paysage » et toutes les coupures, comme avant');
     PE('pointerdown',b); const fp=b.classList.contains('is-pressed'); PE('pointerup',b);

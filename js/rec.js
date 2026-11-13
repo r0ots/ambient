@@ -17,7 +17,7 @@
     if (songRec) { AMB.ui.toast('Le morceau est en cours d\'enregistrement'); return; }
     if (!AMB.seq.playing) await AMB.ui.play();
     const fmt = $('#recFmt').value, mins = Number($('#recDur').value);
-    recState = { fmt, t0: Date.now() };
+    recState = { fmt, t0: Date.now(), at: AMB.engine.ctx.currentTime };
     if (fmt === 'wav') AMB.engine.startCapture();
     else {
       const mime = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4'].find((m) => MediaRecorder.isTypeSupported(m)) || '';
@@ -26,7 +26,7 @@
       recorder.ondataavailable = (e) => e.data.size && recChunks.push(e.data);
       recorder.onstop = () => {
         const blob = new Blob(recChunks, { type: recorder.mimeType });
-        download(blob, recorder.mimeType.includes('ogg') ? 'ogg' : recorder.mimeType.includes('mp4') ? 'm4a' : 'webm');
+        if (!keep(blob)) download(blob, recorder.mimeType.includes('ogg') ? 'ogg' : recorder.mimeType.includes('mp4') ? 'm4a' : 'webm');
         recorder = null;
       };
       recorder.start(1000);
@@ -50,12 +50,16 @@
     clearInterval(recState.iv); clearTimeout(recState.fadeT); clearTimeout(recState.endT);
     if (recState.fading && AMB.seq.playing) AMB.engine.fadeIn(2); // stopped during the end fade: bring sound back
     if (AMB.bus) AMB.bus.emit('rec:done', (Date.now() - recState.t0) / 1000); // real duration, however it stopped
-    if (recState.fmt === 'wav') api.download(AMB.engine.stopCapture(), 'wav');
-    else if (recorder) recorder.stop();
+    // S6.7: when this take is the path's « Enregistre ton morceau » (rec:done just ended it), the finale replays it and
+    // offers it (js/garden.js keepSong) instead of a download
+    let kept = false;
+    if (recState.fmt === 'wav') { const blob = AMB.engine.stopCapture(); kept = keep(blob); if (!kept) api.download(blob, 'wav'); }
+    else if (recorder) { kept = !!(AMB.garden && AMB.garden.handing); recorder.stop(); }
     recState = null;
     btn.classList.remove('rec'); btn.textContent = '● Rec';
-    AMB.ui.toast('Enregistrement téléchargé');
+    AMB.ui.toast(kept ? 'Morceau enregistré' : 'Enregistrement téléchargé');
   }
+  const keep = (blob) => !!(AMB.garden && AMB.garden.keepSong && AMB.garden.keepSong(blob));
 
   // ---------- the song in one gesture (● Rec of the Morceau panel) ----------
   // Plays the song once from its first section into a WAV, then stops by itself. The drone and
@@ -134,5 +138,5 @@
   }
 
   const api = (AMB.rec = { toggleRec, toggleSongRec, setSleep, download, SONG_TAIL,
-    recording: () => !!(recState || songRec), songRecording: () => !!songRec, songT0: () => (songRec ? songRec.t0 : null) });
+    recording: () => !!(recState || songRec), songRecording: () => !!songRec, songT0: () => (songRec ? songRec.t0 : recState ? recState.at : null) });
 })();

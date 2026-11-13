@@ -118,6 +118,32 @@
       ['pointerup', 'pointercancel'].forEach((k) => window.addEventListener(k, up, true));
       window.addEventListener('blur', (e) => { if (e.target === window) up(); }); // (the page loses focus, not an element)
     },
+    // S6.7: in the Parcours the LCD never leaves the window — once its place scrolls above the top, it is pinned there
+    // (css .lcd-pin, compact), a placeholder of its size keeps the bar from moving; the demands wait for a visible LCD
+    // (demands.seen), so they keep coming while the player scrolls through the panels. Free mode, fullscreen: never.
+    pinLcd() {
+      const lcd = document.getElementById('lcd'); if (!lcd || this._pin) return;
+      const ph = document.createElement('div'); ph.className = 'lcd-ph'; ph.setAttribute('aria-hidden', 'true');
+      lcd.before(ph);
+      let raf = 0;
+      const set = (on) => {
+        if (on === lcd.classList.contains('lcd-pin')) { if (on) place(); return; }
+        if (on) { const r = lcd.getBoundingClientRect(); ph.style.width = r.width + 'px'; ph.style.height = r.height + 'px'; ph.classList.add('on'); lcd.classList.add('lcd-pin'); place(); }
+        else { lcd.classList.remove('lcd-pin'); ph.classList.remove('on'); lcd.style.left = lcd.style.width = ''; }
+      };
+      const place = () => { const r = ph.getBoundingClientRect(); lcd.style.left = r.left + 'px'; lcd.style.width = r.width + 'px'; };
+      const check = () => {
+        raf = 0;
+        const b = document.body, on = !!AMB.game.path && b.classList.contains('game') && !b.classList.contains('listen');
+        const top = (lcd.classList.contains('lcd-pin') ? ph : lcd).getBoundingClientRect().top;
+        set(on && top < 0);
+      };
+      const later = () => { if (!raf) raf = requestAnimationFrame(check); };
+      window.addEventListener('scroll', later, { passive: true });
+      window.addEventListener('resize', () => { set(false); later(); });
+      if (AMB.bus) AMB.bus.on('game:mode', () => { set(false); later(); });
+      this._pin = { check, set };
+    },
     hookActions() {
       const emit = (id) => AMB.bus.emit('act', id);
       document.addEventListener('click', (e) => {
@@ -418,7 +444,7 @@
       'resp:streak': (d) => [d.streak > 1 ? 'streak' : 'juste', { n: d.streak }],
       'resp:record': (d) => ['record', { n: d.best }],
       'resp:tier': (d) => ['tier', { name: d.name }],
-      'resp:place': (d) => ['placement', { name: d.name, n: (d.nodes || []).length, ms: 6000, toast: (d.nodes || []).length ? `Tu joues déjà : ${d.nodes.length} nœud${d.nodes.length > 1 ? 's' : ''} prêt${d.nodes.length > 1 ? 's' : ''}. Ouvre-les un par un avec ✦ Ouvrir.` : '' }],
+      'resp:place': (d) => ['placement', { name: d.name, n: (d.nodes || []).length, ms: 6000, toast: (d.nodes || []).length ? `Tu joues déjà : ${d.nodes.length} nœud${d.nodes.length > 1 ? 's' : ''} prêt${d.nodes.length > 1 ? 's' : ''} → ✦ Ouvrir sur l'écran du haut` : '' }],
     },
     juice() { const GV = AMB.gardenVisual; return GV && GV.JUICE != null ? GV.JUICE : 1; },
     // a moment: its message at once (LCD, toast), its effects on the next beat. Returns the queued {kind, o} or null.
@@ -488,7 +514,10 @@
     // the pop text; S6.6 with its onomatopoeia (`boom`): a comic starburst (halftone, two neons picked by the word, tilted,
     // bouncing in), the pop text under it, size by rank × JUICE; never over the LCD (it stays readable during an ask)
     BOOM_COLS: [['#ff3fa4', '#fff36b', '#3ff0ff'], ['#3ff0ff', '#ff3fa4', '#fff36b'], ['#ffd23f', '#ff3348', '#3ff0ff'], ['#9d6bff', '#3ff0ff', '#fff36b']],
+    // S6.7: two never overlap — while one is up, a bigger (or equal) moment replaces it, a smaller one is dropped
     fxPop(text, stage, rank, boom = null, J = 1) {
+      const cur = this._pop, now = Date.now();
+      if (cur && cur.el.isConnected) { if (now < cur.until && rank < cur.rank) return null; cur.el.remove(); }
       const L = this.confetti.layer(), r = stage ? stage.getBoundingClientRect() : { left: 0, top: 0, width: innerWidth, height: innerHeight };
       const p = document.createElement('div'); p.className = 'fx-pop';
       const x = Math.round(r.left + r.width / 2); let y = Math.round(r.top + r.height * 0.42);
@@ -507,8 +536,10 @@
       L.hidden = false; L.append(p);
       const lcd = document.getElementById('lcd'), lr = lcd && lcd.getBoundingClientRect(), half = p.offsetHeight * 0.75;
       if (lr && lr.height && y - half < lr.bottom + 6) p.style.top = Math.round(lr.bottom + 6 + half) + 'px'; // under the LCD, never over it
-      setTimeout(() => { p.remove(); this.confetti.idle(); }, boom && rank >= 7 ? 1800 : 1300);
-      while (L.querySelectorAll('.fx-pop').length > 3) L.querySelector('.fx-pop').remove();
+      const ms = boom && rank >= 7 ? 1800 : 1300;
+      this._pop = { el: p, rank, until: now + ms };
+      setTimeout(() => { p.remove(); this.confetti.idle(); }, ms);
+      return p;
     },
     // pixel confetti on one fixed, click-through canvas over the whole page; it only draws while some are flying
     confetti: {
@@ -595,7 +626,7 @@
         const mo = new MutationObserver((ms) => { if (ms.some((m) => !m.target.hidden)) this.confetti.clear(); });
         document.querySelectorAll('.modal').forEach((m) => mo.observe(m, { attributes: true, attributeFilter: ['hidden'] }));
       }
-      this.pressFeedback();
+      this.pressFeedback(); this.pinLcd();
       this.coinWire(); this.hiscores.build();
       // S5.7: a touch screen in the path: no MIDI button, no keyboard words (css body.game.touch, game.txt)
       this.applyTouch(); if (window.matchMedia) { const q = matchMedia('(pointer: coarse)'); if (q.addEventListener) q.addEventListener('change', () => this.applyTouch()); }

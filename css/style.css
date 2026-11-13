@@ -776,3 +776,49 @@ body.game:not(.playing):not(.coined) .coin { position: absolute; inset: 0; z-ind
 .hs-help { flex-basis: 100%; font-size: 15px; color: var(--arc-soft); }
 .tree-btn.has-hs::before { content: '★'; position: absolute; top: -7px; left: -5px; font-size: 13px; color: var(--arc-hot); text-shadow: 0 0 6px var(--arc-hot); }
 @media (prefers-reduced-motion: reduce) { .coin b, .hs-slot.cur .hs-l { animation: none; } .fx-boom { animation: none; } }
+
+/* =====================================================================
+   S6.7a « Regards neufs » (enfant de 9 ans au téléphone, musicien au bureau) — Parcours only
+   ===================================================================== */
+/* the view of the Parcours is the city: no visual chip to cycle (the free mode keeps it) */
+body.game #vizMode { display: none; }
+/* toasts over the visual's chips and the party flash; readable (opaque, neon) */
+.toast { z-index: 6; max-width: min(92%, 560px); white-space: normal; text-align: center; }
+body.game .toast { background: var(--arc-bg); border-color: var(--arc-hot); color: #fff3c4; text-shadow: 0 0 6px #ff3fa480; box-shadow: 0 0 0 1px #000, 0 6px 24px #000c; }
+/* the text under an onomatopoeia (« À TOI !!! ») on a dark caption box: readable on every bubble colour (violet too) */
+.fx-boom small { background: var(--arc-ink); color: #fff3c4; padding: .12em .4em .08em; border-radius: .15em; box-shadow: 0 0 0 .06em var(--b3, #3ff0ff); }
+/* the LCD keeps its size: the score line holds its place before the first record, the challenge's help covers the
+   screen instead of growing it (scrolls inside when long) — the pads below never jump */
+body.game #lcdScore[hidden] { display: block; visibility: hidden; }
+body.game .lcd-task.help .lcd-task-txt { position: absolute; inset: 0; z-index: 2; padding: 4px 12px; overflow-y: auto; background: var(--arc-bg);
+  font-size: 15px; line-height: 1.05; display: flex; align-items: center; }
+body.game .lcd-task.help .lcd-task-n, body.game .lcd-task.help .lcd-skip { position: relative; z-index: 3; }
+/* the LCD pinned on top while the page scrolls (garden.js pinLcd): compact (no score line), above the panels */
+.lcd-ph { display: none; }
+.lcd-ph.on { display: block; }
+@media (max-width: 760px) { .lcd-ph { order: 3; } }
+body.game .lcd.lcd-pin { position: fixed; top: 0; z-index: 40; margin: 0; border-radius: 0 0 var(--radius-btn) var(--radius-btn); box-shadow: var(--bevel-in), 0 6px 18px #000c; }
+body.game .lcd.lcd-pin .lcd-score { display: none; }
+.app.fx-quake > .top:has(.lcd-pin) { animation: none; } /* (a transform would carry the pinned LCD away) */
+/* phones: a compact bar (no brand, no captions, fixed rows: a control that appears never moves the others), the LCD,
+   then the city and the pads together in the window; no chord / tempo / bar over the city */
+@media (max-width: 560px) {
+  body.game .top { padding: 8px 10px; gap: 8px; }
+  body.game .brand, body.game .transport .tgrp > small, body.game #mood { display: none; }
+  body.game .transport { display: grid; grid-template-columns: auto auto auto 1fr auto auto; grid-template-areas: "play midi rec . tree more" "mode mode mode mode mode mode" "land land land land land land"; gap: 6px; width: 100%; }
+  body.game .transport .tgrp { padding: 0; border: 0; }
+  body.game .transport .tgrp:has(#play), body.game .transport .tgrp:has(#play) > .tgrp-row { display: contents; }
+  body.game #play { grid-area: play; min-width: 0; }
+  body.game #midi { grid-area: midi; }
+  body.game .transport .tgrp:has(#rec) { grid-area: rec; }
+  body.game .transport .tgrp:has(.modes) { grid-area: mode; }
+  body.game .transport .tgrp:has(#preset) { grid-area: land; }
+  body.game .transport .tree-grp { grid-area: tree; }
+  body.game .transport .more { grid-area: more; }
+  body.game .transport #sleepLeft { display: none; }
+  body.game .transport .tgrp-row { flex-wrap: nowrap; }
+  body.game .transport .btn, body.game .transport summary { white-space: nowrap; }
+  body.game .lcd { min-height: 84px; align-content: start; }
+  body.game .stage { margin: 10px 0; }
+  body.game .stage .hud { display: none; }
+}

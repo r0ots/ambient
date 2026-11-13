@@ -71,10 +71,10 @@
       BY + 'Sculpter > Effets > Taille au-dessus de 80.'),
     C('e.echo', ['e.echo', 'm.bells'], 'Joue 4 notes dans l\'écho', 4, {
       note(st) { if (store.get('fx.echo') >= 0.4) st.n = (st.n || 0) + 1; },
-    }, 'Monte l\'Écho au-dessus de 40 (Sculpter > Effets), puis joue des notes (pastilles{ ou A à L|}) et écoute-les se répéter.'),
+    }, 'Monte l\'Écho au-dessus de 40 (Sculpter > Effets), puis joue des notes (pastilles{, A à L ou MIDI|}) et écoute-les se répéter.'),
 
     // Mouvement
-    C('m.notes', ['m.bells'], 'Joue 6 notes (pastilles{ ou clavier A à L|})', 6, {
+    C('m.notes', ['m.bells'], 'Joue 6 notes (pastilles{, A à L ou MIDI|})', 6, {
       note(st) { st.n = (st.n || 0) + 1; },
     }, '{Les pastilles sous l\'écran ou les touches A à L jouent la gamme (Q à P une octave au-dessus), ou ton clavier MIDI.|Les pastilles de couleur sous l\'écran jouent la gamme : touche-les une par une.}'),
     C('m.monte', ['m.bells'], 'Joue 4 notes qui montent', 4, run((p, n) => n.midi > p.midi),
@@ -110,9 +110,12 @@
       },
     }, 'Composer > Basse : allume ou éteins des pas de la grille, puis laisse jouer 4 mesures avec les pulsations.'),
     // the path's last challenge (`first`): proposed once the whole tree is open (S5.7); it opens no node, it ends the path
+    // S6.7: the bar's ● Rec counts too (a child could not find Composer > Morceau > + Section ×2 > ● Rec): a take of 3 s
+    // or more, stopped by ■; rec.js then hands its WAV to the finale instead of downloading it
     C('c.morceau', ['c.song'], 'Enregistre ton morceau', 1, {
       act(st, id) { if (id === 'songRec') st.n = 1; },
-    }, 'Composer > Morceau : + Section pour garder le paysage du moment (fais-en au moins deux), puis ● Rec : le morceau joue du début à la fin et s\'enregistre.'),
+      rec(st, secs) { if (secs >= 3) st.n = 1; },
+    }, '{● Rec en haut, joue un moment, puis ■ : ton morceau est gardé. Ou Composer > Morceau > ● Rec : tes sections, du début à la fin.|Touche ● Rec en haut, joue un peu, puis touche ■ pour arrêter.}'),
 
     // gates opened by a Réponse (S4.3: they replaced the « set the knobs to a target » puzzles; S4.2: played in the music)
     E('p.premier', ['t.son', 'h.pad', 'm.bells'], 'Premier reflet'),
