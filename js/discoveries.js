@@ -45,7 +45,7 @@
     C('maree', 'Marée lente', ['m.tempo', 'e.texture'], 'L\'océan, sans pulsation, au plus lent du temps.',
       'des vagues de lumière qui montent du sol', 2, (X) => X.get('global.time') === 'Flottant' && X.get('global.tempo') <= 50 && X.on.includes('texture') && X.get('texture.type') === 'Océan'),
     C('miroir', 'Miroir infini', ['e.echo'], 'Des échos qui ne s\'arrêtent presque plus, et quelques notes à toi pour s\'y refléter.',
-      'le jardin reflété sous le sol, qui ondule', 1, (X) => X.get('fx.echo') >= 0.7 && X.get('fx.feedback') >= 0.7 && X.notes(16) >= 3),
+      'la ville reflétée dans la rue mouillée, qui ondule', 1, (X) => X.get('fx.echo') >= 0.7 && X.get('fx.feedback') >= 0.7 && X.notes(16) >= 3),
     C('blizzard', 'Vortex de givre', ['m.grains'], 'Des grains minuscules, par milliers, finissent par tourbillonner.',
       'un tourbillon de pixels de givre', 2, (X) => X.on.includes('grains') && X.get('grains.density') >= 0.8 && X.get('grains.size') <= 0.25),
     // further (the musician): settings pushed far, harmony, rhythm, the Réponse, MIDI chords
@@ -62,7 +62,7 @@
     C('grille', 'Autoroute 2084', ['c.rythme'], 'Basse et pulsations ensemble, à toute vitesse, sans flotter.',
       'une grille au néon qui file vers l\'horizon', 2, (X) => X.on.includes('bass') && X.on.includes('perc') && X.get('global.tempo') >= 110 && X.get('global.time') === 'Pulsé'),
     C('reseau', 'Chœur des machines', ['c.seq'], 'Six couches qui jouent ensemble se mettent à se parler.',
-      'des arcs de lumière entre les plantes', 2, (X) => X.on.length >= 6),
+      'des arcs de lumière entre les tours', 2, (X) => X.on.length >= 6),
   ];
 
   // ---- GESTES (the former secrets): G(id, name, hint, hint2 (clear, after HINT2), reward, detect, need, midi) ----

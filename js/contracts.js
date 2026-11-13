@@ -143,7 +143,7 @@
   for (const d of DEFS) if (d.kind === 'reponse') {
     d.d = Math.max(0, Math.min(1, (depth(d.node) - 3) / 3));
     const n = 3 + Math.round(d.d * 3); // AMB.puzzles.respLen
-    d.hint = `Pendant la lecture, la plante Mélodie auto s'allume et l'écran dit « ↺ À toi » : rejoue la phrase juste après (pastilles{, A à L ou MIDI|}). ${n} notes justes ouvrent le nœud.`;
+    d.hint = `Pendant la lecture, l'enseigne Mélodie auto s'allume et l'écran dit « ↺ À toi » : rejoue la phrase juste après (pastilles{, A à L ou MIDI|}). ${n} notes justes ouvrent le nœud.`;
   }
 
   const contracts = {

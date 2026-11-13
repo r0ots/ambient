@@ -7,6 +7,10 @@
   --muted: #7d84a3;
   --accent: #c9b6ff;
   --c: #c9b6ff;
+  /* S6.5 « Ville néon » (the Parcours' scene, js/garden-visual.js reads them once) */
+  --city-night: #07040f; --city-sky: #1c0b33; --city-horizon: #6a1f6e; --city-wall: #130c22; --city-ground: #06040b;
+  --city-pink: #ff3fa4; --city-cyan: #3ff0ff; --city-violet: #9d6bff; --city-amber: #ffb347; --city-red: #ff3348; --city-rain: #a9b8ff;
+  --city-dawn-top: #140a33; --city-dawn-mid: #a8327e; --city-dawn-low: #ff7a4f; --city-sun-top: #ffd36b; --city-sun-low: #ff3f8e;
   font-family: ui-sans-serif, -apple-system, "SF Pro Text", "Inter", system-ui, sans-serif;
   color-scheme: dark;
 }
@@ -347,6 +351,9 @@ select option, select optgroup { background: #1d1407; color: var(--lcd-fg); font
 .stage { border-radius: 6px; border: 10px solid #0e0d0c; box-shadow: var(--bevel), inset 0 0 60px #000; background: #0b0a08; }
 .stage::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1;
   background: repeating-linear-gradient(0deg, #0000 0 2px, #0004 2px 3px), radial-gradient(ellipse at center, #0000 55%, #0009 100%); }
+body.city .stage { background: var(--city-night); }
+body.city .stage::after { opacity: var(--crt, .8); /* S6.5 the city's CRT: scanlines, violet vignette; --crt = JUICE (garden-visual.js) */
+  background: repeating-linear-gradient(0deg, #0000 0 2px, #0006 2px 3px), radial-gradient(ellipse at center, #0000 50%, color-mix(in srgb, var(--city-night) 85%, transparent) 100%); }
 .hud, .stage-tools, .big-play, .toast { z-index: 2; }
 .chord { font: 44px var(--f-lcd); color: var(--lcd-fg); text-shadow: 0 0 10px var(--lcd-glow); letter-spacing: .02em; }
 .hud-info, .hint { font-family: var(--f-lcd) !important; font-size: 16px !important; color: #b38a4f !important; letter-spacing: .05em; }
