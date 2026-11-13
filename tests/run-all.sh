@@ -2,7 +2,7 @@
 # Runs every headless test page (the SLOW audio demo pages only with ALL=1), through a pool of PAR workers (default 4); fails on any JS error / exception / missing DONE.
 cd "$(dirname "$0")"
 # longest pages first so batches finish together
-PAGES="generator phrase lfo prog freeze play share wav reverb grains journal macros history app patches pianoroll pulses chords midi automation song bass game gameui balance tree-map secrets midi-path garden-visual juice free-intact narrow"
+PAGES="generator phrase lfo prog freeze play share wav reverb grains journal macros history app patches pianoroll pulses chords midi automation song bass game gameui gameui-play gameui-end balance tree-map secrets midi-path garden-visual juice free-intact narrow"
 # slow audio demo pages (no ok() assertions): ALL=1 tests/run-all.sh
 SLOW="engines smoke spectrum"
 [ -n "$ALL" ] && PAGES="$SLOW $PAGES"

@@ -1,0 +1,153 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body>
+<!-- Parcours in the app (2/3): pads, actions, feedback, Réponse, strong beat, first glide, sound locking, no currency, help. -->
+<script src="lib.js"></script>
+<script src="gameui-lib.js"></script>
+<script>
+gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY }) => {
+  // --- S4.4 touch pads: under the screen once the Melody is owned, play like A–L (held, multitouch), long press = chord
+  { A.game.reset(); A.perform.setMode('listen'); await wait(30);
+    const bar=d.getElementById('pads'), pads=[...bar.querySelectorAll('.pad')], PE=(t,id)=>new w.PointerEvent(t,{bubbles:true,pointerId:id,pointerType:'touch'});
+    ok(bar.hidden && !shown('#pads'), 'pastilles : cachées avant la Mélodie auto');
+    A.game.unlock('m.bells'); await wait(1500); A.garden.showTree(false); A.perform.setMode('listen'); await wait(30);
+    const stage=d.querySelector('.stage').getBoundingClientRect(), br=bar.getBoundingClientRect();
+    ok(!bar.hidden && pads.length===9 && A.play.PADS.length===9 && br.top>=stage.bottom-1 , 'pastilles : 9, sous l\'écran, dès la Mélodie auto');
+    const sp=A.seq.playMidi, rel=[], lives=[]; A.bus.on('live',e=>lives.push(e.midi)); A.seq.playing=true;
+    A.seq.playMidi=(m,v,r,h)=>{ A.bus.emit('live',{midi:m,time:0,vel:v,raw:r}); return {id:m,midi:m,release:()=>{}}; };
+    const eo=A.seq.endLive; A.seq.endLive=(h)=>rel.push(h.midi);
+    { const st=A.contracts.state(A.game); st.active=['m.notes']; st.prog['m.notes']={n:0}; }
+    const n0=0;
+    pads[2].dispatchEvent(PE('pointerdown',1)); pads[6].dispatchEvent(PE('pointerdown',2)); await wait(20);
+    ok(lives.length===2 && lives[0]!==lives[1] && A.play.held===2 && pads[2].classList.contains('on') && pads[6].classList.contains('on'), 'multitouch : 2 doigts = 2 notes tenues');
+    pads[2].dispatchEvent(PE('pointerup',1)); await wait(10);
+    ok(rel.length===1 && A.play.held===1 && !pads[2].classList.contains('on') && pads[6].classList.contains('on'), 'un doigt levé : sa note finit, l\'autre tient');
+    pads[6].dispatchEvent(PE('pointercancel',2)); await wait(10);
+    ok(rel.length===2 && A.play.held===0, 'pointercancel : note relâchée');
+    ok(((A.game.s.prog['m.notes']||{}).n||0)===n0+2 || A.game.s.contracts.includes('m.notes'), 'une pastille compte pour « Joue 6 notes » ('+(((A.game.s.prog['m.notes']||{}).n||0)-n0)+')');
+    const ch=[], fc=A.seq.forceChord; A.seq.forceChord=(dg)=>ch.push(dg); A.game.unlock('h.pad');
+    pads[3].dispatchEvent(PE('pointerdown',3)); await wait(250); const early=ch.length; await wait(350);
+    ok(early===0 && ch.join()==='3' && pads[3].classList.contains('chord'), 'appui long : l\'accord du degré (pas avant)');
+    pads[3].dispatchEvent(PE('pointerup',3)); A.seq.forceChord=fc; A.seq.playMidi=sp; A.seq.endLive=eo; A.seq.playing=false;
+    // S5.2: the Mélodie auto lights its pad briefly (its own colour); the player's notes and the Réponse phrase ('live') do not
+    { const S=A.seq, Th=A.theory, dm=(dg,o)=>Th.degreeToMidi(dg,S.root,S.scale,o), lit=()=>pads.filter(b=>b.classList.contains('auto')).map(b=>+b.dataset.deg);
+      ok(A.play.padForMidi(dm(4,4))===4 && A.play.padForMidi(dm(1,3))===1 && A.play.padForMidi(dm(1,5))===8, 'pastille d\'une note : même note, la plus proche en hauteur (une autre octave = la pastille de son degré)');
+      A.bus.emit('note',{layer:'bells',midi:dm(4,4),time:0,vel:0.7,dur:0.3}); await wait(30);
+      const bs=w.getComputedStyle(pads[4]).boxShadow;
+      ok(lit().join()==='4' && bs!=='none', 'note de la Mélodie auto : sa pastille s\'allume, de sa couleur ('+bs.slice(0,40)+')');
+      await wait(300); ok(!lit().length, 'brièvement (~0,17 s)');
+      A.bus.emit('note',{layer:'bells',midi:dm(2,4),time:0,vel:0.85,live:true}); A.bus.emit('note',{layer:'bass',midi:dm(2,3),time:0,vel:0.8}); await wait(30);
+      ok(!lit().length, 'une note jouée, la phrase de la Réponse (live) ou la basse : aucune pastille allumée par la machine'); }
+    // 390 px: at least 44 px under the thumb, nothing wider than the screen
+    f.style.width='390px'; f.style.height='780px'; await wait(250);
+    const de=d.documentElement, r2=pads.map(b=>b.getBoundingClientRect());
+    ok(r2.every(r=>r.width>=44 && r.height>=44 && r.right<=de.clientWidth+1 && r.left>=-1) && de.scrollWidth<=de.clientWidth+1, '390 px : pastilles ≥ 44 px, dans l\'écran ('+Math.round(Math.min(...r2.map(r=>r.width)))+'×'+Math.round(Math.min(...r2.map(r=>r.height)))+')');
+    f.style.width='1300px'; f.style.height='900px'; await wait(200);
+    A.game.setMode('free'); await wait(30); A.bus.emit('note',{layer:'bells',midi:60,time:0,vel:0.7}); await wait(30);
+    ok(bar.hidden && !shown('#pads') && !bar.querySelector('.auto'), 'mode libre (tactile ou non) : aucune pastille (ni allumée par la Mélodie auto)');
+    A.game.setMode('path'); A.game.reset(); }
+  // --- actions on success (G7.2): a cancelled save emits nothing, a real one does (contracts count it)
+  { A.game.reset(); ['t.son','t.journal'].forEach(i=>A.game.unlock(i)); const acts=[]; A.bus.on('act',id=>acts.push(id));
+    const op=w.prompt; w.prompt=()=>null; d.getElementById('save').click(); await wait(20);
+    ok(!acts.includes('save'), 'Sauver annulé : aucune action');
+    w.prompt=()=>'Test G7'; d.getElementById('save').click(); await wait(20); w.prompt=op;
+    ok(acts.includes('save'), 'Sauver réussi : action émise');
+    A.game.unlock('t.rec'); const C=A.contracts; C.state(A.game).active=['k.enreg'];
+    A.bus.emit('rec:done', 12); ok(!A.game.s.contracts.includes('k.enreg'), 'enregistrement de 12 s : défi pas réussi');
+    A.bus.emit('rec:done', 31); ok(A.game.s.contracts.includes('k.enreg') && A.game.isReady('t.share'), 'enregistrement réel de 31 s : défi réussi, Partage prêt');
+    await wait(1400); A.garden.showTree(false);
+    A.game.reset(); }
+  // --- feedback (G6.2)
+  A.game.unlock('e.reverb'); await wait(400);
+  ok(/OUVERT : REVERB/.test(d.getElementById('lcdTop').textContent) && d.getElementById('lcdTop').classList.contains('lcd-flash'), 'LCD : « reverb ouvert » '+d.getElementById('lcdTop').textContent);
+  await A.ui.ensureStarted(); const ctx=A.engine.ctx; if (ctx.state!=='running') await ctx.resume();
+  ok(ctx.state!=='running' || A.garden.chime('unlock')===4 && A.garden.chime('solve')===6, 'carillon joué ('+ctx.state+')');
+  A.game.setMode('free'); ok(A.garden.chime('unlock')===0, 'pas de carillon en mode libre'); A.game.setMode('path');
+  // --- S4.2 « Réponse » in the app: the phrase in the music, « ↺ À toi » on the LCD, leaves on the Melody plant, the pads stay
+  { const P=A.puzzles, gv=A.gardenVisual; A.game.reset(); ['m.bells','h.pad','t.son'].forEach(i=>A.game.unlock(i)); await wait(1500);
+    A.garden.showTree(false); A.perform.setMode('listen'); A.visual.gardenSync(); P.cancel(); P.wait=99;
+    const st=A.contracts.state(); st.active=['p.premier']; st.prog['p.premier']={n:0}; A.garden.renderContracts();
+    const sd=0.05, snap=JSON.stringify(A.store.stableSnapshot());
+    ok(P.launch(ctx.currentTime+0.05, sd) && P.cur.len===3 && P.view().phase==='call' && shown('#pads') && d.body.classList.contains('game'), 'une phrase marquée pendant le jeu : pas de carte, les pastilles restent');
+    const c=P.cur; for(let i=0;i<60 && !/À TOI/.test(d.getElementById('lcdTop').textContent);i++) await wait(25);
+    ok(/↺ À TOI/.test(d.getElementById('lcdTop').textContent) && P.view().phase==='answer', 'mesure suivante : « ↺ À toi » sur le LCD');
+    const cv=d.createElement('canvas'); cv.width=480; cv.height=320; const g2=cv.getContext('2d');
+    gv.refresh(480,320,true); A.bus.emit('live',{midi:c.midis[0],time:0,vel:0.85,raw:null,played:c.ans+0.1}); A.bus.emit('live',{midi:c.midis[1]+2,time:0,vel:0.85,raw:null,played:c.ans+0.6});
+    const leaves=gv.drawAnswer(g2, P.view()), px=g2.getImageData(0,0,480,320).data; let green=0, red=0;
+    for(let i=0;i<px.length;i+=4){ if(px[i]===143&&px[i+1]===227&&px[i+2]===160) green++; if(px[i]===235&&px[i+1]===84&&px[i+2]===64) red++; }
+    ok(leaves===3 && green>0 && red>0 && gv.answer(ctx.currentTime) && gv.answer(ctx.currentTime).row.length===2, 'plante Mélodie : une feuille verte (juste), une rouge (fausse), une à jouer ('+green+' / '+red+' px)');
+    { const pb=gv.plants.find(q=>q.id==='bells'), gy0=pb.gy; g2.clearRect(0,0,480,320);
+      pb.gy=0; const none=gv.drawAnswer(g2, P.view()); pb.gy=0.5; const half=gv.drawAnswer(g2, P.view()); pb.gy=gy0;
+      ok(none===0 && half===3 && green>=81, 'S4.5w + S4.2 : une plante Mélodie qui pousse porte ses feuilles de Réponse (aucune avant de sortir, toutes à mi-hauteur) ; une feuille ≥ 4 px par carreau ('+green+' px verts)'); }
+    A.bus.emit('live',{midi:c.midis[2],time:0,vel:0.85,raw:null,played:c.ans+1}); await wait(350);
+    ok(!P.cur && /PRESQUE/.test(d.getElementById('lcdTop').textContent) && !A.game.has('t.macros'), 'réponse fausse : « Presque » sur le LCD, porte fermée');
+    P.launch(ctx.currentTime+0.05, sd); const c2=P.cur; c2.midis.forEach((m,i)=>A.bus.emit('live',{midi:m+12,time:0,vel:0.85,raw:null,played:c2.ans+0.5+i})); await wait(30);
+    ok(A.game.isReady('t.macros') && !A.game.has('t.macros') && A.game.s.contracts.includes('p.premier') && A.lcdMsg.text==='↺ ✓ Juste !' && JSON.stringify(A.store.stableSnapshot())===snap, 'réponse juste : « Juste ! », Grands réglages prêt, l\'ambiance est intacte');
+    A.garden.openNode('t.macros'); ok(A.game.has('t.macros'), 'puis le joueur l\'ouvre');
+    await wait(1500); A.garden.showTree(false);
+    // S5.3: the score on the LCD (tier, series, record), the juice of a new tier, the tier mark on the Melody plant
+    { const sc=d.getElementById('lcdScore'), lcdEl=d.getElementById('lcd'), stR=P.st(A.game); A.contracts.state().active=[];
+      ok(shown('#lcdScore') && /↺ PHRASES · SÉRIE 1 · RECORD 1/.test(sc.textContent), 'LCD : le palier, la série et le record « '+sc.textContent+' »');
+      stR.lvl=11; stR.streak=4; stR.best=6; let tierEv=null; A.bus.on('resp:tier',e=>tierEv=e);
+      P.launch(ctx.currentTime+0.05, sd); const c3=P.cur; c3.want.forEach((m,i)=>A.bus.emit('live',{midi:m,time:0,vel:0.85,raw:null,played:c3.ans+c3.steps[i]*sd})); await wait(30);
+      ok(tierEv && tierEv.name==='Accords' && A.lcdMsg.text==='↑ Palier : Accords' && lcdEl.classList.contains('lcd-glitch-big') && /ACCORDS · SÉRIE 5 · RECORD 6/.test(sc.textContent), 'palier franchi : « '+A.lcdMsg.text+' », le LCD passe en glitch, « '+sc.textContent+' »');
+      const wv=gv.waves.find(w=>w.who==='tier');
+      ok(wv && wv.plant==='bells' && wv.shake===1 && P.mark()===4, 'la fête du palier passe par les éclats S5.2 de la plante Mélodie (vague '+(wv&&wv.who)+', secousse) ; repère de palier : '+P.mark());
+      const cv2=d.createElement('canvas'); cv2.width=480; cv2.height=320; const g3=cv2.getContext('2d'); gv.refresh(480,320,true);
+      const marks=gv.drawMark(g3, 14); A.game.setMode('free'); const freeMark=P.mark(), freeScore=shown('#lcdScore'); A.game.setMode('path');
+      ok(marks===4 && freeMark===0 && !freeScore, 'repère de palier dessiné près du nom (4) ; ni repère ni score en mode libre');
+      stR.lvl=1; stR.streak=1; stR.best=1; A.garden.renderScore(); }
+    P.launch(ctx.currentTime+0.05, sd); A.game.setMode('free'); await wait(20);
+    ok(!P.cur && P.view()===null && !shown('#pads') && P.onStep(0, ctx.currentTime, sd)===false, 'mode libre : la phrase s\'en va, aucune autre'); A.game.setMode('path'); P.wait=0; A.game.reset(); }
+  A.ui.stop && A.ui.stop();
+  // --- S4.5w: the chime and the new layer land on the next strong beat (beat 1 or 3 of the bar), simulated clock
+  { const G=A.garden, S={playing:true,step:37,nextTime:10.2,origin:0,stepDur:()=>0.25};
+    ok(Math.abs(G.strongBeat(0.05,S,10.0)-10.95)<1e-9 && Math.abs(G.strongBeat(0.05,Object.assign({},S,{origin:4}),10.0)-11.95)<1e-9 && Math.abs(G.strongBeat(0.45,S,10.9)-12.95)<1e-9 && G.strongBeat(0.05,Object.assign({},S,{playing:false}),10)===null,
+      'temps fort (horloge simulée) : pas 40 → 10,95 s ; compté depuis la section (origine 4) → 11,95 s ; marge 0,45 s → 12,95 s ; arrêté → aucun');
+    const ex=G.excerpt([{layer:'drone',t:1},{layer:'pad',t:50},{layer:'bells',t:55},{layer:'bass',t:60},{layer:'chord',t:2}],120,18), ex2=G.excerpt([],20);
+    ok(ex.from===43 && ex.len===18 && ex2.from===0 && ex2.len===20, 'fin : extrait de 18 s là où le plus de couches jouent ('+ex.from+' s), morceau court relu en entier');
+    const ctx=A.engine.ctx, starts=[], co=ctx.createOscillator;
+    let inChime=false; const ch0=A.garden.chime; A.garden.chime=function(...x){ inChime=true; try { return ch0.apply(this,x); } finally { inChime=false; } }; // only the chime's own oscillators
+    ctx.createOscillator=function(){ const o=co.call(ctx), st=o.start.bind(o); if (inChime) o.start=(t)=>{ starts.push(t); st(t); }; return o; };
+    const at=ctx.currentTime+0.6; A.garden.chime('unlock',{at,deg:2});
+    ok(ctx.state!=='running' || starts.length===12 && Math.abs(Math.min(...starts)-at)<1e-6, 'carillon placé à l\'heure demandée (temps fort), note propre à la couche');
+    // real clock: the Pad opened by a challenge while playing
+    await A.ui.play(); A.game.reset(); A.perform.setMode('listen'); A.game.unlock('m.bells'); await wait(1500); A.garden.showTree(false); A.perform.setMode('listen'); await wait(300);
+    const Sq=A.seq; A.contracts.finish('m.notes'); starts.length=0; A.garden.openNode('h.pad'); // (the success's own chime is not the opening's)
+    const b=A.garden.lastBeat, sd=Sq.stepDur(), now=ctx.currentTime, k=(b.at-Sq.nextTime)/sd+Sq.step-(Sq.origin||0), lv=A.layers.pad.ch.level.gain, target=Math.pow(A.store.get('pad.vol'),1.6);
+    ok(A.game.has('h.pad') && b.id==='h.pad' && b.at>=now+0.44 && Math.abs(k-Math.round(k))<1e-6 && Math.round(k)%8===0 && b.deg===2, 'ouverture du Pad en jeu : le temps fort suivant (pas '+Math.round(k)+', dans '+(b.at-now).toFixed(2)+' s), note du Pad');
+    await wait(120); const v0=lv.value;
+    ok(v0<0.01*target+1e-4, 'la couche attend le temps fort en silence (niveau '+v0.toFixed(4)+')');
+    while (ctx.currentTime < b.at+0.8) await wait(40);
+    const v1=lv.value; ok(v1>0.1*target && v1<0.9*target, 'puis entre en fondu ('+(v1/target*100).toFixed(0)+' % à +0,8 s)');
+    while (A.garden.seq) await wait(50);
+    ok(starts.length>=4 && Math.min(...starts)-b.at>-1e-6 && Math.min(...starts)-b.at<0.05, 'carillon sur le temps fort (écart '+((Math.min(...starts)-b.at)*1000).toFixed(1)+' ms) '+JSON.stringify([starts.map(x=>+(x-b.at).toFixed(3)),A.garden.lastBeat.id]));
+    const GV=A.gardenVisual; ok(!GV.grow.pad || GV.grow.pad.start>=b.at-1e-6, 'la plante du Pad pousse depuis le temps fort, après la carte');
+    ctx.createOscillator=co; A.garden.chime=ch0; A.garden.showTree(false); A.ui.stop(); }
+  // --- S4.5w: the first challenge « Glisse sur l'écran » — the first glide also starts the sound
+  { await wait(300); A.game.reset(); A.perform.setMode('listen'); await wait(50);
+    const v=d.getElementById('viz'), r=v.getBoundingClientRect(), PE=(t)=>new w.PointerEvent(t,{bubbles:true,pointerId:11,clientX:r.left+r.width*0.3,clientY:r.top+r.height*0.5});
+    ok(!A.seq.playing && A.game.s.active[0]==='k.xy' && !/Lance la lecture/.test(A.contracts.byId['k.xy'].hint), 'premier défi : Glisse sur l\'écran, lecture arrêtée, l\'aide ne demande plus de lancer la lecture');
+    v.dispatchEvent(PE('pointerdown')); await wait(400); v.dispatchEvent(PE('pointerup'));
+    ok(A.seq.playing && ((A.game.s.prog['k.xy']||{}).n||0)>=1, 'premier glissé : le son démarre et le glissé compte ('+((A.game.s.prog['k.xy']||{}).n||0)+'/4)');
+    A.ui.stop(); A.game.reset(); }
+  // --- sound locking (G1.5)
+  const St=A.store, g=A.game;
+  g.setMode('free'); St.set('fx.echo',0.6,'user'); St.set('pad.on',true,'user');
+  g.setMode('path'); g.reset(); await wait(50);
+  ok(St.get('pad.on')===false && St.get('fx.echo')===0 && St.get('global.evolve')===0 && St.get('drone.on')===true, 'verrouillé = neutre (pad muet, pas d\'écho), drone joue');
+  St.set('pad.on',true,'user'); A.ui.applyPatch({'pad.on':true,'fx.echo':0.8,'drone.tone':0.9});
+  ok(St.get('pad.on')===false && St.get('fx.echo')===0 && Math.abs(St.get('drone.tone')-0.9)<0.02, 'presets/utilisateur ne touchent pas le verrouillé '+St.get('drone.tone'));
+  g.unlock('h.pad'); ok(St.get('pad.on')===true, 'ouvrir le Pad le fait jouer');
+  g.setMode('free'); ok(Math.abs(St.get('fx.echo')-0.6)<0.02 && St.get('pad.on')===true, 'retour en libre : son libre rendu');
+  St.set('pad.on',false,'user'); ok(St.get('pad.on')===false, 'libre : tout modifiable');
+  g.setMode('path'); ok(St.get('fx.echo')===0 && St.get('pad.on')===true, 'retour au parcours : son du parcours rendu');
+  // --- S4.3 no currency anywhere: no « +n ✧ » note, no counter, nothing to buy
+  g.setMode('path'); await wait(20); A.contracts.finish(A.game.s.active[0]); await wait(1500); A.garden.showTree(true); await wait(20);
+  ok(!d.getElementById('fx') && !A.juice && !d.getElementById('gainFeed') && !/✧|éclat/.test(d.body.innerText), 'un défi réussi : aucune note « +n ✧ », aucun ✧ ni « éclat » à l\'écran');
+  A.garden.showTree(false);
+  // S3.8: the path help is short and says how secrets work now (a node opened, hint 2 after 2 secrets, never with time)
+  { d.getElementById('help').click(); const hp=d.querySelector('#helpDlg .help-path'), tx=hp.textContent;
+    ok(!hp.hidden && hp.querySelectorAll('.help-grid h4').length===4 && /nœud <b>prêt|nœud prêt/.test(tx) && /✦ Ouvrir/.test(tx) && /après 2 secrets/.test(tx) && /Réponse/.test(tx) && /À toi/.test(tx) && !/Écho/.test(tx) && !/avec le temps/.test(tx), 'aide du Parcours : 4 rubriques, secrets-clés, indice 2 après 2 secrets, Réponse');
+    d.querySelector('#helpDlg [data-close]').click(); }
+  g.setMode('free'); await wait(400); ok(!shown('#treeBtn') && !shown('#lcdTask') && !d.body.classList.contains('jargon-off'), 'pas d\'arbre ni de défi en libre, l\'écran garde tonalité et tempo');
+});
+</script></body></html>
