@@ -682,4 +682,6 @@ body.game.touch #midi { display: none !important; }
 /* ↷ : 44 px under a finger, without growing the LCD (negative margins inside its padding) */
 @media (pointer: coarse) { body.game .lcd-skip { min-width: 44px; min-height: 44px; margin: -14px -10px -4px -6px; } }
 /* phones: the pads stay in sight when the bar above grows with the path (they stick to the bottom of the window) */
-@media (max-width: 560px) { body.game .pads { position: sticky; bottom: 0; z-index: 4; margin: -6px -6px 14px; padding: 6px; background: var(--bg, #0d0c0b); border-radius: 10px 10px 0 0; } }
+@media (max-width: 560px) { body.game .pads { position: sticky; bottom: 0; z-index: 4; padding: 6px 0; background: var(--bg, #0d0c0b); border-radius: 10px 10px 0 0; } }
+/* a party's quake (rotate) must not widen a phone's page: the shaking children are clipped by the app */
+body.game .app { overflow-x: clip; }

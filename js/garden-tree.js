@@ -101,11 +101,11 @@
       svg.setAttribute('class', 'tree-links'); svg.setAttribute('viewBox', `0 0 ${lay.W} ${lay.H}`);
       svg.setAttribute('width', lay.W); svg.setAttribute('height', lay.H); svg.setAttribute('aria-hidden', 'true');
       // branch names at the tip of each band
-      let bi = 0;
+      const tops = {}; // (narrow fan: names side by side on one row alternate on two lines)
       for (const bid of this.fanOrder()) {
         const ps = T.NODES.filter((n) => n.branch === bid).map((n) => lay.pos[n.id]); if (!ps.length) continue;
         const top = Math.min(...ps.map((p) => p.y)), xs = ps.filter((p) => p.y === top).map((p) => p.x);
-        const t = document.createElementNS(SVGNS, 'text'), up = lay.nar && bid !== 'tronc' && bi++ % 2 ? 26 : 0; // (narrow fan: names on two lines)
+        const t = document.createElementNS(SVGNS, 'text'), up = lay.nar && bid !== 'tronc' && (tops[top] = (tops[top] || 0) + 1) % 2 === 0 ? 26 : 0;
         t.setAttribute('class', 'tree-bname'); t.setAttribute('x', xs.reduce((a, b) => a + b, 0) / xs.length); t.setAttribute('y', top - 30 - up);
         t.setAttribute('text-anchor', 'middle'); t.style.setProperty('--c', T.BRANCHES[bid].color); t.textContent = T.BRANCHES[bid].name;
         if (bid !== 'tronc') svg.append(t);
