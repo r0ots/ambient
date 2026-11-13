@@ -9,7 +9,8 @@
 // The gates (challenges kind 'reponse', js/contracts.js) open on a right answer of N notes (N from the depth of the node:
 // 3 or 4 notes, never timed, never a tier), or after 6 misses (never a dead end). Nothing in free mode nor once the
 // instrument is handed over. The ambience is never touched: only the Melody auto yields during the phrase and its answer.
-// Bus (S5.3, for the juice): 'resp:streak' {streak}, 'resp:record' {best}, 'resp:tier' {tier, name, lvl}.
+// Bus (S5.3, for the juice): 'resp:streak' {streak}, 'resp:record' {best}, 'resp:tier' {tier, name, lvl};
+// S5.4 'resp:place' {id, name, nodes} (placement, PLACE below).
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const store = AMB.store;
@@ -39,6 +40,26 @@
     return { id: 'combi', name: 'Combinaisons', tier: TIERS.length, plus: i + 1, oct: i % 2 ? 0 : 1, tr: i % 2, sync: 1,
       len: Math.min(MAX, 6 + Math.floor(i / 4)), f: Math.max(0.45, Math.pow(0.9, i + 1)), mark: TIERS.length + Math.floor(i / 2) };
   }
+  // S5.4 — placement (Rocksmith): the Réponse is also a discreet level test, without a « musician » mode to choose. RUN
+  // right answers in a row at a tier or higher (a gate's phrase aside: it is capped, it neither counts nor breaks the run)
+  // make a whole set of nodes « prêt » at once, in the existing queue: the player still opens each one (« ✦ Ouvrir »). A
+  // place includes the ones below; any time on the path. Discoveries stay to be found (one whose node is ready opens the
+  // next node instead). Never by chance: Syncopes are 5–6 timed notes with off-beats, reached after ≥ 8 right answers
+  // climbing (a miss = one level down); the son's 3 slow notes stay at Phrases.
+  const RUN = 2;
+  const PLACE = [ // what a musician already masters: harmony, melody and time, his studio tools; then composition and classic effects.
+    // Left to discover by playing: the instrument's own sound (Grands réglages, Paysages, Écran, Texture, Halo, Usure, Grains).
+    // Musicien: Syncopes (5–6 timed notes, off-beats) ×2; Virtuose: Quinte (answered a fifth higher) ×2.
+    { id: 'musicien', name: 'Musicien', tier: 2, nodes: ['h.pad', 'h.drone', 'h.pad2', 'h.key', 'h.scale', 'h.prog', 'm.tempo', 'm.phrase', 'c.seq', 't.journal', 't.rec', 't.share'] },
+    { id: 'virtuose', name: 'Virtuose', tier: 3, nodes: ['c.rythme', 'c.song', 'm.evolve', 'm.lfo', 'm.scenes', 'e.reverb', 'e.salle', 'e.echo', 'e.tape'] },
+  ];
+  // the highest place earned by the last answers (tiers of the right ones, -1 = a miss), or -1
+  const placeOf = (pt) => {
+    if (!pt || pt.length < RUN) return -1;
+    const low = Math.min(...pt.slice(-RUN));
+    for (let p = PLACE.length - 1; p >= 0; p--) if (low >= PLACE[p].tier) return p;
+    return -1;
+  };
   // the level's name as the LCD shows it: « Syncopes », « Combinaisons +3 »
   const tierName = (lv) => lv.plus ? `${lv.name} +${lv.plus}` : lv.name;
   // a singable walk of n notes from `start`, inside 0..hi-1 (seconds, thirds; a fourth from 5 notes), no note twice in a row
@@ -77,14 +98,15 @@
   const pcOf = (m) => ((m % 12) + 12) % 12;
 
   const R = {
-    MIN, MAX, RHYTHM, TRIES, GAP, TIERS, respLen, phrase, rhythm, syncs, leap, level, tierName,
+    MIN, MAX, RHYTHM, TRIES, GAP, TIERS, RUN, PLACE, placeOf, respLen, phrase, rhythm, syncs, leap, level, tierName,
     cur: null, // the phrase waiting for its answer: { gate, lvl, degs, midis, want, steps, len, timed, chord, sd, t0, from, ans, until, row }
     last: null, // the phrase just answered (its leaves stay a moment on the plant)
     wait: GAP.free, // bar lines to let pass before the next phrase (the music first)
     ignored: 0, // phrases left unanswered in a row (the next ones come more rarely)
     now() { const c = AMB.engine && AMB.engine.ctx; return c ? c.currentTime : 0; },
     // saved: the level reached (lvl; len = its length, kept for older readers), successes in a row, the record of the
-    // series (best), the misses per gate. Older saves (len = 3..8, best = a length) start from their length.
+    // series (best), the misses per gate; S5.4 the last answers' tiers (pt) and the place reached (place, index of
+    // PLACE; absent = none). Older saves (len = 3..8, best = a length) start from their length.
     st(g = AMB.game) {
       const s = g.s.resp || (g.s.resp = {});
       if (s.lvl == null) { s.lvl = clamp((s.len | 0 || MIN) - MIN, 0, MAX - MIN); s.best = s.streak | 0; }
@@ -218,6 +240,10 @@
       const res = { ok, len: c.len, row: c.row, next: s.len, lvl: s.lvl, name: tierName(lv), streak: s.streak, best: s.best, gate: c.gate };
       if (ok && lv.id !== was.id && lv.tier > was.tier) res.tier = lv.name; // a new tier reached
       if (!ok) s.beat = false; else if (best0 > 0 && s.streak > best0 && !s.beat) { s.beat = true; res.record = s.best; } // the record beaten (once per series)
+      if (!c.gate) { // S5.4 placement: the run of the last answers
+        s.pt = (s.pt || []).concat(ok ? level(c.lvl).tier : -1).slice(-RUN);
+        const p = placeOf(s.pt); if (p > (s.place != null ? s.place : -1)) res.place = this.place(p, g);
+      }
       this.last = Object.assign(c, { ok, at: this.now() });
       this.wait = gate ? GAP.gate : GAP.free;
       if (gate && c.gate === gate.id) {
@@ -232,8 +258,17 @@
         if (ok) AMB.bus.emit('resp:streak', { streak: s.streak });
         if (res.record) AMB.bus.emit('resp:record', { best: s.best });
         if (res.tier) AMB.bus.emit('resp:tier', { tier: lv.tier, name: lv.name, lvl: s.lvl });
+        if (res.place) AMB.bus.emit('resp:place', res.place);
       }
       return res;
+    },
+    // S5.4: place p reached: its nodes and the lower places' ones (with their missing prerequisites) ready, in order
+    place(p, g = AMB.game) {
+      const s = this.st(g), ids = [];
+      s.place = p;
+      for (let i = 0; i <= p; i++) for (const id of PLACE[i].nodes) g.readyChain(id, ids);
+      g.save();
+      return { id: PLACE[p].id, name: PLACE[p].name, nodes: ids };
     },
     // playback stopped, free mode, path restarted: the phrase goes, nothing is judged
     cancel() {

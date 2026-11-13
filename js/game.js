@@ -76,6 +76,13 @@
       this.emit('ready', { id, by });
       return true;
     },
+    // a node and its missing prerequisites, ready in order (a discovery, a placement S5.4); returns the ids made ready
+    readyChain(id, out = []) {
+      const n = AMB.tree && AMB.tree.byId[id]; if (!n || this.has(id) || this.isReady(id)) return out;
+      for (const r of n.req) this.readyChain(r, out);
+      if (this.ready(id)) out.push(id);
+      return out;
+    },
     // the next one the player can open: the first of the queue whose prerequisites are open (a discovery queues them first)
     canOpen(id) { const n = AMB.tree && AMB.tree.byId[id]; return this.isReady(id) && (!n || n.req.every((x) => this.has(x))); },
     nextReady() { return (this.s.ready || []).find((r) => this.canOpen(r.id)) || null; },

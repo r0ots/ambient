@@ -6,7 +6,9 @@
      challenges are played in (↷), the musician who finds the key secrets is faster; the slow player is reported.
      S4.6: a node won is only « prêt »: the player touches « ✦ Ouvrir », reads what it gives and opens it (TIME.open per node,
      one more click). That time is the player's own pace: it counts in the total and in the waits without a new node, the
-     45-min target stays on the time spent playing (total minus opening). -->
+     45-min target stays on the time spent playing (total minus opening).
+     S5.4: the Réponse ladder and placement (puzzles.level / placeOf / PLACE) run during play: the nephew at the MIDI keyboard
+     reaches the full instrument in < 20 min, the son is never placed. -->
 <script src="lib.js"></script>
 <script>localStorage.removeItem('ambient.game.balance');</script>
 <iframe id="f" src="../index.html?gamekey=ambient.game.balance&listen" style="width:800px;height:600px"></iframe>
@@ -23,9 +25,24 @@ document.getElementById('f').addEventListener('load', async () => {
     const fmt = (s) => (s / 60).toFixed(1);
     // a key secret is reachable once its node is owned (Lenteur céleste also plays Halo and Tempo); MIDI-only ones for the musician
     const SECRET_NEED = { lent: ['e.halo', 'm.tempo'] };
-    const SECRETS = A.discoveries.GESTES.map((d) => ({ id: d.id, need: [...d.need, ...(SECRET_NEED[d.id] || [])], opens: A.discoveries.OPENS[d.id], midi: d.midi })); // the gestures (former secrets); the combos are not modelled
+    const SECRETS = A.discoveries.GESTES.map((d) => ({ id: d.id, need: [...d.need, ...(SECRET_NEED[d.id] || [])], opens: A.discoveries.OPENS[d.id], midi: d.midi })) // the gestures (former secrets); of the combos, only Constellation (6 notes of his own in 4 beats: a MIDI flurry)
+      .concat({ id: 'constellation', need: A.discoveries.byId.constellation.need, opens: A.discoveries.OPENS.constellation, midi: true });
 
-    // one scripted player. opts: {k, seed, jitter, random (plays any eligible challenge, ↷ at random), secrets, midi}
+    // S5.4 the Réponse during play, once the Melody is there: one phrase every PH s (phrase bar + answer bar + GAP.free bars,
+    // default tempo), the REAL ladder (puzzles.level: one up on a success, one down on a miss) and placement rule
+    // (puzzles.placeOf / PLACE). A profile = {p(level) -> chance of a right answer, ign (share of phrases left unanswered)}.
+    const P = A.puzzles, BAR = 4 * 60 / A.store.spec('global.tempo').def, PH = (2 + P.GAP.free) * BAR;
+    const NEVEU = { ign: 0, p: (lv) => [0.97, 0.95, 0.92, 0.9, 0.9][lv.tier] || 0.8 }; // MIDI keyboard, in rhythm, chords by hand
+    const FILS = { ign: 0.4, p: (lv) => lv.chord ? 0.05 : !lv.tier && lv.len < P.RHYTHM ? [0.6, 0.45][lv.len - 3] : lv.tier ? 0.01 : lv.len === P.RHYTHM ? 0.05 : 0.02 }; // 3 slow notes on the pads
+    // one ladder: a step = one phrase; returns {place (index or -1), top level}
+    const ladder = (prof, rnd) => { const s = { lvl: 0, pt: [], place: -1, top: 0 }; return { s, step() {
+      if (rnd() < prof.ign) return -1;
+      const lv = P.level(s.lvl), ok = rnd() < prof.p(lv);
+      s.pt = s.pt.concat(ok ? lv.tier : -1).slice(-P.RUN); s.lvl = ok ? s.lvl + 1 : Math.max(0, s.lvl - 1); s.top = Math.max(s.top, s.lvl);
+      const p = P.placeOf(s.pt); if (p > s.place) { s.place = p; return p; } return -1;
+    } }; };
+
+    // one scripted player. opts: {k, seed, jitter, random (plays any eligible challenge, ↷ at random), secrets, midi, resp (a Réponse profile)}
     function sim(opts) {
       const k = opts.k || 1, rnd = mulberry(opts.seed || 7), jit = () => (opts.jitter ? 1 + JITTER * (2 * rnd() - 1) : 1);
       const own = new Set(['racine']), done = new Set(), found = new Set();
@@ -34,9 +51,15 @@ document.getElementById('f').addEventListener('load', async () => {
       const eligible = (d) => !done.has(d.id) && d.need.every((n) => own.has(n)) && (d.node ? status(d.node) === 'available' : true);
       const openChain = (id) => { if (own.has(id)) return; T.byId[id].req.forEach(openChain); own.add(id); };
       const nextNode = () => { const d = K.ORDER.find((x) => x.node && status(x.node) === 'available'); return d && d.node; };
-      let t = 0, tOpen = 0, last = 0, gap = 0, gapAt = '', firstNode = null; const steps = [];
+      let t = 0, tOpen = 0, last = 0, gap = 0, gapAt = '', firstNode = null, tFull = null; const steps = [], placed = [];
+      const L = opts.resp && ladder(opts.resp, rnd); let tl = null; // the Réponse's clock, from the Melody on
+      const respTo = () => { // the phrases heard up to now; a placement makes its nodes ready, the player opens them (TIME.open)
+        if (!L) return; if (tl == null) { if (own.has('m.bells')) tl = t; return; }
+        while (tl + PH <= t) { tl += PH; const p = L.step(); if (p >= 0) { placed.push(`${P.PLACE[p].name} ${fmt(tl)}′`); const before = own.size; for (let i = 0; i <= p; i++) P.PLACE[i].nodes.forEach(openChain); opened(before); } }
+      };
       const opened = (before) => { if (own.size > before) { const o = (own.size - before) * TIME.open * k; t += o; tOpen += o; /* « ✦ Ouvrir », read, « Ouvrir » */ if (firstNode == null) firstNode = t; if (t - last > gap) { gap = t - last; gapAt = [...own].pop(); } last = t; steps.push(`${Math.round(t / 60)}′ ${[...own].pop()}`); } };
       for (let guard = 0; guard < 500; guard++) {
+        respTo(); if (tFull == null && own.size === nodes.length) tFull = t;
         if (own.size === nodes.length && done.has(A.garden.FINALE)) break;
         const before = own.size;
         const sec = opts.secrets && SECRETS.find((x) => !found.has(x.id) && (opts.midi || !x.midi) && x.need.every((n) => own.has(n)));
@@ -48,7 +71,8 @@ document.getElementById('f').addEventListener('load', async () => {
         if (d.node) own.add(d.node);
         opened(before);
       }
-      return { t, play: t - tOpen, tOpen, gap, gapAt, firstNode, steps, left: nodes.filter((n) => !own.has(n.id)).map((n) => n.id), fin: done.has(A.garden.FINALE), secrets: found.size };
+      if (tFull == null && own.size === nodes.length) tFull = t;
+      return { t, tFull, placed, ladder: L && L.s, play: t - tOpen, tOpen, gap, gapAt, firstNode, steps, left: nodes.filter((n) => !own.has(n.id)).map((n) => n.id), fin: done.has(A.garden.FINALE), secrets: found.size };
     }
 
     const echoes = K.DEFS.filter((d) => d.kind === 'reponse').map((d) => `${d.title} ${A.puzzles.respLen(d.d)}`);
@@ -81,6 +105,20 @@ document.getElementById('f').addEventListener('load', async () => {
     const mMax = Math.max(...mus.map((r) => r.t));
     log(`musicien MIDI qui trouve les secrets-clés (${mus[0].secrets}) : ${fmt(Math.min(...mus.map((r) => r.t)))}–${fmt(mMax)} min, attente max ${fmt(Math.max(...mus.map((r) => r.gap)))} min`);
     ok(mus.every((r) => !r.left.length && r.fin) && mMax < tMin, 'musicien avec secrets : tout l\'arbre, plus rapide que le parcours type (' + fmt(mMax) + ' < ' + fmt(tMin) + ' min)');
+
+    // S5.4 placement: the nephew at the MIDI keyboard answers the Réponse right and in rhythm (and finds the key secrets):
+    // « Musicien », then « Virtuose » put whole branches « prêt »; target: the full instrument in < 20 min
+    const nev = [1, 2, 3, 4, 5].map((seed) => sim({ seed, midi: true, secrets: true, jitter: true, resp: NEVEU }));
+    const nMax = Math.max(...nev.map((r) => r.tFull));
+    log(`neveu MIDI (placement) : ${nev[0].placed.join(', ')} ; instrument complet en ${fmt(Math.min(...nev.map((r) => r.tFull)))}–${fmt(nMax)} min (morceau enregistré ${fmt(Math.max(...nev.map((r) => r.t)))} min), attente max ${fmt(Math.max(...nev.map((r) => r.gap)))} min`);
+    log('jalons neveu (tirage 1) : ' + nev[0].steps.join(' · '));
+    ok(nev.every((r) => r.placed.length === P.PLACE.length && !r.left.length && r.fin), 'neveu : les deux placements, tout l\'arbre et le morceau');
+    ok(nMax < 20 * 60, 'cible : neveu MIDI, instrument complet en < 20 min (' + fmt(nMax) + ' min)');
+    // the son: slow, 3 notes on the pads, over his whole path (and far beyond): never placed
+    const sons = Array.from({ length: 200 }, (_, i) => sim({ seed: 300 + i, k: 1.3, jitter: true, resp: FILS }));
+    const far = ladder(FILS, mulberry(9)); let farP = -1; for (let i = 0; i < 5000; i++) farP = Math.max(farP, far.step());
+    log(`fils : niveau de Réponse max ${Math.max(...sons.map((r) => r.ladder.top))} (${P.level(Math.max(...sons.map((r) => r.ladder.top))).name}) sur 200 parcours ; 5000 phrases d'affilée : niveau max ${far.s.top}`);
+    ok(sons.every((r) => !r.placed.length && !r.left.length) && farP < 0, 'fils : jamais de placement (200 parcours, puis 5000 phrases), tout l\'arbre quand même');
     done();
   } catch (e) { fail(e); }
 });
