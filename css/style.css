@@ -850,16 +850,27 @@ body.game .lcd.lcd-pin .lcd-score { display: none; }
 .pad { --m-sy: calc(1 - .2 * var(--m-amp)); }
 
 /* hover (a fine pointer): it lifts, glows in its own colour (--c) and casts a shadow; js (.m-tilt) leans it in 3D
-   towards the pointer. A finger gets the same glow when it presses (.is-pressed). */
+   towards the pointer. A finger gets the same glow when it presses (.is-pressed). S7.4: stronger, from tokens (every
+   wave uses these): --m-lift (rise), --m-z (3D height of the lean), --m-drop (deep cast shadow), --m-glow (neon
+   radius, coloured by the element's --c where it is used), --m-bright; motion.LEAN = the lean's angle. */
+:root { --m-lift: calc(-5px * var(--m-amp)); --m-z: calc(22px * var(--m-amp)); --m-glow: calc(26px * var(--m-amp)); --m-bright: calc(1 + .2 * var(--m-amp));
+  --m-drop: 0 calc(16px * var(--m-amp)) calc(18px * var(--m-amp)) calc(-7px * var(--m-amp)) #000f, 0 calc(4px * var(--m-amp)) calc(4px * var(--m-amp)) #0009; }
 @media (hover: hover) {
-  :where(.btn, .mode-btn, .tog, .chip, label.btn, .song-chip, .chord-slot, .slot-tab, .sc-slot, .song-btns button, .loop-chip button):is(:hover, .m-tilt):not(:disabled) {
-    translate: 0 calc(-2px * var(--m-amp)); filter: brightness(1.12);
-    box-shadow: var(--bevel), 0 calc(6px * var(--m-amp)) calc(12px * var(--m-amp)) -4px #000d, 0 0 calc(18px * var(--m-amp)) 0 color-mix(in srgb, var(--c, var(--accent)) 70%, transparent);
+  /* any other control that leans (text buttons, LCD keys, tree tools…): lifts, its glyphs glow (drop-shadow) */
+  :where(button, summary, [role=button]:not(.knob), label.btn).m-tilt:not(:disabled) {
+    translate: 0 var(--m-lift); filter: brightness(var(--m-bright)) drop-shadow(0 calc(8px * var(--m-amp)) calc(5px * var(--m-amp)) #000c) drop-shadow(0 0 calc(var(--m-glow) / 3) color-mix(in srgb, var(--c, var(--accent)) 85%, transparent));
   }
-  select:is(:hover, .m-tilt) { translate: 0 calc(-2px * var(--m-amp)); box-shadow: var(--bevel-in), 0 calc(6px * var(--m-amp)) calc(12px * var(--m-amp)) -4px #000d, 0 0 calc(14px * var(--m-amp)) -2px var(--lcd-glow); }
-  .knob:hover svg { translate: 0 calc(-2px * var(--m-amp)); filter: drop-shadow(0 calc(5px * var(--m-amp)) 3px #000a) drop-shadow(0 0 calc(6px * var(--m-amp)) color-mix(in srgb, var(--c, var(--accent)) 70%, transparent)); }
+  :where(.btn, .mode-btn, .tog, .chip, label.btn, .song-chip, .chord-slot, .slot-tab, .sc-slot, .song-btns button, .loop-chip button):is(:hover, .m-tilt):not(:disabled) {
+    translate: 0 var(--m-lift); filter: brightness(var(--m-bright)); color: color-mix(in srgb, var(--text, #fff) 70%, #fff);
+    box-shadow: var(--bevel), var(--m-drop), 0 0 var(--m-glow) calc(3px * var(--m-amp)) color-mix(in srgb, var(--c, var(--accent)) 75%, transparent),
+      inset 0 0 0 1px color-mix(in srgb, var(--c, var(--accent)) calc(65% * min(1, var(--m-amp))), transparent);
+  }
+  select:is(:hover, .m-tilt) { translate: 0 var(--m-lift); filter: brightness(var(--m-bright));
+    box-shadow: var(--bevel-in), var(--m-drop), 0 0 var(--m-glow) calc(2px * var(--m-amp)) var(--lcd-glow), inset 0 0 0 1px color-mix(in srgb, var(--lcd-fg) 60%, transparent); }
+  .knob:hover svg { translate: 0 calc(var(--m-lift) * .8); scale: calc(1 + .06 * var(--m-amp));
+    filter: drop-shadow(0 calc(10px * var(--m-amp)) 5px #000c) drop-shadow(0 0 calc(var(--m-glow) / 2.5) color-mix(in srgb, var(--c, var(--accent)) 85%, transparent)); }
 }
-.m-tilt.m-tilt { transform: perspective(420px) rotateX(var(--m-rx, 0deg)) rotateY(var(--m-ry, 0deg)) translateZ(calc(8px * var(--m-amp))); }
+.m-tilt.m-tilt { transform: perspective(380px) rotateX(var(--m-rx, 0deg)) rotateY(var(--m-ry, 0deg)) translateZ(var(--m-z)); }
 
 /* press: sinks and squashes while held, springs back with momentum when let go (and sparks: motion.burst) */
 .is-pressed { scale: var(--m-sx) var(--m-sy); translate: 0 calc(1px * var(--m-amp)); filter: brightness(1.3) drop-shadow(0 0 5px color-mix(in srgb, var(--c, var(--accent)) 80%, transparent));
@@ -958,3 +969,108 @@ body.playing #play::after { content: ""; position: absolute; inset: -2px; border
 @keyframes m-beat-glow { 0% { opacity: calc(.75 * min(1, var(--m-amp))); } 60%, 100% { opacity: 0; } }
 .m-still body.playing #play, .m-still body.playing #play::after { animation: none; }
 @media (prefers-reduced-motion: reduce) { body.playing #play, body.playing #play::after { animation: none; } }
+
+/* =====================================================================
+   S7.4 « Barre, Sculpter / Écouter, fenêtres » — on the S7.1 system (tokens --m-*, AMB.motion: landscape, scene,
+   neon, boom, run, card, crt). Parcours and free mode; sound and controls unchanged. The hover tokens are in S7.1 above.
+   ===================================================================== */
+/* ghosts: temporary click-through elements over everything (motion.ghost), removed when their animation ends */
+.m-ghost { position: fixed; pointer-events: none; z-index: 60; }
+/* the scene reacts: a bright scan crosses the screen (motion.scene) */
+.m-scan { position: absolute; left: 0; right: 0; top: 0; height: 12%; z-index: 2; pointer-events: none;
+  background: linear-gradient(transparent, color-mix(in srgb, var(--lcd-fg) 35%, transparent) 70%, #fff8 92%, transparent); mix-blend-mode: screen; }
+
+/* ✦ Nouveau paysage: the die rolls (two turns, it bounces and lands) */
+.m-die { display: inline-block; font-style: normal; }
+.m-dice { animation: m-dice calc(var(--m-slow) + 200ms * var(--m-t)) var(--m-out); }
+@keyframes m-dice {
+  0% { rotate: 0deg; scale: 1; translate: 0 0; }
+  30% { rotate: calc(360deg * min(1, var(--m-amp))); scale: calc(1 + .6 * var(--m-amp)); translate: 0 calc(-6px * var(--m-amp)); color: #fff3c4; }
+  70% { rotate: calc(690deg * min(1, var(--m-amp))); scale: calc(1 - .15 * var(--m-amp)); translate: 0 0; }
+  100% { rotate: calc(720deg * min(1, var(--m-amp))); scale: 1; }
+}
+/* a landscape's name comes in like a slot-machine reel (blurred streak from above, lands with a bounce) */
+.m-reel { animation: m-reel var(--m-slow) var(--m-bounce); }
+@keyframes m-reel {
+  0% { translate: 0 calc(-14px * var(--m-amp)); filter: blur(calc(2px * var(--m-amp))) brightness(2); opacity: .3; }
+  45% { translate: 0 calc(3px * var(--m-amp)); filter: none; opacity: 1; }
+  100% { translate: 0 0; }
+}
+
+/* ● Rec: pulses red while it records (a ring that keeps leaving it), explodes when it stops (motion.boom) */
+#rec { position: relative; }
+#rec.rec { animation: m-rec 1s var(--m-out) infinite; color: #ffd0d8; border-color: #ff4f6a;
+  box-shadow: var(--bevel), 0 0 calc(14px * var(--m-amp)) #ff4f6a99; }
+#rec.rec::after { content: ""; position: absolute; inset: -2px; border-radius: inherit; pointer-events: none; border: 2px solid #ff4f6a;
+  animation: m-rec-ring 1s var(--m-out) infinite; }
+@keyframes m-rec { 0% { scale: calc(1 + .07 * var(--m-amp)); } 35%, 100% { scale: 1; } }
+@keyframes m-rec-ring { 0% { scale: 1; opacity: calc(.9 * min(1, var(--m-amp))); } 100% { scale: calc(1 + .5 * var(--m-amp)) calc(1 + .9 * var(--m-amp)); opacity: 0; } }
+.m-boom { animation: m-boom var(--m-slow) var(--m-spring); }
+@keyframes m-boom { 0% { scale: calc(1 + .35 * var(--m-amp)); filter: brightness(2.5); } 40% { scale: calc(1 - .1 * var(--m-amp)); } }
+.m-ring { border-radius: 50%; border: 3px solid currentColor; box-shadow: 0 0 18px currentColor, inset 0 0 12px currentColor; }
+
+/* ⋯ the menu springs out of its key (from the corner, slightly turned) */
+.more > .menu.m-pop { transform-origin: 100% 0; animation: m-spring-out var(--m-slow) var(--m-spring); }
+@keyframes m-spring-out { from { scale: calc(1 - .8 * min(1, var(--m-amp))); rotate: calc(-6deg * var(--m-amp)); opacity: 0; } }
+
+/* MIDI: a flash when a note comes in from the keyboard */
+#midi { position: relative; }
+#midi.m-flash { animation: m-flash var(--m-med) var(--m-out); }
+@keyframes m-flash { 0% { filter: brightness(2.4); box-shadow: var(--bevel), 0 0 calc(22px * var(--m-amp)) 4px #4fe0ff; color: #fff; scale: calc(1 + .08 * var(--m-amp)); } }
+
+/* a knob turned hard (motion.turn → m-hot): a shockwave in its colour, its panel flares (m-heat) — seen from afar */
+.knob { position: relative; }
+.knob.m-hot::after { content: ""; position: absolute; left: 50%; top: 26px; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%;
+  pointer-events: none; border: 2px solid var(--c, var(--accent)); box-shadow: 0 0 16px var(--c, var(--accent)); animation: m-shock var(--m-slow) var(--m-out); }
+.knob.m-hot svg { filter: drop-shadow(0 0 calc(14px * var(--m-amp)) var(--c, var(--accent))) brightness(1.3); }
+@keyframes m-shock { from { scale: .8; opacity: 1; } to { scale: calc(1 + 1.6 * var(--m-amp)); opacity: 0; } }
+.panel.m-heat { animation: m-heat var(--m-slow) var(--m-out); }
+@keyframes m-heat { 0% { box-shadow: var(--bevel), 0 0 calc(28px * var(--m-amp)) 2px color-mix(in srgb, var(--c, var(--accent)) 70%, transparent); } }
+
+/* a layer cut: its neon goes out with a crackle; back on: it lights up (flicker, then full) */
+.m-neon-off { animation: m-neon-off calc(var(--m-slow) + 120ms * var(--m-t)) steps(1, end); }
+@keyframes m-neon-off {
+  0% { filter: brightness(1.8); } 15% { filter: brightness(.4); } 25% { filter: brightness(1.5); } 40% { filter: brightness(.3); }
+  52% { filter: brightness(1.2); } 70% { filter: brightness(.5); } 100% { filter: none; }
+}
+.m-neon-on { animation: m-neon-on calc(var(--m-slow) + 120ms * var(--m-t)) steps(1, end); }
+@keyframes m-neon-on {
+  0% { filter: brightness(.3); } 12% { filter: brightness(2.2); } 22% { filter: brightness(.4); } 35% { filter: brightness(2); }
+  45% { filter: brightness(.7); } 60% { filter: brightness(1.8) drop-shadow(0 0 10px var(--c, var(--accent))); } 100% { filter: none; }
+}
+.panel.m-neon-on h2, .panel.m-neon-off h2 { text-shadow: 0 0 12px var(--c, var(--accent)); }
+
+/* Scènes A/B: the fader shows the blend (A's light left, B's right, --morph), the slots glow by their share, the morph
+   runs along the track while Auto plays; a recall sends a comet along it (motion.run) */
+.scenes { --morph: 0; }
+.scenes.ready .sc-morph::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg, var(--accent) 0, color-mix(in srgb, var(--accent) 25%, #1a1918) calc(var(--morph) * 100%), #4fe0ff55 calc(var(--morph) * 100%), #4fe0ff);
+  box-shadow: var(--bevel-in), 0 0 8px color-mix(in srgb, var(--accent) 40%, transparent); }
+.scenes.ready.auto .sc-morph::-webkit-slider-runnable-track {
+  background-image: repeating-linear-gradient(90deg, #fff5 0 6px, transparent 6px 18px), linear-gradient(90deg, var(--accent), #4fe0ff);
+  animation: m-run calc(900ms * var(--m-t) + 1ms) linear infinite; }
+@keyframes m-run { to { background-position: 18px 0, 0 0; } }
+.scenes.ready .sc-slot[data-slot=A].filled { box-shadow: var(--bevel-in), 0 0 calc(18px * (1 - var(--morph)) * var(--m-amp)) var(--accent); }
+.scenes.ready .sc-slot[data-slot=B].filled { box-shadow: var(--bevel-in), 0 0 calc(18px * var(--morph) * var(--m-amp)) #4fe0ff; }
+.m-comet { width: 10px; height: 10px; border-radius: 50%; background: #fff; box-shadow: 0 0 10px 3px var(--accent), -14px 0 12px #4fe0ff88; }
+
+/* Journal: a kept moment falls as a card (motion.card) */
+.m-card { padding: 8px 12px; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 600 13px var(--f-ui);
+  color: #1b0a12; background: linear-gradient(#ffd2e6, #ff4fa0); border: 2px solid #fff; border-radius: 8px; box-shadow: 0 10px 22px #000c, 0 0 18px #ff4fa088; }
+
+/* windows: the backdrop darkens with scan lines (a scan rolls down once as it opens); the card switches on like a CRT
+   (motion.crt, Web Animations) and is sucked into a dot when it closes (a ghost). The Parcours' cards (#openDlg,
+   #treeDlg): their own motion, S7.3 */
+.modal:not(#openDlg):not(#treeDlg)::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, #0000 0 2px, #0006 2px 4px); }
+.modal.m-crt-on:not(#openDlg):not(#treeDlg)::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 18vh; pointer-events: none;
+  background: linear-gradient(transparent, color-mix(in srgb, var(--lcd-fg) 22%, transparent) 80%, #fff6 96%, transparent);
+  animation: m-roll-down calc(var(--m-slow) + 300ms * var(--m-t)) var(--m-in) both; }
+@keyframes m-roll-down { from { translate: 0 -100%; } to { translate: 0 600%; opacity: .2; } }
+.m-ghost-bg { inset: 0; z-index: 49; background: #05060bcc; }
+.m-ghost-card { z-index: 51; border-radius: var(--radius); background: linear-gradient(var(--panel2, #2c2b29), var(--panel, #22211f));
+  box-shadow: 0 0 30px var(--lcd-fg), inset 0 0 40px color-mix(in srgb, var(--lcd-fg) 50%, transparent); }
+
+/* reduced motion / JUICE 0: what loops stops (one-shots do not play: motion.on() is false) */
+.m-still #rec.rec, .m-still #rec.rec::after, .m-still .scenes.auto .sc-morph::-webkit-slider-runnable-track { animation: none; }
+@media (prefers-reduced-motion: reduce) { #rec.rec, #rec.rec::after, .scenes.auto .sc-morph::-webkit-slider-runnable-track { animation: none; } }

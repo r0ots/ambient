@@ -30,6 +30,7 @@
       const state = store.stableSnapshot();
       const name = `♥ ${it ? it.label : 'Moment'} · ${new Date().toLocaleTimeString().slice(0, 5)}`;
       AMB.ui.saveUserPatch(name, state);
+      if (AMB.motion) AMB.motion.card(this.el && this.el.querySelector('#keepMoment'), name, document.querySelector('#preset')); // S7.4: the moment falls as a card into « Mes paysages »
       if (AMB.bus) AMB.bus.emit('act', 'keep');
       AMB.ui.toast(`Gardé dans « Mes paysages » : ${name}`);
     },
@@ -48,6 +49,8 @@
         this.list.append(b);
       });
       this.list.scrollLeft = this.list.scrollWidth;
+      if (AMB.motion && this.items.length > (this._n || 0) && this.list.lastChild) AMB.motion.pop(this.list.lastChild, 'pop'); // S7.4: a new moment springs in
+      this._n = this.items.length;
     },
     build(el) {
       this.el = el;

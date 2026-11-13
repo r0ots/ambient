@@ -14,7 +14,9 @@
     capture(slot) { this[slot] = store.stableSnapshot(); this.save(); this.render(); },
     recall(slot) {
       if (!this[slot]) return this.capture(slot);
+      const x0 = this.morph;
       this.setMorph(slot === 'A' ? 0 : 1);
+      if (AMB.motion && this.A && this.B) AMB.motion.run(this.slider, x0, this.morph); // S7.4: the morph runs along the fader
     },
     setMorph(x) {
       this.morph = x;
@@ -48,6 +50,8 @@
         b.classList.toggle('near', !!this[s] && (s === 'A' ? this.morph < 0.5 : this.morph >= 0.5));
       }
       this.el.classList.toggle('ready', !!(this.A && this.B));
+      this.el.classList.toggle('auto', !!this.autoMins); // S7.4: the fader shows the blend (--morph) and runs while Auto plays
+      this.el.style.setProperty('--morph', this.morph.toFixed(3));
     },
     build(el) {
       this.el = el;
@@ -75,6 +79,7 @@
         this._t0 = performance.now();
         // phase so the cosine starts at the current morph position
         this._phase = Math.acos(Math.max(-1, Math.min(1, 1 - 2 * this.morph)));
+        this.render();
       });
       this.load();
       this.render();
