@@ -25,6 +25,12 @@
 // SCENE: sky tint, clouds, stars, aurora, rays, fireflies, mist, snow, frost, ground ripple, echo ghosts, tape, grain,
 // lens, playback veil, song), each an intensity 0..1 (layers()) plus an impulse when touched; the tempo is its speed.
 // S5.10 « Combos »: a combo ON (js/discoveries.js) draws its own emergent effect (COMBO_FX), only while it holds.
+// S6.5 « Ville néon »: the same tables and events, a new drawing: each layer is an element of a dark city in the rain that
+// lights up (tower, pyramid, neon sign, radio mast, dish, giant screen, pylon, flying cars; a discovery = a hologram), the
+// sky a violet night (magenta horizon, the far city whose windows light up as layers open), a wet street with reflections,
+// rain; the finale's dawn = the whole city lit under a synthwave sunrise, the rain stops. A discreet CRT (css scanlines,
+// colour fringes in the sprites, a rolling band) set by JUICE, off in reduced motion. Colours: css tokens --city-* (TOK).
+// The code keeps its words (plants, garden): only the screen says « Ville ».
 // Perf: LED sprites pre-rendered in offscreen canvases (cache by species / size / pixel size), cached
 // background and labels, real dt, nothing drawn while the tab is hidden or the canvas off screen, reduced motion =
 // no sway nor particles. stats() gives the cost per frame (ms).
@@ -136,14 +142,14 @@
     hue: { at: 'ciel : teinte', keys: ['global.key', 'global.tuning'] },
     clouds: { at: 'ciel : nuages qui dérivent', keys: ['global.evolve'] },
     twinkle: { at: 'ciel : étoiles qui scintillent', keys: ['mod.l1target', 'mod.l1shape', 'mod.l1rate', 'mod.l1depth', 'mod.l2target', 'mod.l2shape', 'mod.l2rate', 'mod.l2depth', 'auto.on', 'auto.target', 'auto.bars', 'auto.curve'] },
-    aurora: { at: 'lumières : aurores', keys: ['fx.shimmer'] },
-    rays: { at: 'lumières : rayons', keys: ['drone.follow', 'pad.length', 'pad.prog', 'pad.custom', 'pad.counter'] },
-    fireflies: { at: 'lumières : lucioles', keys: ['bells.mode', 'bells.phraseLen', 'bells.mutate', 'bells.range', 'seq.mode', 'seq.arpDir', 'seq.arpRate', 'seq.arpOct', 'seq.steps', 'seq.octave', 'seq.follow', 'seq.decay', 'seq.mutate', 'seq.patB', 'seq.patC', 'seq.patD', 'seq.slot', 'seq.chain'] },
-    haze: { at: 'météo : brume', keys: ['fx.space', 'fx.revType', 'fx.size', 'fx.predelay'] },
+    aurora: { at: 'lumières : aurores néon', keys: ['fx.shimmer'] },
+    rays: { at: 'lumières : projecteurs qui balaient le ciel', keys: ['drone.follow', 'pad.length', 'pad.prog', 'pad.custom', 'pad.counter'] },
+    fireflies: { at: 'lumières : drones qui clignotent', keys: ['bells.mode', 'bells.phraseLen', 'bells.mutate', 'bells.range', 'seq.mode', 'seq.arpDir', 'seq.arpRate', 'seq.arpOct', 'seq.steps', 'seq.octave', 'seq.follow', 'seq.decay', 'seq.mutate', 'seq.patB', 'seq.patC', 'seq.patD', 'seq.slot', 'seq.chain'] },
+    haze: { at: 'météo : smog néon', keys: ['fx.space', 'fx.revType', 'fx.size', 'fx.predelay'] },
     snow: { at: 'météo : neige de pixels', keys: ['grains.scan', 'grains.pitch', 'grains.reverse', 'grains.glide'] },
     frost: { at: 'météo : givre', keys: ['grains.source'], ev: 'freeze' },
     ripple: { at: 'sol : ondulation', keys: ['global.swing', 'global.humanize', 'bass.octave', 'perc.steps'] },
-    echo: { at: 'filtre : écho (plantes fantômes)', keys: ['fx.echo', 'fx.echoTime', 'fx.feedback'] },
+    echo: { at: 'filtre : écho (éléments fantômes)', keys: ['fx.echo', 'fx.echoTime', 'fx.feedback'] },
     tape: { at: 'filtre : bande qui défile, image qui tremble', keys: ['fx.tape'] },
     grain: { at: 'filtre : grain et vignette', keys: ['fx.lofi'] },
     lens: { at: 'filtre : grille (Sculpter), portée (Composer)', poll: () => ({ sculpt: 0.5, compose: 1 })[AMB.mode] || 0 },
@@ -955,10 +961,17 @@
         g.globalAlpha = 0.42 * on * (R ? 0.3 + 0.7 * Math.min(1, this.lit[p.id] || 0) : 1);
         g.setTransform(p.kx, 0, (p.sway || 0) * ky * p.gy, -ky * p.gy * 0.62, p.x + ox, p.y + oy + this.px); g.drawImage(s.cv, -s.w / 2, -s.h);
       }
-      g.setTransform(1, 0, 0, 1, ox, oy);
+      g.setTransform(1, 0, 0, 1, ox, oy); g.globalCompositeOperation = 'lighter';
+      for (const p of this.plants) { // its neon smeared down the wet asphalt, brighter as it plays
+        if (!p.gy || p.gy < 0.05) continue;
+        const Rg = Math.max(8, Math.round(this.px * 6)), gl = this.glow(p.col, Rg), on = p.look ? 0.3 + 0.7 * p.look.on : 1, e = this.energy[p.id] || 0;
+        g.globalAlpha = Math.min(1, (0.22 + 0.5 * e) * on * (R ? 0.3 + 0.7 * Math.min(1, this.lit[p.id] || 0) : 1));
+        g.drawImage(gl, p.x - Rg * 0.6, p.y + this.px, Rg * 1.2, Math.min(H - p.y, Rg * 5));
+      }
+      g.globalCompositeOperation = 'source-over';
       const cv = this.fx('wet', W, H - gd, (w, h, px) => {
         const c = this.canvas(w, h), x = c.getContext('2d'), grd = x.createLinearGradient(0, 0, 0, h);
-        grd.addColorStop(0, rgb(TOK.ground, 1, 0.1)); grd.addColorStop(0.55, rgb(TOK.ground, 1, 0.75)); grd.addColorStop(1, rgb(TOK.ground, 1, 0.95));
+        grd.addColorStop(0, rgb(TOK.ground, 1, 0.05)); grd.addColorStop(0.6, rgb(TOK.ground, 1, 0.6)); grd.addColorStop(1, rgb(TOK.ground, 1, 0.95));
         x.fillStyle = grd; x.fillRect(0, 0, w, h); x.fillStyle = rgb(TOK.ground, 1, 0.55);
         for (let y = px; y < h; y += 2 * px) x.fillRect(0, y, w, Math.max(1, px >> 1));
         return c;
