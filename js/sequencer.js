@@ -269,6 +269,7 @@
 
       // ---- melody (S4.2: on a bar line, the path may mark a phrase for the player to answer) ----
       if (AMB.puzzles) AMB.puzzles.onStep(step, time, sd);
+      if (AMB.demands) AMB.demands.onStep(step, time, sd); // S5.5 live asks, judged on the grid
       if (AMB.discoveries) AMB.discoveries.onStep(step); // S5.10 combos, judged on each beat
       if (store.get('bells.mode') === 'Phrase') this.phraseStep(step, time, sd);
       else this.randomMelodyStep(step, time, sd);

@@ -120,6 +120,7 @@
       const g = AMB.game; if (!this.can(g)) return false;
       const gate = this.gate(g);
       if (gate) this.wait = Math.min(this.wait, GAP.gate); // a gate to open: its phrase comes soon
+      if (AMB.demands && AMB.demands.busy()) return false; // S5.5: a live ask in progress, the phrase waits
       if (this.wait > 0) { this.wait--; return false; }
       if (!gate && !store.get('bells.on')) return false; // the mastery loop needs the Melody heard
       if (AMB.pianoRoll && AMB.pianoRoll.roll && AMB.pianoRoll.roll.recording) return false; // Rec live: the notes are the roll's
