@@ -20,10 +20,11 @@ f.addEventListener('load', async () => {
 
     // --- 1. each recipe of the table plays all its ingredients (stopped: right away)
     const kinds = Object.keys(G.FX), bad = [];
-    ok(['first', 'ready', 'defi', 'open', 'secret', 'streak', 'record', 'tier', 'end', 'discovery'].every((k) => kinds.includes(k)), 'table FX : ' + kinds.join(', '));
+    ok(GV.running(), 'le Jardin dessine (les calques de la scène peuvent s\'allumer)');
+    ok(['first', 'ready', 'consolation', 'defi', 'open', 'secret', 'streak', 'record', 'tier', 'end', 'discovery'].every((k) => kinds.includes(k)), 'table FX : ' + kinds.join(', '));
     for (const k of kinds) {
       const R = G.FX[k], el = d.getElementById('dice'); chimes.length = 0; const c0 = flying(), pops0 = d.querySelectorAll('.fx-pop').length;
-      G.fx(k, { n: 3, name: 'Brume néon', el }); await tick();
+      for (const n in GV.kick) delete GV.kick[n]; const run0 = GV.running(); G.fx(k, { n: 3, name: 'Brume néon', el }); await tick();
       const p = G.fxLast, miss = [];
       if (!p || p.kind !== k) miss.push('plan');
       if (R.jingle && !chimes.some((c) => c.k === R.jingle)) miss.push('jingle');
@@ -37,6 +38,7 @@ f.addEventListener('load', async () => {
       if (R.pop && d.querySelectorAll('.fx-pop').length <= Math.min(pops0, 2)) miss.push('pop');
       if (R.confetti && !(flying() > c0 || C.n >= C.MAX)) miss.push('confetti');
       if (R.splash && GV.running() && !GV.waves.some((v) => v.who === R.splash)) miss.push('splash');
+      if (R.kick && (!run0 || !R.kick.every((n) => GV.kick[n] > 0.5))) miss.push('kick'); // S5.8 scene layers flare up
       if (miss.length) bad.push(k + ':' + miss.join('+'));
       await wait(40);
     }
@@ -59,6 +61,10 @@ f.addEventListener('load', async () => {
       end: await via(() => G.handOver()),
       merged: await via(() => { A.bus.emit('resp:streak', { streak: 5 }); A.bus.emit('resp:record', { best: 5 }); A.bus.emit('resp:tier', { tier: 3, name: 'Syncopes', lvl: 9 }); A.bus.emit('game:ready', { id: 't.son', by: null }); }),
     };
+    { // a gate missed 6 times (« prêt quand même »): a modest moment, not the challenge's party
+      const P = A.puzzles; r.consolation = await via(() => { P.outGate = 'p.premier'; A.bus.emit('game:ready', { id: 't.macros', by: 'p.premier' }); P.outGate = null; });
+      const R = G.FX.consolation;
+      ok(r.consolation === 'consolation' && /Prêt quand même/.test(A.lcdMsg.text) && R.rank < G.FX.defi.rank && !R.shake && !R.flash && !R.pop && R.confetti < G.FX.ready.confetti, 'Réponse ratée 6 fois : petite fête « consolation » (« ' + A.lcdMsg.text + ' », ' + R.confetti + ' confettis, ni flash, ni secousse, ni texte)'); A.game.s.ready = []; }
     const wantMap = { juste: 'juste', streak: 'streak', record: 'record', tier: 'tier', defi: 'defi', ready: 'ready', secret: 'secret', open: 'open', end: 'end', merged: 'tier' };
     ok(Object.keys(wantMap).every((k) => r[k] === wantMap[k]), 'événements → recettes (série, record, palier, défi, prêt, secret, ouverture, fin) ; même instant : la plus grosse seule ' + JSON.stringify(r));
     G.showTree(false);

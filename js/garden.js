@@ -275,10 +275,9 @@
         clearTimeout(this._toiT); this.renderScore();
         this._toiT = setTimeout(() => { if (P.cur === c && c) this.lcd(say, 2500); }, ms);
       } else if (e.phase === 'end' && e.res) {
-        const r = e.res, node = r.open && AMB.tree.byId[AMB.contracts.byId[r.open].node];
+        const r = e.res;
         this.renderScore(r.ok && r.streak > 1);
-        if (r.out) this.fx('ready', { say: '✦ Prêt quand même', ms: 3000, toast: `Pas cette fois, mais ${node ? node.name : 'la suite'} est prêt à ouvrir quand même.` });
-        else if (r.open || r.tier || r.record || r.ok && r.streak > 1) return; // the juice table (FX: resp:*, game:ready) says it
+        if (r.open || r.tier || r.tier || r.record || r.ok && r.streak > 1) return; // the juice table (FX: resp:*, game:ready) says it
         else if (r.ok) this.lcd(`✓ Juste · prochaine : ${r.next}`, 2500); // (its small juice: resp:streak → FX.juste)
         else this.lcd(P.level(r.lvl).tier ? `↺ Presque · ${r.name}` : `↺ Presque · prochaine : ${r.next}`, 2500);
       }
@@ -299,26 +298,32 @@
     //   `from` = where they burst) · shake (1 = the scene, 2 = the whole instrument too) · lcd ('glitch' | 'glitch-big' |
     //   'arcade' = the message scrolls in and blinks) · bounce (the buttons hop) · hop (one element hops) · punch (the scene
     //   zooms in, 1 | 1.5 | 2) · jingle (garden.chime kind, in the key) · pop (text that jumps out, arcade combo) · splash
-    //   (S5.2 splashes of a plant) · beats (confetti again on the next beats) · say (the LCD message).
+    //   (S5.2 splashes of a plant) · beats (confetti again on the next beats) · say (the LCD message) · kick (S5.8 scene
+    //   layers of the Jardin that flare up: gardenVisual.flare, same JUICE).
     // Moments fired in the same tick merge: the biggest (rank) plays alone (a gate answered = a challenge won, not also a
     // series). Reduced motion: a soft flash only (plus the jingle and the LCD message). S5.10 (combos, discoveries) reuses
     // it: fx('discovery', {name}).
     FX: {
-      first: { rank: 1, confetti: 16, from: 'el', hop: 'el', jingle: 'pop', pop: '✦' }, // a new control touched the 1st time
-      juste: { rank: 2, confetti: 12, from: '#lcd', hop: '#lcdScore', jingle: 'small' }, // a right answer (series of 1)
-      ready: { rank: 2, confetti: 24, from: '#treeBtn', hop: '#treeBtn', jingle: 'ready' }, // a node waits on « ✦ Ouvrir »
-      streak: { rank: 3, flash: 0.25, confetti: 40, shake: 1, lcd: 'glitch', jingle: 'streak', pop: (o) => `×${o.n} !`, splash: 'streak', say: (o) => `✓ Juste · série ${o.n}` },
-      defi: { rank: 4, flash: 0.5, confetti: 140, shake: 1, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'defi', pop: 'DÉFI RÉUSSI !!!' },
-      record: { rank: 5, flash: 0.55, confetti: 160, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1, jingle: 'record', pop: (o) => `★ RECORD ×${o.n} !`, splash: 'record', say: (o) => `★ Record : série ${o.n} !` },
-      secret: { rank: 5, flash: 0.6, confetti: 180, shake: 2, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'secret', pop: '✦ SECRET !!' },
-      tier: { rank: 6, flash: 0.65, confetti: 220, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1.5, jingle: 'tier', pop: (o) => `↑ ${String(o.name || 'palier').toUpperCase()} !!`, splash: 'tier', say: (o) => `↑ Palier : ${o.name}` },
-      open: { rank: 7, flash: 0.75, confetti: 260, shake: 2, lcd: 'arcade', bounce: 1, punch: 1.5, jingle: 'unlock', pop: 'OUVERT !!!', splash: 'tier' },
-      end: { rank: 8, flash: 1, confetti: 380, shake: 2, lcd: 'arcade', bounce: 1, punch: 2, jingle: 'end', pop: 'À TOI !!!', beats: 3 },
-      discovery: { rank: 9, flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => o.name ? `${String(o.name).toUpperCase()} !!!` : 'DÉCOUVERTE !!!', splash: 'tier', beats: 4, say: (o) => `✦ Découverte${o.name ? ' : ' + o.name : ' !'}` },
+      first: { rank: 1, confetti: 16, from: 'el', hop: 'el', jingle: 'pop', pop: '✦', kick: ['fireflies'] }, // a new control touched the 1st time
+      juste: { rank: 2, confetti: 12, from: '#lcd', hop: '#lcdScore', jingle: 'small', kick: ['fireflies'] }, // a right answer (series of 1)
+      ready: { rank: 2, confetti: 24, from: '#treeBtn', hop: '#treeBtn', jingle: 'ready', kick: ['fireflies', 'twinkle'] }, // a node waits on « ✦ Ouvrir »
+      consolation: { rank: 2, confetti: 10, from: '#treeBtn', hop: '#treeBtn', jingle: 'small', kick: ['fireflies'] }, // a gate missed 6 times: « prêt quand même », no party
+      streak: { rank: 3, flash: 0.25, confetti: 40, shake: 1, lcd: 'glitch', jingle: 'streak', pop: (o) => `×${o.n} !`, splash: 'streak', kick: ['twinkle', 'ripple'], say: (o) => `✓ Juste · série ${o.n}` },
+      defi: { rank: 4, flash: 0.5, confetti: 140, shake: 1, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'defi', pop: 'DÉFI RÉUSSI !!!', kick: ['rays', 'twinkle', 'ripple'] },
+      record: { rank: 5, flash: 0.55, confetti: 160, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1, jingle: 'record', pop: (o) => `★ RECORD ×${o.n} !`, splash: 'record', kick: ['aurora', 'twinkle', 'song'], say: (o) => `★ Record : série ${o.n} !` },
+      secret: { rank: 5, flash: 0.6, confetti: 180, shake: 2, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'secret', pop: '✦ SECRET !!', kick: ['aurora', 'fireflies', 'hue'] },
+      tier: { rank: 6, flash: 0.65, confetti: 220, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1.5, jingle: 'tier', pop: (o) => `↑ ${String(o.name || 'palier').toUpperCase()} !!`, splash: 'tier', kick: ['aurora', 'rays', 'song', 'ripple'], say: (o) => `↑ Palier : ${o.name}` },
+      open: { rank: 7, flash: 0.75, confetti: 260, shake: 2, lcd: 'arcade', bounce: 1, punch: 1.5, jingle: 'unlock', pop: 'OUVERT !!!', splash: 'tier', kick: ['rays', 'aurora', 'ripple', 'hue'] },
+      end: { rank: 8, flash: 1, confetti: 380, shake: 2, lcd: 'arcade', bounce: 1, punch: 2, jingle: 'end', pop: 'À TOI !!!', beats: 3, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'hue'] },
+      discovery: { rank: 9, flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => o.name ? `${String(o.name).toUpperCase()} !!!` : 'DÉCOUVERTE !!!', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `✦ Découverte${o.name ? ' : ' + o.name : ' !'}` },
     },
     // the bus events that are moments (the others call fx() where they happen: an opening, a secret, the end, a first touch)
     FX_ON: {
-      'game:ready': (d) => { const c = d.by && AMB.contracts.byId[d.by]; return c ? ['defi', { say: c.kind === 'reponse' ? '↺ ✓ Juste !' : '✓ Défi réussi' }] : ['ready']; },
+      'game:ready': (d) => {
+        const c = d.by && AMB.contracts.byId[d.by], n = AMB.tree.byId[d.id];
+        if (c && AMB.puzzles && AMB.puzzles.outGate === c.id) return ['consolation', { say: '✦ Prêt quand même', ms: 3000, toast: `Pas cette fois, mais ${n ? n.name : 'la suite'} est prêt à ouvrir quand même.` }];
+        return c ? ['defi', { say: c.kind === 'reponse' ? '↺ ✓ Juste !' : '✓ Défi réussi' }] : ['ready'];
+      },
       'game:contracts': (d) => { const c = AMB.contracts.byId[d.id]; return c && !c.node ? ['defi', { say: '✓ Défi réussi', ms: 2500 }] : null; }, // the last one
       'resp:streak': (d) => [d.streak > 1 ? 'streak' : 'juste', { n: d.streak }],
       'resp:record': (d) => ['record', { n: d.best }],
@@ -348,7 +353,7 @@
       const did = R.flash ? ['flash'] : [];
       if (R.jingle) { this.chime(R.jingle, { at, n: o.n || 0, deg: o.deg || 0 }); did.push('jingle'); }
       if (R.splash && GV) { GV.cheer(R.splash, at, o.plant); did.push('splash'); }
-      if (!red) for (const k of ['confetti', 'shake', 'lcd', 'bounce', 'hop', 'punch', 'pop']) if (R[k]) did.push(k);
+      if (!red) for (const k of ['confetti', 'shake', 'lcd', 'bounce', 'hop', 'punch', 'pop', 'kick']) if (R[k]) did.push(k);
       const beatMs = AMB.seq && AMB.seq.playing ? AMB.seq.stepDur() * 4000 : 380;
       const fire = () => {
         if (!AMB.game.path) return;
@@ -360,6 +365,7 @@
         if (R.lcd) this.fxClass($('#lcd'), 'lcd-' + R.lcd, R.lcd === 'glitch' ? 700 : 1400);
         if (R.bounce) this.fxClass(document.body, 'fx-bounce', 800);
         const el = R.hop === 'el' ? o.el : R.hop && $(R.hop); if (el) this.fxClass(el, 'fx-hop', 550);
+        if (R.kick && GV && GV.flare) GV.flare(R.kick, J);
         if (R.pop) this.fxPop(typeof R.pop === 'function' ? R.pop(o) : R.pop, stage, R.rank);
         if (R.confetti) {
           const src = R.from === 'el' ? o.el : R.from ? $(R.from) : stage, n = Math.round(R.confetti * J);

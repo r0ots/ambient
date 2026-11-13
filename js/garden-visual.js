@@ -611,6 +611,8 @@
     },
     // how much of a layer is drawn: its intensity squared (the default settings keep a calm scene, the ends are loud),
     // plus the impulse of a touch
+    // S5.9 → S5.8: a moment of the juice table (garden.FX `kick`) flares scene layers up (flare), k = JUICE (the one knob)
+    flare(names, k = JUICE) { if (!this.running() || this.reduced) return 0; let n = 0; for (const x of names) if (SCENE[x]) { this.kick[x] = Math.max(this.kick[x] || 0, Math.min(1, k)); n++; } return n; },
     amt(n) { const v = this.sc[n] || 0; return Math.min(1, v * v + 0.8 * (this.kick[n] || 0)); },
     // cached canvases of the scene, rebuilt only when the size changes
     fx(name, W, H, build) {

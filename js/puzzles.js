@@ -224,7 +224,7 @@
         const miss = ok ? 0 : (s.miss[gate.id] || 0) + 1;
         if (ok && c.len >= this.need(gate)) res.open = gate.id;
         else if (!ok) { s.miss[gate.id] = miss; res.left = TRIES - miss; if (miss >= TRIES) { res.open = gate.id; res.out = true; } }
-        if (res.open) { delete s.miss[gate.id]; AMB.contracts.finish(gate.id, g); }
+        if (res.open) { delete s.miss[gate.id]; this.outGate = res.out ? gate.id : null; AMB.contracts.finish(gate.id, g); this.outGate = null; } // outGate: the juice knows it was « prêt quand même »
       }
       g.save();
       g.emit('puzzle', { phase: 'end', res });
