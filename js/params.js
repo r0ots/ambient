@@ -40,7 +40,7 @@
       color: '#6f9fd8',
       params: {
         on: { label: 'On', type: 'toggle', def: true },
-        wave: { label: 'Timbre', hint: 'Timbre de la note tenue de fond.', type: 'select', options: ['Chaud', 'Creux', 'Orgue', 'Sub'], def: 'Chaud' },
+        wave: { label: 'Timbre', hint: 'Timbre de la note tenue de fond.', type: 'select', options: ['Chaud', 'Creux', 'Orgue', 'Sub', 'Abîmé'], def: 'Chaud' },
         vol: { label: 'Niveau', hint: 'Volume de la couche.', min: 0, max: 1, def: 0.5 },
         tone: { label: 'Lumière', hint: 'Sombre ↔ brillant.', min: 0, max: 1, def: 0.35, evolve: true },
         motion: { label: 'Mouvement', hint: 'Lent mouvement du filtre, du volume et de la position stéréo.', min: 0, max: 1, def: 0.4, evolve: true },
@@ -53,7 +53,7 @@
       color: '#b48ad6',
       params: {
         on: { label: 'On', type: 'toggle', def: true },
-        wave: { label: 'Timbre', hint: 'Timbre des accords tenus.', type: 'select', options: ['Nappe', 'Verre', 'Chœur', 'Cordes', 'Onde', 'FM'], def: 'Nappe' },
+        wave: { label: 'Timbre', hint: 'Timbre des accords tenus.', type: 'select', options: ['Nappe', 'Verre', 'Chœur', 'Cordes', 'Onde', 'FM', 'Cuivres', 'Cendre'], def: 'Nappe' },
         vol: { label: 'Niveau', hint: 'Volume de la couche.', min: 0, max: 1, def: 0.55 },
         tone: { label: 'Lumière', hint: 'Sombre ↔ brillant.', min: 0, max: 1, def: 0.4, evolve: true },
         attack: { label: 'Attaque', hint: 'Les accords arrivent doucement (haut) ou directement (bas).', min: 0, max: 1, def: 0.6 },
@@ -70,7 +70,7 @@
       color: '#f2c14e',
       params: {
         on: { label: 'On', type: 'toggle', def: true },
-        wave: { label: 'Timbre', hint: 'Timbre des notes de mélodie.', type: 'select', options: ['Cloche', 'Kalimba', 'Verre', 'Pluck', 'Doux'], def: 'Kalimba' },
+        wave: { label: 'Timbre', hint: 'Timbre des notes de mélodie.', type: 'select', options: ['Cloche', 'Kalimba', 'Verre', 'Pluck', 'Doux', 'Lame'], def: 'Kalimba' },
         vol: { label: 'Niveau', hint: 'Volume de la couche.', min: 0, max: 1, def: 0.45 },
         mode: { label: 'Jeu', hint: 'Aléatoire : improvise. Phrase : répète un motif qui varie lentement.', type: 'select', options: ['Aléatoire', 'Phrase'], def: 'Aléatoire' },
         phraseLen: { label: 'Phrase', hint: 'Longueur du motif répété en mode Phrase.', type: 'select', options: ['1 mes.', '2 mes.', '4 mes.'], def: '2 mes.' },
@@ -87,7 +87,7 @@
       color: '#e89ab8',
       params: {
         on: { label: 'On', type: 'toggle', def: false },
-        wave: { label: 'Timbre', hint: 'Timbre de la mélodie écrite. « Doux » tient la longueur des notes.', type: 'select', options: ['Cloche', 'Kalimba', 'Verre', 'Pluck', 'Doux'], def: 'Doux' },
+        wave: { label: 'Timbre', hint: 'Timbre de la mélodie écrite. « Doux » tient la longueur des notes.', type: 'select', options: ['Cloche', 'Kalimba', 'Verre', 'Pluck', 'Doux', 'Lame'], def: 'Doux' },
         mode: { label: 'Jeu', hint: 'Piano roll : joue tes notes. Arpège : égrène l\'accord en cours.', type: 'select', options: ['Piano roll', 'Arpège'], def: 'Piano roll' },
         arpDir: { label: 'Arpège', hint: 'Sens de l\'arpège.', type: 'select', options: ['Monte', 'Descend', 'Aller-retour', 'Aléatoire'], def: 'Monte' },
         arpRate: { label: 'Vitesse', hint: 'Vitesse de l\'arpège.', type: 'select', options: ['1/16', '1/8', '1/8.', '1/4'], def: '1/8' },
@@ -116,7 +116,7 @@
       color: '#7f9fe0',
       params: {
         on: { label: 'On', type: 'toggle', def: false },
-        wave: { label: 'Timbre', type: 'select', options: ['Sub', 'Ronde', 'Pluck'], def: 'Ronde' },
+        wave: { label: 'Timbre', type: 'select', options: ['Sub', 'Ronde', 'Pluck', 'Saturée'], def: 'Ronde' },
         vol: { label: 'Niveau', min: 0, max: 1, def: 0.5 },
         tone: { label: 'Lumière', min: 0, max: 1, def: 0.3 },
         decay: { label: 'Tenue', hint: 'Notes courtes ↔ notes liées.', min: 0, max: 1, def: 0.6 },
@@ -136,7 +136,7 @@
         tone: { label: 'Lumière', min: 0, max: 1, def: 0.4 },
         swing: { label: 'Swing +', hint: 'Swing en plus du swing général, pour cette piste seulement.', min: 0, max: 1, def: 0 },
         send: { label: 'Distance', hint: 'Proche et sec ↔ lointain : part de cette couche envoyée dans la réverbération et l\'écho.', min: 0, max: 1, def: 0.35 },
-        kit: { label: 'Kit', hint: 'Feutré : sons doux électroniques. Organique : tambour, bâton de pluie, gouttes, kalimba.', type: 'select', options: ['Feutré', 'Organique'], def: 'Feutré' },
+        kit: { label: 'Kit', hint: 'Feutré : sons doux électroniques. Organique : tambour, bâton de pluie, gouttes, kalimba. Métal : impact, ferraille, tôle, cloche de fer.', type: 'select', options: ['Feutré', 'Organique', 'Métal'], def: 'Feutré' },
         steps: { label: 'Pas', type: 'select', options: ['16', '32'], def: '16' },
         // 4 tracks "kick.shaker.wood.bell"; each a string of levels 0–3 per step (legacy: 4-char hex bitmask)
         pattern: { label: 'Motif', type: 'text', def: '8888.2222.0820.0001', maxLen: 200, hidden: true },
@@ -234,7 +234,7 @@
   }
   const lfo = (n, target, rate, depth) => ({
     [`l${n}target`]: { label: `Mouvement ${n} : quoi`, hint: 'Réglage qui va bouger tout seul, lentement.', type: 'select', options: targets, labels, def: target },
-    [`l${n}shape`]: { label: 'Forme', type: 'select', options: ['Sinus', 'Triangle', 'Dérive'], def: 'Sinus' },
+    [`l${n}shape`]: { label: 'Forme', type: 'select', options: ['Sinus', 'Triangle', 'Dérive', 'Montée'], def: 'Sinus' },
     [`l${n}rate`]: { label: 'Lenteur', hint: 'Durée d’un aller-retour (de 4 s à 10 min).', min: 0, max: 1, def: rate, fmt: (v) => fmtPeriod(v) },
     [`l${n}depth`]: { label: 'Ampleur', hint: 'De combien le réglage bouge autour de ta valeur.', min: 0, max: 1, def: depth },
   });
