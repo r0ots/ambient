@@ -818,7 +818,8 @@ body.game .lcd.lcd-pin .lcd-score { display: none; }
   body.game .transport #sleepLeft { display: none; }
   body.game .transport .tgrp-row { flex-wrap: nowrap; }
   body.game .transport .btn, body.game .transport summary { white-space: nowrap; }
-  body.game .lcd { min-height: 84px; align-content: start; }
+  body.game .lcd { align-content: start; }
+  body.game .lcd-task { min-height: 44px; } /* two lines kept for the challenge (a short one does not shrink the LCD) */
   body.game .stage { margin: 10px 0; }
   body.game .stage .hud { display: none; }
 }

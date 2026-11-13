@@ -19,7 +19,7 @@
     // Tronc — the starting point and the tools to keep / share a sound
     N('racine', 'tronc', 'Allumage', [], ['drone.on', 'drone.vol', 'drone.tone', 'global.volume'], ['play', 'mode-sculpt', 'keys', 'midi'], 'Une note tenue et sa lumière ; tes premières notes (pastilles, A–L, MIDI). Tout part de là.'),
     N('t.son', 'tronc', 'Timbre du drone', ['racine'], ['drone.wave', 'drone.motion'], [], 'Choisir le son du drone et le faire respirer.'),
-    N('t.viz', 'tronc', 'Écran', ['racine'], [], ['viz', 'listen'], 'Changer de visuel, passer en plein écran.'),
+    N('t.viz', 'tronc', 'Écran', ['racine'], [], ['listen'], 'Passer en plein écran : juste regarder la ville et écouter.'),
     N('t.journal', 'tronc', 'Journal', ['t.son'], [], ['journal', 'save'], 'Revenir à un moment passé, garder un paysage.'),
     N('t.rec', 'tronc', 'Enregistreur', ['t.son'], [], ['rec'], 'Enregistrer ce que tu entends.'),
     N('t.macros', 'tronc', 'Grands réglages', ['t.son', 'h.pad', 'm.bells'], ['macro.*'], [], 'Les 5 grands réglages : beaucoup de réglages d\'un geste.'),
@@ -65,13 +65,13 @@
   // one or two sentences, the words of the lexicon (ARCHITECTURE.md). The only table of these texts.
   const EXPLAIN = {
     't.son': 'Le drone change de voix : plus doux, plus rond ou plus pointu, et il peut respirer lentement. À régler dans Sculpter, Drone.',
-    't.viz': 'Tu peux changer le dessin qui bouge sur l\'écran, et passer en plein écran pour juste regarder et écouter.',
+    't.viz': 'Tu peux passer en plein écran pour juste regarder la ville et écouter.',
     't.journal': 'L\'instrument se souvient de ce que tu as entendu : ♥ garde un moment, et tu peux revenir à un moment passé.',
     't.rec': '● Rec enregistre ce que tu entends dans un fichier, pour le réécouter ou le faire écouter.',
     't.macros': 'Cinq gros boutons qui changent beaucoup de choses d\'un coup : Lumière, Densité, Espace, Nostalgie, Nature. Ils sont dans Écouter.',
     't.share': 'Tu peux envoyer ton paysage à quelqu\'un avec un lien, et garder tous tes paysages dans un fichier.',
     't.dice': '✦ Nouveau paysage invente un son complet selon une humeur, et le menu Paysage en propose des tout prêts.',
-    'h.pad': 'Une nappe d\'accords, des notes tenues ensemble, qui s\'étend sous le drone. Tu pourras changer son timbre ou la couper dans Sculpter, Pad.',
+    'h.pad': 'Des accords : plusieurs notes tenues ensemble, qui s\'étendent sous le drone. Tu pourras choisir un autre son ou les couper dans Sculpter, Pad.',
     'h.drone': 'Le drone ne reste plus sur la même note : il change avec les accords du Pad.',
     'h.pad2': 'Les accords peuvent arriver doucement ou d\'un coup, avoir plus de notes, et durer plus ou moins longtemps.',
     'h.key': 'Tu peux faire monter ou descendre toute la musique d\'un coup. L\'écran montre aussi le nom des notes et des accords.',
@@ -111,7 +111,7 @@
   // interface features (node `ui` names) -> elements; params are tagged through their data-key
   const UI_SEL = {
     play: '#play, #bigPlay',
-    viz: '#vizMode', listen: '#listen',
+    listen: '#listen', // (S6.7: #vizMode is not on the path, the Parcours always shows the city)
     journal: '#journal', save: '#save, #renamePatch, #deletePatch',
     rec: '.recgrp', share: '#share', patches: '#exportPatches, label:has(#importFile)',
     dice: '#dice, #mood', preset: '#preset',
@@ -124,7 +124,7 @@
   };
 
   const UI_LABEL = {
-    play: 'Lecture', viz: 'Visuels', listen: 'Plein écran', journal: 'Journal des moments', save: 'Sauver un paysage',
+    play: 'Lecture', listen: 'Plein écran', journal: 'Journal des moments', save: 'Sauver un paysage',
     rec: 'Enregistrement', share: 'Lien de partage', patches: 'Export / import des paysages', dice: '✦ Nouveau paysage',
     preset: 'Paysages prêts', freeze: 'Échantillon, micro, Figer', scenes: 'Scènes A/B', automation: 'Automation',
     chords: 'Panneau Progression', song: 'Morceau', pianoroll: 'Piano roll', motifs: 'Motifs A–D', reclive: 'Rec live',

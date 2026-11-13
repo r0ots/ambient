@@ -39,7 +39,7 @@
     }, '{Touche une pastille sous l\'écran, une touche de A à L ou ton clavier MIDI : le son démarre.|Touche une pastille de couleur sous l\'écran : le son démarre.}'),
     Dm('k.couleur', ['racine'], 'Tourne la lumière du drone sur MAINTENANT', { how: 'hit', param: 'drone.tone', src: ['user', 'cc'] },
       ON1 + 'Sculpter > Drone > Lumière{ (ou la molette CC74 du clavier MIDI)|} : le son s\'ouvre et se ferme.'),
-    Dm('k.timbre', ['t.son'], 'Change le timbre du drone sur MAINTENANT', { how: 'hit', param: 'drone.wave' },
+    Dm('k.timbre', ['t.son'], 'Change le son du drone sur MAINTENANT', { how: 'hit', param: 'drone.wave' },
       ON1 + 'Sculpter > Drone > Timbre : choisis-en un autre.'),
     Dm('k.moments', ['t.journal'], 'Garde ce moment (♥) sur MAINTENANT', { how: 'hit', act: 'keep' },
       ON1 + 'Sculpter > Journal : ♥ garde le son de l\'instant ; plus tard, un clic sur un moment passé le fait revenir.'),
@@ -53,7 +53,7 @@
     C('h.forcer', ['h.pad'], 'Force 3 accords ({Z à M, ou appui long sur une pastille|appui long sur une pastille})', 3, {
       act(st, id) { if (id === 'chord' && gesture(st, 'chord', 600)) st.n = (st.n || 0) + 1; },
     }, '{Pendant la lecture, les touches Z, X, C, V, B, N, M jouent les accords I à VII ; au doigt, un appui long sur une pastille force l\'accord de son degré (au clavier MIDI : les notes graves).|Pendant la lecture, garde le doigt appuyé sur une pastille : elle joue tout un accord.}'),
-    Dm('h.son', ['h.pad'], 'Change le timbre du Pad sur MAINTENANT', { how: 'hit', param: 'pad.wave' },
+    Dm('h.son', ['h.pad'], 'Change le son du Pad sur MAINTENANT', { how: 'hit', param: 'pad.wave' },
       ON1 + 'Sculpter > Pad > Timbre : choisis-en un autre.'),
     Dm('h.suivre', ['h.drone'], 'Fais suivre les accords au drone sur MAINTENANT', { how: 'hit', param: 'drone.follow', v: (v) => !!v },
       ON1 + 'Sculpter > Drone > Suit accords : écoute ensuite le drone changer de note avec les accords.'),
@@ -146,7 +146,7 @@
   for (const d of DEFS) if (d.kind === 'reponse') {
     d.d = Math.max(0, Math.min(1, (depth(d.node) - 3) / 3));
     const n = 3 + Math.round(d.d * 3); // AMB.puzzles.respLen
-    d.hint = `Pendant la lecture, l'enseigne Mélodie auto s'allume et l'écran dit « ↺ À toi » : rejoue la phrase juste après (pastilles{, A à L ou MIDI|}). ${n} notes justes ouvrent le nœud.`;
+    d.hint = `Pendant la lecture, l'enseigne Mélodie auto s'allume et l'écran dit « ↺ À toi » : rejoue la phrase juste après (pastilles{, A à L ou MIDI|}). ${n} notes justes ouvrent la suite.`;
   }
 
   const contracts = {

@@ -1440,10 +1440,10 @@
   // ---- « Jardin » as a mode of AMB.visual, only in the Parcours ----
   const V = AMB.visual;
   if (!V) return;
-  const NAME = 'Jardin', PATH_KEY = 'ambient.vizMode.path';
+  const NAME = 'Jardin';
   const onPath = () => !!(AMB.game && AMB.game.path);
   const get = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
-  const pathPref = () => { const m = get(PATH_KEY); return m === NAME || V.MODES.includes(m) ? m : NAME; };
+  const pathPref = () => NAME; // S6.7: the Parcours always shows the city (its chip is gone: css body.game #vizMode)
   const freePref = () => { const m = get('ambient.vizMode'); return V.MODES.includes(m) ? m : 'Orbes'; };
   const SHOWN = { [NAME]: 'Ville' }; // S6.5: the mode keeps its id (stored preference), the chip says « Ville »
   const chip = () => { const el = typeof document !== 'undefined' && document.getElementById('vizMode'); if (el) el.textContent = SHOWN[V.mode] || V.mode; };
@@ -1464,9 +1464,7 @@
   };
   V.cycleMode = function () {
     if (!onPath()) return baseCycle.call(this);
-    const L = [NAME, ...this.MODES];
-    this.mode = L[(L.indexOf(this.mode) + 1) % L.length];
-    try { localStorage.setItem(PATH_KEY, this.mode); } catch (e) {}
+    this.mode = NAME; // S6.7: no Orbes / Spectre in the Parcours (they hid the city, the visual of the path)
     Promise.resolve().then(chip); // (ui.js writes the returned id on the chip: the label follows)
     return this.mode;
   };

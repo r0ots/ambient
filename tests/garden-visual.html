@@ -29,7 +29,7 @@ window.addEventListener('load', async () => {
     G.setMode('path');
     ok(V.mode === 'Jardin', 'Parcours : Jardin par défaut');
     const L = []; for (let i = 0; i < 4; i++) L.push(V.cycleMode());
-    ok(L.join() === 'Orbes,Horizon,Spectre,Jardin' && localStorage.getItem('ambient.vizMode') === 'Horizon', 'Parcours : Jardin dans le cycle, préférence à part (le choix du libre reste Horizon)');
+    ok(L.join() === 'Jardin,Jardin,Jardin,Jardin' && localStorage.getItem('ambient.vizMode') === 'Horizon', 'S6.7 Parcours : toujours la ville, aucun cycle (le choix du libre reste Horizon)');
     G.setMode('free');
     ok(V.mode === 'Horizon', 'retour au libre : son visuel d\'avant (Horizon)');
     V.mode = 'Jardin'; frame();

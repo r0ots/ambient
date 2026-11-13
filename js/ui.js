@@ -418,7 +418,8 @@
   function toast(msg) {
     const t = $('#toast'); if (!t) return;
     t.textContent = msg; t.classList.add('show');
-    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2200);
+    // S6.7: long enough to be read (a long sentence vanished before a child got through it)
+    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), Math.min(6500, Math.max(2200, String(msg).length * 65)));
   }
   const b64e = (str) => btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   const b64d = (str) => decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/'))));
