@@ -2,7 +2,7 @@
 # Headless test of one page: prints its tagged log lines (levels, checks, JS errors).
 # Needs a static server on :$PORT (default 8765) logging requests to $LOG (python3 -u -m http.server $PORT 2> $LOG).
 # Usage: LOG=... ./run.sh page.html [scale]   (scale multiplies all waits, default 0.4)
-LOG=${LOG:-/tmp/ambient-server.log}; PORT=${PORT:-8765}
+LOG=${LOG:-/tmp/ambient-server.log}; PORT=${PORT:-8765}; HOST=${HOST:-localhost}
 PAGE=${1:-smoke.html}; TAG=${PAGE%.html}; SCALE=${2:-0.4}
 START=$(( $(wc -l < "$LOG") + 1 ))
 # one page loads at a time (the others keep running): python's http.server resets connections when several headless
@@ -12,9 +12,9 @@ launch() {
   for _ in $(seq 1 30); do mkdir "$LOCK" 2>/dev/null && break; sleep 0.1; done
   UD=$(mktemp -d)
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --autoplay-policy=no-user-gesture-required \
-    --user-data-dir="$UD" --no-first-run --disable-gpu --mute-audio --disable-audio-output "http://localhost:$PORT/tests/$PAGE?s=$SCALE" >/dev/null 2>&1 &
+    --user-data-dir="$UD" --no-first-run --disable-gpu --mute-audio --disable-audio-output "http://$HOST:$PORT/tests/$PAGE?s=$SCALE" >/dev/null 2>&1 &
   CPID=$!
-  ( sleep 0.6; rmdir "$LOCK" 2>/dev/null ) &
+  ( sleep ${LOCK_S:-0.6}; rmdir "$LOCK" 2>/dev/null ) &
 }
 stopc() { kill $CPID 2>/dev/null; sleep 0.3; rm -rf "$UD" 2>/dev/null; }
 lines() { tail -n +$START "$LOG" | grep "__log?$TAG%7C" | sed -E 's/.*__log\?([^ ]*) HTTP.*/\1/' | python3 -c "import sys,urllib.parse;[print(urllib.parse.unquote(l.strip()).split('|',1)[1]) for l in sys.stdin]"; }
