@@ -111,9 +111,9 @@
   const JUICE = 1;
   // per who: ring (wave brightness), parts (particles at vel 1), flash (plant lit), squash (squash & stretch), life (s)
   const SPLASH = {
-    player: { ring: 1, parts: 16, flash: 0.9, squash: 0.2, life: 0.75 },
-    chord: { ring: 1, parts: 26, flash: 1, squash: 0.28, life: 0.9 },
-    machine: { ring: 0.4, parts: 3, flash: 0.3, squash: 0.06, life: 0.5 },
+    player: { ring: 1, parts: 24, flash: 1, squash: 0.28, life: 0.8 },
+    chord: { ring: 1, parts: 36, flash: 1, squash: 0.36, life: 1 },
+    machine: { ring: 0.45, parts: 4, flash: 0.35, squash: 0.08, life: 0.5 },
   };
   const WAVES_PER_PLANT = 3, PARTS_MAX = 260, LOUD = 0.85, HELD_MAX = 30; // s: a release that never comes
   const MACHINE = new Set(['bells', 'seq', 'bass']); // the machine's melodies and bass (+ the rhythm, 'perc')
@@ -595,9 +595,9 @@
       const S = SPLASH[w.who], v = 0.4 + 0.6 * w.vel, o = this.origin(p, w.pitch), px = this.px, r = this.rng || (this.rng = mulberry(99));
       const col = this.tint(p.col, w.pitch), n = Math.round(S.parts * JUICE * v);
       for (let k = 0; k < n; k++) {
-        const an = -Math.PI / 2 + (r() - 0.5) * (w.who === 'chord' ? 4.2 : 2.8), sp = (7 + r() * 17) * px * (0.6 + 0.5 * v) * (0.7 + 0.3 * JUICE);
-        const c = r(), big = w.who !== 'machine' && r() < 0.3;
-        this.parts.push({ x: o.x, y: o.y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, life: 1, decay: 1 + r() * 0.7, g: 24, col: c < 0.3 ? [255, 240, 200] : c < 0.65 ? col : p.col, s: big ? 2 : 1 });
+        const an = -Math.PI / 2 + (r() - 0.5) * (w.who === 'chord' ? 4.2 : 2.8), sp = (9 + r() * 24) * px * (0.6 + 0.5 * v) * (0.7 + 0.3 * JUICE);
+        const c = r(), big = w.who !== 'machine' ? (r() < 0.35 ? 3 : 2) : 1;
+        this.parts.push({ x: o.x, y: o.y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, life: 1, decay: 1 + r() * 0.7, g: 24, col: c < 0.3 ? [255, 240, 200] : c < 0.65 ? col : p.col, s: big });
       }
       if (this.parts.length > PARTS_MAX) this.parts.splice(0, this.parts.length - PARTS_MAX);
       this.squash[p.id] = { t0: this.t || 0, amp: S.squash * JUICE * v };
@@ -613,10 +613,10 @@
         if (!e) { this.waves.splice(i, 1); continue; }
         if (!w.fired) this.fire(w, p);
         const S = SPLASH[w.who], o = this.origin(p, w.pitch), A = S.ring * (0.4 + 0.6 * w.vel) * e.a, col = w.col || (w.col = this.tint(p.col, w.pitch));
-        const Rg = Math.max(12, Math.round(px * (w.who === 'machine' ? 5 : 9))), gl = this.glow(col, Rg);
+        const Rg = Math.max(12, Math.round(px * (w.who === 'machine' ? 6 : 12))), gl = this.glow(col, Rg);
         g.globalAlpha = Math.min(1, this.reduced ? 0.8 * S.ring : A); g.drawImage(gl, o.x - Rg, o.y - Rg);
         if (this.reduced) continue;
-        const nd = w.who === 'machine' ? 10 : 18, R = px * (2 + (w.who === 'machine' ? 7 : 16) * (0.5 + 0.5 * w.vel) * (0.6 + 0.4 * JUICE) * e.r), sz = Math.max(1, px - 1);
+        const nd = w.who === 'machine' ? 10 : 20, R = px * (2 + (w.who === 'machine' ? 8 : 22) * (0.5 + 0.5 * w.vel) * (0.6 + 0.4 * JUICE) * e.r), sz = Math.max(1, px - 1);
         g.fillStyle = w.fill || (w.fill = rgb(col)); g.globalAlpha = Math.min(1, A);
         for (let k = 0; k < nd; k++) { const an = (k / nd) * 6.283 + w.t0 * 3; g.fillRect(Math.round((o.x + Math.cos(an) * R) / px) * px, Math.round((o.y + Math.sin(an) * R * 0.8) / px) * px, sz, sz); }
       }
