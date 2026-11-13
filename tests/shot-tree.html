@@ -4,6 +4,7 @@
   #garden (Jardin visuel débutant : 3 couches), #garden-adv (tout l'arbre, secrets) — notes simulées sur le bus ;
   #composer (arbre, branche Composer en 3 nœuds), #handover (instrument remis : arbre complet, morceau enregistré) ;
   #song (panneau Morceau, mode libre, 3 sections, la 1re choisie : ses réglages et les éditeurs dessous ; S6.3), #song-empty (aucune section : ● Rec désactivé), #song-loops (S6.4 : rangée Boucles, 2 couches dont une muette, overdub en cours) ;
+  S6.7 : #chords (Progression en la mineur, noms d'accords, Couplet de 8 mes.), #free-play (mode libre en Ville, lecture) ;
   #roll (piano roll, mode libre : notes ♯ hors gamme ; S6.4 : « ⤓ Garder » est passé dans le looper du Morceau) ;
   S4.6 : #ready (« ✦ Ouvrir : Pad » qui pulse, 2 prêts), #ready-card (la carte qui dit ce que le Pad apporte), #new (le Pad vient de s'ouvrir : panneau, halo, « Nouveau ») ;
   S5.9 : #juice-defi / #juice-open / #juice-tier (un moment du juice central en plein effet, figé) ; S6.6 : #juice-end (la fin, KA-BOOM!), #coin (« INSERT COIN » avant le premier son), #hiscores (HIGH SCORES dans l'Arbre, initiales en cours) ;
@@ -29,6 +30,13 @@ document.getElementById('f').addEventListener('load', () => {
     }
     A.song.render(); setTimeout(() => A.song.panel.scrollIntoView({ block: 'start' }), 300); return;
   }
+  if (h.includes('chords')) { // S6.7: Progression in A minor, chord names; a Couplet of 8 bars fits a 4 × 4-bar progression
+    A.game.setMode('free'); A.garden.welcome(false); doc.querySelector('[data-mode=compose]').click();
+    A.song.replace({ sections: [] }); A.store.setMany({ 'global.key': 'A', 'global.scale': 'Éolien (mineur)', 'pad.prog': 'i–VI–III–VII', 'pad.length': 4 }, 'user');
+    A.song.add(); A.song.add(); A.song.select(1, true); A.song.render();
+    setTimeout(() => doc.querySelector('.chords-panel').scrollIntoView({ block: 'start' }), 300); return;
+  }
+  if (h.includes('free-play')) { A.game.setMode('free'); A.garden.welcome(false); setTimeout(() => A.ui.play(), 200); return; } // S6.7: the city in free mode
   if (h.includes('roll')) {
     A.game.setMode('free'); A.garden.welcome(false); doc.querySelector('[data-mode=compose]').click();
     A.store.setMany({ 'global.key': 'C', 'global.scale': 'Ionien (majeur)', 'seq.steps': '32', 'seq.on': true, 'seq.follow': false, 'seq.slot': 'A',

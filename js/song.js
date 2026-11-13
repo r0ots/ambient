@@ -227,7 +227,7 @@
       const name = panel.querySelector('.song-name');
       name.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') name.blur(); });
       name.addEventListener('change', () => { const s = this.sel(); if (s) { s.name = name.value.trim().slice(0, 24) || s.name; this.save(); this.render(); } });
-      panel.querySelector('.song-bars').addEventListener('change', (e) => { const s = this.sel(); if (s) { s.bars = Number(e.target.value); this.save(); this.render(); } });
+      panel.querySelector('.song-bars').addEventListener('change', (e) => { const s = this.sel(); if (s) { s.bars = Number(e.target.value); this.save(); this.render(); if (AMB.chords) AMB.chords.render(); } }); // chord lengths fit it
       this.edit.addEventListener('click', (e) => {
         const b = e.target.closest('[data-b]'); if (!b || this.idx < 0) return;
         const a = b.dataset.b, s = this.sel();
@@ -284,7 +284,7 @@
       const g = this.getter(s), PR = AMB.pianoRoll;
       const notes = PR ? ['seq.pattern', 'seq.patB', 'seq.patC', 'seq.patD'].reduce((a, k) => a + PR.parse(g(k)).length, 0) : 0;
       const hits = (k) => g(k.split('.')[0] + '.on') && /[1-9a-f]/i.test(String(g(k)).replace(/\./g, ''));
-      const prog = g('pad.prog') === 'Perso' ? String(g('pad.custom')).trim() : g('pad.prog');
+      const prog = AMB.chords ? AMB.chords.summary(g) : g('pad.prog') === 'Perso' ? String(g('pad.custom')).trim() : g('pad.prog');
       el.textContent = [`${notes} note${notes > 1 ? 's' : ''}`, hits('bass.pattern') && 'basse', hits('perc.pattern') && 'pulsations', `accords ${prog}`, s.loops && s.loops.length && `${s.loops.length} boucle${s.loops.length > 1 ? 's' : ''}`].filter(Boolean).join(' · ');
     },
     renderProgress() {

@@ -7,9 +7,12 @@
 //   - rare plants (glowing crystals) = discoveries found (S5.10, js/discoveries.js), on the ground between two plants;
 //   - S4.2 « Réponse » (js/puzzles.js view()): the Melody plant blinks while the marked phrase plays, stays lit while it
 //     waits for the answer, and grows one leaf per note played back (green = right, red = wrong).
-// Mode policy (wraps AMB.visual, visual.js is untouched): « Jardin » exists only in the Parcours, where it is the
-// default (own preference key ambient.vizMode.path); in free mode (or mode not chosen) the cycle, the stored choice
-// (ambient.vizMode) and the drawing are exactly the classic ones. Without this file the app is unchanged.
+// Mode policy (wraps AMB.visual, visual.js is untouched): « Jardin » (the « Ville » on screen) is the default visual and
+// in the cycle of both modes, each with its own stored choice (ambient.vizMode.path in the Parcours, ambient.vizMode in
+// free mode, where Orbes / Horizon / Spectre stay available). S6.7: in free mode (or mode not chosen) the city is a pure
+// reflection of the music: every layer has its element (all open, dim when switched off), at full height, and nothing of
+// the game is drawn (no Réponse, tier marks, discoveries, combos, celebrations, dawn of the end); notes splash and the
+// scene layers (SCENE) follow the controls as in the Parcours. Without this file the app is unchanged.
 // S4.5w (calé sur la musique): a plant that appears or gets taller GROWS (~1.2 s, Y scale of its cached sprite) from the
 // strong beat its layer comes in on (garden.beat / growAt); the sky follows the chord and the scale (cached skies,
 // cross-faded with globalAlpha); the ground pulses on the beat; the finale replays the recorded song (replayStart):
@@ -537,6 +540,7 @@
     layerNodes(id) { const T = AMB.tree; return T ? T.NODES.filter((n) => n.params.some((p) => p.startsWith(id + '.'))).map((n) => n.id) : []; },
     readState() {
       const g = AMB.game, st = { layers: [], levels: {}, secrets: [] };
+      if (this.free) { for (const l of LAYERS) { st.layers.push(l.id); st.levels[l.id] = 1; } return st; } // S6.7 free mode: the whole city
       if (!g || !g.s) return st;
       const own = g.s.nodes || [];
       st.layers = LAYERS.filter((l) => own.includes(l.node)).map((l) => l.id);
@@ -790,7 +794,7 @@
     dawnLevel(now) {
       const R = this.replay;
       if (R) return Math.max(0, Math.min(1, (now - R.t0 - R.from) / Math.max(0.1, R.len)));
-      return AMB.game && AMB.game.s && AMB.game.s.ended ? 1 : 0; // the instrument handed over: the garden stays at dawn
+      return !this.free && AMB.game && AMB.game.s && AMB.game.s.ended ? 1 : 0; // the instrument handed over: the garden stays at dawn
     },
     // the beat (0..1 since the last one, strong = beat 1 or 3), null when the sequencer is stopped
     beatPhase(now) {
@@ -1117,7 +1121,7 @@
 
     // ---- S5.10 combos: each one ON in js/discoveries.js fades in (~0.25 s), and out when it falls; drawn by COMBO_FX ----
     updateCombos(dt) {
-      const D = AMB.discoveries, on = D && D.on, kT = this.reduced ? 1 : 1 - Math.exp(-dt / 0.25);
+      const D = AMB.discoveries, on = !this.free && D && D.on, kT = this.reduced ? 1 : 1 - Math.exp(-dt / 0.25);
       for (const id in COMBO_FX) {
         const want = on && on.has(id) ? 1 : 0, c = this.cx[id] || 0, n = c + (want - c) * kT;
         if (!want && n < 0.01) delete this.cx[id]; else this.cx[id] = n;
@@ -1169,7 +1173,7 @@
     // S5.3 → S5.2: a celebration (kind = 'streak' | 'record' | 'tier', SPLASH) bursts from a plant (the Melody's by default;
     // S5.9 the juice table passes the opened layer's) at audio time `at` (the jingle's beat), same splashes, same JUICE
     cheer(kind, at, plant) {
-      const S = SPLASH[kind]; if (!S) return false;
+      const S = SPLASH[kind]; if (!S || this.free) return false;
       this.onSplash('cheer', { kind, plant, time: at == null ? this.clock() : at });
       return true;
     },
@@ -1356,7 +1360,7 @@
     },
     // ---- S4.2 « Réponse » on the Melody plant ----
     LEAF_OK: [143, 227, 160], LEAF_BAD: [235, 84, 64],
-    answer(now) { const P = AMB.puzzles; return P && P.view && this.plants.some((q) => q.id === 'bells') ? P.view(now) : null; },
+    answer(now) { const P = AMB.puzzles; return !this.free && P && P.view && this.plants.some((q) => q.id === 'bells') ? P.view(now) : null; },
     // its light: blinks with the phrase, steady while it waits, fades after the answer
     lightAnswer(v) {
       const e = v.phase === 'call' ? (this.reduced ? 0.6 : 0.4 + 0.5 * Math.abs(Math.sin((this.t || 0) * 7)))
@@ -1388,7 +1392,7 @@
     // S5.3: the Réponse tier reached (puzzles.mark(): 0 = Phrases, one more per tier), as LED marks beside the Melody
     // plant's name; the number is the game's, only these few lines draw it (a later skin draws its own)
     drawMark(g, fs) {
-      const P = AMB.puzzles, n = Math.min(9, P && P.mark ? P.mark() : 0), p = n && this.plants.find((q) => q.id === 'bells');
+      const P = AMB.puzzles, n = this.free ? 0 : Math.min(9, P && P.mark ? P.mark() : 0), p = n && this.plants.find((q) => q.id === 'bells');
       if (!p) return 0;
       const lp = Math.max(2, Math.round(fs * 0.3)), y = Math.round(p.y + this.px * 1.5 + fs * 1.15), x0 = Math.round(p.x - (n * lp * 1.6) / 2);
       g.setTransform(1, 0, 0, 1, this.ox || 0, this.oy || 0); g.fillStyle = rgb(p.col);
@@ -1440,18 +1444,19 @@
   // ---- « Jardin » as a mode of AMB.visual, only in the Parcours ----
   const V = AMB.visual;
   if (!V) return;
-  const NAME = 'Jardin', PATH_KEY = 'ambient.vizMode.path';
+  const NAME = 'Jardin', PATH_KEY = 'ambient.vizMode.path', FREE_KEY = 'ambient.vizMode';
   const onPath = () => !!(AMB.game && AMB.game.path);
   const get = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const pathPref = () => { const m = get(PATH_KEY); return m === NAME || V.MODES.includes(m) ? m : NAME; };
-  const freePref = () => { const m = get('ambient.vizMode'); return V.MODES.includes(m) ? m : 'Orbes'; };
+  const freePref = () => { const m = get(FREE_KEY); return m === NAME || V.MODES.includes(m) ? m : NAME; }; // S6.7: the city by default
   const SHOWN = { [NAME]: 'Ville' }; // S6.5: the mode keeps its id (stored preference), the chip says « Ville »
   const chip = () => { const el = typeof document !== 'undefined' && document.getElementById('vizMode'); if (el) el.textContent = SHOWN[V.mode] || V.mode; };
-  const sync = () => { V.mode = onPath() ? pathPref() : freePref(); chip(); };
-  const baseDraw = V.draw, baseCycle = V.cycleMode;
+  const setFree = () => { const free = !onPath(); if (free !== gv.free) { gv.free = free; gv.sig = null; gv.waves.length = 0; gv.parts.length = 0; } };
+  const sync = () => { V.mode = onPath() ? pathPref() : freePref(); setFree(); chip(); };
+  const baseDraw = V.draw;
   V.draw = function () {
-    gv.active = this.mode === NAME && onPath();
-    if (this.mode === NAME && !onPath()) { sync(); }
+    gv.active = this.mode === NAME;
+    setFree();
     if (gv.active !== gv.shown && typeof document !== 'undefined' && document.body) { // S6.5: the city's CRT (css), set by JUICE
       gv.shown = gv.active; document.body.classList.toggle('city', gv.active); document.body.style.setProperty('--crt', String(Math.min(1, gv.crt() / 1.5 + 0.1)));
     }
@@ -1463,15 +1468,14 @@
     return baseDraw.call(this);
   };
   V.cycleMode = function () {
-    if (!onPath()) return baseCycle.call(this);
     const L = [NAME, ...this.MODES];
     this.mode = L[(L.indexOf(this.mode) + 1) % L.length];
-    try { localStorage.setItem(PATH_KEY, this.mode); } catch (e) {}
+    try { localStorage.setItem(onPath() ? PATH_KEY : FREE_KEY, this.mode); } catch (e) {}
     Promise.resolve().then(chip); // (ui.js writes the returned id on the chip: the label follows)
     return this.mode;
   };
   V.gardenSync = sync;
-  if (onPath()) V.mode = pathPref();
+  V.mode = onPath() ? pathPref() : freePref();
   if (AMB.bus) { AMB.bus.on('game:mode', sync); gv.listen(AMB.bus); }
   if (typeof window !== 'undefined') window.addEventListener('load', () => setTimeout(chip, 0));
 })();

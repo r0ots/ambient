@@ -20,7 +20,7 @@ window.addEventListener('load', async ()=>{
   st.setMany({'seq.on':true,'bass.on':true,'perc.on':true,'seq.pattern':P1,'bass.pattern':B1,'perc.pattern':X1,'pad.prog':'I–V–vi–IV','fx.space':0.2,'pad.wave':'Nappe'},'user');
   q('[data-s=add]').click();
   ok(SG.sections.length===1 && SG.idx===0 && SG.sections[0].snap['seq.pattern']===P1 && SG.sections[0].snap['perc.pattern']===X1 && q('.song-chip.sel') && !q('.song-edit').hidden, '+ Section : la 1re section = ce qu\'on entend (motifs compris), sélectionnée');
-  ok(/3 notes · basse · pulsations · accords I–V–vi–IV/.test(q('.song-meta').textContent), 'résumé de la section : '+q('.song-meta').textContent);
+  ok(q('.song-meta').textContent.startsWith('3 notes · basse · pulsations · accords '+AMB.chords.summary()) && /^[A-G]/.test(AMB.chords.summary()), 'résumé de la section, accords par leur nom (S6.7) : '+q('.song-meta').textContent);
   // --- a new section: same sound and chords, empty motifs, selected: the editors show it empty
   q('[data-s=add]').click();
   ok(SG.sections.length===2 && SG.idx===1 && SG.sections[1].name==='Couplet' && st.get('seq.pattern')==='' && !/1/.test(st.get('bass.pattern')) && PR.parse(st.get('seq.pattern')).length===0 && st.get('pad.prog')==='I–V–vi–IV' && st.get('pad.wave')==='Nappe', 'nouvelle section « Couplet » : motifs vides, même son, mêmes accords ; les éditeurs la montrent');

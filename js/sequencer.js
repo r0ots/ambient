@@ -106,18 +106,14 @@
       this.applyHarmony(AMB.engine.ctx.currentTime);
     }
 
-    // Fixed progression as 0-based scale degrees, or null for the random walk
+    // Fixed progression as 0-based scale degrees (chords that follow the scale, js/theory.js), or null for the random walk
     progression() {
-      const P = {
-        'Plane (I)': [0], 'Pendule I–IV': [0, 3], 'I–V–vi–IV': [0, 4, 5, 3],
-        'i–VI–III–VII': [0, 5, 2, 6], 'Montée I–ii–iii–IV': [0, 1, 2, 3],
-      };
       const name = store.get('pad.prog');
       if (name === 'Perso') {
         const degs = this.customSteps().map((c) => c.deg);
         return degs.length ? degs : null;
       }
-      return P[name] || null;
+      return T.progDegrees(name, this.scale);
     }
     // "Perso" progression as [{deg, bars}] from pad.custom: "1 6:2 4 5:8" (bars optional, default pad.length)
     customSteps() {
@@ -126,12 +122,20 @@
         return d >= 1 && d <= 14 ? { deg: d - 1, bars: b >= 1 && b <= 16 ? b : null } : null;
       }).filter(Boolean);
     }
+    // bars held by each chord of the progression (null: random walk). S6.7: in a song section, the progression fits in
+    // it (all lengths halved together until every chord is heard), so a 4-chord progression of 4 bars each plays 2 bars
+    // each in an 8-bar section instead of never reaching its last two chords
+    chordDurs() {
+      const seq = this.progression(); if (!seq) return null;
+      const def = store.get('pad.length');
+      const durs = store.get('pad.prog') === 'Perso' ? this.customSteps().map((c) => c.bars || def) : seq.map(() => def);
+      const sec = AMB.song && AMB.song.sel();
+      return sec ? T.fitBars(durs, sec.bars) : durs;
+    }
     // bars held by the chord at progression index i
     chordBars(i) {
-      const def = store.get('pad.length');
-      if (store.get('pad.prog') !== 'Perso') return def;
-      const cs = this.customSteps();
-      return (cs.length && cs[((i % cs.length) + cs.length) % cs.length].bars) || def;
+      const d = this.chordDurs();
+      return d ? d[((i % d.length) + d.length) % d.length] : store.get('pad.length');
     }
 
     // Player-forced chord (keyboard / MIDI): plays now and holds for one chord length.
