@@ -241,7 +241,7 @@
     if (slot !== cur) store.set('seq.slot', slot, 'user');
     if (!store.get('seq.on')) store.set('seq.on', true, 'user');
     if (store.get('seq.mode') !== 'Piano roll') store.set('seq.mode', 'Piano roll', 'user');
-    AMB.ui.toast(`${out.length} note(s)${mel ? ' de la Mélodie' : ''} gardée(s) dans le motif ${slot}` + (free ? '' : ' (remplacé · ⌘Z pour annuler)'));
+    AMB.ui.toast(`${out.length} note(s)${mel ? ' de la Mélodie auto' : ''} gardée(s) dans le motif ${slot}` + (free ? '' : ' (remplacé · ⌘Z pour annuler)'));
     return { slot, notes: out, len };
   }
 
@@ -260,7 +260,7 @@
           <button class="btn small" data-act="random" title="Motif aléatoire dans la gamme">⚄ Motif</button>
           <label class="btn small" title="Clic doux sur les temps pendant l'enregistrement"><input type="checkbox" data-metro checked> Métronome</label>
           <button class="btn small rec-btn" data-act="liverec" title="Enregistre ce que tu joues au clavier (A–L, Q–P) ou en MIDI dans ce motif, quantifié, en boucle (overdub)">● Rec live</button>
-          <button class="btn small" data-act="keep" disabled title="Garde les 4 dernières mesures que tu as jouées (A–L, MIDI), même sans Rec, dans ce motif ou le suivant libre ; sans note jouée, celles de la Mélodie">⤓ Garder</button>
+          <button class="btn small" data-act="keep" disabled title="Garde les 4 dernières mesures que tu as jouées (A–L, MIDI), même sans Rec, dans ce motif ou le suivant libre ; sans note jouée, celles de la Mélodie auto">⤓ Garder</button>
           <button class="btn small" data-act="shiftL" title="Décaler à gauche">◀</button>
           <button class="btn small" data-act="shiftR" title="Décaler à droite">▶</button>
           <button class="btn small" data-act="up" title="Monter d'un degré">▲</button>

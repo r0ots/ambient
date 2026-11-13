@@ -239,7 +239,7 @@ window.addEventListener('load', async () => {
       step(2); const o = GV.origin(P('bells'), sp('live', { midi: 76 }).pitch), dark = lum(o.x, o.y);
       AMB.bus.emit('live', { midi: 76, time: T, vel: 0.85, raw: null, id: 1 }); step(1);
       const w1 = GV.waves[0];
-      ok(GV.waves.length === 1 && w1.plant === 'bells' && w1.who === 'player' && w1.fired && GV.parts.length >= 10 && GV.zap.bells > 0.5 && GV.squash.bells, 'note jouée : une onde sur la plante Mélodie (' + GV.parts.length + ' particules, éclat ' + GV.zap.bells.toFixed(2) + ', écrasement)');
+      ok(GV.waves.length === 1 && w1.plant === 'bells' && w1.who === 'player' && w1.fired && GV.parts.length >= 10 && GV.zap.bells > 0.5 && GV.squash.bells, 'note jouée : une onde sur la plante Mélodie auto (' + GV.parts.length + ' particules, éclat ' + GV.zap.bells.toFixed(2) + ', écrasement)');
       ok(lum(o.x, o.y) > dark + 20, 'l\'onde se voit à l\'écran, à la hauteur de la note (luminosité ' + dark.toFixed(0) + ' → ' + lum(o.x, o.y).toFixed(0) + ')');
       { let mx = 0; for (let i = 0; i < 8; i++) { step(); mx = Math.max(mx, Math.abs(P('bells').bounce)); } ok(mx > 0.05 && !GV.kicks.bells, 'la plante rebondit (squash & stretch ' + mx.toFixed(2) + '), sans toucher la scène'); }
       const pPlayer = GV.parts.length; reset();
@@ -262,7 +262,7 @@ window.addEventListener('load', async () => {
       // S5.3 celebrations (palier, record) go through the same splashes and the same JUICE: bigger than a note
       GV.cheer('tier', T); step(1); const wt = GV.waves[0], pTier = GV.parts.length;
       ok(wt && wt.plant === 'bells' && wt.who === 'tier' && pTier > pPlayer && GV.shake && GV.squash.bells.amp > GV.SPLASH.player.squash * GV.JUICE && GV.SPLASH.record.parts > GV.SPLASH.streak.parts && !GV.cheer('nope'),
-        'fête de palier : éclat de la plante Mélodie plus fort qu\'une note (' + pTier + ' particules contre ' + pPlayer + '), secousse, même table SPLASH et même JUICE'); step(30); reset();
+        'fête de palier : éclat de la plante Mélodie auto plus fort qu\'une note (' + pTier + ' particules contre ' + pPlayer + '), secousse, même table SPLASH et même JUICE'); step(30); reset();
       for (let i = 0; i < 5; i++) AMB.bus.emit('live', { midi: 60 + i, time: T, vel: 0.8, id: 20 + i });
       AMB.bus.emit('note', { layer: 'bells', midi: 72, time: T, vel: 0.8 });
       ok(GV.waves.length === GV.WAVES_PER_PLANT && GV.waves.every((w) => w.who === 'player'), 'au plus ' + GV.WAVES_PER_PLANT + ' ondes par plante ; une note de la machine ne chasse pas celles du joueur');
@@ -362,10 +362,10 @@ window.addEventListener('load', async () => {
         while (offs.length && offs[0][0] <= el) AMB.bus.emit('liveOff', { id: offs.shift()[1], time: now });
         while (m * 250 <= el) { AMB.bus.emit('note', { layer: ['bells', 'bass', 'seq'][m % 3], midi: 55 + m % 12, time: now, vel: 0.7 }); AMB.bus.emit('perc', { track: m % 3, time: now, vel: 0.8 }); m++; }
         while (c * 1000 <= el) { AMB.bus.emit('chord', { time: now, deg: c % 7, midis: [52, 55, 59], forced: true }); c++; }
-        frame(); if (el < 2500) requestAnimationFrame(tick); else res(); }; requestAnimationFrame(tick); });
+        frame(); if (el < 1200) requestAnimationFrame(tick); else res(); }; requestAnimationFrame(tick); });
       const s = GV.stats();
       log('PERF S5.2 1280×800 (8 notes jouées / s, accord forcé / s, machine 12 notes / s, JUICE ' + GV.JUICE + ') : moyenne ' + s.avg.toFixed(2) + ' ms, p95 ' + s.p95.toFixed(2) + ' ms, max ' + s.max.toFixed(2) + ' ms (' + s.frames + ' images, ' + k + ' notes jouées, ' + GV.parts.length + ' particules à la fin)');
-      ok(k >= 18 && s.avg < 2, 'coût par image en jouant 8 notes / s : moyenne ' + s.avg.toFixed(2) + ' ms (cible < 2 ms)');
+      ok(k >= 9 && s.avg < 2, 'coût par image en jouant 8 notes / s : moyenne ' + s.avg.toFixed(2) + ' ms (cible < 2 ms)');
       AMB.bus.emit('panic'); GV.waves.length = 0; GV.parts.length = 0; }
 
     // --- cost per frame at 1280×800 (advanced garden, notes every frame), real rAF

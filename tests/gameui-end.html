@@ -3,8 +3,36 @@
 <script src="lib.js"></script>
 <script src="gameui-lib.js"></script>
 <script>
-gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY }) => {
-  const g=A.game;
+gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, settle }) => {
+  const g=A.game; A.garden.END_MS=150; A.garden.HAND_MS=300; // S5.6: the handover's delays, shortened (logic unchanged)
+  // --- S5.6 finishing touches: no « ▶ Lancer le paysage » in the path, the only open layer has no mute, press feedback,
+  // the confetti of an earlier party cleared when a window opens; free mode: the big ▶, the mutes, no press feedback
+  { const css=(sel,p)=>{ const e=d.querySelector(sel); return e && w.getComputedStyle(e)[p]; }, PE=(t,el)=>el.dispatchEvent(new w.PointerEvent(t,{bubbles:true,pointerId:5}));
+    g.reset(); A.tree.applyLocks(); A.perform.setMode('sculpt'); await wait(30);
+    const dOn=d.querySelector('.panel[data-sec=drone] > header .tog[data-key="drone.on"]');
+    ok(css('#bigPlay','display')==='none' && shown('#play'), 'Parcours : pas de « ▶ Lancer le paysage » sur l\'écran, ▶ Lecture dans la barre');
+    ok(A.store.get('drone.on') && dOn.classList.contains('is-solo') && w.getComputedStyle(dOn).display==='none' && d.querySelector('.layer-chips .tog[data-key="drone.on"]').classList.contains('is-solo'), 'Graine : le drone, seule couche ouverte, n\'a pas de coupure (ni dans Sculpter ni dans Écouter)');
+    A.store.set('drone.on', false, 'game'); ok(!dOn.classList.contains('is-solo'), 'drone coupé (paysage, ancienne sauvegarde) : sa coupure revient pour le rallumer'); A.store.set('drone.on', true, 'game');
+    g.unlock('m.bells'); await wait(30);
+    const bOn=d.querySelector('.panel[data-sec=bells] > header .tog[data-key="bells.on"]');
+    ok(!dOn.classList.contains('is-solo') && w.getComputedStyle(dOn).display!=='none' && w.getComputedStyle(bOn).display!=='none', 'Mélodie auto ouverte : deux couches, deux coupures');
+    const b=d.getElementById('play'); PE('pointerdown',b);
+    ok(b.classList.contains('is-pressed') && /press-in/.test(w.getComputedStyle(b).animationName), 'appui : le bouton s\'enfonce (is-pressed) '+b.className+' / '+w.getComputedStyle(b).animationName);
+    PE('pointerup',b); ok(!b.classList.contains('is-pressed') && b.classList.contains('is-released') && /press-out/.test(w.getComputedStyle(b).animationName), 'relâché : rebond et lueur (is-released)');
+    const sl=d.querySelector('.ctl.sel:not(.is-locked) select'); PE('pointerdown',sl); const kp=sl.closest('.ctl.sel').classList.contains('is-pressed'); PE('pointerup',sl);
+    ok(kp, 'un sélecteur aussi (générique : boutons, potentiomètres, sélecteurs, pastilles)');
+    A.garden.fx('discovery',{name:'Test'}); await wait(80); const L=d.getElementById('fxLayer');
+    const flying=L && !L.hidden && A.garden.confetti.n>0;
+    A.garden.showTree(true); await wait(20);
+    ok(flying && L.hidden && !A.garden.confetti.n && !L.querySelector('.fx-pop'), 'fenêtre ouverte (Arbre, carnet) : les confettis d\'une fête précédente disparaissent');
+    A.garden.showTree(false);
+    { const say=A.garden.FX_ON['resp:place']({ id:'musicien', name:'Musicien', nodes:['h.pad','h.drone','h.key'] })[1];
+      ok(say.toast==='Tu joues déjà : 3 nœuds prêts. Ouvre-les un par un avec ✦ Ouvrir.', 'placement : le toast résume la file (« '+say.toast+' »)'); }
+    await wait(500); g.setMode('free'); await wait(30);
+    ok(css('#bigPlay','display')!=='none' && !d.querySelector('.tog.is-solo'), 'mode libre : « ▶ Lancer le paysage » et toutes les coupures, comme avant');
+    PE('pointerdown',b); const fp=b.classList.contains('is-pressed'); PE('pointerup',b);
+    ok(!fp && !b.classList.contains('is-released'), 'mode libre : pas de retour de pression (intact)');
+    g.setMode('path'); g.reset(); A.perform.setMode('listen'); await wait(30); }
   // --- the instrument handed over (G6.3, S3.7): on the instrument, no dialog; the sound stays, the game interface goes
   { buyAll(); await wait(200); // macro positions settle (perform.js syncs them 60 ms after a change)
     ok(A.garden.complete() && !A.game.s.ended && task.dataset.id==='c.morceau' && shown('#lcdTask'), 'arbre complet : le dernier défi d\'abord, « '+task.querySelector('.lcd-task-txt').textContent+' »');
@@ -13,7 +41,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY }
     ok(A.game.s.ended && A.game.s.contracts.includes('c.morceau') && JSON.parse(localStorage.getItem('ambient.game.uitest')).ended, 'morceau enregistré → remise, état sauvegardé');
     for(let i=0;i<40 && !/INSTRUMENT/.test(d.getElementById('lcdTop').textContent);i++) await wait(50);
     ok(d.getElementById('treeDlg').hidden && /INSTRUMENT EST À TOI/.test(d.getElementById('lcdTop').textContent) && !d.querySelector('.modal:not([hidden])'), 'remise : carillon et message sur le LCD (« '+d.getElementById('lcdTop').textContent+' »), aucune boîte');
-    await wait(2200);
+    await wait(450);
     ok(!shown('#lcdTask') && !lline.hidden && !/✧/.test(d.getElementById('lcd').textContent), 'S3.7 : remise → la ligne de défi s\'efface, la 2e ligne redevient l\'état du son');
     { const df=sdiff(JSON.parse(snap),A.store.stableSnapshot()); ok(!df, 'remise : son inchangé (snapshot du store) '+df); }
     const nc=A.game.s.contracts.length; A.seq.playing=true; A.store.set('drone.tone',0.31,'user'); A.store.set('drone.tone',0.62,'user'); for(let i=0;i<8;i++) A.bus.emit('live',{midi:60,time:0,vel:1}); A.seq.playing=false; await wait(20);
@@ -25,7 +53,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY }
   // --- review fixes (G6.5): sends, neutral effects
   { A.game.reset(); ['t.son','h.pad'].forEach(i=>A.game.unlock(i));
     ok(!A.tree.paramUnlocked('bells.send') && A.game.has('h.pad') , 'avant Reverb');
-    A.game.unlock('e.reverb'); ok(A.tree.paramUnlocked('pad.send') && !A.tree.paramUnlocked('bells.send'), 'Espace d\'une couche seulement si la couche est là');
+    A.game.unlock('e.reverb'); ok(A.tree.paramUnlocked('pad.send') && !A.tree.paramUnlocked('bells.send'), 'Distance d\'une couche seulement si la couche est là');
     A.game.unlock('e.echo'); ok(A.store.get('fx.echo')===A.store.spec('fx.echo').def, 'écho ouvert = on l\'entend (valeur par défaut)');
     A.game.reset(); }
   // --- S4.5w: a real ending — the recorded song is replayed (night → dawn, plants lit by their layer), then handed over and offered
@@ -48,7 +76,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY }
     for (let i=0;i<100 && GV.replay;i++) await wait(50);
     for (let i=0;i<20 && !/INSTRUMENT/.test(top.textContent);i++) await wait(50);
     ok(!GV.replay && /INSTRUMENT EST À TOI/.test(top.textContent) && !dl.length, 'fin de la lecture : « L\'instrument est à toi » sur le LCD');
-    await wait(2200);
+    await wait(450);
     ok(shown('#lcdTask') && task.dataset.id==='wav' && /Garde ton morceau/.test(task.querySelector('.lcd-task-txt').textContent) && GV.dawnLevel(GV.clock())===1, 'le WAV est proposé sur la ligne du LCD ; le jardin reste à l\'aube');
     task.querySelector('.lcd-task-txt').click(); await wait(20);
     ok(dl.length===1 && dl[0][0]===blob && dl[0][1]==='wav' && !shown('#lcdTask') && !lline.hidden, 'toucher : le WAV est téléchargé, la ligne redevient l\'état du son');
@@ -59,9 +87,9 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY }
     const had=!!GV.replay; A.ui.stop(); await wait(50);
     for (let i=0;i<20 && !/INSTRUMENT/.test(top.textContent);i++) await wait(50);
     ok(had && !GV.replay && !A.garden.playback && /INSTRUMENT EST À TOI/.test(top.textContent), '■ Stop pendant la relecture de fin : elle s\'arrête, puis la remise');
-    await wait(2100); A.rec.download=od; A.game.reset(); A.perform.setMode('listen'); }
+    await wait(450); A.rec.download=od; A.game.reset(); A.perform.setMode('listen'); }
   // --- S3.7: the handover is saved: ↷ on the last contract hands over too; a reload keeps the instrument handed over
-  { g.setMode('path'); buyAll(); await wait(200); task.querySelector('.lcd-skip').click(); await wait(3300);
+  { g.setMode('path'); buyAll(); await wait(200); task.querySelector('.lcd-skip').click(); await wait(600);
     ok(A.game.s.ended && !shown('#lcdTask'), '↷ sur le dernier défi : remise aussi');
     await new Promise(r=>{ f.addEventListener('load',r,{once:true}); w.location.reload(); }); await wait(300);
     const w2=f.contentWindow, d2=f.contentDocument, A2=w2.AMB, vis=(sel)=>{ const e=d2.querySelector(sel); return !!e && e.getClientRects().length>0; };

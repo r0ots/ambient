@@ -9,7 +9,7 @@
   const BRANCHES = {
     tronc: { name: 'Tronc', color: '#e8d9b0' },
     harmonie: { name: 'Harmonie', color: '#b58cff' },
-    espace: { name: 'Espace', color: '#7fd6ff' },
+    espace: { name: 'Effets', color: '#7fd6ff' },
     mouvement: { name: 'Mouvement', color: '#8fe3a0' },
     composer: { name: 'Composer', color: '#ffb36b' },
   };
@@ -34,7 +34,7 @@
     N('h.scale', 'harmonie', 'Gammes', ['h.key'], ['global.scale'], [], '11 gammes, de la plus lumineuse à la plus mélancolique.'),
     N('h.prog', 'harmonie', 'Progression', ['h.scale', 'h.pad2'], ['pad.prog', 'pad.custom'], ['chords', 'mode-compose'], 'Écrire sa suite d\'accords case par case.'),
 
-    // Espace — reverb, echo, tape, textures
+    // Effets (id `espace`) — reverb, echo, tape, textures
     N('e.reverb', 'espace', 'Reverb', ['racine'], ['fx.space', '*.send'], [], 'Une salle autour du son, et combien chaque couche y envoie.'),
     N('e.texture', 'espace', 'Texture', ['e.reverb'], ['texture.*'], [], 'Pluie, vent, océan, feu, oiseaux…'),
     N('e.salle', 'espace', 'Salles', ['e.reverb'], ['fx.revType', 'fx.size', 'fx.predelay'], [], 'Hall, Plate ou Cloud, taille et pré-délai.'),
@@ -181,7 +181,7 @@
     },
     paramUnlocked(key, g = AMB.game) {
       if (!g.isUnlocked(this.nodeFor(key))) return false;
-      // a layer's « Espace » send only matters once the layer itself is there
+      // a layer's « Distance » send only matters once the layer itself is there
       if (g.path && key.endsWith('.send')) { const on = key.replace(/\.send$/, '.on'); if (AMB.store.spec(on)) return g.isUnlocked(this.nodeFor(on)); }
       return true;
     },
@@ -213,11 +213,23 @@
       const tagged = t.querySelectorAll('[data-node]');
       lock(t, on && tagged.length > 0 && !t.querySelector('[data-node]:not(.is-locked)'));
     });
+    this.solo(g);
     if (live && on && fresh.length) this.appear(fresh);
     // never stay in a mode that is locked
     const cur = AMB.mode;
     if (on && cur && cur !== 'listen' && !this.uiUnlocked('mode-' + cur, g) && AMB.perform) AMB.perform.setMode('listen');
   };
+
+  // S5.6: the On of a layer that is the only one open is hidden in the path: muting it would silence everything. Shown
+  // again as soon as another layer opens, or if that layer is off (so that it can always be turned back on).
+  tree.SOLO = ['drone', 'pad', 'bells', 'grains', 'texture', 'seq', 'bass', 'perc'];
+  tree.solo = function (g = AMB.game) {
+    if (typeof document === 'undefined') return;
+    const tg = this.SOLO.map((l) => document.querySelector(`.panel[data-sec="${l}"] > header .tog[data-key="${l}.on"]`)).filter((b) => b && !b.closest('.is-locked'));
+    document.querySelectorAll('.tog.is-solo').forEach((b) => b.classList.remove('is-solo'));
+    if (g && g.path && tg.length === 1 && AMB.store.get(tg[0].dataset.key)) document.querySelectorAll(`.tog[data-key="${tg[0].dataset.key}"]`).forEach((b) => b.classList.add('is-solo')); // (its panel header and its chip in Écouter)
+  };
+  if (AMB.store) AMB.store.on((k) => { if (/\.on$/.test(k) && tree.SOLO.includes(k.split('.')[0])) tree.solo(); });
 
   // ---- S4.6: what a node opens comes in animated, then stays highlighted ----
   // One generic class set, for every control, panel, button or mode a lock lets out: `is-appearing` (unfolds, fades and

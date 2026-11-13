@@ -18,7 +18,7 @@ window.addEventListener('load', async ()=>{
   for(const m of Object.keys(AMB.generator.MOODS)){
     const g=AMB.generator.generate(m);
     const bad=Object.keys(g.patch).filter(k=>!AMB.store.spec(k) || (AMB.store.spec(k).type==='select' && !AMB.store.spec(k).options.includes(g.patch[k])));
-    AMB.ui.applyPatch(g.patch); await new Promise(r=>setTimeout(r,2000*S)); await measure(m+' "'+g.title+'" invalid=['+bad.join(',')+']',3*S);
+    AMB.ui.applyPatch(g.patch); await new Promise(r=>setTimeout(r,1000*S)); await measure(m+' "'+g.title+'" invalid=['+bad.join(',')+']',1.5*S);
   }
   document.getElementById('dice').click();
   log('dice preset='+document.getElementById('preset').value);

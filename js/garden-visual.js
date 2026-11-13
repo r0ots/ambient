@@ -34,7 +34,7 @@
   const LAYERS = [
     { id: 'drone', node: 'racine', label: 'Drone', short: 'Drone', col: [111, 159, 216], kind: 'reed' },
     { id: 'pad', node: 'h.pad', label: 'Pad', short: 'Pad', col: [212, 150, 210], kind: 'bush' },
-    { id: 'bells', node: 'm.bells', label: 'Mélodie', short: 'Mélo', col: [255, 196, 110], kind: 'bell' },
+    { id: 'bells', node: 'm.bells', label: 'Mélodie auto', short: 'Mélo', col: [255, 196, 110], kind: 'bell' },
     { id: 'texture', node: 'e.texture', label: 'Texture', short: 'Text.', col: [120, 210, 200], kind: 'fern' },
     { id: 'grains', node: 'm.grains', label: 'Grains', short: 'Grain', col: [111, 207, 159], kind: 'puff' },
     { id: 'seq', node: 'c.seq', label: 'Mélodie écrite', short: 'Écrite', col: [255, 150, 71], kind: 'vine' },
@@ -48,7 +48,7 @@
   //   size  ← Niveau (× general Volume)             : height and width of the plant
   //   light ← Lumière (× Usure / Cassette, darker)  : colour and brightness, petals open (bright) or closed in a bud (dark)
   //   shape ← Timbre                                : round petals and smooth leaves ↔ pointed petals, more points, serrated leaves
-  //   halo  ← Espace of the layer × Reverb (+ Halo)  : soft aura around the plant
+  //   halo  ← Distance of the layer × Reverb (+ Halo)  : soft aura around the plant
   //   sway  ← the layer's movement (Mouvement, Attaque, Résonance, Swing +, Flou, Tenue) : how wide the stem waves
   //   pace  ← Tempo (Flottant = slower)             : how fast it waves
   //   bloom ← density / complexity (Densité, Accords riches, notes of the motif, hits of the pattern) : 1 to 4 flowers

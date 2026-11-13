@@ -18,7 +18,7 @@
   const store = AMB.store;
 
   const GIFT = {
-    givre: { type: 'timbre', sec: 'bells', opt: 'Givre', label: 'timbre « Givre » (Mélodie)' },
+    givre: { type: 'timbre', sec: 'bells', opt: 'Givre', label: 'timbre « Givre » (Mélodie auto)' },
     aube: { type: 'timbre', sec: 'pad', opt: 'Aube', label: 'timbre « Aube » (Pad)' },
   };
   const DARK = ['Éolien (mineur)', 'Dorien', 'Phrygien', 'Pentatonique min.', 'Hirajoshi', 'In Sen'];

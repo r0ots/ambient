@@ -70,6 +70,26 @@
     // clicks that always succeed go on the bus as actions (contracts count them); actions that can fail or be
     // cancelled (save, journal, chords, freeze) are emitted by their own code once they really happened
     CLICKS: [['#dice', 'dice'], ['.sc-store', 'sceneStore']],
+    // S5.6 press feedback, Parcours only (free mode untouched): every button, knob, select and pad sinks while pressed
+    // (`is-pressed`), then bounces back with a glow when let go (`is-released`); generic, one pair of css classes
+    PRESS: 'button, .knob, .ctl.sel, .pad',
+    pressFeedback() {
+      let el = null, safety = 0;
+      const up = () => {
+        clearTimeout(safety); if (!el) return;
+        const e = el; el = null;
+        e.classList.remove('is-pressed'); e.classList.remove('is-released'); void e.offsetWidth; // (restart the bounce)
+        e.classList.add('is-released'); setTimeout(() => e.classList.remove('is-released'), 450);
+      };
+      document.addEventListener('pointerdown', (ev) => {
+        if (!document.body.classList.contains('game') || !ev.target.closest) return;
+        const t = ev.target.closest(this.PRESS); if (!t || t.disabled) return;
+        up(); el = t; t.classList.remove('is-released'); t.classList.add('is-pressed');
+        if (!t.classList.contains('knob')) safety = setTimeout(up, 1500); // a native list (select) may swallow the release
+      }, true);
+      ['pointerup', 'pointercancel'].forEach((k) => window.addEventListener(k, up, true));
+      window.addEventListener('blur', (e) => { if (e.target === window) up(); }); // (the page loses focus, not an element)
+    },
     hookActions() {
       const emit = (id) => AMB.bus.emit('act', id);
       document.addEventListener('click', (e) => {
@@ -196,6 +216,7 @@
     // the path's last challenge (« Enregistre ton morceau ») closes it: with the whole tree owned, it comes first, and
     // the instrument is handed over once it is done or passed (↷)
     FINALE: 'c.morceau',
+    END_MS: 900, HAND_MS: 2000, // the tree closes, then the handover; the challenge line goes HAND_MS later (tests shorten them)
     checkEnd() {
       const g = AMB.game, K = AMB.contracts, F = this.FINALE;
       if (!g.path || g.s.ended || !this.complete()) return false;
@@ -207,12 +228,12 @@
       // no end screen: the instrument itself says it (chime, LCD), then the challenge line goes; the sound is untouched.
       // S4.5w: when the recorded song just ended the path (keepSong), it is heard again first (finale)
       this.handing = true;
-      setTimeout(() => { this.showTree(false); if (this.song) this.finale(); else this.handOver(); }, 900);
+      setTimeout(() => { this.showTree(false); if (this.song) this.finale(); else this.handOver(); }, this.END_MS);
       return true;
     },
     handOver() {
       this.fx('end', { say: '✦ L\'instrument est à toi', ms: 6000 });
-      setTimeout(() => { this.handing = false; this.renderContracts(); }, 2000);
+      setTimeout(() => { this.handing = false; this.renderContracts(); }, this.HAND_MS);
     },
 
     // ---- S4.5w: a real ending. The song recorded by « Enregistre ton morceau » is replayed on the instrument (the live
@@ -345,7 +366,7 @@
       'resp:streak': (d) => [d.streak > 1 ? 'streak' : 'juste', { n: d.streak }],
       'resp:record': (d) => ['record', { n: d.best }],
       'resp:tier': (d) => ['tier', { name: d.name }],
-      'resp:place': (d) => ['placement', { name: d.name, n: (d.nodes || []).length, ms: 6000, toast: (d.nodes || []).length ? `Tu joues déjà : ${d.nodes.map((id) => AMB.tree.byId[id].name).join(', ')}. Ouvre-les un par un avec ✦ Ouvrir.` : '' }],
+      'resp:place': (d) => ['placement', { name: d.name, n: (d.nodes || []).length, ms: 6000, toast: (d.nodes || []).length ? `Tu joues déjà : ${d.nodes.length} nœud${d.nodes.length > 1 ? 's' : ''} prêt${d.nodes.length > 1 ? 's' : ''}. Ouvre-les un par un avec ✦ Ouvrir.` : '' }],
     },
     juice() { const GV = AMB.gardenVisual; return GV && GV.JUICE != null ? GV.JUICE : 1; },
     // a moment: its message at once (LCD, toast), its effects on the next beat. Returns the queued {kind, o} or null.
@@ -456,6 +477,15 @@
         this.times.push(performance.now() - t0); if (this.times.length > 600) this.times.shift();
         if (n) this.raf = requestAnimationFrame((t) => this.frame(t)); else { this.raf = 0; cv.hidden = true; this.idle(); }
       },
+      // S5.6: a window opens (Arbre, carnet, aide, carte « Ouvrir ») — what is left of an earlier party goes, at once
+      clear() {
+        const L = document.getElementById('fxLayer'); if (!L) return;
+        if (this.raf) cancelAnimationFrame(this.raf); this.raf = 0; this.n = 0;
+        if (this.bins) this.bins.forEach((b) => { b.length = 0; });
+        const cv = L.querySelector('canvas'); if (cv) { const g = cv.getContext('2d'); if (g) g.clearRect(0, 0, cv.width, cv.height); cv.hidden = true; }
+        L.querySelectorAll('.fx-pop').forEach((p) => p.remove());
+        L.hidden = true;
+      },
       idle() { const L = document.getElementById('fxLayer'); if (L && !this.raf && !L.querySelector('.fx-pop')) L.hidden = true; }, // nothing left on the page
       stats() { const a = this.times.slice().sort((x, y) => x - y), k = a.length; return { frames: k, avg: k ? a.reduce((s, v) => s + v, 0) / k : 0, p95: k ? a[Math.max(0, Math.ceil(k * 0.95) - 1)] : 0, max: k ? a[k - 1] : 0 }; },
     },
@@ -485,6 +515,12 @@
         AMB.bus.on('grain', (n) => n && this.tape('grains', n.time, n.vel));
         AMB.bus.on('chord', (c) => { if (c) { this.tape('chord', c.time, 0.6, c.deg); this.tape('drone', c.time, 0.6); this.tape('pad', c.time, 0.3); } });
       }
+      // S5.6: a window that opens clears the confetti of an earlier party (a party fired after it still plays above)
+      if (typeof MutationObserver === 'function') {
+        const mo = new MutationObserver((ms) => { if (ms.some((m) => !m.target.hidden)) this.confetti.clear(); });
+        document.querySelectorAll('.modal').forEach((m) => mo.observe(m, { attributes: true, attributeFilter: ['hidden'] }));
+      }
+      this.pressFeedback();
       const task = $('#lcdTask');
       if (task) {
         task.querySelector('.lcd-skip').addEventListener('click', () => {

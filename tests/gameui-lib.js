@@ -17,7 +17,9 @@ window.gameUI = (body, o = {}) => {
       const buyAll = () => { A.game.reset(); let guard = 0; while (A.tree.NODES.some((n) => !A.game.has(n.id)) && guard++ < 200) A.tree.NODES.forEach((n) => { if (A.tree.status(n.id) === 'available') A.game.unlock(n.id); }); };
       const sdiff = (was, now) => Object.keys(now).filter((k) => JSON.stringify(now[k]) !== JSON.stringify(was[k])).map((k) => k + ':' + JSON.stringify(was[k]) + '→' + JSON.stringify(now[k])).join(' ');
       if (o.choose !== false) { d.querySelector('[data-choose=path]').click(); await wait(50); }
-      await body({ f, w, d, A, shown, locked, tn, task: d.getElementById('lcdTask'), lline: d.getElementById('lcdLine'), buyAll, sdiff, KEY });
+      // S5.6 (suite ~1 min): instead of fixed 1.5 s waits, wait until an opening sequence on the map is over (at least `min` ms)
+      const settle = async (min = 150, max = 3000) => { await wait(min); for (let t = min; t < max && A.garden.seq; t += 40) await wait(40); };
+      await body({ f, w, d, A, shown, locked, tn, task: d.getElementById('lcdTask'), lline: d.getElementById('lcdLine'), buyAll, sdiff, KEY, settle });
       for (const k of Object.keys(localStorage)) if (k.startsWith(KEY)) localStorage.removeItem(k);
       log('DONE');
     } catch (e) { log('EXC ' + e.stack); }

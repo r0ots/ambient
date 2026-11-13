@@ -80,6 +80,7 @@ body:not(.playing) .chord { opacity: 0.25; }
 .big-play span { font-size: 14px; letter-spacing: 0.05em; }
 .big-play:hover { transform: scale(1.04); }
 body.playing .big-play { opacity: 0; pointer-events: none; transform: scale(0.9); }
+body.game .big-play { display: none; } /* S5.6 Parcours : ▶ Lecture de la barre et le premier glissé lancent le son ; l'écran reste aux plantes */
 .stage-tools { position: absolute; top: 10px; right: 12px; display: flex; gap: 6px; z-index: 2; }
 .chip { background: #12142088; border: 1px solid #2b3050; color: var(--muted); font: inherit; font-size: 11px; padding: 4px 9px; border-radius: 999px; cursor: pointer; backdrop-filter: blur(4px); }
 .chip:hover { color: var(--text); border-color: #4a5180; }
@@ -398,6 +399,8 @@ footer { color: #6e6757; font-family: var(--f-num); letter-spacing: .08em; text-
 
 /* ---------- Jardin sonore : parcours ---------- */
 body.game .is-locked { display: none !important; }
+body.game .tog.is-solo { display: none; } /* S5.6 : la seule couche ouverte n'a pas de coupure (couper = tout couper) */
+body.game .macros .panel:not(:has(.ctls > :not(.is-locked))):not(:has(.layer-chips > .tog:not(.is-locked):not(.is-solo))) { display: none; } /* (Écouter à la Graine : rien à toucher, pas de boîte vide) */
 .welcome-card { max-width: 640px; }
 .welcome-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
 .welcome-choice { text-align: left; display: grid; gap: 6px; padding: 16px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel2); color: var(--fg, #e8e2d0); cursor: pointer; box-shadow: var(--bevel); font: inherit; }
@@ -655,4 +658,17 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
   .pads { grid-template-columns: repeat(10, 1fr); }
   .pad { grid-column: span 2; height: 52px; }
   .pad:nth-child(6) { grid-column: 2 / span 2; }
+}
+
+/* S5.6 retour de pression (Parcours seulement, garden.pressFeedback) : enfoncé, puis petit rebond et lueur au relâché.
+   Animations (pas de transition) : rien ne remplace les transitions propres des éléments. */
+body.game .is-pressed { scale: .88; filter: brightness(1.45) drop-shadow(0 0 5px var(--lcd-fg, #ffb347)); animation: press-in .07s ease-out !important; } /* (!important : le doigt passe avant un saut de fête) */
+body.game .is-released { animation: press-out .42s cubic-bezier(.3, 1.6, .5, 1) !important; }
+@keyframes press-in { from { scale: 1; filter: none; } }
+@keyframes press-out { 0% { scale: .9; filter: brightness(1.6) drop-shadow(0 0 9px var(--lcd-fg, #ffb347)); } 45% { scale: 1.07; }
+  75% { scale: .98; } 100% { scale: 1; filter: none; } }
+@media (prefers-reduced-motion: reduce) {
+  body.game .is-pressed { animation: none !important; scale: none; filter: brightness(1.45) drop-shadow(0 0 5px var(--lcd-fg, #ffb347)); }
+  body.game .is-released { animation: press-glow .42s ease-out !important; }
+  @keyframes press-glow { 0% { filter: brightness(1.6) drop-shadow(0 0 9px var(--lcd-fg, #ffb347)); } 100% { filter: none; } }
 }

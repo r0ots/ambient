@@ -7,7 +7,10 @@
 (function () {
   const TAG = location.pathname.split('/').pop().replace('.html', '');
   const S = +(new URLSearchParams(location.search).get('s') || 0.4);
-  const log = (m) => fetch('/__log?' + encodeURIComponent(TAG + '|' + m)).catch(() => {});
+  // one log request at a time, in order: the static server (python http.server, HTTP/1.0, listen backlog 5) resets
+  // connections when several headless pages burst requests at once, which made pages fail to load under the suite's pool
+  let q = Promise.resolve();
+  const log = (m) => (q = q.then(() => fetch('/__log?' + encodeURIComponent(TAG + '|' + m)).catch(() => {})));
   window.TAG = TAG; window.S = S; window.log = log;
   window.ok = (c, m) => log((c ? 'ok ' : 'ERROR fail ') + m);
   window.wait = (ms) => new Promise((r) => setTimeout(r, ms));

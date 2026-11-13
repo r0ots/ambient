@@ -59,18 +59,18 @@
     Dm('h.tonalite', ['h.key'], 'Module : change de tonalité sur le 1', { how: 'hit', param: 'global.key' },
       ON1 + 'Sculpter > Global > Tonalité : tout le paysage monte ou descend.'),
 
-    // Espace
+    // Effets
     Dm('e.resonne', ['e.reverb'], 'Ouvre l\'espace (Reverb au-dessus de 60) avant la fin de la mesure', { how: 'by', param: 'fx.space', v: (v) => v >= 0.6 },
-      BY + 'Sculpter > Espace > Reverb au-dessus de 60 : les notes se prolongent.'),
+      BY + 'Sculpter > Effets > Reverb au-dessus de 60 : les notes se prolongent.'),
     C('m.respire', ['e.reverb', 'm.bells'], 'Laisse respirer : 3 notes, une seconde et demie entre chacune', 3, run((p, n) => n.time - p.time >= 1.5 && n.time - p.time <= 6),
       'Joue une note, laisse-la s\'éteindre dans l\'espace (au moins une seconde et demie), puis la suivante : trois fois.'),
-    Dm('e.noyer', ['e.reverb', 'h.pad'], 'Noie le Pad (Espace au-dessus de 70) avant la fin de la mesure', { how: 'by', param: 'pad.send', v: (v) => v >= 0.7 },
-      BY + 'Sculpter > Pad > Espace au-dessus de 70 : ses accords flottent dans la salle.'),
+    Dm('e.noyer', ['e.reverb', 'h.pad'], 'Noie le Pad (Distance au-dessus de 70) avant la fin de la mesure', { how: 'by', param: 'pad.send', v: (v) => v >= 0.7 },
+      BY + 'Sculpter > Pad > Distance au-dessus de 70 : ses accords flottent dans la salle.'),
     Dm('e.grande', ['e.salle'], 'Agrandis la salle (Taille au-dessus de 80) avant la fin de la mesure', { how: 'by', param: 'fx.size', v: (v) => v >= 0.8 },
-      BY + 'Sculpter > Espace > Taille au-dessus de 80.'),
+      BY + 'Sculpter > Effets > Taille au-dessus de 80.'),
     C('e.echo', ['e.echo', 'm.bells'], 'Joue 4 notes dans l\'écho', 4, {
       note(st) { if (store.get('fx.echo') >= 0.4) st.n = (st.n || 0) + 1; },
-    }, 'Monte l\'Écho au-dessus de 40 (Sculpter > Espace), puis joue des notes (pastilles ou A à L) et écoute-les se répéter.'),
+    }, 'Monte l\'Écho au-dessus de 40 (Sculpter > Effets), puis joue des notes (pastilles ou A à L) et écoute-les se répéter.'),
 
     // Mouvement
     C('m.notes', ['m.bells'], 'Joue 6 notes (pastilles ou clavier A à L)', 6, {
@@ -142,7 +142,7 @@
   for (const d of DEFS) if (d.kind === 'reponse') {
     d.d = Math.max(0, Math.min(1, (depth(d.node) - 3) / 3));
     const n = 3 + Math.round(d.d * 3); // AMB.puzzles.respLen
-    d.hint = `Pendant la lecture, la plante Mélodie s'allume et l'écran dit « ↺ À toi » : rejoue la phrase juste après (pastilles, A à L ou MIDI). ${n} notes justes ouvrent le nœud.`;
+    d.hint = `Pendant la lecture, la plante Mélodie auto s'allume et l'écran dit « ↺ À toi » : rejoue la phrase juste après (pastilles, A à L ou MIDI). ${n} notes justes ouvrent le nœud.`;
   }
 
   const contracts = {

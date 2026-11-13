@@ -3,7 +3,7 @@
 <script src="lib.js"></script>
 <script src="gameui-lib.js"></script>
 <script>
-gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY }) => {
+gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, settle }) => {
   ok(!d.body.classList.contains('game') && !d.querySelector('.is-locked'), 'mode non choisi : rien de verrouillé');
   ok(!d.getElementById('welcomeDlg').hidden, 'accueil affiché à la 1re visite');
   d.querySelector('[data-choose=path]').click(); await wait(50);
@@ -36,7 +36,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY }
   // S4.6 + G8.5: a challenge won makes its node READY — a chime, « ✦ Ouvrir : Pad » pulsing on the LCD, the tree says « prêt »;
   // nothing opens by itself. A tap says what it gives, « Ouvrir » plays the opening sequence on the map (link, node born at the
   // chime, children blink), then what it opened comes in animated (unfolds, halo, « Nouveau »)
-  A.perform.setMode('listen'); A.garden.showTree(false); A.garden.select(null); A.game.unlock('m.bells'); await wait(1400); A.garden.showTree(false); A.perform.setMode('listen');
+  A.perform.setMode('listen'); A.garden.showTree(false); A.garden.select(null); A.game.unlock('m.bells'); await settle(300); A.garden.showTree(false); A.perform.setMode('listen');
   const lt=d.getElementById('lcdTask'), ltx=lt.querySelector('.lcd-task-txt'), odlg=d.getElementById('openDlg');
   A.contracts.finish('m.notes'); await wait(60);
   ok(!A.game.has('h.pad') && A.game.isReady('h.pad') && !A.garden.seq && d.getElementById('treeDlg').hidden && A.lcdMsg && A.lcdMsg.text==='✓ Défi réussi', 'S4.6 : défi réussi → fêté (carillon, « ✓ Défi réussi »), le Pad est prêt mais rien ne s\'ouvre seul');
@@ -123,14 +123,14 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY }
   A.seq.playing=true; const tone0=A.store.get('drone.tone'), mac0=A.store.get('macro.light');
   for (const x of [0.1,0.9,0.2,0.8]) { A.contracts.state().prog['k.xy'].t_xy=0; A.perform.setMacro('macro.light', x); A.perform.setMacro('macro.density', 0.5); }
   ok(A.store.get('drone.tone')!==tone0 && A.store.get('macro.light')===mac0 && locked('.macros [data-key="macro.light"]') && A.game.isReady('m.bells'), 'glisser sur l\'écran dès la Graine : la couleur du drone suit, les grands réglages restent fermés ; 4 glissés → Mélodie prête');
-  A.garden.openNode('m.bells'); await wait(1500); A.garden.showTree(false); A.perform.setMode('listen'); await wait(30);
+  A.garden.openNode('m.bells'); await settle(300); A.garden.showTree(false); A.perform.setMode('listen'); await wait(30);
   ok(/0\/6/.test(task.querySelector('.lcd-task-n').textContent) && /6 notes/.test(task.textContent), 'défi suivant : '+task.textContent);
   task.querySelector('.lcd-task-txt').click(); await wait(20);
   ok(task.classList.contains('help') && task.querySelector('.lcd-task-txt').textContent===A.contracts.byId['m.notes'].hint, 'toucher le défi : son aide s\'affiche sur le LCD');
   task.querySelector('.lcd-task-txt').click(); await wait(20); ok(!task.classList.contains('help') && /◇/.test(task.textContent), 'toucher encore : retour au défi');
   const first=task.dataset.id; task.querySelector('.lcd-skip').click(); await wait(20);
   ok(task.dataset.id && task.dataset.id!==first && A.game.s.skipped.includes(first), '↷ : le défi suivant ('+first+' → '+task.dataset.id+')');
-  A.game.unlock('h.pad'); A.game.unlock('h.key'); await wait(4000);
+  A.game.unlock('h.pad'); A.game.unlock('h.key'); await wait(60); A.lcdMsg=null; await wait(350); // (the LCD refreshes every 300 ms; the « Ouvert » message cleared)
   ok(!d.body.classList.contains('jargon-off') && d.getElementById('lcdTop').textContent!=='AMBIENT' && w.getComputedStyle(d.getElementById('hudInfo')).visibility==='visible', 'nœud Tonalité : tonalité, gamme, tempo et nom du paysage reviennent (« '+d.getElementById('lcdTop').textContent+' »)');
   // S4.2: a gate opened by a Réponse on the LCD; a tap says how (no card any more)
   { const st=A.contracts.state(); A.game.unlock('t.son'); st.active=['p.premier']; A.garden.renderContracts(); await wait(20);

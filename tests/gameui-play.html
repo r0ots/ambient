@@ -3,12 +3,12 @@
 <script src="lib.js"></script>
 <script src="gameui-lib.js"></script>
 <script>
-gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY }) => {
+gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, settle }) => {
   // --- S4.4 touch pads: under the screen once the Melody is owned, play like A–L (held, multitouch), long press = chord
   { A.game.reset(); A.perform.setMode('listen'); await wait(30);
     const bar=d.getElementById('pads'), pads=[...bar.querySelectorAll('.pad')], PE=(t,id)=>new w.PointerEvent(t,{bubbles:true,pointerId:id,pointerType:'touch'});
     ok(bar.hidden && !shown('#pads'), 'pastilles : cachées avant la Mélodie auto');
-    A.game.unlock('m.bells'); await wait(1500); A.garden.showTree(false); A.perform.setMode('listen'); await wait(30);
+    A.game.unlock('m.bells'); await settle(300); A.garden.showTree(false); A.perform.setMode('listen'); await wait(30);
     const stage=d.querySelector('.stage').getBoundingClientRect(), br=bar.getBoundingClientRect();
     ok(!bar.hidden && pads.length===9 && A.play.PADS.length===9 && br.top>=stage.bottom-1 , 'pastilles : 9, sous l\'écran, dès la Mélodie auto');
     const sp=A.seq.playMidi, rel=[], lives=[]; A.bus.on('live',e=>lives.push(e.midi)); A.seq.playing=true;
@@ -53,7 +53,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY }
     A.game.unlock('t.rec'); const C=A.contracts; C.state(A.game).active=['k.enreg'];
     A.bus.emit('rec:done', 12); ok(!A.game.s.contracts.includes('k.enreg'), 'enregistrement de 12 s : défi pas réussi');
     A.bus.emit('rec:done', 31); ok(A.game.s.contracts.includes('k.enreg') && A.game.isReady('t.share'), 'enregistrement réel de 31 s : défi réussi, Partage prêt');
-    await wait(1400); A.garden.showTree(false);
+    await settle(300); A.garden.showTree(false);
     A.game.reset(); }
   // --- feedback (G6.2)
   A.game.unlock('e.reverb'); await wait(400);
@@ -62,7 +62,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY }
   ok(ctx.state!=='running' || A.garden.chime('unlock')===4 && A.garden.chime('solve')===6, 'carillon joué ('+ctx.state+')');
   A.game.setMode('free'); ok(A.garden.chime('unlock')===0, 'pas de carillon en mode libre'); A.game.setMode('path');
   // --- S4.2 « Réponse » in the app: the phrase in the music, « ↺ À toi » on the LCD, leaves on the Melody plant, the pads stay
-  { const P=A.puzzles, gv=A.gardenVisual; A.game.reset(); ['m.bells','h.pad','t.son'].forEach(i=>A.game.unlock(i)); await wait(1500);
+  { const P=A.puzzles, gv=A.gardenVisual; A.game.reset(); ['m.bells','h.pad','t.son'].forEach(i=>A.game.unlock(i)); await settle(300);
     A.garden.showTree(false); A.perform.setMode('listen'); A.visual.gardenSync(); P.cancel(); P.wait=99;
     const st=A.contracts.state(); st.active=['p.premier']; st.prog['p.premier']={n:0}; A.garden.renderContracts();
     const sd=0.05, snap=JSON.stringify(A.store.stableSnapshot());
@@ -73,16 +73,16 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY }
     gv.refresh(480,320,true); A.bus.emit('live',{midi:c.midis[0],time:0,vel:0.85,raw:null,played:c.ans+0.1}); A.bus.emit('live',{midi:c.midis[1]+2,time:0,vel:0.85,raw:null,played:c.ans+0.6});
     const leaves=gv.drawAnswer(g2, P.view()), px=g2.getImageData(0,0,480,320).data; let green=0, red=0;
     for(let i=0;i<px.length;i+=4){ if(px[i]===143&&px[i+1]===227&&px[i+2]===160) green++; if(px[i]===235&&px[i+1]===84&&px[i+2]===64) red++; }
-    ok(leaves===3 && green>0 && red>0 && gv.answer(ctx.currentTime) && gv.answer(ctx.currentTime).row.length===2, 'plante Mélodie : une feuille verte (juste), une rouge (fausse), une à jouer ('+green+' / '+red+' px)');
+    ok(leaves===3 && green>0 && red>0 && gv.answer(ctx.currentTime) && gv.answer(ctx.currentTime).row.length===2, 'plante Mélodie auto : une feuille verte (juste), une rouge (fausse), une à jouer ('+green+' / '+red+' px)');
     { const pb=gv.plants.find(q=>q.id==='bells'), gy0=pb.gy; g2.clearRect(0,0,480,320);
       pb.gy=0; const none=gv.drawAnswer(g2, P.view()); pb.gy=0.5; const half=gv.drawAnswer(g2, P.view()); pb.gy=gy0;
-      ok(none===0 && half===3 && green>=81, 'S4.5w + S4.2 : une plante Mélodie qui pousse porte ses feuilles de Réponse (aucune avant de sortir, toutes à mi-hauteur) ; une feuille ≥ 4 px par carreau ('+green+' px verts)'); }
+      ok(none===0 && half===3 && green>=81, 'S4.5w + S4.2 : une plante Mélodie auto qui pousse porte ses feuilles de Réponse (aucune avant de sortir, toutes à mi-hauteur) ; une feuille ≥ 4 px par carreau ('+green+' px verts)'); }
     A.bus.emit('live',{midi:c.midis[2],time:0,vel:0.85,raw:null,played:c.ans+1}); await wait(350);
     ok(!P.cur && /PRESQUE/.test(d.getElementById('lcdTop').textContent) && !A.game.has('t.macros'), 'réponse fausse : « Presque » sur le LCD, porte fermée');
     P.launch(ctx.currentTime+0.05, sd); const c2=P.cur; c2.midis.forEach((m,i)=>A.bus.emit('live',{midi:m+12,time:0,vel:0.85,raw:null,played:c2.ans+0.5+i})); await wait(30);
     ok(A.game.isReady('t.macros') && !A.game.has('t.macros') && A.game.s.contracts.includes('p.premier') && A.lcdMsg.text==='↺ ✓ Juste !' && JSON.stringify(A.store.stableSnapshot())===snap, 'réponse juste : « Juste ! », Grands réglages prêt, l\'ambiance est intacte');
     A.garden.openNode('t.macros'); ok(A.game.has('t.macros'), 'puis le joueur l\'ouvre');
-    await wait(1500); A.garden.showTree(false);
+    await settle(300); A.garden.showTree(false);
     // S5.3: the score on the LCD (tier, series, record), the juice of a new tier, the tier mark on the Melody plant
     { const sc=d.getElementById('lcdScore'), lcdEl=d.getElementById('lcd'), stR=P.st(A.game); A.contracts.state().active=[];
       ok(shown('#lcdScore') && /↺ PHRASES · SÉRIE 1 · RECORD 1/.test(sc.textContent), 'LCD : le palier, la série et le record « '+sc.textContent+' »');
@@ -90,7 +90,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY }
       P.launch(ctx.currentTime+0.05, sd); const c3=P.cur; c3.want.forEach((m,i)=>A.bus.emit('live',{midi:m,time:0,vel:0.85,raw:null,played:c3.ans+c3.steps[i]*sd})); await wait(30);
       ok(tierEv && tierEv.name==='Accords' && A.lcdMsg.text==='↑ Palier : Accords' && lcdEl.classList.contains('lcd-glitch-big') && /ACCORDS · SÉRIE 5 · RECORD 6/.test(sc.textContent), 'palier franchi : « '+A.lcdMsg.text+' », le LCD passe en glitch, « '+sc.textContent+' »');
       const wv=gv.waves.find(w=>w.who==='tier');
-      ok(wv && wv.plant==='bells' && wv.shake===1 && P.mark()===4, 'la fête du palier passe par les éclats S5.2 de la plante Mélodie (vague '+(wv&&wv.who)+', secousse) ; repère de palier : '+P.mark());
+      ok(wv && wv.plant==='bells' && wv.shake===1 && P.mark()===4, 'la fête du palier passe par les éclats S5.2 de la plante Mélodie auto (vague '+(wv&&wv.who)+', secousse) ; repère de palier : '+P.mark());
       const cv2=d.createElement('canvas'); cv2.width=480; cv2.height=320; const g3=cv2.getContext('2d'); gv.refresh(480,320,true);
       const marks=gv.drawMark(g3, 14); A.game.setMode('free'); const freeMark=P.mark(), freeScore=shown('#lcdScore'); A.game.setMode('path');
       ok(marks===4 && freeMark===0 && !freeScore, 'repère de palier dessiné près du nom (4) ; ni repère ni score en mode libre');
@@ -110,7 +110,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY }
     const at=ctx.currentTime+0.6; A.garden.chime('unlock',{at,deg:2});
     ok(ctx.state!=='running' || starts.length===12 && Math.abs(Math.min(...starts)-at)<1e-6, 'carillon placé à l\'heure demandée (temps fort), note propre à la couche');
     // real clock: the Pad opened by a challenge while playing
-    await A.ui.play(); A.game.reset(); A.perform.setMode('listen'); A.game.unlock('m.bells'); await wait(1500); A.garden.showTree(false); A.perform.setMode('listen'); await wait(300);
+    await A.ui.play(); A.game.reset(); A.perform.setMode('listen'); A.game.unlock('m.bells'); await settle(300); A.garden.showTree(false); A.perform.setMode('listen'); await wait(300);
     const Sq=A.seq; A.contracts.finish('m.notes'); starts.length=0; A.garden.openNode('h.pad'); // (the success's own chime is not the opening's)
     const b=A.garden.lastBeat, sd=Sq.stepDur(), now=ctx.currentTime, k=(b.at-Sq.nextTime)/sd+Sq.step-(Sq.origin||0), lv=A.layers.pad.ch.level.gain, target=Math.pow(A.store.get('pad.vol'),1.6);
     ok(A.game.has('h.pad') && b.id==='h.pad' && b.at>=now+0.44 && Math.abs(k-Math.round(k))<1e-6 && Math.round(k)%8===0 && b.deg===2, 'ouverture du Pad en jeu : le temps fort suivant (pas '+Math.round(k)+', dans '+(b.at-now).toFixed(2)+' s), note du Pad');
@@ -141,7 +141,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY }
   St.set('pad.on',false,'user'); ok(St.get('pad.on')===false, 'libre : tout modifiable');
   g.setMode('path'); ok(St.get('fx.echo')===0 && St.get('pad.on')===true, 'retour au parcours : son du parcours rendu');
   // --- S4.3 no currency anywhere: no « +n ✧ » note, no counter, nothing to buy
-  g.setMode('path'); await wait(20); A.contracts.finish(A.game.s.active[0]); await wait(1500); A.garden.showTree(true); await wait(20);
+  g.setMode('path'); await wait(20); A.contracts.finish(A.game.s.active[0]); await settle(400); A.garden.showTree(true); await wait(20);
   ok(!d.getElementById('fx') && !A.juice && !d.getElementById('gainFeed') && !/✧|éclat/.test(d.body.innerText), 'un défi réussi : aucune note « +n ✧ », aucun ✧ ni « éclat » à l\'écran');
   A.garden.showTree(false);
   // S3.8: the path help is short and says how secrets work now (a node opened, hint 2 after 2 secrets, never with time)
