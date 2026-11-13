@@ -213,6 +213,7 @@ document.getElementById('f').addEventListener('load', () => {
     const L = ['pad', 'bells', 'seq', 'bass', 'grains']; let i = 0;
     setInterval(() => { const l = L[i++ % L.length]; if (l === 'grains') A.bus.emit('grain', { layer: l, time: 0, vel: 0.6 }); else A.bus.emit('note', { layer: l, midi: 60, time: 0, vel: 0.8 }); if (i % 3 === 0) A.bus.emit('chord', { time: 0 }); if (i % 2) A.bus.emit('perc', { time: 0, vel: 0.7 }); }, 180);
   } else {
+    if (h.includes('rdy')) ['h.pad2', 't.journal'].forEach((i) => A.game.ready(i)); // S6.7 #sel=<node>&rdy: two nodes wait on « ✦ Ouvrir » (no challenge runs)
     A.garden.showTree(true);
     const m = /sel=([\w.]+)/.exec(h); if (m) A.garden.select(m[1]);
   }

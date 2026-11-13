@@ -790,9 +790,10 @@ body.game .toast { background: var(--arc-bg); border-color: var(--arc-hot); colo
 /* the LCD keeps its size: the score line holds its place before the first record, the challenge's help covers the
    screen instead of growing it (scrolls inside when long) — the pads below never jump */
 body.game #lcdScore[hidden] { display: block; visibility: hidden; }
-body.game .lcd-task.help .lcd-task-txt { position: absolute; inset: 0; z-index: 2; padding: 4px 12px; overflow-y: auto; background: var(--arc-bg);
+body.game .lcd-task.help .lcd-task-txt { position: absolute; inset: 0; z-index: 2; padding: 4px 40px 4px 12px; overflow-y: auto; background: var(--arc-bg);
   font-size: 15px; line-height: 1.05; display: flex; align-items: center; }
-body.game .lcd-task.help .lcd-task-n, body.game .lcd-task.help .lcd-skip { position: relative; z-index: 3; }
+body.game .lcd-task.help .lcd-task-n { visibility: hidden; }
+body.game .lcd-task.help .lcd-skip { position: relative; z-index: 3; }
 /* the LCD pinned on top while the page scrolls (garden.js pinLcd): compact (no score line), above the panels */
 .lcd-ph { display: none; }
 .lcd-ph.on { display: block; }
@@ -817,7 +818,7 @@ body.game .lcd.lcd-pin .lcd-score { display: none; }
   body.game .transport .more { grid-area: more; }
   body.game .transport #sleepLeft { display: none; }
   body.game .transport .tgrp-row { flex-wrap: nowrap; }
-  body.game .transport .btn, body.game .transport summary { white-space: nowrap; }
+  body.game .transport .btn, body.game .transport summary { white-space: nowrap; padding: 7px 9px; }
   body.game .lcd { align-content: start; }
   body.game .lcd-task { min-height: 44px; } /* two lines kept for the challenge (a short one does not shrink the LCD) */
   body.game .stage { margin: 10px 0; }
