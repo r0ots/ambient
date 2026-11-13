@@ -17,7 +17,7 @@
   const N = (id, branch, name, req, params, ui, desc) => ({ id, branch, name, req, params, ui, desc });
   const NODES = [
     // Tronc — the starting point and the tools to keep / share a sound
-    N('racine', 'tronc', 'Graine', [], ['drone.on', 'drone.vol', 'drone.tone', 'global.volume'], ['play', 'mode-sculpt', 'xy', 'keys', 'midi'], 'Une note tenue et sa lumière ; tes premières notes (pastilles, A–L, MIDI). Tout part de là.'),
+    N('racine', 'tronc', 'Graine', [], ['drone.on', 'drone.vol', 'drone.tone', 'global.volume'], ['play', 'mode-sculpt', 'keys', 'midi'], 'Une note tenue et sa lumière ; tes premières notes (pastilles, A–L, MIDI). Tout part de là.'),
     N('t.son', 'tronc', 'Timbre du drone', ['racine'], ['drone.wave', 'drone.motion'], [], 'Choisir le son du drone et le faire respirer.'),
     N('t.viz', 'tronc', 'Écran', ['racine'], [], ['viz', 'listen'], 'Changer de visuel, passer en plein écran.'),
     N('t.journal', 'tronc', 'Journal', ['t.son'], [], ['journal', 'save'], 'Revenir à un moment passé, garder un paysage.'),
@@ -114,7 +114,7 @@
     viz: '#vizMode', listen: '#listen',
     journal: '#journal', save: '#save, #renamePatch, #deletePatch',
     rec: '.recgrp', share: '#share', patches: '#exportPatches, label:has(#importFile)',
-    dice: '#dice, #mood', preset: '#preset', xy: '#xyTip',
+    dice: '#dice, #mood', preset: '#preset',
     freeze: '.sample-row', scenes: '#scenes', automation: '[data-sec=auto]',
     chords: '.chords-panel', song: '.song-panel', pianoroll: '.roll-wrap',
     motifs: '.slot-tabs, .roll-wrap [data-act=dup]',
@@ -126,7 +126,7 @@
   const UI_LABEL = {
     play: 'Lecture', viz: 'Visuels', listen: 'Plein écran', journal: 'Journal des moments', save: 'Sauver un paysage',
     rec: 'Enregistrement', share: 'Lien de partage', patches: 'Export / import des paysages', dice: '✦ Nouveau paysage',
-    preset: 'Paysages prêts', xy: 'Glisser sur l\'écran', freeze: 'Échantillon, micro, Figer', scenes: 'Scènes A/B', automation: 'Automation',
+    preset: 'Paysages prêts', freeze: 'Échantillon, micro, Figer', scenes: 'Scènes A/B', automation: 'Automation',
     chords: 'Panneau Progression', song: 'Morceau', pianoroll: 'Piano roll', motifs: 'Motifs A–D', reclive: 'Rec live',
     keys: 'Jouer au clavier (A–L)', midi: 'Clavier MIDI', midiFile: 'Import / export .mid', 'mode-sculpt': 'Mode Sculpter', 'mode-compose': 'Mode Composer',
   };

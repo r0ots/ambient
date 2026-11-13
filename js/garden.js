@@ -99,7 +99,6 @@
         if (t.matches('.sc-slot')) return emit(e.shiftKey ? 'sceneStore' : 'sceneRecall');
         for (const [sel, id] of this.CLICKS) if (t.matches(sel)) return emit(id);
       }, true);
-      // (S5.7: a glide on the screen is one 'xy' action per stroke, emitted by perform.js)
     },
     // ---- game feedback (G6.2): a chime tuned to the key, LCD messages ----
     // kind: 'unlock' (rising arpeggio), 'solve' (two chords), 'small' (one soft note); straight to the speakers

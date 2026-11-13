@@ -4,7 +4,7 @@
   const store = AMB.store;
   const { $, h, bind } = AMB.dom;
   const { registry: widgets, knob, select, textField, toggle } = AMB.widgets;
-  const { setView, setMode, setupXY } = AMB.perform;
+  const { setView, setMode } = AMB.perform;
   const { toggleRec, setSleep } = AMB.rec;
 
   function section(secKey) {
@@ -135,18 +135,8 @@
     started = true;
     document.body.classList.add('playing');
     mediaSession();
-    showXyTip();
     $('#play').textContent = '■ Stop';
   }
-  // one-time hint so people discover the XY pad
-  function showXyTip() {
-    let seen = false; try { seen = !!localStorage.getItem('ambient.xyTip'); } catch (e) {}
-    const tip = $('#xyTip'); if (!tip || seen || AMB.perform.xyUsed) return;
-    setTimeout(() => tip.classList.add('show'), 1500);
-    setTimeout(() => tip.classList.remove('show'), 9000);
-    try { localStorage.setItem('ambient.xyTip', '1'); } catch (e) {}
-  }
-
   function stop() {
     AMB.seq.stop();
     if (AMB.song && AMB.song.playing) AMB.song.stop();
@@ -382,7 +372,6 @@
     loadFromHash();
     window.addEventListener('hashchange', loadFromHash);
     setupHud();
-    setupXY($('#viz'));
     AMB.visual.init($('#viz'));
 
     // kiosk-style URL options: ?viz=Horizon&listen=1&autoplay=1&mood=Nocturne

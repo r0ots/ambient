@@ -115,14 +115,14 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
   A.game.unlock('m.bells'); await wait(20);
   ok(!locked('#midi') && locked('#exportMidi') && /\.mid/.test(A.tree.grantsText('c.seq')), 'Mélodie ouverte : le MIDI reste ; l\'export .mid vient avec la Mélodie écrite');
   // --- the challenge on the LCD (v1.06): one at a time on the 2nd line, ↷ = next, a tap = how to do it
-  // S4.3: the first one is « glisse sur l'écran », which works from the Graine (the 5 macro knobs stay locked); no jargon yet
+  // S5.7: the first one is « Joue une note »; no jargon yet. S6.2: no glide on the screen, a MIDI CC still reaches the drone's colour
   A.game.reset(); A.perform.setMode('listen'); A.lcdMsg=null; await wait(400);
   ok(!d.getElementById('contracts') && shown('#lcdTask') && lline.hidden && /Joue une note/.test(task.textContent) && /·/.test(task.querySelector('.lcd-task-n').textContent) && !/✧/.test(task.textContent), 'premier défi sur la 2e ligne du LCD, sans ✧ : '+task.textContent);
   ok(d.body.classList.contains('jargon-off') && d.getElementById('lcdTop').textContent==='AMBIENT' && w.getComputedStyle(d.getElementById('hudInfo')).visibility==='hidden' && w.getComputedStyle(d.getElementById('chordName')).visibility==='hidden', 'début : ni nom de paysage, ni tonalité, gamme, tempo ou accord à l\'écran (« '+d.getElementById('lcdTop').textContent+' »)');
-  ok(!locked('#xyTip') && w.getComputedStyle(d.getElementById('xyTip')).display==='none', 'S5.7 : glisser marche dès la Graine, mais sa bulle d\'aide n\'est plus affichée en Parcours');
+  ok(!d.getElementById('xyTip') && !d.querySelector('.xy-label'), 'S6.2 : plus de bulle ni de libellés du glissé sur l\'écran');
   A.seq.playing=true; const tone0=A.store.get('drone.tone'), mac0=A.store.get('macro.light');
   for (const x of [0.1,0.9,0.2,0.8]) { A.perform.setMacro('macro.light', x); A.perform.setMacro('macro.density', 0.5); }
-  ok(A.store.get('drone.tone')!==tone0 && A.store.get('macro.light')===mac0 && locked('.macros [data-key="macro.light"]') && !A.game.isReady('m.bells'), 'glisser sur l\'écran dès la Graine : la couleur du drone suit, les grands réglages restent fermés ; ce n\'est plus un défi');
+  ok(A.store.get('drone.tone')!==tone0 && A.store.get('macro.light')===mac0 && locked('.macros [data-key="macro.light"]') && !A.game.isReady('m.bells'), 'un CC MIDI dès la Graine : la couleur du drone suit, les grands réglages restent fermés ; ce n\'est pas un défi');
   A.bus.emit('live',{midi:62,time:0,vel:0.8,raw:null}); ok(A.game.isReady('m.bells'), 'S5.7 : une note jouée → Mélodie prête');
   A.garden.openNode('m.bells'); await settle(300); A.garden.showTree(false); A.perform.setMode('listen'); await wait(30);
   ok(/0\/6/.test(task.querySelector('.lcd-task-n').textContent) && /6 notes/.test(task.textContent), 'défi suivant : '+task.textContent);

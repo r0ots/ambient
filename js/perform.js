@@ -1,4 +1,4 @@
-// Performance controls: macro knobs (simple view) and the XY pad on the visualizer
+// Performance controls: macro knobs (simple view), driven by MIDI CCs too
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const store = AMB.store;
@@ -51,41 +51,16 @@
   // legacy API: setView(true) = listen, setView(false) = sculpt
   const setView = (simple) => setMode(simple ? 'listen' : 'sculpt');
 
-  // ---------- XY performance pad on the visualizer ----------
-  // the XY pad and MIDI CCs drive the macros themselves (one mapping, knobs stay in sync)
+  // ---------- MIDI CCs drive the macros themselves (one mapping, knobs stay in sync) ----------
+  // S6.2: the visualizer is a reflection, never a control surface (no more gliding on the screen)
   function setMacro(key, v) {
     v = Math.max(0, Math.min(1, v));
     store.set(key, v, 'sync'); // move the macro knob without re-triggering
-    // performance gestures: not recorded in undo history. In the path the knob may still be locked (S4.3: gliding on the
-    // screen works from the Graine): the gesture then drives the open settings it reaches (the drone's colour) directly.
+    // performance gestures: not recorded in undo history. In the path the knob may still be locked: the CC then drives
+    // the open settings it reaches (the drone's colour) directly.
     const T = AMB.tree;
-    applyMacro(key, T && !T.paramUnlocked(key) ? v : store.get(key), 'xy');
-  }
-  function setupXY(canvas) {
-    let down = false, starting = false;
-    const applyXY = (e) => {
-      const r = canvas.getBoundingClientRect();
-      const x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
-      const y = Math.max(0, Math.min(1, 1 - (e.clientY - r.top) / r.height));
-      AMB.visual.xy = { x, y, t: performance.now() };
-      setMacro('macro.light', x);
-      setMacro('macro.density', y);
-      AMB.perform.xyUsed = true;
-    };
-    canvas.addEventListener('pointerdown', (e) => {
-      if (!AMB.seq.playing) {
-        // S4.5w: in the path, the first glide also starts the sound (S5.7: the glide stays, no longer a challenge)
-        if (!(AMB.game && AMB.game.path) || !AMB.ui || starting) return;
-        starting = true;
-        Promise.resolve(AMB.ui.play()).finally(() => { starting = false; });
-      }
-      down = true; try { canvas.setPointerCapture(e.pointerId); } catch (err) {} applyXY(e);
-      if (AMB.game && AMB.game.path && AMB.bus) AMB.bus.emit('act', 'xy'); // S5.7: one glide = one action (per stroke, not per move)
-    });
-    canvas.addEventListener('pointermove', (e) => { if (down) applyXY(e); });
-    const up = () => { down = false; };
-    canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
+    applyMacro(key, T && !T.paramUnlocked(key) ? v : store.get(key), 'cc');
   }
 
-  AMB.perform = { MACROS, setMacro, applyMacro, setView, setMode, MODES, setupXY, syncMacros };
+  AMB.perform = { MACROS, setMacro, applyMacro, setView, setMode, MODES, syncMacros };
 })();

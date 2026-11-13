@@ -123,12 +123,12 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
     const GV=A.gardenVisual; ok(!GV.grow.pad || GV.grow.pad.start>=b.at-1e-6, 'la plante du Pad pousse depuis le temps fort, après la carte');
     ctx.createOscillator=co; A.garden.chime=ch0; A.garden.showTree(false); A.ui.stop(); }
   // --- S5.7: the first challenge « Joue une note » — the pads are there from the Graine, the first note starts the sound;
-  // the glide still starts it too, but no longer counts
+  // S6.2: the screen is a reflection: touching it does nothing
   { await wait(300); A.game.reset(); A.perform.setMode('listen'); await wait(50);
     const pads=d.getElementById('pads'), v=d.getElementById('viz'), r=v.getBoundingClientRect(), PE=(t)=>new w.PointerEvent(t,{bubbles:true,pointerId:11,clientX:r.left+r.width*0.3,clientY:r.top+r.height*0.5});
-    ok(!A.seq.playing && A.game.s.active[0]==='k.note' && !pads.hidden && !A.game.has('m.bells') && w.getComputedStyle(d.getElementById('xyTip')).display==='none' && w.getComputedStyle(d.querySelector('.stage .hint')).display==='none', 'S5.7 : premier défi « Joue une note », pastilles dès la Graine, plus d\'aide « Glisse sur l\'écran » sur le visuel');
+    ok(!A.seq.playing && A.game.s.active[0]==='k.note' && !pads.hidden && !A.game.has('m.bells') && !d.getElementById('xyTip') && w.getComputedStyle(d.querySelector('.stage .hint')).display==='none', 'S5.7 : premier défi « Joue une note », pastilles dès la Graine, pas d\'aide sur le visuel');
     v.dispatchEvent(PE('pointerdown')); await wait(400); v.dispatchEvent(PE('pointerup'));
-    ok(A.seq.playing && !A.game.isReady('m.bells'), 'le glissé reste : il lance le son, mais n\'est plus un défi');
+    ok(!A.seq.playing && !A.game.isReady('m.bells') && w.getComputedStyle(v).cursor!=='crosshair', 'S6.2 : toucher l\'écran ne lance rien, ne compte pas, curseur normal');
     A.ui.stop(); await wait(150);
     const pb=pads.children[2], pr=pb.getBoundingClientRect(), PP=(t)=>new w.PointerEvent(t,{bubbles:true,pointerId:12,clientX:pr.left+5,clientY:pr.top+5});
     pb.dispatchEvent(PP('pointerdown')); await wait(300); pb.dispatchEvent(PP('pointerup')); await wait(100);

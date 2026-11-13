@@ -35,7 +35,7 @@ window.addEventListener('load', async ()=>{
   const orphan=keys.filter(k=>!T.nodeFor(k)); ok(!orphan.length, 'tout réglage a un nœud '+orphan.join(','));
   ok(T.nodeFor('pad.send')==='e.reverb' && T.nodeFor('seq.send')==='c.seq' && T.nodeFor('macro.light')==='t.macros', 'résolution exact > suffixe > section');
   g.reset(); ok(g.has('racine'), 'reset en parcours rend la racine'); ok(!T.paramUnlocked('fx.echo') && T.paramUnlocked('drone.vol') && T.status('h.pad')==='available' && T.status('h.scale')==='locked', 'statuts au départ');
-  ok(T.uiUnlocked('xy') && !T.paramUnlocked('macro.light'), 'S4.3 : glisser sur l\'écran ouvert dès la Graine, les grands réglages restent fermés');
+  ok(!('xy' in T.UI_SEL) && !T.byId.racine.ui.includes('xy') && !T.paramUnlocked('macro.light'), 'S6.2 : plus de glissé sur l\'écran dans l\'arbre ; les grands réglages restent fermés à la Graine');
   const gr=T.grantsText('c.seq'); ok(/Mélodie écrite/.test(gr) && /Piano roll/.test(gr) && !/Motif( ·|$)/.test(gr), 'ce qu\'ouvre un nœud : '+gr);
   ok(/chaque couche/.test(T.grantsText('e.reverb')) && T.dependents('h.pad').includes('c.seq'), 'grantsText *.send, dépendants');
   // --- S4.6 what each node gives, in plain words (the « ✦ Ouvrir » card): one table, every node but the root, short, the lexicon's words
@@ -61,8 +61,6 @@ window.addEventListener('load', async ()=>{
   // --- the queue (one at a time, in the order of the table)
   g.reset(); g.setMode('path'); K.refill(); ev.length=0;
   ok(g.s.active.join()==='k.note', 'S5.7 : le premier défi = jouer une note ('+g.s.active.join()+')');
-  for(let i=0;i<4;i++) AMB.bus.emit('act','xy');
-  ok(!g.isReady('m.bells') && !K.DEFS.some((d)=>d.on.act && /xy/.test(String(d.on.act))), 'S5.7 : glisser sur l\'écran n\'est plus un défi (4 glissés ne comptent pas)');
   AMB.bus.emit('live',{midi:60,time:0,vel:0.8,raw:null});
   ok(!g.has('m.bells') && g.isReady('m.bells') && T.status('m.bells')==='ready' && g.s.contracts.includes('k.note') && ev.includes('ready:k.note') && !ev.includes('unlock:k.note') && !g.s.active.length, 'S4.6 : une note → défi réussi, la Mélodie est prête mais pas ouverte ; aucun défi tant qu\'elle attend');
   ok(JSON.parse(localStorage.getItem('ambient.game.test')).ready[0].id==='m.bells', 'S4.6 : le nœud prêt est sauvegardé');

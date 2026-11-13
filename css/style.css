@@ -69,7 +69,6 @@ h1 { margin: 0; font-size: 18px; letter-spacing: 0.5em; font-weight: 600; }
 
 .stage { position: relative; margin: 16px 0; height: 240px; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: #07080d; }
 #viz { width: 100%; height: 100%; display: block; }
-#viz { cursor: crosshair; touch-action: none; }
 .hud { position: absolute; top: 12px; left: 16px; pointer-events: none; }
 .chord { font-size: 28px; font-weight: 300; letter-spacing: 0.04em; color: #e9e4ff; text-shadow: 0 0 18px #8f7aff99; transition: opacity .6s; }
 .hud-info { font-size: 11px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
@@ -80,24 +79,17 @@ body:not(.playing) .chord { opacity: 0.25; }
 .big-play span { font-size: 14px; letter-spacing: 0.05em; }
 .big-play:hover { transform: scale(1.04); }
 body.playing .big-play { opacity: 0; pointer-events: none; transform: scale(0.9); }
-body.game .big-play { display: none; } /* S5.6 Parcours : ▶ Lecture de la barre et le premier glissé lancent le son ; l'écran reste aux plantes */
+body.game .big-play { display: none; } /* S5.6 Parcours : ▶ Lecture de la barre (ou une note) lance le son ; l'écran reste aux plantes */
 .stage-tools { position: absolute; top: 10px; right: 12px; display: flex; gap: 6px; z-index: 2; }
 .chip { background: #12142088; border: 1px solid #2b3050; color: var(--muted); font: inherit; font-size: 11px; padding: 4px 9px; border-radius: 999px; cursor: pointer; backdrop-filter: blur(4px); }
 .chip:hover { color: var(--text); border-color: #4a5180; }
-.xy-y { top: 40px !important; }
 /* Listening mode: only the stage, fullscreen */
 body.listen .app > :not(.stage) { display: none; }
 body.listen .app { max-width: none; padding: 0; }
 body.listen .stage { height: 100vh; margin: 0; border-radius: 0; border: 0; }
-body.listen .hint, body.listen .xy-label { font-size: 12px !important; color: #8a90b8 !important; }
-.xy-tip { position: absolute; left: 50%; top: 58%; transform: translate(-50%,-50%); font-size: 14px; color: #e9e4ff; background: #120f26cc; border: 1px solid #8f7aff88; border-radius: 10px; padding: 8px 14px; pointer-events: none; opacity: 0; transition: opacity .6s; }
-.xy-tip.show { opacity: 1; }
-.xy-label { display: none; }
+body.listen .hint { font-size: 12px !important; color: #8a90b8 !important; }
 body.listen .chord { font-size: 44px; }
 body.listen .hud { top: 28px; left: 32px; }
-.xy-label { position: absolute; font-size: 10px; color: #3d4363; pointer-events: none; letter-spacing: .1em; }
-.xy-x { bottom: 8px; right: 12px; }
-.xy-y { top: 12px; right: 12px; }
 .hint { position: absolute; bottom: 8px; left: 12px; font-size: 11px; color: #555c7c; pointer-events: none; }
 
 .row { display: grid; gap: 12px; margin-bottom: 12px; }
@@ -260,8 +252,7 @@ footer { text-align: center; font-size: 11px; color: #4c5272; padding: 20px 0 8p
   .globals { grid-template-columns: 1fr; }
   .stage { height: 200px; }
   .ctl:not(.sel) { width: 60px; }
-  .hint, .xy-label { display: none; }
-  .chord { font-size: 20px; }
+  .hint,   .chord { font-size: 20px; }
   .big-play { width: 190px; height: 54px; font-size: 16px; }
   .brand p { display: none; }
   .transport { gap: 6px; }
@@ -346,12 +337,11 @@ select option, select optgroup { background: #1d1407; color: var(--lcd-fg); font
 .stage { border-radius: 6px; border: 10px solid #0e0d0c; box-shadow: var(--bevel), inset 0 0 60px #000; background: #0b0a08; }
 .stage::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1;
   background: repeating-linear-gradient(0deg, #0000 0 2px, #0004 2px 3px), radial-gradient(ellipse at center, #0000 55%, #0009 100%); }
-.hud, .stage-tools, .big-play, .toast, .xy-tip { z-index: 2; }
+.hud, .stage-tools, .big-play, .toast { z-index: 2; }
 .chord { font: 44px var(--f-lcd); color: var(--lcd-fg); text-shadow: 0 0 10px var(--lcd-glow); letter-spacing: .02em; }
-.hud-info, .hint, .xy-label { font-family: var(--f-lcd) !important; font-size: 16px !important; color: #b38a4f !important; letter-spacing: .05em; }
+.hud-info, .hint { font-family: var(--f-lcd) !important; font-size: 16px !important; color: #b38a4f !important; letter-spacing: .05em; }
 .big-play { border-radius: var(--radius-btn); background: var(--lcd-bg); border: 1px solid var(--lcd-dim); font: 26px var(--f-lcd); color: var(--lcd-fg); box-shadow: 0 0 24px var(--lcd-glow); }
 .toast { background: var(--lcd-bg); border: 1px solid var(--lcd-dim); color: var(--lcd-fg); font: 18px var(--f-lcd); border-radius: var(--radius-btn); }
-.xy-tip { background: var(--lcd-bg); border: 1px solid var(--lcd-dim); color: var(--lcd-fg); font: 18px var(--f-lcd); border-radius: var(--radius-btn); }
 
 /* grids & slots */
 .pulse-cell, .chord-slot { background: #1b1812; border-color: #000; border-radius: var(--radius-btn); box-shadow: var(--bevel-in); }
@@ -675,8 +665,8 @@ body.game .is-released { animation: press-out .42s cubic-bezier(.3, 1.6, .5, 1) 
 }
 
 /* S5.7 (revues regard neuf) — Parcours seulement, le mode libre ne change pas */
-/* the glide stays, its permanent help lines go: the first move is a note on the pads */
-body.game #xyTip, body.game .stage .hint { display: none !important; }
+/* no permanent help line on the visual: the first move is a note on the pads */
+body.game .stage .hint { display: none !important; }
 /* a touch screen: no MIDI button (it said « Nouveau », then « Accès MIDI refusé ») */
 body.game.touch #midi { display: none !important; }
 /* ↷ : 44 px under a finger, without growing the LCD (negative margins inside its padding) */
