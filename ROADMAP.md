@@ -314,4 +314,11 @@ Vague 3 (en parallèle)
 - [x] S4.5w (v1.12) Le wow calé sur la musique : couche achetée qui entre sur le temps fort, plante qui pousse avec le carillon ; vraie fin (le Jardin passe de la nuit à l'aube pendant la lecture du morceau enregistré) Décision : carillon et couche sur le prochain temps 1 ou 3 (fondu 1,6 s), plante qui pousse en 1,2 s, ciel qui suit l'accord, sol au tempo ; fin = relecture de 18 s du morceau à l'aube, puis le WAV proposé sur le LCD (pas de téléchargement d'office) ; ■ Stop arrête la relecture ; les feuilles de Réponse suivent la plante qui pousse ; le premier glissé en Parcours lance le son.
 
 Vague 4
-- [ ] S4.5 Un mot par concept (lexique unique dans l'interface et l'aide) + revue finale « quoi supprimer »
+- [x] S4.5 (v1.13) Un mot par concept (lexique unique dans l'interface et l'aide) + revue finale « quoi supprimer » Décision : lexique en tête d'ARCHITECTURE.md (Ambient = l'instrument, Parcours = le jeu, Jardin = le visuel seul, paysage = un son complet, Lumière = sombre ↔ clair, Timbre, Temps, Grands réglages, Plein écran) ; ids internes gardés pour les sauvegardes et les liens, sauf `kind: 'echo'` → `'reponse'` ; en libre, seuls des libellés changent (plus de numéros de panneaux) ; LCD « ✦ Ouvert : <nœud> » (s'accorde avec tous les noms) ; menu ⋯ dans l'écran à 390 px ; code mort retiré (`paramLabel`, classe `simple`).
+
+## Fin de la saison 4
+- On joue pour de vrai : clavier MIDI (accords main gauche, notes à l'arrêt, vélocité), pastilles au doigt, « ⤓ Garder » les 4 dernières mesures ; la Réponse se joue dans la musique, sans carte.
+- On progresse en sachant : plus de monnaie, chaque nœud dit ce qui l'ouvre, un défi à la fois, jargon masqué au début ; parcours type ~45 min simulé.
+- Le wow est calé sur la musique (temps fort, plante qui pousse, ciel de l'accord) et la fin relit ton morceau à l'aube.
+- Un mot par concept à l'écran ; le mode libre n'a changé que pour le MIDI et des libellés.
+- Toujours rien de mesuré sur de vrais joueurs : la séance chronométrée avec l'enfant et l'ado musicien reste la prochaine étape.
