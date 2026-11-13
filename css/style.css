@@ -406,7 +406,9 @@ body.game .is-locked { display: none !important; }
 .welcome-choice:hover, .welcome-choice:focus-visible { border-color: var(--lcd-fg); }
 @media (max-width: 560px) { .welcome-choices { grid-template-columns: 1fr; } }
 /* phones: the bar's groups wrap inside the width (sound picker and mood shrink), never past the screen's edge */
-@media (max-width: 560px) { .transport .tgrp { max-width: 100%; min-width: 0; } .transport .tgrp-row { flex-wrap: wrap; min-width: 0; } #preset, #mood { min-width: 0; max-width: 100%; flex: 1 1 110px; } }
+@media (max-width: 560px) { .transport .tgrp { max-width: 100%; min-width: 0; } .transport .tgrp-row { flex-wrap: wrap; min-width: 0; } #preset, #mood { min-width: 0; max-width: 100%; flex: 1 1 110px; }
+  /* the ⋯ menu opens across the bar, inside the screen (the ⋯ button wraps to the left there) */
+  .transport { position: relative; } .more { position: static; } .more > .menu { left: 0; right: 0; } }
 .tree-grp { display: none !important; }
 body.game .tree-grp { display: flex !important; }
 

@@ -14,5 +14,9 @@ f.addEventListener('load', async ()=>{ try{
     const past=[...d.querySelectorAll('body *')].filter(e=>{ const r=e.getBoundingClientRect(); if(!r.width || r.right<=de.clientWidth+1 || !e.getClientRects().length) return false;
       for(let p=e.parentElement;p&&p!==d.body;p=p.parentElement){ const ox=w.getComputedStyle(p).overflowX; if(ox==='auto'||ox==='scroll'||ox==='hidden') return false; } return true; });
     ok(de.scrollWidth<=de.clientWidth+1 && !past.length, '390 px, '+m+' : largeur '+de.scrollWidth+' ≤ '+de.clientWidth+(past.length?' — dépassent : '+past.slice(0,6).map(e=>e.tagName+'.'+String(e.className).split(' ')[0]).join(' '):'')); }
+  // the ⋯ menu (and the ▾ of ● Rec) open inside the screen, never past its left or right edge
+  for (const sel of ['.more', '.rec-opts']) { const m=d.querySelector(sel); m.open=true; await wait(50);
+    const r=m.querySelector('.menu').getBoundingClientRect(); m.open=false;
+    ok(r.left>=0 && r.right<=de.clientWidth+1, '390 px : menu '+sel+' dans l\'écran ('+Math.round(r.left)+'–'+Math.round(r.right)+')'); }
   done(); }catch(e){fail(e);} });
 </script></body></html>
