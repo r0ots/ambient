@@ -14,6 +14,8 @@
 // strong beat its layer comes in on (garden.beat / growAt); the sky follows the chord and the scale (cached skies,
 // cross-faded with globalAlpha); the ground pulses on the beat; the finale replays the recorded song (replayStart):
 // night -> dawn, each plant lights up when its layer plays. Reduced motion: no growth, no pulse (the sky still follows).
+// S4.6: each plant shows its layer's settings (one table, LOOK below: size, light, shape, halo, sway, pace, bloom) and
+// bounces when one of them is touched.
 // Perf: LED sprites pre-rendered in offscreen canvases (cache by species / size / pixel size), cached
 // background and labels, real dt, nothing drawn while the tab is hidden or the canvas off screen, reduced motion =
 // no sway nor particles. stats() gives the cost per frame (ms).
@@ -31,6 +33,72 @@
     { id: 'perc', node: 'c.rythme', label: 'Pulsations', short: 'Rythme', col: [255, 90, 60], kind: 'shroom' },
   ];
   const byLayer = Object.fromEntries(LAYERS.map((l) => [l.id, l]));
+
+  // ---- S4.6 SETTINGS → LOOK: the one table. Each plant shows its layer's settings as 7 aspects, all 0..1, and knows
+  // nothing of how they are drawn (a later skin, e.g. a city at night, reads the same aspects and draws them its way):
+  //   size  ← Niveau (× general Volume)             : height and width of the plant
+  //   light ← Lumière (× Usure / Cassette, darker)  : colour and brightness, petals open (bright) or closed in a bud (dark)
+  //   shape ← Timbre                                : round petals and smooth leaves ↔ pointed petals, more points, serrated leaves
+  //   halo  ← Espace of the layer × Reverb (+ Halo)  : soft aura around the plant
+  //   sway  ← the layer's movement (Mouvement, Attaque, Résonance, Swing +, Flou, Tenue) : how wide the stem waves
+  //   pace  ← Tempo (Flottant = slower)             : how fast it waves
+  //   bloom ← density / complexity (Densité, Accords riches, notes of the motif, hits of the pattern) : 1 to 4 flowers
+  // A cell: 'layer.key' (a knob, normalised by its range, or a toggle), sel(key, {option: 0..1}) for a select, num(v), or
+  // fn([keys], (get) => 0..1). The grands réglages (Lumière, Densité, Espace, Nostalgie, Nature) move these same
+  // settings (js/perform.js MACROS), so they reach every plant they concern through this table.
+  const sel = (k, map) => ({ keys: [k], f: (get) => { const v = map[val(get, k)]; return v == null ? 0.5 : v; } });
+  const num = (v) => ({ keys: [], f: () => v });
+  const fn = (keys, f) => ({ keys, f });
+  const share = (s, re) => { s = String(s || ''); const all = s.replace(/[^0-9a-z]/gi, '').length; return all ? (s.match(re) || []).length / all : 0; };
+  const BELL_WAVES = { Cloche: 0.55, Kalimba: 0.3, Verre: 0.85, Pluck: 1, Doux: 0 };
+  const LOOK = {
+    drone: { size: 'drone.vol', light: 'drone.tone', shape: sel('drone.wave', { Sub: 0, Chaud: 0.2, Creux: 0.55, Orgue: 0.9 }), halo: 'drone.send', sway: 'drone.motion', bloom: num(0) },
+    pad: { size: 'pad.vol', light: 'pad.tone', shape: sel('pad.wave', { Nappe: 0.1, Onde: 0.25, 'Chœur': 0.35, Cordes: 0.6, Verre: 0.85, FM: 1 }), halo: 'pad.send', sway: 'pad.attack', bloom: 'pad.voicing' },
+    bells: { size: 'bells.vol', light: 'bells.tone', shape: sel('bells.wave', BELL_WAVES), halo: 'bells.send', sway: 'bells.decay', bloom: 'bells.density' },
+    texture: { size: 'texture.vol', light: 'texture.tone', shape: sel('texture.type', { 'Océan': 0, Ruisseau: 0.2, Vent: 0.35, Pluie: 0.55, Oiseaux: 0.65, Ville: 0.8, Vinyle: 0.9, Feu: 1 }), halo: 'texture.send', sway: 'texture.motion', bloom: num(0.35) },
+    grains: { size: 'grains.vol', light: num(0.6), shape: fn(['grains.size'], (get) => 1 - norm('grains.size', get('grains.size'))), halo: 'grains.send', sway: 'grains.spray', bloom: 'grains.density' },
+    seq: { size: 'seq.vol', light: 'seq.tone', shape: sel('seq.wave', BELL_WAVES), halo: 'seq.send', sway: 'seq.swing', bloom: fn(['seq.pattern'], (get) => Math.min(1, (String(val(get, 'seq.pattern') || '').split(',').filter(Boolean).length) / 16)) },
+    bass: { size: 'bass.vol', light: 'bass.tone', shape: sel('bass.wave', { Sub: 0, Ronde: 0.35, Pluck: 1 }), halo: 'bass.send', sway: 'bass.decay', bloom: fn(['bass.pattern'], (get) => Math.min(1, share(val(get, 'bass.pattern'), /1/g) * 6)) },
+    perc: { size: 'perc.vol', light: 'perc.tone', shape: sel('perc.kit', { 'Feutré': 0.15, Organique: 0.85 }), halo: 'perc.send', sway: 'perc.swing', bloom: fn(['perc.pattern', 'perc.prob'], (get) => Math.min(1, share(val(get, 'perc.pattern'), /[1-9a-z]/gi) * 2) * (0.4 + 0.6 * norm('perc.prob', get('perc.prob')))) },
+  };
+  // the general settings, the same for every plant
+  const LOOK_ALL = { volume: 'global.volume', space: 'fx.space', shimmer: 'fx.shimmer', worn: fn(['fx.tape', 'fx.lofi'], (get) => 0.5 * norm('fx.tape', get('fx.tape')) + 0.5 * norm('fx.lofi', get('fx.lofi'))), pace: 'global.tempo', float: sel('global.time', { 'Pulsé': 0, Flottant: 1 }) };
+  const ASPECTS = ['size', 'light', 'shape', 'halo', 'sway', 'pace', 'bloom'];
+  const spec = (key) => { const S = AMB.SCHEMA, [sec, k] = key.split('.'); return S && S[sec] && S[sec].params[k]; };
+  const val = (get, k) => { const v = get(k); if (v != null) return v; const sp = spec(k); return sp ? sp.def : v; }; // unknown = the schema default
+  function norm(key, v) {
+    const sp = spec(key);
+    if (v == null && sp) v = sp.def;
+    if (typeof v === 'boolean') return v ? 1 : 0;
+    const lo = sp && sp.min != null ? sp.min : 0, hi = sp && sp.max != null ? sp.max : 1;
+    const n = (Number(v) - lo) / ((hi - lo) || 1);
+    return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0.5;
+  }
+  const cell = (c, get) => (typeof c === 'string' ? norm(c, get(c)) : Math.max(0, Math.min(1, +c.f(get) || 0)));
+  // get(key) → the store value (undefined = the schema default). Pure: same settings, same look.
+  function look(get) {
+    const all = {}; for (const k in LOOK_ALL) all[k] = cell(LOOK_ALL[k], get);
+    const out = {};
+    for (const id in LOOK) {
+      const L = LOOK[id], a = {};
+      for (const k of ['size', 'light', 'shape', 'halo', 'sway', 'bloom']) a[k] = cell(L[k], get);
+      a.size = Math.min(1, a.size / 0.8) * (0.7 + 0.3 * Math.min(1, all.volume / 0.8));
+      a.light *= 1 - 0.35 * all.worn;
+      a.halo = Math.min(1, a.halo * (0.2 + 0.8 * all.space) + 0.25 * all.shimmer * a.halo);
+      a.pace = all.pace * (1 - 0.5 * all.float);
+      a.sway = Math.min(1, a.sway + 0.25 * all.float);
+      out[id] = a;
+    }
+    return out;
+  }
+  // which plants a setting concerns: its layer's, or all of them for the general ones (Volume, Tempo, Reverb, Halo…)
+  const ALL_KEYS = new Set(); for (const k in LOOK_ALL) { const c = LOOK_ALL[k]; (typeof c === 'string' ? [c] : c.keys).forEach((x) => ALL_KEYS.add(x)); }
+  function concerns(key) {
+    const sec = String(key).split('.')[0];
+    if (LOOK[sec]) return [sec];
+    if (ALL_KEYS.has(key) || sec === 'fx') return Object.keys(LOOK);
+    return [];
+  }
 
   // ---- tiny deterministic helpers (never Math.random: positions and shapes depend only on the state) ----
   const hash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
@@ -63,7 +131,7 @@
 
   // ---- sprites: plants drawn as LED dot matrices (1 cell = px device pixels, 1 px gap) ----
   const CW = 25; // sprite width in cells (stem at column 12)
-  function cells(kind, hC, seed) {
+  function cells(kind, hC, seed, a) {
     const r = mulberry(seed), out = []; // [x, y (0 = base), tone]  tone: 0 stem, 1 leaf, 2 light, 4 dot
     const put = (x, y, t) => { if (x >= 0 && x < CW && y >= 0) out.push([x, y, t]); };
     const C = 12;
@@ -123,6 +191,54 @@
       if (kind === 'reed') { for (let y = 0; y < 4; y++) { put(Math.round(x), hC + y, 2); put(Math.round(x) + 1, hC + y, 1); } }
       else { const X = Math.round(x); for (let y = 0; y < 4; y++) for (let k = -(1 + (y >> 1)); k <= 1 + (y >> 1); k++) put(X + k, hC + 3 - y, y === 0 ? 2 : 1); put(X, hC - 1, 2); }
     }
+    return a && kind !== 'crystal' ? dress(out, hC, seed, a) : out;
+  }
+
+  // S4.6: the look on top of the species. a = {shape 0..1, light 0..1, bloom = number of flowers 1..4} (quantized).
+  // shape: leaves get teeth (> 0.45, more > 0.8), petals go from round discs to pointed rays (4 to 7 points);
+  // light: the petals open (dark = a closed bud, petals up only; bright = a wide flower)
+  function dress(out, hC, seed, a) {
+    const r = mulberry(seed ^ 0x5bd1e995), has = new Set(out.map((c) => c[0] + ',' + c[1]));
+    const put = (x, y, t) => { const k = x + ',' + y; if (x >= 0 && x < CW && y >= 0 && !has.has(k)) { has.add(k); out.push([x, y, t]); } };
+    const C = 12, body = out.slice();
+    if (a.shape > 0.45) for (const [x, y, t] of body) { // teeth: a leaf cell on the outline sprouts a point outward
+      if (t !== 1 || (x * 7 + y * 3) % (a.shape > 0.8 ? 2 : 3)) continue;
+      const s = x >= C ? 1 : -1;
+      if (!has.has((x + s) + ',' + y)) { put(x + s, y + 1, 1); if (a.shape > 0.8 && (x + y) % 2) put(x + 2 * s, y + 2, 1); }
+    }
+    const flower = (cx, cy, R) => {
+      const n = 4 + Math.round(a.shape * 3), open = a.light, reach = 1.4 + open * 2.6 * R / 3, up = Math.PI / 2;
+      const span = Math.PI * (0.35 + 0.65 * Math.min(1, open * 1.6)); // closed bud: only the petals around the top
+      for (let i = 0; i < n; i++) {
+        const ang = up + (i / n) * 2 * Math.PI + (n % 2 ? 0 : Math.PI / n);
+        const off = Math.abs(Math.atan2(Math.sin(ang - up), Math.cos(ang - up)));
+        if (off > span) continue;
+        const ca = Math.cos(ang), sa = Math.sin(ang);
+        if (a.shape < 0.5) { // round petal: a small disc
+          const pr = Math.max(1, reach * 0.42), px0 = cx + ca * reach * 0.62, py0 = cy + sa * reach * 0.62;
+          for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (dx * dx + dy * dy <= pr * pr + 0.3) put(Math.round(px0 + dx), Math.round(py0 + dy), 3);
+        } else { // pointed petal: a ray, wide at the base, a light point at the tip
+          const L = reach * (1 + 0.45 * a.shape);
+          for (let d = 1; d <= L; d += 0.5) {
+            const x = Math.round(cx + ca * d), y = Math.round(cy + sa * d);
+            put(x, y, d > L - 1 ? 4 : 3);
+            if (d < L * 0.45) put(Math.round(x - sa), Math.round(y + ca), 3);
+          }
+        }
+      }
+      put(Math.round(cx), Math.round(cy), 4); if (R >= 3) { put(cx + 1, cy, 2); put(cx - 1, cy, 2); put(cx, cy + 1, 2); }
+    };
+    let top = 0, tx = C; for (const [x, y] of body) if (y > top || (y === top && Math.abs(x - C) < Math.abs(tx - C))) { top = y; tx = x; }
+    const R = Math.max(2, Math.min(4, Math.round(2 + hC / 22))), mx = (x, R) => Math.max(R + 1, Math.min(CW - 2 - R, x));
+    flower(mx(tx, R), top + 1 + Math.round(R * (0.3 + 0.5 * a.light)), R);
+    const rows = [0.62, 0.42, 0.8], side0 = r() < 0.5 ? 1 : -1;
+    for (let i = 1; i < a.bloom; i++) { // more flowers: on the sides, smaller, each on a short stalk
+      const y = Math.round(hC * rows[i - 1]), s = i % 2 ? side0 : -side0;
+      let edge = C; for (const [x, yy] of body) if (Math.abs(yy - y) <= 1 && (s > 0 ? x > edge : x < edge)) edge = x;
+      const fx = mx(edge + s * 3, R - 1);
+      put(edge + s, y, 0); put(edge + 2 * s, y + 1, 0);
+      flower(fx, y + 2, R - 1);
+    }
     return out;
   }
 
@@ -136,6 +252,7 @@
     grow: {}, prevH: {}, growStart: null, growNext: false, // S4.5w growth: plant id -> {from (0..1 of its height), start}
     skyKey: null, skyPrevKey: null, skyT: 0, skyQ: [], skies: new Map(), // S4.5w sky
     replay: null, lit: {}, // S4.5w finale
+    LOOK, LOOK_ALL, ASPECTS, look, concerns, aim: null, cur: {}, kicks: {}, swPh: {}, lookDirty: true, // S4.6 settings → look
     sprites: new Map(), glows: new Map(), labels: new Map(),
     plants: [], rares: [], parts: [], pending: [],
     energy: {}, // plant id -> 0..1 pulse
@@ -179,21 +296,31 @@
       } catch (e) { return 0.3; }
     },
 
+    // S4.6: the sprite of a look, quantized (5 shapes × 5 lights × 1–4 flowers) so a slider glides through a few
+    // cached sprites; size, halo and sway are drawn continuously on top (transform, glow), never in the sprite
+    quant(a) { return a ? { shape: Math.round(a.shape * 4) / 4, light: Math.round(a.light * 4) / 4, bloom: 1 + Math.round(a.bloom * 3) } : null; },
+    tones(col, q) {
+      if (!q) return [rgb(col, 0.55), rgb(col, 0.85), rgb(col, 1.25), 'rgb(255,214,236)', 'rgb(255,233,168)'];
+      const L = q.light, grey = (col[0] + col[1] + col[2]) / 3, dull = (1 - L) * 0.55;
+      const c = col.map((v) => v + (grey - v) * dull), mix = (u, w, t) => u.map((v, i) => v + (w[i] - v) * t);
+      const petal = mix(c, [255, 250, 240], 0.15 + 0.5 * L);
+      return [rgb(c, 0.4 + 0.3 * L), rgb(c, 0.55 + 0.5 * L), rgb(c, 0.8 + 0.6 * L), rgb(petal, 0.45 + 0.65 * L), rgb(mix(petal, [255, 240, 190], L), 0.6 + 0.6 * L)];
+    },
     sprite(p, px) {
-      const hC = this.heightCells(p), key = `${p.kind}|${p.id}|${hC}|${px}`;
+      const hC = this.heightCells(p), q = p.rare ? null : this.quant(p.look), key = `${p.kind}|${p.id}|${hC}|${px}` + (q ? `|${q.shape}|${q.light}|${q.bloom}` : '');
       let s = this.sprites.get(key);
       if (s) return s;
       this.cacheMisses++;
-      const cl = cells(p.kind, hC, hash(p.id));
+      const cl = cells(p.kind, hC, hash(p.id), q);
       let top = 0; for (const c of cl) top = Math.max(top, c[1]);
       const Hc = top + 1, cv = document.createElement('canvas');
       cv.width = CW * px; cv.height = Hc * px;
       const g = cv.getContext('2d'), gap = px >= 4 ? 1 : 0, col = p.col;
-      const tones = [rgb(col, 0.55), rgb(col, 0.85), rgb(col, 1.25), 'rgb(255,214,236)', 'rgb(255,233,168)'];
+      const tones = this.tones(col, q);
       for (const [x, y, t] of cl) { g.fillStyle = t === 12 ? 'rgba(107,74,26,0.55)' : tones[t]; g.fillRect(x * px, (Hc - 1 - y) * px, px - gap, px - gap); }
-      s = { cv, w: cv.width, h: cv.height, hC: Hc };
+      s = { cv, w: cv.width, h: cv.height, hC: Hc, key };
       this.sprites.set(key, s);
-      if (this.sprites.size > 96) this.sprites.delete(this.sprites.keys().next().value);
+      if (this.sprites.size > 200) this.sprites.delete(this.sprites.keys().next().value);
       return s;
     },
     glow(col, R) {
@@ -316,7 +443,7 @@
       this.plants = L.plants; this.rares = L.rares; this.ground = L.ground; this.slotW = L.slotW;
       const avail = Math.max(H * 0.2, this.ground - H * ceil);
       this.px = this.cellPx(W, H, this.plants.length, avail);
-      this.hMax = Math.max(12, Math.min(58, Math.floor((avail / this.px - 4) / 1.1)));
+      this.hMax = Math.max(12, Math.min(58, Math.floor((avail / this.px - 14) / 1.1)));
       this.ceil = ceil;
       // S4.5w: after an opening, a new plant grows from 0, a taller one from its old height
       const stSig = this.signature(st), now = this.clock(), hs = {};
@@ -329,6 +456,32 @@
       this.stSig = stSig; this.prevH = hs;
       this.W = W; this.H = H; this.lastCheck = this.now();
       return true;
+    },
+
+    // ---- S4.6 the look follows the settings: targets from the store (look), smoothed per plant (cur, ~0.35 s);
+    // a touched control (sources below) kicks its plants: a damped bounce, a wider sway, the plant lit while it is touched ----
+    KICK: new Set(['user', 'macro', 'xy']),
+    watch() {
+      const S = AMB.store;
+      if (!S || S === this.watched || typeof S.on !== 'function') return;
+      this.watched = S; this.lookDirty = true;
+      S.on((k, v, src) => this.onSet(k, src));
+    },
+    onSet(key, src) {
+      this.lookDirty = true;
+      if (!this.KICK.has(src) || !this.running()) return; // nothing is kept for a garden off screen
+      const t = this.t || 0;
+      for (const id of concerns(key)) { const k = this.kicks[id]; if (k && t - k.last < 0.25) k.last = t; else this.kicks[id] = { t0: t, last: t }; } // a slider held: one bounce, then it follows
+    },
+    updateLook(dt) {
+      if (this.lookDirty || !this.aim) { const S = AMB.store, get = S && typeof S.get === 'function' ? (k) => S.get(k) : () => undefined; this.aim = look(get); this.lookDirty = false; }
+      const kT = this.reduced ? 1 : 1 - Math.exp(-dt / 0.11);
+      for (const p of this.plants) {
+        const a = this.aim[p.id]; if (!a) continue;
+        const c = this.cur[p.id] || (this.cur[p.id] = { ...a });
+        for (const k of ASPECTS) c[k] += (a[k] - c[k]) * kT;
+        p.look = c;
+      }
     },
 
     // ---- events: queued with their audio time, applied when they sound ----
@@ -344,7 +497,7 @@
       this.energy[layer] = Math.min(1, (this.energy[layer] || 0) * 0.5 + 0.5 + vel * 0.5);
       if (!this.reduced && this.parts.length < 120) {
         const hC = this.heightCells(p), px = this.px, r = this.rng || (this.rng = mulberry(99));
-        this.parts.push({ x: p.x + (r() - 0.5) * 8 * px, y: p.y - hC * px * (0.6 + r() * 0.4), vx: (r() - 0.5) * 12 * px, vy: -(8 + r() * 10) * px, life: 1, col: r() < 0.3 ? [255, 233, 168] : p.col, s: r() < 0.5 ? 1 : 2 });
+        this.parts.push({ x: p.x + (r() - 0.5) * 8 * px, y: p.y - hC * px * (p.sz || 1) * (0.6 + r() * 0.4), vx: (r() - 0.5) * 12 * px, vy: -(8 + r() * 10) * px, life: 1, col: r() < 0.3 ? [255, 233, 168] : p.col, s: r() < 0.5 ? 1 : 2 });
       }
       return true;
     },
@@ -354,9 +507,10 @@
       if (!this.running()) { this.lastT = null; return false; }
       const t0 = this.now();
       if (this.sig == null || this.W !== W || this.H !== H || t0 - (this.lastCheck || 0) > 1000) this.refresh(W, H, this.W !== W || this.H !== H);
-      const dt = this.lastT == null ? 1 / 60 : Math.min(0.1, (t0 - this.lastT) / 1000);
+      const dt = this.lastT == null ? 1 / 60 : Math.max(0, Math.min(0.1, (t0 - this.lastT) / 1000));
       this.lastT = t0; this.t = (this.t || 0) + dt;
       const now = this.clock();
+      this.watch(); this.updateLook(dt);
       for (let i = this.pending.length - 1; i >= 0; i--) { const e = this.pending[i]; if (e.time <= now + 0.02) { this.pending.splice(i, 1); this.hit(e.layer, e.vel); } }
       const ans = this.answer(now);
       if (ans) this.lightAnswer(ans);
@@ -388,13 +542,33 @@
       const all = this.plants.concat(this.rares), sy = {};
       for (const p of all) {
         const s = this.sprite(p, px), e = this.energy[p.id] || 0, gy = (sy[p.id] = p.rare ? 1 : this.growth(p.id, now));
-        const sway = red ? 0 : (Math.sin(this.t * 0.7 + p.phase) * 0.05 + Math.sin(this.t * 1.9 + p.phase * 2) * 0.015) * (1 + e * 1.5);
-        const k = red ? 1 : 1 + e * 0.05;
+        const a = p.look, kk = this.kicks[p.id], since = kk ? this.t - kk.t0 : 9, hot = (p.hot = kk ? Math.max(0, 1 - (this.t - kk.last) / 0.6) : 0);
+        if (kk && since > 0.9 && !hot) delete this.kicks[p.id];
+        const spring = red || !kk ? 0 : Math.exp(-since * 6), bounce = (p.bounce = 0.14 * spring * Math.cos(since * 20));
+        const sz = (p.sz = a ? 0.45 + 0.55 * a.size : 1);
+        let sway = 0;
+        if (!red) {
+          if (a) {
+            const ph = (this.swPh[p.id] = (this.swPh[p.id] == null ? p.phase : this.swPh[p.id]) + dt * (0.45 + 1.4 * a.pace) * (0.7 + 0.6 * a.sway));
+            sway = (0.015 + 0.075 * a.sway) * (1 + e * 1.5) * (1 + 2.5 * hot) * (Math.sin(ph) + 0.3 * Math.sin(2.7 * ph + p.phase)) + 0.2 * spring * Math.sin(since * 16);
+          } else sway = (Math.sin(this.t * 0.7 + p.phase) * 0.05 + Math.sin(this.t * 1.9 + p.phase * 2) * 0.015) * (1 + e * 1.5);
+        }
+        const k = red ? 1 : 1 + e * 0.05, kx = Math.min(k * sz * (1 - 0.6 * bounce), (this.slotW || 1e9) * 1.15 / s.w), ky = k * sz * (1 + bounce); // never wider than its slot (phone)
         p.sway = sway; p.k = k; p.gy = gy; // the Réponse leaves follow the plant (drawAnswer)
+        if (a && a.halo > 0.03 && gy > 0.01) { // S4.6 halo (Espace): a soft aura, radius in 8 cached steps
+          const Rg = Math.round(px * (8 + 18 * Math.round(a.halo * 7) / 7)), gl = this.glow(p.col, Rg);
+          g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, (0.12 + 0.6 * a.halo) * (R ? 0.3 + 0.7 * Math.min(1, this.lit[p.id] || 0) : 1));
+          g.drawImage(gl, p.x - Rg, p.y - this.heightCells(p) * px * sz * gy * 0.6 - Rg);
+          g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+        }
         if (R && !p.rare) g.globalAlpha = 0.3 + 0.7 * Math.min(1, this.lit[p.id] || 0); // finale: dark until its layer plays
-        if (gy > 0.01) { g.setTransform(k, 0, -sway * k * gy, k * gy, p.x, p.y); g.drawImage(s.cv, -s.w / 2, -s.h); } // shear from the base: the plant bends, the root stays put; it grows from there
+        if (gy > 0.01) {
+          g.setTransform(kx, 0, -sway * ky * gy, ky * gy, p.x, p.y); g.drawImage(s.cv, -s.w / 2, -s.h); // shear from the base: the plant bends, the root stays put; it grows from there
+          if (hot > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.5 * hot; g.drawImage(s.cv, -s.w / 2, -s.h); g.globalCompositeOperation = 'source-over'; } // S4.6: lit while touched
+          if (hot > 0.02) this.energy[p.id] = Math.max(this.energy[p.id] || 0, 0.55 * hot);
+        }
         g.globalAlpha = 1;
-        if (!p.rare) { const lb = this.label(p, fs, this.slotW * 0.96); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 0.85 * Math.min(1, gy * 2); g.drawImage(lb, Math.round(p.x - lb.width / 2), Math.round(p.y + px * 1.5)); g.globalAlpha = 1; }
+        if (!p.rare) { const lb = this.label(p, fs, this.slotW * 0.96); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = Math.min(1, 0.85 + 0.15 * hot) * Math.min(1, gy * 2); g.drawImage(lb, Math.round(p.x - lb.width / 2), Math.round(p.y + px * 1.5)); if (hot > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = hot; g.drawImage(lb, Math.round(p.x - lb.width / 2), Math.round(p.y + px * 1.5)); g.globalCompositeOperation = 'source-over'; } g.globalAlpha = 1; }
       }
       if (ans) this.drawAnswer(g, ans);
       g.setTransform(1, 0, 0, 1, 0, 0);
@@ -403,7 +577,7 @@
         let e = this.energy[p.id] || 0;
         if (p.rare) e = Math.max(e, red ? 0.35 : 0.25 + 0.25 * Math.sin(this.t * 1.3 + p.phase));
         if (e < 0.02) continue;
-        const Rg = Math.max(16, px * (p.rare ? 8 : 12)), gl = this.glow(p.col, Rg), hC = this.heightCells(p) * sy[p.id];
+        const Rg = Math.max(16, px * (p.rare ? 8 : 12)), gl = this.glow(p.col, Rg), hC = this.heightCells(p) * sy[p.id] * (p.sz || 1);
         g.globalAlpha = Math.min(1, e);
         g.drawImage(gl, p.x - Rg, p.y - hC * px * (p.rare ? 0.6 : 0.85) - Rg);
       }
@@ -439,7 +613,7 @@
       const p = this.plants.find((q) => q.id === 'bells'); if (!p) return 0;
       const gy = p.gy == null ? 1 : p.gy; if (gy < 0.05) return 0; // S4.5w: a plant still growing carries its leaves up
       const px = this.px, lp = Math.max(px, Math.round(4 * (this.dpr || 1))), gap = lp >= 4 ? 1 : 0, k = p.k || 1;
-      const h = this.heightCells(p) * px * gy, room = Math.max(h, p.y - (this.H || 0) * (this.ceil || 0) - 3 * lp);
+      const h = this.heightCells(p) * px * gy * (p.sz || 1), room = Math.max(h, p.y - (this.H || 0) * (this.ceil || 0) - 3 * lp);
       const y0 = Math.max(h * 0.2, 2 * lp), top = Math.min(room, Math.max(h * 0.88, y0 + (v.len - 1) * 2.4 * lp));
       g.setTransform(k, 0, -(p.sway || 0) * k * gy, k, p.x, p.y); // bends with the plant
       if (top > h * 0.9) { g.fillStyle = rgb(p.col, 0.7, 0.6); g.fillRect(-Math.floor(lp / 4), -Math.round(top), Math.max(1, Math.round(lp / 2)), Math.round(top - h * 0.85)); }
