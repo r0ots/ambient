@@ -16,7 +16,7 @@ window.addEventListener('load', async ()=>{
   try{
   await AMB.ui.play();
   document.querySelector('[data-mode=listen]').click();
-  log('simple='+document.body.classList.contains('simple')+' macroKnobs='+document.querySelectorAll('#macros .knob').length);
+  log('listen='+document.body.classList.contains('mode-listen')+' macroKnobs='+document.querySelectorAll('#macros .knob').length);
   AMB.store.set('macro.space',1,'user'); AMB.store.set('macro.nostalgia',0,'user'); AMB.store.set('macro.nature',0,'user');
   log('space='+AMB.store.get('fx.space').toFixed(2)+' shimmer='+AMB.store.get('fx.shimmer').toFixed(2)+' tape='+AMB.store.get('fx.tape').toFixed(2)+' texOn='+AMB.store.get('texture.on'));
   AMB.store.set('macro.density',1,'user'); log('padLen='+AMB.store.get('pad.length')+' bellsDens='+AMB.store.get('bells.density').toFixed(2));

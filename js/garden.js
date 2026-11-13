@@ -44,11 +44,6 @@
       box.querySelector('.lcd-task-n').textContent = resp ? `${AMB.puzzles.need(d)} ♪` : d.goal > 1 ? `${n}/${d.goal}` : n ? '✓' : '·';
       if (flashId === id) { box.classList.remove('bump'); void box.offsetWidth; box.classList.add('bump'); }
     },
-    paramLabel(key) {
-      const [sec, k] = key.split('.'); const S = AMB.SCHEMA[sec]; if (!S) return key;
-      const sp = S.params[k];
-      return k === 'on' ? S.label : sp ? `${S.label} · ${sp.label}` : S.label;
-    },
     // clicks that always succeed go on the bus as actions (contracts count them); actions that can fail or be
     // cancelled (save, journal, chords, freeze) are emitted by their own code once they really happened
     CLICKS: [['#dice', 'dice'], ['.sc-store', 'sceneStore']],

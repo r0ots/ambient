@@ -43,7 +43,6 @@
   function setMode(mode) {
     if (!MODES.includes(mode)) mode = 'listen';
     for (const m of MODES) document.body.classList.toggle('mode-' + m, m === mode);
-    document.body.classList.toggle('simple', mode === 'listen'); // legacy class
     document.querySelectorAll('[data-mode]').forEach((b) => { const on = b.dataset.mode === mode; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
     try { localStorage.setItem('ambient.mode', mode); } catch (e) {}
     AMB.mode = mode;
