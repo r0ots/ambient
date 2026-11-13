@@ -1,0 +1,127 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../css/style.css">
+<!-- S7.1 the motion system (js/motion.js + css « S7.1 Mouvement »): tokens, JUICE 0 and reduced motion cut everything,
+     utilities leave no class / animation / listener behind, the base controls' wiring, the particle emitter's cost. -->
+</head><body>
+<script src="lib.js"></script>
+<script>
+// count the listeners added from here on (motion.js installs its global ones once; the utilities add none)
+let LISTENERS = 0; const ael = EventTarget.prototype.addEventListener;
+EventTarget.prototype.addEventListener = function (...a) { LISTENERS++; return ael.apply(this, a); };
+</script>
+<script src="../js/motion.js"></script>
+<div class="app">
+  <div class="modes" role="group"><button class="mode-btn on" data-mode="listen">Écouter</button><button class="mode-btn" data-mode="sculpt">Sculpter</button><button class="mode-btn" data-mode="compose">Composer</button></div>
+  <button id="b" class="btn">Bouton</button> <button id="t" class="tog on" style="--c:#ff3fa4">Drone</button>
+  <div class="ctl knob" id="k" role="slider" style="--c:#3ff0ff"><svg viewBox="0 0 60 60" style="width:52px;height:52px"><circle cx="30" cy="30" r="17" class="k-body"></circle></svg><div class="k-val" id="v">12</div></div>
+  <div id="list" style="display:flex;gap:6px"><span class="btn" id="i0">A</span><span class="btn" id="i1">B</span><span class="btn" id="i2">C</span></div>
+  <div class="stage" style="height:120px"><div id="toast" class="toast">Salut</div></div>
+  <div id="probe"></div>
+</div>
+<script>
+(async () => {
+  try {
+    const M = AMB.motion, root = document.documentElement, $ = (s) => document.querySelector(s);
+    const probe = $('#probe'), cs = (el) => getComputedStyle(el);
+    const dur = (tok) => { probe.style.transitionDuration = `var(${tok})`; return parseFloat(cs(probe).transitionDuration) * 1000; };
+    const ease = (tok) => { probe.style.transitionTimingFunction = `var(${tok})`; return cs(probe).transitionTimingFunction; };
+    const nums = (s) => (String(s).match(/-?\d*\.?\d+/g) || []).map(Number).join(',');
+    const settle = (ms) => wait(ms);
+    const L0 = LISTENERS;
+
+    // 1. tokens on :root, the same numbers in js and css
+    ok(M && M.installed, 'AMB.motion chargé, commandes de base branchées une fois');
+    ok(Math.abs(dur('--m-fast') - M.MS.fast) < 1 && Math.abs(dur('--m-med') - M.MS.med) < 1 && Math.abs(dur('--m-slow') - M.MS.slow) < 1 && Math.abs(dur('--m-stagger') - M.MS.stagger) < 1,
+      `jetons de durée = MS de motion.js (${dur('--m-fast')} / ${dur('--m-med')} / ${dur('--m-slow')} / ${dur('--m-stagger')} ms)`);
+    const curves = ['spring', 'snap', 'out', 'in'].filter((k) => nums(ease('--m-' + k)) !== nums(M.EASE[k]));
+    ok(!curves.length && /linear/.test(ease('--m-bounce')), 'jetons de courbe --m-spring / --m-snap / --m-bounce / --m-out / --m-in = EASE de motion.js ' + curves.join(','));
+    ok(cs(root).getPropertyValue('--juice').trim() === '1' && cs(root).getPropertyValue('--m-t').trim() === '1' && cs(root).getPropertyValue('--m-amp').trim() === '1', 'JUICE posé en css (--juice, --m-t, --m-amp)');
+
+    // 2. JUICE 0 / reduced motion: every duration 0, nothing plays
+    for (const [what, o] of [['JUICE 0', { juice: 0 }], ['mouvement réduit', { reduced: true }]]) {
+      M.set(o);
+      const v = $('#v'), r = M.roll(v, '99'), p = M.pop($('#b'), 'pop'), st = M.stagger([$('#b')]), bu = M.burst($('#b'));
+      const fl = M.flip($('#list'), () => $('#list').append($('#i0')));
+      ok(dur('--m-fast') === 0 && dur('--m-slow') === 0 && cs(root).getPropertyValue('--m-amp').trim() === '0' && root.classList.contains('m-still'), what + ' : toutes les durées à 0, amplitude 0');
+      ok(v.textContent === '99' && !r && !p && !st.length && !bu && !fl.length && !$('#b').getAnimations().length && M.live() === 0, what + ' : l\'état change (valeur écrite, ordre changé), aucune animation ni particule');
+      M.set({ juice: 1, reduced: null });
+    }
+    ok(dur('--m-med') === M.MS.med && !root.classList.contains('m-still'), 'rétabli : JUICE 1');
+
+    // 3. pop: one class, removed after its time; a restart does not stack; nothing left
+    const b = $('#b');
+    ok(M.pop(b, 'pop') && b.classList.contains('m-pop') && M.live() === 1, 'pop : la classe m-pop est posée');
+    M.pop(b, 'pop'); M.pop(b, 'glitch');
+    ok(M.live() === 2, 'pop relancé : pas d\'empilement (une minuterie par classe)');
+    await settle(M.MS.med + 150);
+    ok(!/\bm-/.test(b.className) && M.live() === 0, 'pop : classes retirées, rien ne reste (' + b.className + ')');
+
+    // 4. stagger / flip / roll: Web Animations that end with nothing left on the elements
+    const items = [...$('#list').children], st = M.stagger(items);
+    ok(st.length === 3 && st[2].effect.getTiming().delay > st[1].effect.getTiming().delay && st[1].effect.getTiming().delay > 0, 'stagger : une cascade (3 entrées décalées)');
+    await Promise.all(st.map((a) => a.finished));
+    ok(items.every((e) => !e.getAnimations().length), 'stagger : rien ne reste une fois fini');
+    const last = $('#list').lastElementChild, fl = M.flip($('#list'), () => $('#list').prepend(last));
+    ok(fl.length === 3 && $('#list').firstElementChild === last, 'flip : l\'ordre change tout de suite, les 3 glissent de leur ancienne place');
+    await Promise.all(fl.map((a) => a.finished));
+    ok(items.every((e) => !e.getAnimations().length), 'flip : rien ne reste');
+    const v = $('#v'); v.textContent = '12';
+    ok(M.roll(v, 40) && v.textContent === '40' && v.getAnimations().length === 1, 'roll : la valeur est écrite tout de suite, elle roule');
+    ok(!M.roll(v, 41) && v.textContent === '41' && v.getAnimations().length === 1, 'roll pendant un roulement (potentiomètre tourné) : texte remplacé, pas de nouvelle animation');
+    await wait(M.MS.fast + 80); ok(!v.getAnimations().length, 'roll : rien ne reste');
+
+    // 5. press: squash, springy release that sparks; hover lean (3D)
+    const PE = (t, el, x = 0) => el.dispatchEvent(new PointerEvent(t, { bubbles: true, pointerId: 3, clientX: x }));
+    const P = M.particles, n0 = P.n;
+    PE('pointerdown', b); const pressed = b.classList.contains('is-pressed') && /press-in/.test(cs(b).animationName);
+    PE('pointerup', b);
+    ok(pressed && b.classList.contains('is-released') && /press-out/.test(cs(b).animationName) && P.n > n0, 'appui : écrasé, puis rebond avec élan et étincelles (' + (P.n - n0) + ')');
+    const t = $('#t'), nT = P.n; PE('pointerdown', t); PE('pointerup', t);
+    ok(P.n - nT > 6, 'bascule : un éclat plus gros (' + (P.n - nT) + ' étincelles)');
+    await settle(M.MS.slow + 120);
+    ok(!b.classList.contains('is-released') && M.live() === 0, 'relâché : la classe part, rien ne reste');
+    const r = b.getBoundingClientRect();
+    M.lean({ target: b, clientX: r.right - 2, clientY: r.top + 2 });
+    ok(b.classList.contains('m-tilt') && parseFloat(b.style.getPropertyValue('--m-ry')) > 0 && parseFloat(b.style.getPropertyValue('--m-rx')) > 0 && /matrix3d|perspective/.test(cs(b).transform + 'matrix3d'),
+      'survol : le bouton se soulève et penche vers le pointeur (' + b.style.getPropertyValue('--m-rx') + ', ' + b.style.getPropertyValue('--m-ry') + ')');
+    M.lean({ target: document.body, clientX: 0, clientY: 0 });
+    ok(!b.classList.contains('m-tilt') && !b.style.getPropertyValue('--m-rx'), 'survol fini : plus d\'inclinaison');
+
+    // 6. knob notches: sparks off the needle, more when it turns faster
+    const k = $('#k'), nK = P.n;
+    const small = M.turn(k, 0.01, 0); const one = M.turn(k, 0.02, 10); const fast = M.turn(k, 0.2, 80);
+    ok(!small && one > 0 && fast > one && k.classList.contains('m-turning') && k.classList.contains('m-tick') && P.n > nK,
+      'potentiomètre : un cran = petit écrasement, lueur, étincelles ; plus vite = plus d\'étincelles (' + one + ' puis ' + fast + ')');
+
+    // 7. the lit key slides to the active mode
+    const g = $('.modes'), ind = M.slide(g), btns = g.querySelectorAll('.mode-btn');
+    btns[0].classList.remove('on'); btns[2].classList.add('on'); M.slide(g);
+    ok(g.classList.contains('m-placed') && ind.style.transform.includes(`translateX(${btns[2].offsetLeft}px)`) && cs(ind).transitionDuration !== '0s', 'mode : le témoin glisse vers la touche active (' + ind.style.transform + ')');
+
+    // 8. toast: hidden = small, above, transparent; shown = in place
+    const ts = $('#toast'), hid = [cs(ts).opacity, cs(ts).scale];
+    ts.classList.add('show'); await wait(M.MS.slow + 100);
+    ok(hid[0] === '0' && parseFloat(hid[1]) < 0.5 && cs(ts).opacity === '1' && cs(ts).scale === '1', 'toast : arrive en rebond (caché ' + hid.join(' / ') + ')');
+
+    // 9. no listener left behind: the utilities add none, init() twice adds none
+    M.init(); for (let i = 0; i < 20; i++) { M.pop(b, 'pop'); M.roll(v, i); M.stagger([b]); M.burst(b); M.turn(k, 0.05, i); }
+    ok(LISTENERS === L0, 'aucun écouteur ajouté par les utilitaires ni par un 2e init() (' + (LISTENERS - L0) + ')');
+    await settle(M.MS.slow + 200);
+    ok(M.live() === 0, 'tout est retombé');
+
+    // 10. cost: the handlers (per call) and the particles (per frame, 300 sparks + 300 confetti in flight)
+    const T = (f, n = 200) => { const t0 = performance.now(); for (let i = 0; i < n; i++) f(i); return (performance.now() - t0) / n; };
+    const cPop = T((i) => M.pop(b, i % 2 ? 'pop' : 'glitch')), cRoll = T((i) => M.roll(v, i)), cTurn = T((i) => M.turn(k, 0.03, i % 270 - 135), 100);
+    P.clear(); P.times.length = 0;
+    for (let i = 0; i < 30; i++) M.burst(b, { n: 10 });
+    P.burst(300, b);
+    let ts0 = performance.now(); P.raf = 1; // (frames driven here: headless barely runs rAF)
+    for (let i = 0; i < 60; i++) { ts0 += 16; P.frame(ts0); }
+    cancelAnimationFrame(P.raf); const s = P.stats(); P.clear();
+    log(`PERF pop ${(cPop * 1000).toFixed(0)} µs · roll ${(cRoll * 1000).toFixed(0)} µs · turn ${(cTurn * 1000).toFixed(0)} µs par appel ; particules ${s.frames} images : moyenne ${s.avg.toFixed(3)} ms, p95 ${s.p95.toFixed(3)} ms`);
+    ok(cPop < 1 && cRoll < 1 && cTurn < 2 && s.avg < 2, 'coût négligeable (gestes < 1 ms par appel, particules < 2 ms par image)');
+    await settle(M.MS.slow + 100);
+    done();
+  } catch (e) { fail(e); }
+})();
+</script>
+</body></html>

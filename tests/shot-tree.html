@@ -119,7 +119,7 @@ document.getElementById('f').addEventListener('load', () => {
   if (/#(combo|discovery)/.test(h)) { // S5.10: combos ON in the Jardin (#combo=brume,soleil), the party of a discovery (#discovery=<id>)
     const w = document.getElementById('f').contentWindow, G = A.garden, GV = A.gardenVisual, D = A.discoveries;
     ['m.bells', 'h.pad', 'h.key', 'm.grains', 'e.texture', 'e.reverb', 'c.seq'].forEach((i) => A.game.unlock(i));
-    D.run = () => {}; G.confetti.burst = () => {}; // (the notes played below must not find a gesture; the openings' confetti would hide the scene)
+    const burst0 = G.confetti.burst; D.run = () => {}; G.confetti.burst = () => {}; // (the notes played below must not find a gesture; the openings' confetti would hide the scene)
     const ids = ((/(?:combo|discovery)=([\w,]+)/.exec(h) || [])[1] || 'brume').split(',');
     setTimeout(() => {
       G.showTree(false); A.perform.setMode('listen'); A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none';
@@ -128,7 +128,7 @@ document.getElementById('f').addEventListener('load', () => {
       let k = 0, id = 700; setInterval(() => { const n = ++id; A.bus.emit('live', { midi: 60 + [0, 7, 4, 12, 9, 2, 16, 11][k++ % 8], time: GV.clock(), vel: 0.8, raw: null, id: n }); A.bus.emit('liveOff', { id: n, time: GV.clock() + 0.1 }); }, 300);
       if (h.includes('discovery')) {
         const fc = G.fxClass; G.fxClass = function (el, c) { return fc.call(this, el, c, 6e5); }; // the effects stay on
-        setTimeout(() => { delete G.confetti.burst; D.state().found = {}; D.find(ids[0]); setTimeout(() => freeze(G.confetti), 350); }, 1200);
+        setTimeout(() => { G.confetti.burst = burst0; D.state().found = {}; D.find(ids[0]); setTimeout(() => freeze(G.confetti), 350); }, 1200);
       }
     }, 1600);
     return;

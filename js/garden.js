@@ -98,26 +98,6 @@
     // clicks that always succeed go on the bus as actions (contracts count them); actions that can fail or be
     // cancelled (save, journal, chords, freeze) are emitted by their own code once they really happened
     CLICKS: [['#dice', 'dice'], ['.sc-store', 'sceneStore']],
-    // S5.6 press feedback, Parcours only (free mode untouched): every button, knob, select and pad sinks while pressed
-    // (`is-pressed`), then bounces back with a glow when let go (`is-released`); generic, one pair of css classes
-    PRESS: 'button, .knob, .ctl.sel, .pad',
-    pressFeedback() {
-      let el = null, safety = 0;
-      const up = () => {
-        clearTimeout(safety); if (!el) return;
-        const e = el; el = null;
-        e.classList.remove('is-pressed'); e.classList.remove('is-released'); void e.offsetWidth; // (restart the bounce)
-        e.classList.add('is-released'); setTimeout(() => e.classList.remove('is-released'), 450);
-      };
-      document.addEventListener('pointerdown', (ev) => {
-        if (!document.body.classList.contains('game') || !ev.target.closest) return;
-        const t = ev.target.closest(this.PRESS); if (!t || t.disabled) return;
-        up(); el = t; t.classList.remove('is-released'); t.classList.add('is-pressed');
-        if (!t.classList.contains('knob')) safety = setTimeout(up, 1500); // a native list (select) may swallow the release
-      }, true);
-      ['pointerup', 'pointercancel'].forEach((k) => window.addEventListener(k, up, true));
-      window.addEventListener('blur', (e) => { if (e.target === window) up(); }); // (the page loses focus, not an element)
-    },
     // S6.7: in the Parcours the LCD never leaves the window — once its place scrolls above the top, it is pinned there
     // (css .lcd-pin, compact), a placeholder of its size keeps the bar from moving; the demands wait for a visible LCD
     // (demands.seen), so they keep coming while the player scrolls through the panels. Free mode, fullscreen: never.
@@ -508,10 +488,10 @@
     },
     applyTouch() { document.body.classList.toggle('touch', AMB.game.touch()); this.renderContracts(); },
     modalUp() { return [...document.querySelectorAll('.modal')].some((m) => !m.hidden); },
+    // S7.1: one mechanism for one-shot classes (js/motion.js pop); the recipe already decided (reduced motion, JUICE)
     fxClass(el, cls, ms) {
       if (!el) return;
-      el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
-      const k = '_fx_' + cls; clearTimeout(el[k]); el[k] = setTimeout(() => el.classList.remove(cls), ms);
+      return AMB.motion.pop(el, cls, { ms, force: true });
     },
     fxFlash(stage, a, soft) {
       if (!stage) return;
@@ -550,60 +530,9 @@
       setTimeout(() => { p.remove(); this.confetti.idle(); }, ms);
       return p;
     },
-    // pixel confetti on one fixed, click-through canvas over the whole page; it only draws while some are flying
-    confetti: {
-      COLORS: ['#ffb347', '#fff3c4', '#ff4fa0', '#4fe0ff', '#8fe3a0'], MAX: 700, G: 1500,
-      bins: null, n: 0, raf: 0, last: 0, times: [],
-      layer() {
-        let L = document.getElementById('fxLayer');
-        if (!L) { L = document.createElement('div'); L.id = 'fxLayer'; L.className = 'fx-layer'; L.setAttribute('aria-hidden', 'true'); L.innerHTML = '<canvas></canvas>'; document.body.append(L); }
-        return L;
-      },
-      burst(n, src) {
-        const L = this.layer(), cv = L.querySelector('canvas'), W = innerWidth, H = innerHeight;
-        if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
-        if (!this.bins) this.bins = this.COLORS.map(() => []);
-        const r = src && src.getBoundingClientRect ? src.getBoundingClientRect() : { left: W / 2, top: H / 2, width: 0, height: 0 };
-        for (let i = 0; i < n && this.n < this.MAX; i++, this.n++) {
-          const x = r.left + Math.random() * r.width, y = r.top + Math.random() * r.height * 0.5, an = -Math.PI / 2 + (Math.random() - 0.5) * 2.2, sp = 380 + Math.random() * 780;
-          this.bins[i % this.COLORS.length].push({ x, y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, s: 3 + ((Math.random() * 4) | 0), w: 4 + Math.random() * 14, t: 0, life: 1.3 + Math.random() * 0.9 });
-        }
-        L.hidden = false; cv.hidden = false;
-        if (!this.raf) { this.last = performance.now(); this.raf = requestAnimationFrame((t) => this.frame(t)); }
-      },
-      frame(ts) {
-        const t0 = performance.now(), dt = Math.min(0.05, Math.max(0, (ts - this.last) / 1000)); this.last = ts;
-        const cv = document.querySelector('#fxLayer canvas'), g = cv && cv.getContext('2d'); if (!g) { this.raf = 0; return; }
-        g.clearRect(0, 0, cv.width, cv.height);
-        const drag = Math.pow(0.12, dt); let n = 0;
-        this.bins.forEach((b, c) => {
-          g.fillStyle = this.COLORS[c];
-          for (let i = b.length - 1; i >= 0; i--) {
-            const p = b[i]; p.t += dt;
-            if (p.t > p.life || p.y > cv.height + 20) { b[i] = b[b.length - 1]; b.pop(); continue; }
-            p.vx *= drag; p.vy = p.vy * drag + this.G * dt; p.x += p.vx * dt; p.y += p.vy * dt;
-            const w = Math.max(1, Math.round(p.s * Math.abs(Math.cos(p.w * p.t)))); // a flat square that spins
-            g.globalAlpha = p.t > p.life - 0.3 ? (p.life - p.t) / 0.3 : 1;
-            g.fillRect(Math.round(p.x), Math.round(p.y), w, p.s);
-            n++;
-          }
-        });
-        g.globalAlpha = 1; this.n = n;
-        this.times.push(performance.now() - t0); if (this.times.length > 600) this.times.shift();
-        if (n) this.raf = requestAnimationFrame((t) => this.frame(t)); else { this.raf = 0; cv.hidden = true; this.idle(); }
-      },
-      // S5.6: a window opens (Arbre, carnet, aide, carte « Ouvrir ») — what is left of an earlier party goes, at once
-      clear() {
-        const L = document.getElementById('fxLayer'); if (!L) return;
-        if (this.raf) cancelAnimationFrame(this.raf); this.raf = 0; this.n = 0;
-        if (this.bins) this.bins.forEach((b) => { b.length = 0; });
-        const cv = L.querySelector('canvas'); if (cv) { const g = cv.getContext('2d'); if (g) g.clearRect(0, 0, cv.width, cv.height); cv.hidden = true; }
-        L.querySelectorAll('.fx-pop').forEach((p) => p.remove());
-        L.hidden = true;
-      },
-      idle() { const L = document.getElementById('fxLayer'); if (L && !this.raf && !L.querySelector('.fx-pop')) L.hidden = true; }, // nothing left on the page
-      stats() { const a = this.times.slice().sort((x, y) => x - y), k = a.length; return { frames: k, avg: k ? a.reduce((s, v) => s + v, 0) / k : 0, p95: k ? a[Math.max(0, Math.ceil(k * 0.95) - 1)] : 0, max: k ? a[k - 1] : 0 }; },
-    },
+    // pixel confetti on one fixed, click-through canvas over the whole page; S7.1: the app's ONE particle emitter now
+    // lives in js/motion.js (the controls' sparks share it): the same object
+    confetti: AMB.motion.particles,
 
     build() {
       this.hookActions();
@@ -635,7 +564,7 @@
         const mo = new MutationObserver((ms) => { if (ms.some((m) => !m.target.hidden)) this.confetti.clear(); });
         document.querySelectorAll('.modal').forEach((m) => mo.observe(m, { attributes: true, attributeFilter: ['hidden'] }));
       }
-      this.pressFeedback(); this.pinLcd();
+      this.pinLcd(); // (S5.6 press feedback: now js/motion.js, everywhere)
       this.coinWire(); this.hiscores.build();
       // S5.7: a touch screen in the path: no MIDI button, no keyboard words (css body.game.touch, game.txt)
       this.applyTouch(); if (window.matchMedia) { const q = matchMedia('(pointer: coarse)'); if (q.addEventListener) q.addEventListener('change', () => this.applyTouch()); }
