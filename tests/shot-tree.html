@@ -7,6 +7,7 @@
   #roll (piano roll, mode libre : notes ♯ hors gamme, « ⤓ Garder » actif après des notes jouées) ;
   S4.6 : #ready (« ✦ Ouvrir : Pad » qui pulse, 2 prêts), #ready-card (la carte qui dit ce que le Pad apporte), #new (le Pad vient de s'ouvrir : panneau, halo, « Nouveau ») ;
   S5.9 : #juice-defi / #juice-open / #juice-tier (un moment du juice central en plein effet, figé) ;
+  S5.4 : #placement (« ⚡ Musicien détecté » en pleine fête, la file « ✦ Ouvrir · n prêts ») ;
   S5.10 : #combo=<id>,<id> (combos ON dans le Jardin), #discovery=<id> (la fête d'une découverte, figée), #carnet (le carnet des découvertes dans l'Arbre : trouvées, puis silhouettes) ;
   S5.2 : #splash (notes jouées sur la Mélodie, une tenue ; une pastille allumée par la Mélodie auto) ;
   S4.5w : #grow (plante à mi-croissance), #sky=<degré> (ciel d'un accord), #dawn (fin : relecture, aube), #dawn-end (remis, WAV proposé). --><meta charset="utf-8"><style>body{margin:0}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body>
@@ -56,6 +57,19 @@ document.getElementById('f').addEventListener('load', () => {
           .fx-pop { opacity: 1; scale: 1.2; rotate: -4deg; }`; // (headless captures freeze CSS animations at their first frame: a mid-flight still instead)
         doc.head.append(st);
     }
+  }
+  if (h.includes('placement')) { // S5.4: « ⚡ Musicien détecté », its party frozen, and the queue « ✦ Ouvrir : Pad · n prêts »
+    const w = document.getElementById('f').contentWindow, G = A.garden;
+    ['m.bells', 't.son', 'e.reverb'].forEach((i) => A.game.unlock(i));
+    w.requestAnimationFrame = (fn) => w.setTimeout(() => fn(w.performance.now()), 16);
+    setTimeout(() => {
+      G.showTree(false); A.perform.setMode('listen'); A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none';
+      A.gardenVisual.sig = null; A.gardenVisual.grow = {}; setInterval(() => A.visual.draw(), 40);
+      const fc = G.fxClass; G.fxClass = function (el, c) { return fc.call(this, el, c, 6e5); };
+      A.bus.emit('resp:place', A.puzzles.place(0));
+      setTimeout(() => freeze(G.confetti), 300);
+    }, 1600);
+    return;
   }
   if (/#(combo|discovery)/.test(h)) { // S5.10: combos ON in the Jardin (#combo=brume,soleil), the party of a discovery (#discovery=<id>)
     const w = document.getElementById('f').contentWindow, G = A.garden, GV = A.gardenVisual, D = A.discoveries;

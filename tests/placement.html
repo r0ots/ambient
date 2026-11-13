@@ -1,0 +1,89 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
+<!-- S5.4 placement (js/puzzles.js PLACE): a virtuoso player answering the Réponse right and in rhythm reaches Syncopes, then
+     Accords: « ⚡ Musicien détecté », then Virtuose, whole sets of nodes « prêt » in the existing queue, the party fx('placement');
+     the queue stays the player's action (nothing opens by itself); the son (3 slow notes) never triggers it; an older save
+     loads. Simulated audio clock and steps, a stub Melody voice (as tests/game.html). -->
+<script src="lib.js"></script>
+<script>localStorage.removeItem('ambient.game.placetest');</script>
+<iframe id="f" src="../index.html?gamekey=ambient.game.placetest" style="width:1280px;height:800px;border:0"></iframe>
+<script>
+const f = document.getElementById('f');
+f.addEventListener('load', async () => {
+  if (f.dataset.ran) return; f.dataset.ran = 1;
+  try {
+    const w = f.contentWindow, d = f.contentDocument, A = w.AMB, g = A.game, P = A.puzzles, K = A.contracts, T = A.tree;
+    w.addEventListener('error', (e) => log('ERROR ' + e.message + ' @' + e.filename + ':' + e.lineno));
+    g.setMode('path'); A.garden.welcome(false); g.unlock('m.bells');
+    const fxs = []; const fx0 = A.garden.fx; A.garden.fx = function (k, o) { fxs.push(k); return fx0.apply(this, arguments); };
+    const L0 = A.layers, n0 = P.now; let now = 0, step = 0;
+    A.layers = { bells: { note() {}, ch: { setLevel() {} } } }; P.now = () => now; P.cancel();
+    const sd = 0.25, S = A.seq;
+    const run = (secs) => { const end = now + secs; while (now < end) { P.onStep(step, now, sd); step++; now += sd; } };
+    const until = (fn, secs = 120) => { const end = now + secs; while (now < end && !fn()) run(sd); return fn(); };
+    const lv = (m, t) => A.bus.emit('live', { midi: m, time: t + 0.1, vel: 0.85, raw: null, played: t });
+    let res = null; A.bus.on('game:puzzle', (e) => { if (e.phase === 'end') res = e.res; });
+    const places = []; A.bus.on('resp:place', (e) => places.push(e.id));
+    const tri = (c, i) => c.midis.slice(3 * i, 3 * i + 3);
+    // the virtuoso: every note right and on its place (chords by hand); the son: the right notes, one a second, slowly
+    const virtuoso = (c) => { if (c.chord) c.pcs.forEach((_, i) => { const t = tri(c, i), at = c.ans + i * 1.5; t.forEach((m, k) => lv(m, at + k * 0.02)); }); else c.want.forEach((m, i) => lv(m, c.ans + c.steps[i] * sd + 0.02)); };
+    const son = (c, rnd) => { if (c.chord) { lv(c.midis[0], c.ans + 0.5); return; } c.want.forEach((m, i) => lv(rnd() < 0.15 ? m + 1 : m, c.ans + 0.6 + i * 1.1)); };
+    const phrase = (play) => { g.s.active = []; res = null; if (!until(() => P.cur)) return null; const c = P.cur; play(c); until(() => !P.cur, 30); return res; };
+    const st = P.st(g);
+
+    // 1. the virtuoso: Phrases → … → Syncopes ×2 = Musicien
+    let k = 0, r; while (!places.length && k++ < 30) { r = phrase(virtuoso); if (!r || !r.ok) break; }
+    const M = P.PLACE[0], ready = g.readyIds();
+    ok(places.join() === 'musicien' && r.place && r.place.name === 'Musicien' && k === 10 && P.level(st.lvl - 1).id === 'syncopes',
+      `virtuose : « Musicien détecté » après ${k} réussites, la 2e au palier Syncopes (niveau ${st.lvl - 1})`);
+    ok(M.nodes.every((id) => g.isReady(id) && !g.has(id)) && ready.length === r.place.nodes.length && ready.length >= 9,
+      `toute la branche passe à « prêt » (${ready.length}) dans la file, rien d'ouvert : ${ready.join(' ')}`);
+    await wait(50);
+    const box = d.getElementById('lcdTask');
+    ok(fxs.includes('placement') && !box.hidden && box.querySelector('.lcd-task-txt').textContent.startsWith('✦ Ouvrir') && box.querySelector('.lcd-task-n').textContent === `${ready.length} prêts`,
+      `grosse fête fx('placement') et la file sur le LCD : « ${box.querySelector('.lcd-task-txt').textContent} · ${box.querySelector('.lcd-task-n').textContent} »`);
+    ok(!g.s.active.length && st.place === 0, 'pas de défi tant que la file attend ; placement sauvegardé');
+
+    // 2. higher: Accords ×2 = Virtuose (composition), at any time
+    k = 0; while (places.length < 2 && k++ < 10) { r = phrase(virtuoso); if (!r || !r.ok) break; }
+    ok(places.join() === 'musicien,virtuose' && P.level(st.lvl - 1).id === 'accords' && P.PLACE[1].nodes.every((id) => g.isReady(id)),
+      `palier Accords ×2 : « Virtuose détecté », la composition prête aussi (${P.PLACE[1].nodes.join(', ')})`);
+    k = 0; while (k++ < 6) phrase(virtuoso);
+    ok(places.length === 2, 'un placement ne revient pas');
+
+    // 3. the queue stays the player's action: nothing opens with time; each « Ouvrir » opens one, prerequisites first
+    const n1 = g.readyIds().length; run(16 * sd * 30);
+    ok(g.readyIds().length === n1 && !P.PLACE.some((p) => p.nodes.some((id) => g.has(id))), `30 mesures plus tard, rien ne s'est ouvert seul (${n1} prêts)`);
+    let opened = 0, order = [], reqOk = true; while (g.nextReady() && opened < 40) { const id = g.nextReady().id; order.push(id); reqOk = reqOk && T.byId[id].req.every((x) => g.has(x)); if (!g.open()) break; opened++; }
+    ok(reqOk && opened === n1 && !g.readyIds().length && P.PLACE.every((p) => p.nodes.every((id) => g.has(id))), `le joueur les ouvre un par un (${opened}, prérequis d'abord : ${order.slice(0, 4).join(' ')}…)`);
+    ok(g.s.active.length === 1 && K.eligible(K.byId[g.s.active[0]]), 'file vide : le défi suivant revient (' + g.s.active[0] + ')');
+    ok(!A.discoveries.has('jazz') && T.status('h.prog') === 'owned', 'les découvertes restent à trouver (Deux, cinq, un pas trouvée)');
+
+    // 4. the son: 3 slow notes, wrong ones now and then, over 120 phrases: never placed
+    g.reset(); g.setMode('path'); g.unlock('m.bells'); P.cancel(); places.length = 0; fxs.length = 0;
+    const s2 = P.st(g); let rs = 7, top = 0; const rnd = () => ((rs = (rs * 16807) % 2147483647) / 2147483647);
+    for (let i = 0; i < 120; i++) { phrase((c) => son(c, rnd)); top = Math.max(top, s2.lvl); }
+    ok(!places.length && s2.place == null && !fxs.includes('placement') && top < 8, `fils (3 notes lentes, 120 phrases) : jamais de placement (niveau max ${top}, ${P.level(top).name} ${P.level(top).len} notes)`);
+    // a fast player without rhythm (notes right but off the grid) neither
+    g.reset(); g.setMode('path'); g.unlock('m.bells'); P.cancel(); s2.lvl = 0;
+    const s3 = P.st(g); top = 0;
+    for (let i = 0; i < 60; i++) { phrase((c) => { if (c.chord) virtuoso(c); else c.want.forEach((m, j) => lv(m, c.ans + 0.05 + j * 0.37)); }); top = Math.max(top, s3.lvl); }
+    ok(!places.length && s3.place == null && top < 8, `notes justes sans rythme (60 phrases) : jamais de placement (niveau max ${top})`);
+    // gate phrases (capped, untimed) neither count nor break the run
+    { const s4 = P.st(g); s4.lvl = 8; s4.pt = []; P.cancel(); g.s.active = ['p.suite']; g.s.prog['p.suite'] = { n: 0 }; res = null; until(() => P.cur); const c = P.cur; virtuoso(c); until(() => !P.cur, 30);
+      ok(c.gate === 'p.suite' && res && res.ok && !s4.pt.length && !places.length, 'une porte réussie ne compte pas dans le placement'); }
+
+    // 5. older saves load: the S2 placement fields (placed, placement), a resp of S4.2 (len) or S5.3 (lvl) without place
+    localStorage.setItem(g.key, JSON.stringify({ v: 1, mode: 'path', nodes: ['racine', 'm.bells', 'h.pad'], placed: ['h.pad'], placement: { at: 1, passed: ['harmonie'] }, resp: { len: 6, streak: 2, best: 7, miss: {} } }));
+    g.load(); const so = P.st(g);
+    ok(g.has('h.pad') && !('placed' in g.s) && !('placement' in g.s) && so.lvl === 3 && so.place == null && !g.readyIds().length, 'ancienne sauvegarde (champs de placement d\'avant, resp.len) : se charge, aucun placement');
+    localStorage.setItem(g.key, JSON.stringify({ v: 1, mode: 'path', nodes: ['racine', 'm.bells'], resp: { lvl: 9, len: 6, streak: 4, best: 6, miss: {} } }));
+    g.load(); P.cancel(); places.length = 0; r = phrase(virtuoso);
+    ok(r && r.ok && !places.length && P.st(g).pt.length === 1, 'sauvegarde S5.3 au palier Syncopes : rien de rétroactif, une réussite compte');
+    r = phrase(virtuoso); ok(places.join() === 'musicien', 'puis une 2e d\'affilée : Musicien détecté');
+
+    A.layers = L0; P.now = n0; P.cancel(); g.setMode('free');
+    ok(!P.cur && P.place && g.s.mode === 'free', 'mode libre rendu');
+    done();
+  } catch (e) { fail(e); }
+});
+</script></body></html>

@@ -149,17 +149,10 @@
       const q = this.state().opened || {}, n = AMB.tree.byId[q[d.id] || OPENS[d.id]], gift = d.reward && d.reward.gift;
       return [n ? `${n.name} ouvert` : '', gift ? gift.label : ''].filter(Boolean).join(' · ');
     },
-    // make a node ready, with its missing prerequisites first (the queue opens them in that order: game.open)
-    openChain(id, out) {
-      const n = AMB.tree.byId[id], g = AMB.game; if (!n || g.has(id) || g.isReady(id)) return out;
-      for (const r of n.req) this.openChain(r, out);
-      if (g.ready(id)) out.push(id);
-      return out;
-    },
     // S4.6, older saves: a discovery's node recorded but not open becomes ready
     migrate(g = AMB.game) {
       const q = g.s.secrets; if (!g.path || !q || !q.opened) return;
-      for (const nid of Object.values(q.opened)) if (AMB.tree.byId[nid]) this.openChain(nid, []);
+      for (const nid of Object.values(q.opened)) if (AMB.tree.byId[nid]) g.readyChain(nid);
     },
 
     // ---- COMBOS: the context of a beat, then each combo's condition, held `hold` bars (16 steps) ----
@@ -290,7 +283,7 @@
       if (!g.s.ended && OPENS[id]) { // handed over: no node
         const own = OPENS[id], nid = g.has(own) || g.isReady(own) ? AMB.contracts && AMB.contracts.nextNode(g) : own;
         node = nid && AMB.tree.byId[nid];
-        if (node) { this.openChain(node.id, []); this.state().opened = { ...this.state().opened, [id]: node.id }; g.save(); }
+        if (node) { g.readyChain(node.id); this.state().opened = { ...this.state().opened, [id]: node.id }; g.save(); }
       }
       g.emit('discovery', { id });
       this.celebrate(d, node);

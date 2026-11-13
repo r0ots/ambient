@@ -313,6 +313,7 @@
       tier: { rank: 6, flash: 0.65, confetti: 220, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1.5, jingle: 'tier', pop: (o) => `↑ ${String(o.name || 'palier').toUpperCase()} !!`, splash: 'tier', kick: ['aurora', 'rays', 'song', 'ripple'], say: (o) => `↑ Palier : ${o.name}` },
       open: { rank: 7, flash: 0.75, confetti: 260, shake: 2, lcd: 'arcade', bounce: 1, punch: 1.5, jingle: 'unlock', pop: 'OUVERT !!!', splash: 'tier', kick: ['rays', 'aurora', 'ripple', 'hue'] },
       end: { rank: 8, flash: 1, confetti: 380, shake: 2, lcd: 'arcade', bounce: 1, punch: 2, jingle: 'end', pop: 'À TOI !!!', beats: 3, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'hue'] },
+      placement: { rank: 10, flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => `⚡ ${String(o.name || 'musicien').toUpperCase()} !!!`, hop: '#treeBtn', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `⚡ ${o.name || 'Musicien'} détecté${o.n ? ` · ${o.n} prêts` : ''}` }, // S5.4 a Réponse placement
       discovery: { rank: 9, flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => o.name ? `${String(o.name).toUpperCase()} !!!` : 'DÉCOUVERTE !!!', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `✦ Découverte${o.name ? ' : ' + o.name : ' !'}` },
     },
     // the bus events that are moments (the others call fx() where they happen: an opening, a discovery, the end, a first touch)
@@ -326,6 +327,7 @@
       'resp:streak': (d) => [d.streak > 1 ? 'streak' : 'juste', { n: d.streak }],
       'resp:record': (d) => ['record', { n: d.best }],
       'resp:tier': (d) => ['tier', { name: d.name }],
+      'resp:place': (d) => ['placement', { name: d.name, n: (d.nodes || []).length, ms: 6000, toast: (d.nodes || []).length ? `Tu joues déjà : ${d.nodes.map((id) => AMB.tree.byId[id].name).join(', ')}. Ouvre-les un par un avec ✦ Ouvrir.` : '' }],
     },
     juice() { const GV = AMB.gardenVisual; return GV && GV.JUICE != null ? GV.JUICE : 1; },
     // a moment: its message at once (LCD, toast), its effects on the next beat. Returns the queued {kind, o} or null.
