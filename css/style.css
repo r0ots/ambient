@@ -486,6 +486,7 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
    Never in the way of a click: the layer and the flash are pointer-events: none. */
 .fx-layer, .fx-layer *, .fx-flash { pointer-events: none !important; }
 .fx-layer { position: fixed; inset: 0; z-index: 70; overflow: hidden; }
+.fx-layer[hidden] { display: none; }
 .fx-layer canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
 .fx-layer canvas[hidden] { display: none; }
 .fx-flash { position: absolute; inset: 0; z-index: 3; opacity: 0; mix-blend-mode: screen; background: radial-gradient(circle at 50% 60%, #fffbe8, #ffb347cc 40%, #ff4fa066 70%, #4fe0ff22); }
@@ -495,7 +496,7 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 @keyframes fx-flash { 0% { opacity: var(--a, .6); } 100% { opacity: 0; } }
 .stage.fx-shake { animation: fx-shake .45s linear; }
 @keyframes fx-shake { 10% { translate: -7px 3px; } 25% { translate: 6px -4px; } 40% { translate: -5px 2px; } 60% { translate: 3px -2px; } 80% { translate: -1px 1px; } 100% { translate: 0 0; } }
-.app.fx-quake { animation: fx-quake .6s linear; }
+.app.fx-quake > :not(.modal) { animation: fx-quake .6s linear; } /* (not .app itself: a transform would pull the fixed dialogs inside it) */
 @keyframes fx-quake { 10% { translate: -6px 3px; rotate: -.5deg; } 25% { translate: 7px -3px; rotate: .6deg; } 40% { translate: -5px 2px; rotate: -.35deg; } 60% { translate: 3px -1px; rotate: .2deg; } 80% { translate: -1px 1px; rotate: 0deg; } 100% { translate: 0 0; rotate: 0deg; } }
 #viz.fx-punch { animation: fx-punch .45s cubic-bezier(.2, 1.6, .4, 1); }
 #viz.fx-punch-big { animation: fx-punch-big .6s cubic-bezier(.2, 1.6, .4, 1); }
@@ -511,7 +512,7 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
   text-shadow: 3px 3px 0 #ff4fa0, -3px -2px 0 #4fe0ff, 0 0 18px #ffb347; animation: fx-pop 1.2s cubic-bezier(.2, 1.6, .4, 1) forwards; }
 @keyframes fx-pop { 0% { scale: .2; rotate: -14deg; opacity: 0; } 18% { scale: 1.4; rotate: 7deg; opacity: 1; } 35% { scale: 1; rotate: -3deg; translate: -50% -50%; } 75% { opacity: 1; } 100% { opacity: 0; scale: 1.1; rotate: 0deg; translate: -50% -160%; } }
 @media (prefers-reduced-motion: reduce) { /* (garden.js plays a soft flash only; this is a safety net) */
-  .stage.fx-shake, .app.fx-quake, #viz.fx-punch, #viz.fx-punch-big, .fx-bounce .btn, .fx-bounce .pad, .fx-bounce .chip, .fx-hop, .lcd.lcd-arcade #lcdTop, .fx-pop { animation: none; }
+  .stage.fx-shake, .app.fx-quake > *, #viz.fx-punch, #viz.fx-punch-big, .fx-bounce .btn, .fx-bounce .pad, .fx-bounce .chip, .fx-hop, .lcd.lcd-arcade #lcdTop, .fx-pop { animation: none; }
 }
 
 

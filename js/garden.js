@@ -387,7 +387,7 @@
       const p = document.createElement('div'); p.className = 'fx-pop'; p.textContent = text;
       p.style.left = Math.round(r.left + r.width / 2) + 'px'; p.style.top = Math.round(r.top + r.height * 0.42) + 'px';
       p.style.fontSize = `min(${24 + rank * 5}px, 10vw)`;
-      L.append(p); setTimeout(() => p.remove(), 1300);
+      L.hidden = false; L.append(p); setTimeout(() => { p.remove(); this.confetti.idle(); }, 1300);
       while (L.querySelectorAll('.fx-pop').length > 3) L.querySelector('.fx-pop').remove();
     },
     // pixel confetti on one fixed, click-through canvas over the whole page; it only draws while some are flying
@@ -408,7 +408,7 @@
           const x = r.left + Math.random() * r.width, y = r.top + Math.random() * r.height * 0.5, an = -Math.PI / 2 + (Math.random() - 0.5) * 2.2, sp = 380 + Math.random() * 780;
           this.bins[i % this.COLORS.length].push({ x, y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, s: 3 + ((Math.random() * 4) | 0), w: 4 + Math.random() * 14, t: 0, life: 1.3 + Math.random() * 0.9 });
         }
-        cv.hidden = false;
+        L.hidden = false; cv.hidden = false;
         if (!this.raf) { this.last = performance.now(); this.raf = requestAnimationFrame((t) => this.frame(t)); }
       },
       frame(ts) {
@@ -430,8 +430,9 @@
         });
         g.globalAlpha = 1; this.n = n;
         this.times.push(performance.now() - t0); if (this.times.length > 600) this.times.shift();
-        if (n) this.raf = requestAnimationFrame((t) => this.frame(t)); else { this.raf = 0; cv.hidden = true; }
+        if (n) this.raf = requestAnimationFrame((t) => this.frame(t)); else { this.raf = 0; cv.hidden = true; this.idle(); }
       },
+      idle() { const L = document.getElementById('fxLayer'); if (L && !this.raf && !L.querySelector('.fx-pop')) L.hidden = true; }, // nothing left on the page
       stats() { const a = this.times.slice().sort((x, y) => x - y), k = a.length; return { frames: k, avg: k ? a.reduce((s, v) => s + v, 0) / k : 0, p95: k ? a[Math.max(0, Math.ceil(k * 0.95) - 1)] : 0, max: k ? a[k - 1] : 0 }; },
     },
 

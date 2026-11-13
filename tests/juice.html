@@ -77,11 +77,11 @@ f.addEventListener('load', async () => {
       const fl = d.querySelector('.stage > .fx-flash'); ok(fl && w.getComputedStyle(fl).pointerEvents === 'none', 'le flash de la scène laisse passer les clics'); }
 
     // --- 4. reduced motion: a soft flash only (and the jingle, the message)
-    { const n0 = flying(); G.reduced = true; d.querySelectorAll('.fx-quake,.fx-shake,.fx-bounce').forEach((e) => e.classList.remove('fx-quake', 'fx-shake', 'fx-bounce'));
+    { await wait(1300); let bursts = 0; const b0 = C.burst; C.burst = function () { bursts++; return b0.apply(this, arguments); }; G.reduced = true; d.querySelectorAll('.fx-quake,.fx-shake,.fx-bounce').forEach((e) => e.classList.remove('fx-quake', 'fx-shake', 'fx-bounce'));
       G.fx('discovery', { name: 'Calme' }); await tick(); const p = G.fxLast, fl = d.querySelector('.stage > .fx-flash');
-      ok(p.did.join() === 'flash,jingle,splash' && fl.classList.contains('soft') && +fl.style.getPropertyValue('--a') <= 0.3 && !has('.app', 'fx-quake') && !has('.stage', 'fx-shake') && !d.body.classList.contains('fx-bounce') && flying() <= n0,
+      ok(p.did.join() === 'flash,jingle,splash' && fl.classList.contains('soft') && +fl.style.getPropertyValue('--a') <= 0.3 && !has('.app', 'fx-quake') && !has('.stage', 'fx-shake') && !d.body.classList.contains('fx-bounce') && !bursts && !d.querySelector('.fx-pop'),
         'mouvement réduit : flash doux seulement (' + p.did.join(', ') + ', opacité ' + fl.style.getPropertyValue('--a') + '), ni secousse, ni confettis, ni rebond');
-      G.reduced = false; }
+      G.reduced = false; C.burst = b0; }
 
     // --- 5. on the beat: playing, the effects wait for the next beat of the music
     await A.ui.play(); const ctx = A.engine.ctx;
