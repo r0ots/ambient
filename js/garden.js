@@ -270,8 +270,8 @@
       const t = (to || $('#lcdTask:not([hidden]) .lcd-task-txt') || $('#treeBtn'));
       const tr = t && t.getBoundingClientRect(), ok = tr && tr.width;
       const dx = ok ? tr.left + tr.width / 2 - (r.left + r.width / 2) : 0, dy = ok ? tr.top + tr.height / 2 - (r.top + r.height / 2) : -r.bottom;
-      const an = g.animate([{ translate: '0 0', scale: '1 1', opacity: 1 }, { translate: `${-dx * 0.04}px ${-dy * 0.04}px`, scale: '1.05 .94', opacity: 1, offset: 0.25 },
-        { translate: `${dx}px ${dy}px`, scale: '.04 .02', opacity: 0.3 }], { duration: M.ms('slow'), easing: M.EASE.in });
+      const an = g.animate([{ translate: '0 0', scale: '1 1', opacity: 1 }, { translate: `${-dx * 0.05}px ${-dy * 0.05}px`, scale: '1.1 .82', opacity: 1, filter: 'brightness(1.6)', offset: 0.3 },
+        { translate: `${dx}px ${dy}px`, scale: '.04 .02', opacity: 0.3, filter: 'brightness(2)' }], { duration: M.ms('slow'), easing: M.EASE.in, fill: 'forwards' });
       an.onfinish = an.oncancel = () => g.remove();
       return an;
     },

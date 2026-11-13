@@ -110,7 +110,7 @@
       Object.assign(g.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
       document.body.append(g);
       const an = g.animate([{ scale: '1 1', opacity: 0.25, filter: 'brightness(1)' }, { scale: '1.02 .012', opacity: 1, filter: 'brightness(3)', offset: 0.45 },
-        { scale: '.01 .01', opacity: 0.9, filter: 'brightness(4)', offset: 0.85 }, { scale: '0 0', opacity: 0 }], { duration: M.ms('slow'), easing: M.EASE.in });
+        { scale: '.01 .01', opacity: 0.9, filter: 'brightness(4)', offset: 0.85 }, { scale: '0 0', opacity: 0 }], { duration: M.ms('slow'), easing: M.EASE.in, fill: 'forwards' });
       an.onfinish = an.oncancel = () => g.remove();
       return an;
     },
