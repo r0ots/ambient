@@ -169,7 +169,7 @@ window.addEventListener('load', async () => {
       St.set('pad.vol', 1, 'user'); step(1); const mid = P().sz; step(36); const big = P().sz, hB = GV.sprite(P(), GV.px).h * big;
       ok(big > small * 1.6 && hB > hS * 1.6, 'Niveau → taille : ' + small.toFixed(2) + ' → ' + big.toFixed(2) + ' (hauteur dessinée ' + Math.round(hS) + ' → ' + Math.round(hB) + ' px)');
       ok(mid > small && mid < small + (big - small) * 0.3, 'pas de saut : après une image, ' + ((mid - small) / (big - small) * 100).toFixed(0) + ' % du chemin');
-      { St.set('pad.vol', 0.3, 'user'); step(); let n = 1; while (Math.abs(P().sz - (0.45 + 0.55 * GV.aim.pad.size)) > 0.01 && n < 100) { step(); n++; } ok(n * 16 >= 250 && n * 16 <= 650, 'se stabilise en ' + n * 16 + ' ms (cible 300–600 ms)'); }
+      { St.set('pad.vol', 0.3, 'user'); step(); let n = 1; while (Math.abs(P().sz - GV.sizeK('pad', GV.aim.pad.size)) > 0.01 && n < 100) { step(); n++; } ok(n * 16 >= 250 && n * 16 <= 650, 'se stabilise en ' + n * 16 + ' ms (cible 300–600 ms)'); }
       // Lumière → colour (sprite brightness), petals open
       const lum = (s) => { const d = s.cv.getContext('2d').getImageData(0, 0, s.w, s.h).data; let t = 0, n = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 3]) { t += d[i] + d[i + 1] + d[i + 2]; n++; } return t / Math.max(1, n) / 3; };
       St.set('pad.tone', 0, 'user'); step(40); const dark = GV.sprite(P(), GV.px);
@@ -202,11 +202,24 @@ window.addEventListener('load', async () => {
       GV.kicks = {}; GV.visible = false; St.set('pad.tone', 0.9, 'user'); GV.visible = true; ok(!GV.kicks.pad, 'hors écran : aucune impulsion gardée');
       // reduced motion: shapes yes, motion no
       GV.reduced = true; GV.kicks = {}; St.set('pad.wave', 'Nappe', 'user'); step(1);
-      ok(GV.quant(P().look).shape === 0 && Math.abs(P().sz - (0.45 + 0.55 * GV.aim.pad.size)) < 1e-9, 'mouvement réduit : la forme change tout de suite (Timbre, taille)');
+      ok(GV.quant(P().look).shape === 0 && Math.abs(P().sz - GV.sizeK('pad', GV.aim.pad.size)) < 1e-9, 'mouvement réduit : la forme change tout de suite (Timbre, taille)');
       let still = true; for (let i = 0; i < 20; i++) { St.set('pad.tone', i / 20, 'user'); step(); still = still && GV.plants.every((p) => p.sway === 0 && !p.bounce); }
       ok(still && P().hot > 0.9, 'mouvement réduit : ni ondulation ni rebond, la plante touchée reste mise en évidence');
+      // v1.14: the default settings = the size of the plants before S4.6 (they grow and shrink around it)
+      const defaults = () => Object.entries(AMB.SCHEMA).forEach(([sec, d]) => Object.entries(d.params).forEach(([k, sp]) => St.set(sec + '.' + k, sp.def, 'preset')));
+      defaults(); step(2);
+      ok(GV.plants.every((p) => Math.abs(p.sz - 1) < 1e-6) && GV.sizeK('pad', 0) === 0.5 && GV.sizeK('pad', 1) === GV.SZ_MAX, 'réglages par défaut : taille d\'avant (×1), de ×0.5 à ×' + GV.SZ_MAX);
+      // v1.14: at 390 px, everything at its maximum, no plant over its neighbour
+      const cv = document.getElementById('c'); cv.width = 390; cv.height = 780; GV.sig = null;
+      const mx = { 'global.volume': 1, 'fx.space': 1, 'pad.voicing': 1, 'bells.density': 1, 'grains.density': 1, 'grains.size': 0, 'pad.wave': 'FM', 'bells.wave': 'Pluck', 'seq.wave': 'Pluck', 'bass.wave': 'Pluck', 'drone.wave': 'Orgue' };
+      GV.plants.forEach((p) => { mx[p.id + '.vol'] = 1; mx[p.id + '.tone'] = 1; mx[p.id + '.send'] = 1; });
+      St.setMany(mx, 'preset'); step(2);
+      const xs = GV.plants.slice().sort((u, v) => u.x - v.x), ext = (p) => { const s = GV.sprite(p, GV.px); return [p.x - s.l * p.kx, p.x + s.r * p.kx]; };
+      const gaps = xs.slice(1).map((p, i) => ext(p)[0] - ext(xs[i])[1]);
+      ok(xs.length === 8 && gaps.every((g) => g >= 0) && xs.some((p) => p.sz > 1.1), '390 px, tout au maximum : aucune fleur sur sa voisine (écart min ' + Math.min(...gaps).toFixed(1) + ' px), les plantes ont grandi (×' + Math.max(...xs.map((p) => p.sz)).toFixed(2) + ')');
+      cv.width = 1280; cv.height = 800; GV.sig = null;
       GV.reduced = false; GV.now = real; GV.lastT = null; GV.kicks = {};
-      Object.entries(AMB.SCHEMA).forEach(([sec, d]) => Object.entries(d.params).forEach(([k, sp]) => St.set(sec + '.' + k, sp.def, 'preset'))); }
+      defaults(); }
 
     // --- cost per frame at 1280×800 (advanced garden, notes every frame), real rAF
     G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.rythme', 'e.texture'];

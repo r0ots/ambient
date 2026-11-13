@@ -322,3 +322,7 @@ Vague 4
 - Le wow est calé sur la musique (temps fort, plante qui pousse, ciel de l'accord) et la fin relit ton morceau à l'aube.
 - Un mot par concept à l'écran ; le mode libre n'a changé que pour le MIDI et des libellés.
 - Toujours rien de mesuré sur de vrais joueurs : la séance chronométrée avec l'enfant et l'ado musicien reste la prochaine étape.
+
+## Après la saison 4 — retours de l'utilisateur (v1.14)
+- [x] Ouvrir est le geste du joueur : un défi, une Réponse ou un secret réussi rend le nœud « prêt » ; le joueur l'ouvre (LCD « ✦ Ouvrir : X », carte qui explique ce qu'il apporte, file d'attente), ses contrôles entrent animés avec un halo et l'étiquette « Nouveau » Décision : rien ne s'ouvre ni ne disparaît sans geste du joueur ; la cible de 45 min de `tests/balance.html` porte sur le temps de jeu seul (43,0–44,8 min) : l'ouverture ajoute environ 4 min de lecture (47,1–48,9 min en tout), choix assumé.
+- [x] Les plantes reflètent les réglages : Niveau → taille, Lumière → couleur et fleurs ouvertes, Timbre → forme, Espace → halo, mouvement → ondulation, densité → fleurs ; le toucher d'un contrôle fait rebondir sa plante Décision : une seule table (`LOOK` / `LOOK_ALL`) ; au réglage par défaut, la taille d'avant (on grandit et rétrécit autour, ×0,5 à ×1,3) ; hauteur plafonnée sous le HUD, largeur limitée par l'espacement des plantes (plus de chevauchement à 390 px).

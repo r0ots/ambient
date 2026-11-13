@@ -318,7 +318,8 @@
       const g = cv.getContext('2d'), gap = px >= 4 ? 1 : 0, col = p.col;
       const tones = this.tones(col, q);
       for (const [x, y, t] of cl) { g.fillStyle = t === 12 ? 'rgba(107,74,26,0.55)' : tones[t]; g.fillRect(x * px, (Hc - 1 - y) * px, px - gap, px - gap); }
-      s = { cv, w: cv.width, h: cv.height, hC: Hc, key };
+      let x0 = CW, x1 = 0; for (const c of cl) { x0 = Math.min(x0, c[0]); x1 = Math.max(x1, c[0]); }
+      s = { cv, w: cv.width, h: cv.height, hC: Hc, key, l: cv.width / 2 - x0 * px, r: (x1 + 1) * px - cv.width / 2 }; // l, r: drawn extent left and right of the stem
       this.sprites.set(key, s);
       if (this.sprites.size > 200) this.sprites.delete(this.sprites.keys().next().value);
       return s;
@@ -443,7 +444,10 @@
       this.plants = L.plants; this.rares = L.rares; this.ground = L.ground; this.slotW = L.slotW;
       const avail = Math.max(H * 0.2, this.ground - H * ceil);
       this.px = this.cellPx(W, H, this.plants.length, avail);
-      this.hMax = Math.max(12, Math.min(58, Math.floor((avail / this.px - 14) / 1.1)));
+      this.hMax = Math.max(12, Math.min(58, Math.floor((avail / this.px - 10) / 1.1))); // S4.6: the flowers (≈ 6 rows more than the old heads) fit in
+      // S4.6: each plant may spread half-way to its neighbours (or to the edge), never over them (phones)
+      const xs = this.plants.slice().sort((u, v) => u.x - v.x);
+      xs.forEach((p, i) => { p.roomL = (i ? (p.x - xs[i - 1].x) / 2 : p.x) - 1; p.roomR = (i < xs.length - 1 ? (xs[i + 1].x - p.x) / 2 : W - p.x) - 1; });
       this.ceil = ceil;
       // S4.5w: after an opening, a new plant grows from 0, a taller one from its old height
       const stSig = this.signature(st), now = this.clock(), hs = {};
@@ -472,6 +476,13 @@
       if (!this.KICK.has(src) || !this.running()) return; // nothing is kept for a garden off screen
       const t = this.t || 0;
       for (const id of concerns(key)) { const k = this.kicks[id]; if (k && t - k.last < 0.25) k.last = t; else this.kicks[id] = { t0: t, last: t }; } // a slider held: one bounce, then it follows
+    },
+    // size aspect → scale of the plant: 1 at the layer's default setting (the plants of before S4.6), down to 0.5 at
+    // Niveau 0, up to SZ_MAX at the top; the stage HUD and the neighbours cap it when drawn
+    SZ_MAX: 1.3,
+    sizeK(id, v) {
+      const d = (this.lookDef || (this.lookDef = look(() => undefined)))[id].size;
+      return v <= d ? 0.5 + 0.5 * v / (d || 1) : 1 + (this.SZ_MAX - 1) * (v - d) / ((1 - d) || 1);
     },
     updateLook(dt) {
       if (this.lookDirty || !this.aim) { const S = AMB.store, get = S && typeof S.get === 'function' ? (k) => S.get(k) : () => undefined; this.aim = look(get); this.lookDirty = false; }
@@ -545,7 +556,7 @@
         const a = p.look, kk = this.kicks[p.id], since = kk ? this.t - kk.t0 : 9, hot = (p.hot = kk ? Math.max(0, 1 - (this.t - kk.last) / 0.6) : 0);
         if (kk && since > 0.9 && !hot) delete this.kicks[p.id];
         const spring = red || !kk ? 0 : Math.exp(-since * 6), bounce = (p.bounce = 0.14 * spring * Math.cos(since * 20));
-        const sz = (p.sz = a ? 0.45 + 0.55 * a.size : 1);
+        const sz = a ? this.sizeK(p.id, a.size) : 1;
         let sway = 0;
         if (!red) {
           if (a) {
@@ -553,12 +564,14 @@
             sway = (0.015 + 0.075 * a.sway) * (1 + e * 1.5) * (1 + 2.5 * hot) * (Math.sin(ph) + 0.3 * Math.sin(2.7 * ph + p.phase)) + 0.2 * spring * Math.sin(since * 16);
           } else sway = (Math.sin(this.t * 0.7 + p.phase) * 0.05 + Math.sin(this.t * 1.9 + p.phase * 2) * 0.015) * (1 + e * 1.5);
         }
-        const k = red ? 1 : 1 + e * 0.05, kx = Math.min(k * sz * (1 - 0.6 * bounce), (this.slotW || 1e9) * 1.15 / s.w), ky = k * sz * (1 + bounce); // never wider than its slot (phone)
+        const k = red ? 1 : 1 + e * 0.05, wide = p.rare ? 1e9 : Math.min(p.roomL / s.l, p.roomR / s.r); // never over a neighbour (phone)
+        const tall = p.rare ? 1e9 : (p.y - (this.H || 0) * (this.ceil || 0)) / s.h; // never into the stage HUD
+        const szc = (p.sz = Math.min(sz, Math.max(1, tall / k))), kx = (p.kx = Math.min(k * szc * (1 - 0.6 * bounce), wide)), ky = k * szc * (1 + bounce);
         p.sway = sway; p.k = k; p.gy = gy; // the Réponse leaves follow the plant (drawAnswer)
         if (a && a.halo > 0.03 && gy > 0.01) { // S4.6 halo (Espace): a soft aura, radius in 8 cached steps
           const Rg = Math.round(px * (8 + 18 * Math.round(a.halo * 7) / 7)), gl = this.glow(p.col, Rg);
           g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, (0.12 + 0.6 * a.halo) * (R ? 0.3 + 0.7 * Math.min(1, this.lit[p.id] || 0) : 1));
-          g.drawImage(gl, p.x - Rg, p.y - this.heightCells(p) * px * sz * gy * 0.6 - Rg);
+          g.drawImage(gl, p.x - Rg, p.y - this.heightCells(p) * px * p.sz * gy * 0.6 - Rg);
           g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
         }
         if (R && !p.rare) g.globalAlpha = 0.3 + 0.7 * Math.min(1, this.lit[p.id] || 0); // finale: dark until its layer plays

@@ -71,6 +71,16 @@ f.addEventListener('load', async ()=>{
   ok(A.mode==='sculpt' && padP.classList.contains('is-appearing') && w.getComputedStyle(padP).animationName.includes('is-appear') && padP.querySelectorAll('.is-new').length>=3 && nf && padP.contains(nf) && /Nouveau/.test(w.getComputedStyle(nf,'::after').content), 'révélé : mode Sculpter, le panneau Pad se déploie (is-appearing), ses réglages en surbrillance (is-new), « Nouveau » sur le premier');
   await wait(700); ok(!padP.classList.contains('is-appearing') && padP.querySelector('.is-new'), 'déploiement fini (~0,55 s), la surbrillance reste');
   nf.dispatchEvent(new w.PointerEvent('pointerdown',{bubbles:true})); ok(!nf.classList.contains('is-new') && !d.querySelector('.is-new-first') && padP.querySelector('.is-new'), 'le premier toucher éteint la surbrillance de ce contrôle (et l\'étiquette), les autres restent');
+  // v1.14: the two S4.6 changes together: the opened node's plant grew, shows its settings, and a « Nouveau » control touched = halo off + the plant reacts
+  { const GV=A.gardenVisual; d.getElementById('viz').scrollIntoView({block:'center'}); await wait(150);
+    const pp=GV.plants.find(p=>p.id==='pad'), lk=GV.look(k=>A.store.get(k)).pad;
+    ok(pp && GV.growth('pad', GV.clock())>0.99 && pp.look && Math.abs(pp.look.size-lk.size)<0.02 && Math.abs(pp.sz-GV.sizeK('pad', lk.size))<0.03, 'Pad ouvert par la carte : sa plante a poussé et montre ses réglages (taille ×'+(pp&&pp.sz||0).toFixed(2)+')');
+    const nw=[...padP.querySelectorAll('.is-new')].find(e=>/^pad\.(?!on$)/.test(e.dataset.key||'')||e.querySelector('[data-key^="pad."]:not([data-key="pad.on"])')), key=nw&&(nw.dataset.key||nw.querySelector('[data-key^="pad."]:not([data-key="pad.on"])').dataset.key);
+    GV.kicks={}; nw.dispatchEvent(new w.Event('change',{bubbles:true})); // (a synthetic pointerdown on a knob asks for a pointer capture)
+    const sp=A.SCHEMA.pad.params[key.split('.')[1]], v=A.store.get(key), nv=sp.options?sp.options.find(o=>o!==v):(v>(sp.min+sp.max)/2?sp.min:sp.max);
+    A.store.set(key, nv, 'user'); await wait(120);
+    ok(!nw.classList.contains('is-new') && GV.kicks.pad && !GV.kicks.bells && (pp.hot>0.3 || GV.reduced), 'toucher un contrôle « Nouveau » du Pad ('+key+') : le halo s\'éteint, la plante du Pad réagit (impulsion, mise en évidence '+(pp.hot||0).toFixed(2)+')');
+    A.store.set(key, v, 'preset'); }
   // a click during the sequence fast-forwards it; the highlight lasts NEW_MS at most (shortened here); reduced motion = final state at once
   { A.tree.NEW_MS=300; A.contracts.finish('h.forcer'); await wait(30); ok(A.game.isReady('h.drone') && !A.garden.seq, 'Drone qui suit prêt');
     A.garden.openNode('h.drone'); ok(A.garden.seq && A.game.has('h.drone'), 'ouvert → séquence lancée');

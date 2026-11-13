@@ -1,4 +1,4 @@
-# Architecture (v1.13 + S4.6)
+# Architecture (v1.14)
 
 ## Lexique (S4.5) — un mot par concept, à l'écran, dans l'aide, le README et les textes du jeu
 - **Ambient** : l'instrument (en-tête, LCD). **Parcours** : le jeu (jamais « Jardin sonore » à l'écran). **Mode libre** : tout ouvert.
@@ -56,6 +56,7 @@ Règle de produit (v1.05) : le jeu se joue SUR l'instrument (ses commandes, son 
 ## Les plantes montrent les réglages (S4.6)
 - Une seule table, `LOOK` / `LOOK_ALL` en tête de `garden-visual.js`, indépendante du dessin : réglage → 7 aspects 0..1 par plante (`look(get)`, pure). Niveau (× Volume général) → taille ; Lumière (× Usure / Cassette) → couleur, éclat, pétales ouverts ou bouton fermé ; Timbre (Type pour la Texture, Kit pour les Pulsations, Taille pour les Grains) → pétales ronds ↔ pointus (4 à 7 pointes), feuilles lisses ↔ dentelées ; Espace de la couche × Reverb (+ Halo) → halo ; mouvement de la couche (Mouvement, Attaque, Résonance, Swing +, Flou, Tenue) → ampleur de l'ondulation, Tempo (Flottant = plus lent) → sa vitesse ; Densité, Accords riches, notes du motif, coups du rythme → 1 à 4 fleurs. Les grands réglages passent par les réglages qu'ils bougent (`perform.MACROS`). Un autre décor (ville) relit les mêmes aspects : seul `dress` / `tones` / `frame` changent.
 - Le Jardin écoute `store.on` : la forme suit en ~0,4 s (lissage exponentiel, sans saut) ; source `user` / `macro` / `xy` = impulsion sur les plantes concernées (`concerns(key)`) : rebond amorti, ondulation plus ample, plante éclairée tant qu'on touche (+0,6 s). Un curseur tenu = un seul rebond puis la plante suit. Dérive, LFO, paysages, scènes : la forme suit, sans impulsion. Hors écran : rien n'est gardé.
+- Taille (v1.14, `sizeK`) : ×1 au réglage par défaut de la couche (la taille d'avant S4.6), ×0,5 au Niveau 0, ×`SZ_MAX` = 1,3 au maximum ; la hauteur est plafonnée sous le HUD de l'écran, la largeur à mi-chemin des plantes voisines (`roomL` / `roomR`, calculés au `refresh`) : à 390 px, tout au maximum, aucune fleur ne passe sur sa voisine (`tests/garden-visual.html`).
 - Sprites en cache par aspects quantifiés (5 formes × 5 lumières × 1–4 fleurs) ; taille, halo (8 rayons en cache) et ondulation dessinés en continu. Mouvement réduit : formes et taille tout de suite, ni rebond ni ondulation. Coût (`tests/garden-visual.html`, curseurs bougés à chaque image) ~0,3–0,4 ms par image, p95 ~0,4 ms. En libre : rien ne change (le Jardin n'y existe pas).
 
 ## Mode libre intact
