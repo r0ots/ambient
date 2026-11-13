@@ -252,7 +252,8 @@ footer { text-align: center; font-size: 11px; color: #4c5272; padding: 20px 0 8p
   .globals { grid-template-columns: 1fr; }
   .stage { height: 200px; }
   .ctl:not(.sel) { width: 60px; }
-  .hint,   .chord { font-size: 20px; }
+  .hint { display: none; }
+  .chord { font-size: 20px; }
   .big-play { width: 190px; height: 54px; font-size: 16px; }
   .brand p { display: none; }
   .transport { gap: 6px; }
