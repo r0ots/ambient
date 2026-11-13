@@ -21,13 +21,25 @@
       b.textContent = AMB.game.path ? '◎ Passer en mode libre' : '🌱 Parcours (ouvrir pas à pas)';
     },
     // ---- the challenge on the 2nd line of the LCD (v1.06): one at a time, ↷ = the next one, a tap = how to do it ----
+    // S4.6: a node won waits there first, « ✦ Ouvrir : <nœud> » (pulsing; « N prêts » when several wait): a tap tells what
+    // it gives (ask), « Ouvrir » opens it (openNode). The next challenge comes once the queue is empty.
     renderContracts(flashId) {
       const box = $('#lcdTask'), line = $('#lcdLine'); if (!box || !AMB.contracts) return;
-      const K = AMB.contracts, g = AMB.game, id = g.path && !this.handedOver() ? K.state().active[0] : null, d = id && K.byId[id];
-      const offer = !d && g.path && this.offer && this.handedOver(); // S4.5w: after the finale, the song is offered here
-      box.hidden = !d && !offer; if (line) line.hidden = !!(d || offer);
+      const K = AMB.contracts, g = AMB.game, live = g.path && !this.handedOver();
+      const ready = live ? g.s.ready || [] : [], nr = live && g.nextReady(), rn = nr && AMB.tree.byId[nr.id];
+      const id = live && !rn ? K.state().active[0] : null, d = id && K.byId[id];
+      const offer = !d && !rn && g.path && this.offer && this.handedOver(); // S4.5w: after the finale, the song is offered here
+      box.hidden = !d && !offer && !rn; if (line) line.hidden = !!(d || offer || rn);
+      box.classList.toggle('ready', !!rn);
+      const tb = $('#treeBtn'); if (tb) tb.classList.toggle('has-ready', !!rn);
       const skip = box.querySelector('.lcd-skip'), skipTxt = offer ? 'Non merci' : 'Passer au défi suivant';
-      if (skip) { skip.title = skipTxt; skip.setAttribute('aria-label', skipTxt); }
+      if (skip) { skip.title = skipTxt; skip.setAttribute('aria-label', skipTxt); skip.hidden = !!rn; }
+      if (rn) {
+        box.dataset.id = 'open:' + rn.id; box.classList.remove('help');
+        const t = box.querySelector('.lcd-task-txt'); t.textContent = `✦ Ouvrir : ${rn.name}`; t.title = 'Toucher : voir ce qui s\'ouvre';
+        box.querySelector('.lcd-task-n').textContent = ready.length > 1 ? `${ready.length} prêts` : '';
+        return;
+      }
       if (offer) {
         box.dataset.id = 'wav'; box.classList.remove('help');
         const t = box.querySelector('.lcd-task-txt'); t.textContent = '⤓ Garde ton morceau (WAV)'; t.title = 'Toucher : télécharger le morceau que tu viens d\'entendre';
@@ -118,6 +130,33 @@
     beats: {}, // node id -> {id, at, deg}
     beatOf(id) { return this.beats[id] || {}; },
     lcd(text, ms = 3500) { AMB.lcdMsg = { text, until: Date.now() + ms }; },
+    // ---- S4.6: opening is the player's move. The card says in plain words what the node gives (tree.EXPLAIN), then
+    // « Ouvrir » plays the opening (chime on the beat, the layer comes in, the plant grows, the map's sequence for a
+    // challenge) and what it opens comes in animated (tree.appear). Nothing goes away on a timer before that. ----
+    ask(id) {
+      const dlg = $('#openDlg'); if (!dlg) return false;
+      const g = AMB.game, n = id && AMB.tree.byId[id];
+      if (!n || !g.path || !g.canOpen(id)) { dlg.hidden = true; dlg.dataset.id = ''; return false; }
+      const more = (g.s.ready || []).length - 1;
+      dlg.dataset.id = id;
+      dlg.querySelector('.modal-card').style.setProperty('--c', AMB.tree.BRANCHES[n.branch].color);
+      dlg.querySelector('.open-name').textContent = n.name;
+      dlg.querySelector('.open-why').textContent = n.why;
+      dlg.querySelector('.open-more').textContent = more > 0 ? `Ensuite, encore ${more} à ouvrir.` : '';
+      dlg.hidden = false;
+      const go = dlg.querySelector('.open-go'); if (go) go.focus({ preventScroll: true });
+      return true;
+    },
+    openNode(id) {
+      const g = AMB.game, T = AMB.tree;
+      this.ask(null);
+      if (!id || !g.canOpen(id)) return false;
+      T.hold(); // what it opens waits for the end of the map's sequence (seqFinish), or comes in now
+      const ok = g.open(id);
+      if (ok && this.seq && this.seq.id === id) this.seq.held = true;
+      else { T.release(); if (ok) this.reveal(id); }
+      return ok;
+    },
     // ---- the instrument handed over (G6.3, S3.7) ----
     complete() { const T = AMB.tree; return T.NODES.every((n) => AMB.game.has(n.id)); },
     // whole tree owned: no game interface any more (challenge line), the tree stays to look at; saved (game.s.ended)
@@ -215,8 +254,8 @@
         this._toiT = setTimeout(() => { if (P.cur === c && c) this.lcd('↺ À toi', 2500); }, ms);
       } else if (e.phase === 'end' && e.res) {
         const r = e.res, node = r.open && AMB.tree.byId[AMB.contracts.byId[r.open].node];
-        if (r.out) AMB.ui.toast(`Pas cette fois, mais ${node ? `${node.name} s'ouvre` : 'la suite s\'ouvre'} quand même.`);
-        else if (r.open) return; // the unlock sequence says it
+        if (r.out) { AMB.ui.toast(`Pas cette fois, mais ${node ? node.name : 'la suite'} est prêt à ouvrir quand même.`); this.lcd('✦ Prêt quand même', 3000); }
+        else if (r.open) return; // the ready chime and « ✦ Ouvrir » say it
         else if (r.ok) { this.chime('small'); this.lcd(`✓ Juste · prochaine : ${r.next}`, 2500); }
         else this.lcd(`↺ Presque · prochaine : ${r.next}`, 2500);
       }
@@ -232,6 +271,12 @@
           this.lcd(`✦ Ouvert : ${n.name}`); // « Ouvert : » agrees with every node name (Phrases, Grands réglages…)
           this.beat(d.id);
           if (d.by) this.unlockSeq(d.id); else this.chime('unlock', this.beatOf(d.id));
+        });
+        // S4.6: a challenge or a Réponse won: a sober celebration (chime, LCD), its node waits on « ✦ Ouvrir » (a secret
+        // celebrates itself, secrets.js)
+        AMB.bus.on('game:ready', (d) => {
+          const c = d && d.by && AMB.contracts.byId[d.by]; if (!AMB.game.path || !c) return;
+          this.chime('solve'); this.lcd(c.kind === 'reponse' ? '↺ ✓ Juste !' : '✓ Défi réussi', 3000);
         });
         AMB.bus.on('game:contracts', (d) => { // the last challenge opens no node: its own small chime
           const c = AMB.contracts.byId[d && d.id]; if (!AMB.game.path || !c || c.node) return;
@@ -250,29 +295,38 @@
       if (task) {
         task.querySelector('.lcd-skip').addEventListener('click', () => {
           const id = task.dataset.id; if (id === 'wav') { this.offer = null; return this.renderContracts(); }
-          if (id) AMB.contracts.skip(id);
+          if (id && !id.startsWith('open:')) AMB.contracts.skip(id);
         });
         task.querySelector('.lcd-task-txt').addEventListener('click', () => {
           const id = task.dataset.id;
           if (id === 'wav') { if (this.offer) AMB.rec.download(this.offer, 'wav'); this.offer = null; AMB.ui.toast('Morceau téléchargé'); return this.renderContracts(); }
-          clearTimeout(this._helpT);
-          task.classList.toggle('help'); this.renderContracts();
-          if (task.classList.contains('help')) this._helpT = setTimeout(() => { task.classList.remove('help'); this.renderContracts(); }, 15000);
+          if (id && id.startsWith('open:')) return this.ask(id.slice(5));
+          task.classList.toggle('help'); this.renderContracts(); // (S4.6: the help stays until touched again)
         });
       }
       if (AMB.bus) {
         AMB.bus.on('game:contract', (d) => { this.renderContracts(d && d.id); if (!d || !d.id) this.checkEnd(); }); // ↷ on the last one
         AMB.bus.on('game:contracts', () => this.checkEnd());
         ['contracts', 'mode', 'reset', 'unlock'].forEach((ev) => AMB.bus.on('game:' + ev, () => this.renderContracts()));
+        AMB.bus.on('game:ready', () => this.renderContracts());
+        ['mode', 'reset'].forEach((ev) => AMB.bus.on('game:' + ev, () => this.ask(null)));
       }
       if (AMB.contracts) AMB.contracts.refill();
       this.renderContracts();
       this.wireTree(); // map: hover / focus / touch selection, pan & zoom (garden-tree.js)
       const tb = $('#treeBtn'); if (tb) tb.addEventListener('click', () => this.showTree(true));
+      const od = $('#openDlg');
+      if (od) {
+        od.addEventListener('click', (e) => {
+          if (e.target === od || e.target.closest('[data-close]')) this.ask(null);
+          else if (e.target.closest('.open-go')) this.openNode(od.dataset.id);
+        });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !od.hidden) this.ask(null); });
+      }
       const td = $('#treeDlg');
       if (td) td.addEventListener('click', (e) => { if (e.target === td || e.target.hasAttribute('data-close')) this.showTree(false); });
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && td && !td.hidden) this.showTree(false); });
-      if (AMB.bus) ['unlock', 'reset'].forEach((ev) => AMB.bus.on('game:' + ev, () => { if (td && !td.hidden && !this.seq) this.renderTree(); }));
+      if (AMB.bus) ['unlock', 'ready', 'reset'].forEach((ev) => AMB.bus.on('game:' + ev, () => { if (td && !td.hidden && !this.seq) this.renderTree(); }));
       document.querySelectorAll('[data-choose]').forEach((b) => b.addEventListener('click', () => this.choose(b.dataset.choose)));
       const sw = $('#gameMode');
       if (sw) sw.addEventListener('click', () => this.choose(AMB.game.path ? 'free' : 'path'));

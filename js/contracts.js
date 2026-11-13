@@ -175,7 +175,11 @@
     // keep one active challenge: the first eligible in the order of the path; the skipped ones last, in the order passed
     refill(g = AMB.game) {
       if (!g.path) return;
+      this.migrate(g);
       const s = this.state(g);
+      // S4.6: while a node won waits for the player to open it, no challenge (the next one comes once it is open; the
+      // progress of a challenge put aside is kept in s.prog, the order brings it back first)
+      if ((s.ready || []).length) { s.active = []; g.save(); g.emit('contract', { active: [] }); return; }
       s.active = s.active.filter((id) => byId[id] && this.eligible(byId[id], g)).slice(0, 1); // older saves: 3 active, removed ids
       const skipped = s.skipped.filter((id) => byId[id]);
       const queue = ORDER.filter((d) => d.first).concat(ORDER.filter((d) => !d.first && !skipped.includes(d.id)), skipped.map((id) => byId[id]));
@@ -211,15 +215,21 @@
       }
       if (changed) g.save();
     },
-    // done: recorded, and its node opens (by = this challenge: the garden plays the unlock sequence)
+    // done: recorded, and its node is ready (S4.6: the player opens it; by = this challenge: the map's opening sequence)
     finish(id, g = AMB.game) {
       const d = byId[id]; if (!d) return;
       const s = this.state(g);
       s.active = s.active.filter((x) => x !== id);
       delete s.prog[id];
       g.complete(id);
-      if (d.node) g.unlock(d.node, id);
+      if (d.node) g.ready(d.node, id);
       this.refill(g);
+    },
+    // S4.6, older saves: a challenge done (or a secret found, secrets.migrate) whose node is not open becomes ready
+    migrate(g = AMB.game) {
+      if (!g.path) return;
+      for (const id of g.s.contracts || []) { const d = byId[id]; if (d && d.node && !g.has(d.node) && !g.isReady(d.node)) g.ready(d.node, id); }
+      if (AMB.secrets) AMB.secrets.migrate(g);
     },
     // a stuck challenge can be put back at the end of the queue
     skip(id, g = AMB.game) {
@@ -239,7 +249,7 @@
     AMB.bus.on('live', (n) => contracts.dispatch('note', n));
     AMB.bus.on('note', (n) => { if (n && n.layer === 'bass') contracts.dispatch('bass', n); });
     AMB.bus.on('phrase', (p) => contracts.dispatch('phrase', p));
-    ['unlock', 'mode', 'reset'].forEach((e) => AMB.bus.on('game:' + e, () => contracts.refill()));
+    ['unlock', 'ready', 'mode', 'reset'].forEach((e) => AMB.bus.on('game:' + e, () => contracts.refill()));
   }
   AMB.contracts = contracts;
   contracts.refill();

@@ -43,22 +43,49 @@ f.addEventListener('load', async ()=>{
     const tx0=v.tx; pe('pointerdown',tn('h.key'),{clientX:300,clientY:300}); pe('pointermove',tn('h.key'),{clientX:380,clientY:330}); pe('pointerup',tn('h.key'),{clientX:380,clientY:330}); tn('h.key').dispatchEvent(new w.MouseEvent('click',{bubbles:true,detail:1}));
     ok(v.tx>tx0+40 && A.garden.sel==='h.pad', 'glisser : la carte suit le doigt, pas de sélection en fin de glissé');
     pe('pointerdown',map,{pointerType:'mouse',pointerId:1}); pe('pointerup',map,{pointerType:'mouse',pointerId:1}); A.garden.fitTree(); }
-  // unlock sequence (G8.5, S4.3): a challenge opens its node — the tree opens, link lights up, node born at the chime, children
-  // blink, then close + reveal
+  // S4.6 + G8.5: a challenge won makes its node READY — a chime, « ✦ Ouvrir : Pad » pulsing on the LCD, the tree says « prêt »;
+  // nothing opens by itself. A tap says what it gives, « Ouvrir » plays the opening sequence on the map (link, node born at the
+  // chime, children blink), then what it opened comes in animated (unfolds, halo, « Nouveau »)
   A.perform.setMode('listen'); A.garden.showTree(false); A.garden.select(null); A.game.unlock('m.bells'); await wait(1400); A.garden.showTree(false); A.perform.setMode('listen');
+  const lt=d.getElementById('lcdTask'), ltx=lt.querySelector('.lcd-task-txt'), odlg=d.getElementById('openDlg');
   A.contracts.finish('m.notes'); await wait(60);
-  ok(A.garden.seq && !d.getElementById('treeDlg').hidden && d.querySelector('.tree-glow.lit[data-from="racine"][data-to="h.pad"]') && tn('h.pad').classList.contains('is-buying') && A.game.has('h.pad'), 'défi réussi → séquence : l\'arbre s\'ouvre, lien racine→Pad qui s\'allume');
+  ok(!A.game.has('h.pad') && A.game.isReady('h.pad') && !A.garden.seq && d.getElementById('treeDlg').hidden && A.lcdMsg && A.lcdMsg.text==='✓ Défi réussi', 'S4.6 : défi réussi → fêté (carillon, « ✓ Défi réussi »), le Pad est prêt mais rien ne s\'ouvre seul');
+  ok(!lt.hidden && lt.classList.contains('ready') && ltx.textContent==='✦ Ouvrir : Pad' && lt.querySelector('.lcd-skip').hidden && w.getComputedStyle(ltx).animationName==='ready-pulse' && d.getElementById('treeBtn').classList.contains('has-ready') && !A.contracts.state().active.length, 'S4.6 : « ✦ Ouvrir : Pad » sur le LCD, qui pulse (sans ↷), ✦ sur le bouton Arbre ; pas de défi suivant');
+  await wait(1500);
+  ok(!lt.hidden && ltx.textContent==='✦ Ouvrir : Pad' && !A.game.has('h.pad') && odlg.hidden, 'S4.6 : le temps passe, rien ne disparaît ni ne s\'ouvre tant que le joueur n\'a pas agi');
+  A.garden.showTree(true); await wait(30); tn('h.pad').click(); await wait(20);
+  ok(tn('h.pad').classList.contains('st-ready') && /✦ prêt/.test(tn('h.pad').textContent) && /prêt/.test(tn('h.pad').getAttribute('aria-label')) && d.querySelector('#treeDlg .tree-info .ti-open') && d.querySelector('.tree-legend .st-ready'), 'S4.6 : l\'arbre le dit aussi (« ✦ prêt », fiche avec ✦ Ouvrir, légende)');
+  d.querySelector('#treeDlg .tree-info .ti-open').click(); await wait(30);
+  ok(d.getElementById('treeDlg').hidden && !odlg.hidden && !A.game.has('h.pad'), 'S4.6 : ✦ Ouvrir de la fiche → la carte d\'explication, pas encore ouvert');
+  odlg.querySelector('[data-close]').click(); await wait(20); ok(odlg.hidden && A.game.isReady('h.pad'), '« Plus tard » : la carte se ferme, le Pad reste prêt');
+  ltx.click(); await wait(30);
+  ok(!odlg.hidden && odlg.querySelector('.open-name').textContent==='Pad' && odlg.querySelector('.open-why').textContent===A.tree.byId['h.pad'].why && /nappe d'accords/.test(odlg.textContent) && !odlg.querySelector('.open-more').textContent && !A.game.has('h.pad') && d.activeElement===odlg.querySelector('.open-go'), 'S4.6 : toucher le bouton du LCD → ce que le Pad apporte, en mots simples (« '+odlg.querySelector('.open-why').textContent.slice(0,50)+'… »), bouton Ouvrir');
+  odlg.querySelector('.open-go').click(); await wait(60);
+  ok(odlg.hidden && A.game.has('h.pad') && A.garden.seq && !d.getElementById('treeDlg').hidden && d.querySelector('.tree-glow.lit[data-from="racine"][data-to="h.pad"]') && tn('h.pad').classList.contains('is-buying'), '« Ouvrir » → la séquence : l\'arbre s\'ouvre, lien racine→Pad qui s\'allume');
+  ok(!lt.classList.contains('ready') && A.contracts.state().active.length===1 && !d.querySelector('.panel[data-sec=pad] .is-new') && A.tree.pending.length>0, 'le défi suivant arrive une fois le Pad ouvert ; ses réglages attendent la fin de la séquence');
   await wait(450);
   ok(tn('h.pad').classList.contains('st-owned') && tn('h.pad').classList.contains('is-born') && tn('h.key').classList.contains('is-blink') && tn('h.drone').classList.contains('is-blink') && !d.getElementById('treeDlg').hidden, 'au carillon : nœud ouvert, enfants devenus atteignables qui clignotent');
-  await wait(900);
+  for (let i=0;i<60 && A.garden.seq;i++) await wait(40);
+  const padP=d.querySelector('.panel[data-sec=pad]'), nf=d.querySelector('.is-new-first');
   ok(!A.garden.seq && d.getElementById('treeDlg').hidden, 'fin de séquence : arbre fermé');
-  ok(A.mode==='sculpt' && d.querySelector('.panel[data-sec=pad] .is-new'), 'révélé : mode Sculpter, réglages du Pad en surbrillance');
-  // a click during the sequence fast-forwards it; reduced motion = final state at once
-  { A.contracts.finish('h.forcer'); await wait(30); ok(A.garden.seq && A.game.has('h.drone'), 'séquence lancée');
-    d.querySelector('#treeDlg .tree-card').click(); ok(!A.garden.seq && d.getElementById('treeDlg').hidden && !d.querySelector('#treeDlg .is-buying, #treeDlg .is-born, #treeDlg .tree-glow.lit'), 'clic pendant la séquence : accélérée jusqu\'à la fin');
-    A.garden.showTree(true); await wait(20); A.garden.reduced=true; A.contracts.finish('h.son');
+  ok(A.mode==='sculpt' && padP.classList.contains('is-appearing') && w.getComputedStyle(padP).animationName.includes('is-appear') && padP.querySelectorAll('.is-new').length>=3 && nf && padP.contains(nf) && /Nouveau/.test(w.getComputedStyle(nf,'::after').content), 'révélé : mode Sculpter, le panneau Pad se déploie (is-appearing), ses réglages en surbrillance (is-new), « Nouveau » sur le premier');
+  await wait(700); ok(!padP.classList.contains('is-appearing') && padP.querySelector('.is-new'), 'déploiement fini (~0,55 s), la surbrillance reste');
+  nf.dispatchEvent(new w.PointerEvent('pointerdown',{bubbles:true})); ok(!nf.classList.contains('is-new') && !d.querySelector('.is-new-first') && padP.querySelector('.is-new'), 'le premier toucher éteint la surbrillance de ce contrôle (et l\'étiquette), les autres restent');
+  // a click during the sequence fast-forwards it; the highlight lasts NEW_MS at most (shortened here); reduced motion = final state at once
+  { A.tree.NEW_MS=300; A.contracts.finish('h.forcer'); await wait(30); ok(A.game.isReady('h.drone') && !A.garden.seq, 'Drone qui suit prêt');
+    A.garden.openNode('h.drone'); ok(A.garden.seq && A.game.has('h.drone'), 'ouvert → séquence lancée');
+    d.querySelector('#treeDlg .tree-card').click(); ok(!A.garden.seq && d.getElementById('treeDlg').hidden && !d.querySelector('#treeDlg .is-buying, #treeDlg .is-born, #treeDlg .tree-glow.lit') && d.querySelector('[data-key="drone.follow"].is-new'), 'clic pendant la séquence : accélérée jusqu\'à la fin, le nouveau réglage arrive');
+    await wait(450); ok(!d.querySelector('.is-new'), 'surbrillance terminée après NEW_MS (8 s au plus, ici 0,3 s) sans toucher'); A.tree.NEW_MS=8000;
+    // the queue: two nodes ready, the button says how many; they open one after the other
+    A.contracts.finish('h.son'); A.game.ready('e.reverb', 'm.monte'); await wait(20);
+    ok(ltx.textContent==='✦ Ouvrir : Accords riches' && lt.querySelector('.lcd-task-n').textContent==='2 prêts' && !A.contracts.state().active.length, 'file : « ✦ Ouvrir : Accords riches » · « 2 prêts »');
+    ltx.click(); await wait(20); ok(/encore 1 à ouvrir/.test(odlg.querySelector('.open-more').textContent), 'la carte dit qu\'un autre attend');
+    A.garden.showTree(true); await wait(20); A.garden.reduced=true; odlg.querySelector('.open-go').click();
     ok(A.game.has('h.pad2') && tn('h.pad2').classList.contains('st-owned') && !tn('h.pad2').classList.contains('is-born') && !d.querySelector('#treeDlg .tree-glow.lit') && !d.getElementById('treeDlg').hidden, 'mouvement réduit : état final tout de suite, sans animation');
     await wait(800); ok(d.getElementById('treeDlg').hidden && !A.garden.seq, 'mouvement réduit : puis fermeture'); A.garden.reduced=false;
+    ok(ltx.textContent==='✦ Ouvrir : Reverb' && !lt.querySelector('.lcd-task-n').textContent && !A.contracts.state().active.length, 'puis le suivant de la file : « ✦ Ouvrir : Reverb », toujours pas de défi');
+    A.garden.openNode('e.reverb'); await wait(20); for (let i=0;i<60 && A.garden.seq;i++) await wait(40);
+    ok(A.game.has('e.reverb') && !lt.classList.contains('ready') && A.contracts.state().active.length===1, 'file vide : le défi suivant revient');
     A.game.reset(); A.game.unlock('h.pad'); }
   // G11.1: at 390 px the map pans / zooms inside the card, nothing overflows horizontally
   { f.style.width='390px'; f.style.height='844px'; await wait(200); A.garden.showTree(true); await wait(80);
@@ -96,8 +123,8 @@ f.addEventListener('load', async ()=>{
   ok(!locked('#xyTip'), 'l\'invitation à glisser sur l\'écran est là dès la Graine');
   A.seq.playing=true; const tone0=A.store.get('drone.tone'), mac0=A.store.get('macro.light');
   for (const x of [0.1,0.9,0.2,0.8]) { A.contracts.state().prog['k.xy'].t_xy=0; A.perform.setMacro('macro.light', x); A.perform.setMacro('macro.density', 0.5); }
-  ok(A.store.get('drone.tone')!==tone0 && A.store.get('macro.light')===mac0 && locked('.macros [data-key="macro.light"]') && A.game.has('m.bells'), 'glisser sur l\'écran dès la Graine : la couleur du drone suit, les grands réglages restent fermés ; 4 glissés → Mélodie ouverte');
-  await wait(1500); A.garden.showTree(false); A.perform.setMode('listen'); await wait(30);
+  ok(A.store.get('drone.tone')!==tone0 && A.store.get('macro.light')===mac0 && locked('.macros [data-key="macro.light"]') && A.game.isReady('m.bells'), 'glisser sur l\'écran dès la Graine : la couleur du drone suit, les grands réglages restent fermés ; 4 glissés → Mélodie prête');
+  A.garden.openNode('m.bells'); await wait(1500); A.garden.showTree(false); A.perform.setMode('listen'); await wait(30);
   ok(/0\/6/.test(task.querySelector('.lcd-task-n').textContent) && /6 notes/.test(task.textContent), 'défi suivant : '+task.textContent);
   task.querySelector('.lcd-task-txt').click(); await wait(20);
   ok(task.classList.contains('help') && task.querySelector('.lcd-task-txt').textContent===A.contracts.byId['m.notes'].hint, 'toucher le défi : son aide s\'affiche sur le LCD');
@@ -183,7 +210,7 @@ f.addEventListener('load', async ()=>{
     ok(acts.includes('save'), 'Sauver réussi : action émise');
     A.game.unlock('t.rec'); const C=A.contracts; C.state(A.game).active=['k.enreg'];
     A.bus.emit('rec:done', 12); ok(!A.game.s.contracts.includes('k.enreg'), 'enregistrement de 12 s : défi pas réussi');
-    A.bus.emit('rec:done', 31); ok(A.game.s.contracts.includes('k.enreg') && A.game.has('t.share'), 'enregistrement réel de 31 s : défi réussi, Partage ouvert');
+    A.bus.emit('rec:done', 31); ok(A.game.s.contracts.includes('k.enreg') && A.game.isReady('t.share'), 'enregistrement réel de 31 s : défi réussi, Partage prêt');
     await wait(1400); A.garden.showTree(false);
     A.game.reset(); }
   // --- feedback (G6.2)
@@ -211,7 +238,8 @@ f.addEventListener('load', async ()=>{
     A.bus.emit('live',{midi:c.midis[2],time:0,vel:0.85,raw:null,played:c.ans+1}); await wait(350);
     ok(!P.cur && /PRESQUE/.test(d.getElementById('lcdTop').textContent) && !A.game.has('t.macros'), 'réponse fausse : « Presque » sur le LCD, porte fermée');
     P.launch(ctx.currentTime+0.05, sd); const c2=P.cur; c2.midis.forEach((m,i)=>A.bus.emit('live',{midi:m+12,time:0,vel:0.85,raw:null,played:c2.ans+0.5+i})); await wait(30);
-    ok(A.game.has('t.macros') && A.game.s.contracts.includes('p.premier') && JSON.stringify(A.store.stableSnapshot())===snap, 'réponse juste : Grands réglages s\'ouvre, l\'ambiance est intacte');
+    ok(A.game.isReady('t.macros') && !A.game.has('t.macros') && A.game.s.contracts.includes('p.premier') && A.lcdMsg.text==='↺ ✓ Juste !' && JSON.stringify(A.store.stableSnapshot())===snap, 'réponse juste : « Juste ! », Grands réglages prêt, l\'ambiance est intacte');
+    A.garden.openNode('t.macros'); ok(A.game.has('t.macros'), 'puis le joueur l\'ouvre');
     await wait(1500); A.garden.showTree(false);
     P.launch(ctx.currentTime+0.05, sd); A.game.setMode('free'); await wait(20);
     ok(!P.cur && P.view()===null && !shown('#pads') && P.onStep(0, ctx.currentTime, sd)===false, 'mode libre : la phrase s\'en va, aucune autre'); A.game.setMode('path'); P.wait=0; A.game.reset(); }
@@ -229,7 +257,7 @@ f.addEventListener('load', async ()=>{
     ok(ctx.state!=='running' || starts.length===12 && Math.abs(Math.min(...starts)-at)<1e-6, 'carillon placé à l\'heure demandée (temps fort), note propre à la couche');
     // real clock: the Pad opened by a challenge while playing
     await A.ui.play(); A.game.reset(); A.perform.setMode('listen'); A.game.unlock('m.bells'); await wait(1500); A.garden.showTree(false); A.perform.setMode('listen'); await wait(300);
-    starts.length=0; const Sq=A.seq; A.contracts.finish('m.notes');
+    const Sq=A.seq; A.contracts.finish('m.notes'); starts.length=0; A.garden.openNode('h.pad'); // (the success's own chime is not the opening's)
     const b=A.garden.lastBeat, sd=Sq.stepDur(), now=ctx.currentTime, k=(b.at-Sq.nextTime)/sd+Sq.step-(Sq.origin||0), lv=A.layers.pad.ch.level.gain, target=Math.pow(A.store.get('pad.vol'),1.6);
     ok(A.game.has('h.pad') && b.id==='h.pad' && b.at>=now+0.44 && Math.abs(k-Math.round(k))<1e-6 && Math.round(k)%8===0 && b.deg===2, 'ouverture du Pad en jeu : le temps fort suivant (pas '+Math.round(k)+', dans '+(b.at-now).toFixed(2)+' s), note du Pad');
     await wait(120); const v0=lv.value;
@@ -248,7 +276,7 @@ f.addEventListener('load', async ()=>{
     ok(A.seq.playing && ((A.game.s.prog['k.xy']||{}).n||0)>=1, 'premier glissé : le son démarre et le glissé compte ('+((A.game.s.prog['k.xy']||{}).n||0)+'/4)');
     A.ui.stop(); A.game.reset(); }
   // --- S4.5w: a real ending — the recorded song is replayed (night → dawn, plants lit by their layer), then handed over and offered
-  { await wait(300); A.perform.setMode('listen'); buyAll(); await wait(200);
+  { await wait(300); A.perform.setMode('listen'); w.scrollTo(0,0); window.scrollTo(0,0); buyAll(); await wait(200); // (the Jardin only draws on screen: an opening scrolled down to its controls, this page too)
     const sr=A.engine.ctx.sampleRate, n=Math.round(3*sr), ab=new ArrayBuffer(44+n*4), dv=new DataView(ab), W=(o,x)=>{ for(let i=0;i<x.length;i++) dv.setUint8(o+i,x.charCodeAt(i)); };
     W(0,'RIFF'); dv.setUint32(4,36+n*4,true); W(8,'WAVEfmt '); dv.setUint32(16,16,true); dv.setUint16(20,1,true); dv.setUint16(22,2,true); dv.setUint32(24,sr,true); dv.setUint32(28,sr*4,true); dv.setUint16(32,4,true); dv.setUint16(34,16,true); W(36,'data'); dv.setUint32(40,n*4,true);
     for (let i=0;i<n;i++){ const x=Math.round(Math.sin(i/sr*2*Math.PI*440)*2000); dv.setInt16(44+i*4,x,true); dv.setInt16(46+i*4,x,true); }
@@ -294,7 +322,7 @@ f.addEventListener('load', async ()=>{
   A.garden.showTree(false);
   // S3.8: the path help is short and says how secrets work now (a node opened, hint 2 after 2 secrets, never with time)
   { d.getElementById('help').click(); const hp=d.querySelector('#helpDlg .help-path'), tx=hp.textContent;
-    ok(!hp.hidden && hp.querySelectorAll('.help-grid h4').length===4 && /ouvre un nœud/.test(tx) && /après 2 secrets/.test(tx) && /Réponse/.test(tx) && /À toi/.test(tx) && !/Écho/.test(tx) && !/avec le temps/.test(tx), 'aide du Parcours : 4 rubriques, secrets-clés, indice 2 après 2 secrets, Réponse');
+    ok(!hp.hidden && hp.querySelectorAll('.help-grid h4').length===4 && /nœud <b>prêt|nœud prêt/.test(tx) && /✦ Ouvrir/.test(tx) && /après 2 secrets/.test(tx) && /Réponse/.test(tx) && /À toi/.test(tx) && !/Écho/.test(tx) && !/avec le temps/.test(tx), 'aide du Parcours : 4 rubriques, secrets-clés, indice 2 après 2 secrets, Réponse');
     d.querySelector('#helpDlg [data-close]').click(); }
   g.setMode('free'); await wait(400); ok(!shown('#treeBtn') && !shown('#lcdTask') && !d.body.classList.contains('jargon-off'), 'pas d\'arbre ni de défi en libre, l\'écran garde tonalité et tempo');
   // --- S3.7: the handover is saved: ↷ on the last contract hands over too; a reload keeps the instrument handed over
@@ -304,7 +332,13 @@ f.addEventListener('load', async ()=>{
     const w2=f.contentWindow, d2=f.contentDocument, A2=w2.AMB, vis=(sel)=>{ const e=d2.querySelector(sel); return !!e && e.getClientRects().length>0; };
     ok(A2.game.path && A2.game.s.ended && !vis('#lcdTask') && vis('#treeBtn'), 'sauvegarde rechargée : toujours remis (pas de défi, arbre là)');
     ok(!d2.querySelector('.is-locked') && !A2.game.counts(), 'rechargé : tout l\'instrument ouvert, plus rien ne compte'); // the sound itself is never kept across a reload (both modes)
-    A2.game.reset(); }
+    A2.game.reset();
+    // S4.6: an older save (a success recorded, its node not open) loads with that node ready, « ✦ Ouvrir » on the LCD
+    localStorage.setItem('ambient.game.uitest', JSON.stringify({v:1,mode:'path',nodes:['racine','m.bells'],contracts:['k.xy','m.notes'],active:['k.couleur'],prog:{},skipped:[],ended:false}));
+    await new Promise(r=>{ f.addEventListener('load',r,{once:true}); w2.location.reload(); }); await wait(300);
+    const d3=f.contentDocument, A3=f.contentWindow.AMB, t3=d3.getElementById('lcdTask');
+    ok(A3.game.isReady('h.pad') && !A3.game.has('h.pad') && A3.game.has('m.bells') && !t3.hidden && t3.querySelector('.lcd-task-txt').textContent==='✦ Ouvrir : Pad' && !A3.contracts.state().active.length, 'ancienne sauvegarde (réussite sans ouverture) : chargée, Pad prêt, « ✦ Ouvrir : Pad » sur le LCD');
+    A3.game.reset(); }
   localStorage.removeItem('ambient.game.uitest');
   for (const k of Object.keys(localStorage)) if (k.startsWith('ambient.game.uitest')) localStorage.removeItem(k);
   log('DONE');

@@ -2,8 +2,8 @@
 // Detection runs on bus events (live notes, forced chords) and user changes of the store; only in the
 // path (free mode: nothing is detected nor shown). Rewards persist in game.s.secrets:
 //   found {id: time}, midi (a MIDI keyboard was connected), gifts {timbres [{sec,opt}]}.
-// S3.2 « secrets-clés »: a secret found OPENS A NODE of the tree (game.unlock: the normal unlock path, so its sound,
-// chime and LCD apply; here the LCD ends on « ✦ Ouvert : <Nœud> »). The secret -> node table is OPENS below (the only
+// S3.2 « secrets-clés »: a secret found OPENS A NODE of the tree (S4.6: the node is ready, game.ready, and the player opens
+// it with « ✦ Ouvrir » like any other; here the LCD says « ✦ Secret : <titre> »). The secret -> node table is OPENS below (the only
 // place; musical sense in parentheses):
 //   tons -> Phrases (m.phrase)         dim -> Accords riches (h.pad2)    jazz -> Progression (h.prog, II-V-I)
 //   lent -> Dérive (m.evolve)          pulse -> Tempo (m.tempo)          silence -> Salles (e.salle)
@@ -100,12 +100,17 @@
       const q = this.state().opened || {}, n = AMB.tree.byId[q[d.id] || OPENS[d.id]];
       return `${n.name} ouvert${d.reward.gift ? ' · ' + d.reward.gift.label : ''}`;
     },
-    // open a node and its missing prerequisites (prerequisites first, so each unlock follows the normal path)
+    // make a node ready, with its missing prerequisites first (the queue opens them in that order: game.open)
     openChain(id, out) {
-      const n = AMB.tree.byId[id], g = AMB.game; if (!n || g.has(id)) return out;
+      const n = AMB.tree.byId[id], g = AMB.game; if (!n || g.has(id) || g.isReady(id)) return out;
       for (const r of n.req) this.openChain(r, out);
-      if (g.unlock(id)) out.push(id);
+      if (g.ready(id)) out.push(id);
       return out;
+    },
+    // S4.6, older saves: a secret's node recorded but not open becomes ready
+    migrate(g = AMB.game) {
+      const q = g.s.secrets; if (!g.path || !q || !q.opened) return;
+      for (const nid of Object.values(q.opened)) if (AMB.tree.byId[nid]) this.openChain(nid, []);
     },
 
     // ---- pattern detector helpers (relative intervals: independent of the key) ----
@@ -190,7 +195,7 @@
       g.save();
       if (g.s.ended) { g.emit('secret', { id }); this.celebrate(d, null); return true; } // handed over: no node
       // its node, or (already owned) the next node of the path
-      const own = OPENS[id], nid = g.has(own) ? AMB.contracts && AMB.contracts.nextNode(g) : own;
+      const own = OPENS[id], nid = g.has(own) || g.isReady(own) ? AMB.contracts && AMB.contracts.nextNode(g) : own;
       const node = nid && AMB.tree.byId[nid];
       if (node) { this.openChain(node.id, []); this.state().opened = { ...this.state().opened, [id]: node.id }; g.save(); }
       g.emit('secret', { id });
@@ -200,9 +205,9 @@
     // node null = the instrument was handed over (or the whole tree owned): the LCD names the secret, the toast its gift
     celebrate(d, node) {
       const G = AMB.garden;
-      if (G) { if (!node && G.chime) G.chime('solve'); if (G.lcd) G.lcd(`✦ ${node ? 'Ouvert : ' + node.name : d.title}`, 6000); } // a node: the unlock chime already played
+      if (G) { if (G.chime) G.chime('solve'); if (G.lcd) G.lcd(`✦ Secret : ${d.title}`, 6000); } // its node waits on « ✦ Ouvrir » (garden.js)
       const gift = d.reward.gift;
-      if (AMB.ui && AMB.ui.toast) AMB.ui.toast(`✦ Secret trouvé : ${d.title}${node ? ` · ouvre ${node.name}` : ''}${gift ? ' · ' + gift.label : ''}`);
+      if (AMB.ui && AMB.ui.toast) AMB.ui.toast(`✦ Secret trouvé : ${d.title}${node ? ` · ${node.name} prêt à ouvrir` : ''}${gift ? ' · ' + gift.label : ''}`);
       this.render();
     },
     giveGift(gift) {
@@ -273,10 +278,11 @@
     AMB.bus.on('act', (id) => { if (id === 'midiConnect' && AMB.game.path && !secrets.state().midi) { secrets.state().midi = true; AMB.game.save(); secrets.render(); } });
     AMB.bus.on('chord', (c) => secrets.onChord(c));
     ['reset', 'mode'].forEach((e) => AMB.bus.on('game:' + e, () => { secrets.reset(); secrets.applyGifts(); secrets.render(); }));
-    AMB.bus.on('game:unlock', () => secrets.render());
+    ['unlock', 'ready'].forEach((e) => AMB.bus.on('game:' + e, () => secrets.render()));
   }
   store.on((k, v, src) => { if (src === 'user') secrets.run('param', k, v); });
   AMB.secrets = secrets;
+  secrets.migrate();
   secrets.applyGifts();
   document.addEventListener('DOMContentLoaded', () => {
     secrets.build();

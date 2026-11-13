@@ -5,6 +5,7 @@
   #composer (arbre, branche Composer en 3 nœuds), #handover (instrument remis : arbre complet, morceau enregistré) ;
   #song (panneau Morceau, mode libre, 3 sections, ● Rec), #song-empty (aucune section : ● Rec désactivé) ;
   #roll (piano roll, mode libre : notes ♯ hors gamme, « ⤓ Garder » actif après des notes jouées) ;
+  S4.6 : #ready (« ✦ Ouvrir : Pad » qui pulse, 2 prêts), #ready-card (la carte qui dit ce que le Pad apporte), #new (le Pad vient de s'ouvrir : panneau, halo, « Nouveau ») ;
   S4.5w : #grow (plante à mi-croissance), #sky=<degré> (ciel d'un accord), #dawn (fin : relecture, aube), #dawn-end (remis, WAV proposé). --><meta charset="utf-8"><style>body{margin:0}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body>
 <script>localStorage.removeItem('ambient.game.shot');</script>
 <iframe id="f" src="../index.html?gamekey=ambient.game.shot"></iframe>
@@ -28,6 +29,18 @@ document.getElementById('f').addEventListener('load', () => {
   if (h.includes('free')) { A.game.setMode('free'); A.garden.welcome(false); return; }
   A.game.setMode('path'); A.garden.welcome(false);
   if (h.includes('bar')) return; // S4.3: the very start of the Parcours
+  if (/#(ready|new)/.test(h)) { // S4.6: a success waits for the player
+    A.game.unlock('m.bells'); A.tree.NEW_MS = 6e5;
+    // headless captures freeze CSS animations at their first frame: show the end of the arrivals (the pulses at rest)
+    const st = doc.createElement('style'); st.textContent = '.is-appearing, .open-dlg .open-card { animation: none !important; }'; doc.head.append(st);
+    setTimeout(() => {
+      A.garden.showTree(false); A.perform.setMode('listen'); A.tree.clearNew();
+      A.game.ready('h.pad', 'm.notes'); A.game.ready('t.son', 'k.couleur');
+      if (h.includes('ready-card')) A.garden.ask('h.pad');
+      if (h.includes('new')) { A.garden.openNode('h.pad'); setTimeout(() => { const e = doc.querySelector('.is-new-first'); if (e) e.scrollIntoView({ block: 'center' }); }, 3000); }
+    }, 1500);
+    return;
+  }
   ['t.son', 'h.pad', 'e.reverb', 'm.bells', 't.viz'].forEach(i => A.game.unlock(i));
   if (h.includes('help-path')) { doc.getElementById('help').click(); return; }
   if (h.includes('#more')) {

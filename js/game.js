@@ -13,6 +13,7 @@
     v: 1,
     mode: null, // null = not chosen yet (behaves as free until asked), 'path' or 'free'
     nodes: [], // unlocked node ids
+    ready: [], // S4.6: won (challenge, Réponse, secret), waiting for the player to open them, in order: [{id, by}]
     contracts: [], // challenges done (contracts and Réponse gates)
     resp: null, // « Réponse » (S4.2, puzzles.js): length reached, successes in a row, misses per gate
     active: [], prog: {}, // the active challenge (one at a time) and its progress (contracts.js)
@@ -34,6 +35,7 @@
           const f = fresh();
           for (const k of Object.keys(f)) if (k in o) f[k] = o[k];
           f.nodes = [...new Set((f.nodes || []).map((id) => MERGED[id] || id))];
+          f.ready = (Array.isArray(f.ready) ? f.ready : []).filter((r) => r && typeof r.id === 'string' && !f.nodes.includes(r.id));
           this.s = f;
         }
       } catch (e) {}
@@ -57,10 +59,31 @@
     has(id) { return this.s.nodes.includes(id); },
     isUnlocked(id) { return !this.path || !id || this.has(id); },
     unlock(id, by = null) {
-      if (this.has(id)) return false;
+      const q = this.s.ready || [];
+      this.s.ready = q.filter((r) => r.id !== id);
+      if (this.has(id)) { if (q.length !== this.s.ready.length) this.save(); return false; }
       this.s.nodes.push(id); this.save();
       this.emit('unlock', { id, by });
       return true;
+    },
+    // S4.6: a success no longer opens its node by itself: the node is « prêt » and waits in a queue until the player opens it
+    // (garden.js: « ✦ Ouvrir » on the LCD, a few words on what it gives, then the opening). by = as for unlock
+    isReady(id) { return (this.s.ready || []).some((r) => r.id === id); },
+    readyIds() { return (this.s.ready || []).map((r) => r.id); },
+    ready(id, by = null) {
+      if (!id || this.has(id) || this.isReady(id)) return false;
+      (this.s.ready = this.s.ready || []).push({ id, by }); this.save();
+      this.emit('ready', { id, by });
+      return true;
+    },
+    // the next one the player can open: the first of the queue whose prerequisites are open (a secret queues them first)
+    canOpen(id) { const n = AMB.tree && AMB.tree.byId[id]; return this.isReady(id) && (!n || n.req.every((x) => this.has(x))); },
+    nextReady() { return (this.s.ready || []).find((r) => this.canOpen(r.id)) || null; },
+    // open a waiting node (nextReady by default); never before its prerequisites are open
+    open(id) {
+      const r = id ? (this.s.ready || []).find((x) => x.id === id) : this.nextReady();
+      if (!r || !this.canOpen(r.id)) return false;
+      return this.unlock(r.id, r.by);
     },
     // a challenge done (once)
     complete(id) {
