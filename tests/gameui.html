@@ -205,12 +205,22 @@ f.addEventListener('load', async ()=>{
     pads[3].dispatchEvent(PE('pointerdown',3)); await wait(250); const early=ch.length; await wait(350);
     ok(early===0 && ch.join()==='3' && pads[3].classList.contains('chord'), 'appui long : l\'accord du degré (pas avant)');
     pads[3].dispatchEvent(PE('pointerup',3)); A.seq.forceChord=fc; A.seq.playMidi=sp; A.seq.endLive=eo; A.seq.playing=false;
+    // S5.2: the Mélodie auto lights its pad briefly (its own colour); the player's notes and the Réponse phrase ('live') do not
+    { const S=A.seq, Th=A.theory, dm=(dg,o)=>Th.degreeToMidi(dg,S.root,S.scale,o), lit=()=>pads.filter(b=>b.classList.contains('auto')).map(b=>+b.dataset.deg);
+      ok(A.play.padForMidi(dm(4,4))===4 && A.play.padForMidi(dm(1,3))===1 && A.play.padForMidi(dm(1,5))===8, 'pastille d\'une note : même note, la plus proche en hauteur (une autre octave = la pastille de son degré)');
+      A.bus.emit('note',{layer:'bells',midi:dm(4,4),time:0,vel:0.7,dur:0.3}); await wait(30);
+      const bs=w.getComputedStyle(pads[4]).boxShadow;
+      ok(lit().join()==='4' && bs!=='none', 'note de la Mélodie auto : sa pastille s\'allume, de sa couleur ('+bs.slice(0,40)+')');
+      await wait(300); ok(!lit().length, 'brièvement (~0,17 s)');
+      A.bus.emit('note',{layer:'bells',midi:dm(2,4),time:0,vel:0.85,live:true}); A.bus.emit('note',{layer:'bass',midi:dm(2,3),time:0,vel:0.8}); await wait(30);
+      ok(!lit().length, 'une note jouée, la phrase de la Réponse (live) ou la basse : aucune pastille allumée par la machine'); }
     // 390 px: at least 44 px under the thumb, nothing wider than the screen
     f.style.width='390px'; f.style.height='780px'; await wait(250);
     const de=d.documentElement, r2=pads.map(b=>b.getBoundingClientRect());
     ok(r2.every(r=>r.width>=44 && r.height>=44 && r.right<=de.clientWidth+1 && r.left>=-1) && de.scrollWidth<=de.clientWidth+1, '390 px : pastilles ≥ 44 px, dans l\'écran ('+Math.round(Math.min(...r2.map(r=>r.width)))+'×'+Math.round(Math.min(...r2.map(r=>r.height)))+')');
     f.style.width='1300px'; f.style.height='900px'; await wait(200);
-    A.game.setMode('free'); await wait(30); ok(bar.hidden && !shown('#pads'), 'mode libre (tactile ou non) : aucune pastille');
+    A.game.setMode('free'); await wait(30); A.bus.emit('note',{layer:'bells',midi:60,time:0,vel:0.7}); await wait(30);
+    ok(bar.hidden && !shown('#pads') && !bar.querySelector('.auto'), 'mode libre (tactile ou non) : aucune pastille (ni allumée par la Mélodie auto)');
     A.game.setMode('path'); A.game.reset(); }
   // --- actions on success (G7.2): a cancelled save emits nothing, a real one does (contracts count it)
   { A.game.reset(); ['t.son','t.journal'].forEach(i=>A.game.unlock(i)); const acts=[]; A.bus.on('act',id=>acts.push(id));
