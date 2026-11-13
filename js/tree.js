@@ -58,7 +58,7 @@
       'seq.mode', 'seq.arpDir', 'seq.arpRate', 'seq.arpOct', 'seq.patB', 'seq.patC', 'seq.patD', 'seq.slot', 'seq.chain', 'seq.mutate', 'seq.follow'],
       ['pianoroll', 'mode-compose', 'midiFile', 'motifs', 'reclive'], 'Le piano roll, l\'arpège, 4 motifs et leur chaîne, le Rec live ; importer et exporter des .mid.'),
     N('c.rythme', 'composer', 'Rythme', ['c.seq'], ['bass.*', 'perc.*', 'global.swing', 'global.humanize', 'seq.swing'], [], 'Une basse qui suit les accords, 4 pistes de pulsations, le swing et l\'imprécision humaine.'),
-    N('c.song', 'composer', 'Morceau', ['c.rythme', 'h.prog'], ['auto.*'], ['automation', 'song'], 'Enchaîner des sections, faire évoluer un réglage sur plusieurs mesures, enregistrer le morceau entier.'),
+    N('c.song', 'composer', 'Morceau', ['c.rythme', 'h.prog'], ['auto.*'], ['automation', 'song'], 'Enchaîner des sections (chacune ses motifs et ses accords), faire évoluer un réglage sur plusieurs mesures, enregistrer le morceau entier.'),
   ];
 
   // S4.6 — what opening a node gives, in plain words for a child who is not a musician (the « ✦ Ouvrir » card, garden.js):

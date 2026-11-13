@@ -256,7 +256,7 @@ canvas.auto-lane { display: block; width: 100%; border-radius: 8px; border: 1px 
 .song-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 2px 2px 8px; }
 .song-edit[hidden] { display: none; }
 .song-name { background: #11131b; border: 1px solid #2a2f45; border-radius: 6px; color: var(--c); font: inherit; font-weight: 600; font-size: 14px; width: 9.5em; min-height: 36px; padding: 0 8px; }
-.song-bars { font-size: 12px; min-height: 36px; padding: 3px 6px; width: fit-content; }
+.song-bars { font-size: 12px; min-height: 36px; padding: 3px 6px; min-width: 6.5em; }
 .song-meta { font-size: 11px; color: var(--muted); flex: 1 1 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .song-btns { display: flex; gap: 4px; }
 .song-btns button { min-width: 40px; min-height: 36px; background: #1d2133; border: 1px solid #2a2f45; color: var(--muted); border-radius: 6px; font-size: 13px; cursor: pointer; }

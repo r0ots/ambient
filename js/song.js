@@ -207,7 +207,7 @@
           <button class="btn small" data-s="rec" title="Joue le morceau depuis le début et l'enregistre en WAV jusqu'à la fin">● Rec</button>
           <span class="song-rec-why">● Rec : ajoute d'abord une section</span>
           <label class="btn small"><input type="checkbox" data-s="loop"> Boucler</label>
-          <span class="roll-hint">Chaque section a son son, ses motifs (mélodie, basse, pulsations) et ses accords : choisis-la, les éditeurs la montrent. Touches 1–8, Program Change MIDI : aller à une section.</span>
+          <span class="roll-hint">Choisis une section : son son, ses motifs et ses accords s'éditent dessous. Touches 1–8 ou Program Change MIDI : y aller.</span>
         </div>`;
       container.prepend(panel);
       this.panel = panel;
@@ -281,7 +281,7 @@
       const s = this.sel(), el = this.edit && this.edit.querySelector('.song-meta'); if (!el || !s) return;
       const g = this.getter(s), PR = AMB.pianoRoll;
       const notes = PR ? ['seq.pattern', 'seq.patB', 'seq.patC', 'seq.patD'].reduce((a, k) => a + PR.parse(g(k)).length, 0) : 0;
-      const hits = (k) => /[1-9a-f]/i.test(String(g(k)).replace(/\./g, ''));
+      const hits = (k) => g(k.split('.')[0] + '.on') && /[1-9a-f]/i.test(String(g(k)).replace(/\./g, ''));
       const prog = g('pad.prog') === 'Perso' ? String(g('pad.custom')).trim() : g('pad.prog');
       el.textContent = [`${notes} note${notes > 1 ? 's' : ''}`, hits('bass.pattern') && 'basse', hits('perc.pattern') && 'pulsations', `accords ${prog}`].filter(Boolean).join(' · ');
     },
