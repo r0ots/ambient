@@ -34,7 +34,7 @@
     const FIXED = { 'Plane (I)': [0], 'Pendule I–IV': [0, 3], 'I–V–vi–IV': [0, 4, 5, 3], 'i–VI–III–VII': [0, 5, 2, 6], 'Montée I–ii–iii–IV': [0, 1, 2, 3] };
     let prog = [], durs = [];
     if (get('pad.prog') === 'Perso') {
-      for (const tok of String(store.get('pad.custom')).split(/[\s,;]+/)) {
+      for (const tok of String(get('pad.custom')).split(/[\s,;]+/)) {
         const [d, bb] = tok.split(':').map((x) => parseInt(x, 10));
         if (d >= 1 && d <= 14) { prog.push(d - 1); durs.push(bb >= 1 && bb <= 16 ? bb : barLen); }
       }
@@ -60,7 +60,7 @@
       const chain = chainStr && chainStr.length ? chainStr : [get('seq.slot')];
       const oct = parseInt(get('seq.octave'), 10) || 0, follow = get('seq.follow');
       for (let r0 = 0, k = 0; r0 < span; r0 += steps, k++) {
-        for (const n of PR.parse(store.get(PR.SLOTKEY[chain[k % chain.length]]))) {
+        for (const n of PR.parse(get(PR.SLOTKEY[chain[k % chain.length]]))) {
           if (n.s >= steps) continue;
           const rel = r0 + n.s; if (rel >= span) continue;
           note(out.pr, 1, (s0 + rel) * STEP, Math.min(n.l, span - rel) * STEP - 2, dm(n.r + (follow ? chordAt(rel) : 0), 3 + oct) + (n.a || 0), 40 + n.v * 9);
@@ -69,7 +69,7 @@
     }
     // bass grid (follows the chords)
     if (get('bass.on') && BS) {
-      const g = BS.parse(store.get('bass.pattern')), oct = 2 + (parseInt(get('bass.octave'), 10) || 0);
+      const g = BS.parse(get('bass.pattern')), oct = 2 + (parseInt(get('bass.octave'), 10) || 0);
       for (let rel = 0; rel < span; rel++) {
         const i = rel % 16;
         let len = 1; while (len < 16 && !g.some((row) => row[(i + len) % 16])) len++;
@@ -83,7 +83,7 @@
     }
     // Pulsations on the GM drum channel (9): kick, maracas, hi wood block, triangle
     if (get('perc.on')) {
-      const DRUM = [36, 70, 76, 81], grid = PU.parse(store.get('perc.pattern'), parseInt(get('perc.steps'), 10) || 16);
+      const DRUM = [36, 70, 76, 81], grid = PU.parse(get('perc.pattern'), parseInt(get('perc.steps'), 10) || 16);
       for (let rel = 0; rel < span; rel++) grid.forEach((row, t) => { const lvl = row[rel % row.length]; if (lvl) note(out.dr, 9, (s0 + rel) * STEP, STEP - 2, DRUM[t], [0, 50, 85, 115][lvl] || 85); });
     }
     return { progBars };
@@ -97,7 +97,7 @@
     const live = (k) => store.get(k);
     if (useSong) {
       for (const sec of song.sections) {
-        const get = (k) => (k in sec.snap ? sec.snap[k] : store.get(k));
+        const get = song.getter(sec); // the section's own sound, motifs and progression
         renderSpan(get, totalSteps, sec.bars * 16, out);
         totalSteps += sec.bars * 16;
       }

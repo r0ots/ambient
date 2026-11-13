@@ -172,9 +172,9 @@ body.mode-listen .globals, body.mode-listen .layers, body.mode-listen .seqrow,
 body.mode-listen #scenes, body.mode-listen #journal { display: none; }
 body.mode-sculpt .seqrow { display: none; }
 body.mode-compose .globals, body.mode-compose .layers, body.mode-compose #scenes, body.mode-compose #journal { display: none; }
-/* composition order: chords → written melody → bass → rhythm → automation → song */
+/* composition order: song (sections) → chords → written melody → bass → rhythm → automation */
 .seqrow .chords-panel { order: 1; } .seqrow [data-sec="seq"] { order: 2; } .seqrow [data-sec="bass"] { order: 3; }
-.seqrow [data-sec="perc"] { order: 4; } .seqrow [data-sec="auto"] { order: 5; } .seqrow .song-panel { order: 6; }
+.seqrow [data-sec="perc"] { order: 4; } .seqrow [data-sec="auto"] { order: 5; } .seqrow .song-panel { order: 0; } /* S6.3: the section picked here is what the editors below show */
 .layer-chips { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
 .layer-chips .tog { margin: 0; padding: 6px 14px; font-size: 12px; }
 .macros .ctls { justify-content: space-around; }
@@ -229,21 +229,30 @@ canvas.roll { display: block; cursor: pointer; touch-action: none; }
 
 canvas.auto-lane { display: block; width: 100%; border-radius: 8px; border: 1px solid var(--line); cursor: crosshair; touch-action: none; }
 
-.song-sections { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
-.song-empty { font-size: 12px; color: var(--muted); padding: 10px 2px; }
+.song-strip { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: thin; }
+.song-empty { font-size: 12px; color: var(--muted); padding: 10px 2px; flex: 1 1 200px; }
 .song-rec-why { display: none; font-size: 11px; color: var(--muted); }
 .song-none .song-rec-why { display: inline; }
-.song-panel .btn:disabled { opacity: .4; cursor: default; }
-.song-card { flex: 0 0 170px; background: #171a25; border: 1px solid #2a2f45; border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 5px; }
-.song-card.now { border-color: var(--c); box-shadow: 0 0 12px color-mix(in srgb, var(--c) 35%, transparent); }
-.song-name { background: transparent; border: 0; color: var(--c); font: inherit; font-weight: 600; font-size: 14px; width: 100%; padding: 0; }
-.song-bars { font-size: 11px; padding: 3px 6px; width: fit-content; }
-.song-meta { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.song-prog { height: 3px; background: #262a3d; border-radius: 2px; overflow: hidden; }
-.song-prog i { display: block; height: 100%; width: 0; background: var(--c); transition: width .3s; }
-.song-btns { display: flex; gap: 3px; }
-.song-btns button { flex: 1; background: #1d2133; border: 1px solid #2a2f45; color: var(--muted); border-radius: 6px; font-size: 11px; padding: 3px 0; cursor: pointer; }
-.song-btns button:hover { color: var(--text); }
+.song-panel .btn:disabled, .song-btns button:disabled { opacity: .4; cursor: default; }
+/* S6.3: one chip per section (tap = hear and edit it), the selected one's settings below */
+.song-chip { flex: 0 0 auto; min-width: 72px; min-height: 44px; position: relative; display: flex; align-items: baseline; gap: 6px; padding: 6px 10px 9px; background: #171a25; border: 1px solid #2a2f45; border-radius: 10px; color: var(--text); font: inherit; font-size: 13px; cursor: pointer; text-align: left; }
+.song-chip b { font-weight: 600; white-space: nowrap; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+.song-chip small { font-size: 10px; color: var(--muted); }
+.song-chip.sel { border-color: var(--c); color: var(--c); box-shadow: 0 0 0 1px var(--c) inset; }
+.song-chip.now { box-shadow: 0 0 0 1px var(--c) inset, 0 0 12px color-mix(in srgb, var(--c) 45%, transparent); }
+.song-chip.next { border-style: dashed; border-color: var(--c); animation: song-next .5s steps(2) infinite; }
+@keyframes song-next { 50% { border-color: transparent; } }
+.song-chip.song-add { color: var(--muted); border-style: dashed; align-items: center; }
+.song-chip .song-prog { position: absolute; left: 8px; right: 8px; bottom: 4px; height: 2px; background: #262a3d; border-radius: 2px; overflow: hidden; }
+.song-chip .song-prog i { display: block; height: 100%; width: 0; background: var(--c); transition: width .3s; }
+.song-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 2px 2px 8px; }
+.song-edit[hidden] { display: none; }
+.song-name { background: #11131b; border: 1px solid #2a2f45; border-radius: 6px; color: var(--c); font: inherit; font-weight: 600; font-size: 14px; width: 9.5em; min-height: 36px; padding: 0 8px; }
+.song-bars { font-size: 12px; min-height: 36px; padding: 3px 6px; min-width: 6.5em; }
+.song-meta { font-size: 11px; color: var(--muted); flex: 1 1 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.song-btns { display: flex; gap: 4px; }
+.song-btns button { min-width: 40px; min-height: 36px; background: #1d2133; border: 1px solid #2a2f45; color: var(--muted); border-radius: 6px; font-size: 13px; cursor: pointer; }
+.song-btns button:hover:not(:disabled) { color: var(--text); }
 
 footer { text-align: center; font-size: 11px; color: #4c5272; padding: 20px 0 8px; }
 
@@ -350,7 +359,8 @@ select option, select optgroup { background: #1d1407; color: var(--lcd-fg); font
 .chord-slot b { font: 24px var(--f-lcd); }
 .chord-slot.is-sel { box-shadow: 0 0 0 1px var(--c) inset, var(--bevel-in); }
 .slot-tab { border-radius: var(--radius-btn); font-family: var(--f-num); }
-.song-card { background: #1b1812; border: 1px solid #000; border-radius: var(--radius-btn); box-shadow: var(--bevel-in); }
+.song-chip { background: #1b1812; border-color: #000; border-radius: var(--radius-btn); }
+.song-chip:not(.sel):not(.next):not(.now) { box-shadow: var(--bevel-in); }
 .song-btns button { background: linear-gradient(#3a3936, #2c2b29); border-color: #111; border-radius: var(--radius-btn); }
 .roll-scroll, canvas.auto-lane { border-color: #000; border-radius: var(--radius-btn); box-shadow: var(--bevel-in); }
 .moment { border-radius: 1px; box-shadow: 0 0 6px hsl(var(--h) 70% 55% / .5); }
