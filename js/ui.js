@@ -165,6 +165,7 @@
   function saveUserPatch(name, state) {
     const u = loadUser(); u[name] = state; saveUser(u);
     fillPresetSelect(); const sel = $('#preset'); if (sel) sel.value = 'u:' + name;
+    if (AMB.motion && sel) AMB.motion.glitch(sel); // S7.4
   }
 
   // ---- user patch management ----
@@ -248,6 +249,7 @@
       s.value = o.value;
     }
     toast(`✦ ${title} · ${mood}`);
+    if (AMB.motion) AMB.motion.landscape($('#dice'), s); // S7.4: the die rolls, the name rolls in, the scene reacts
     if (navigator.mediaSession && navigator.mediaSession.metadata) navigator.mediaSession.metadata.artist = title;
   }
 
@@ -410,6 +412,7 @@
   function toggleListen() {
     const on = !document.body.classList.contains('listen');
     setListen(on);
+    if (AMB.motion) AMB.motion.scene(); // S7.4
     try {
       if (on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
       else if (!on && document.fullscreenElement) document.exitFullscreen();
@@ -439,6 +442,7 @@
   async function sharePatch() {
     const url = location.href.split('#')[0] + '#p=' + encodePatch();
     history.replaceState(null, '', url);
+    if (AMB.motion) AMB.motion.rainbow($('.more > summary'), { n: 5, speed: 380 }); // S7.4: the link flies off
     try { await navigator.clipboard.writeText(url); toast('Lien du paysage copié ✓'); }
     catch (e) { toast('Lien dans la barre d\'adresse'); }
   }

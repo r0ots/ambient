@@ -37,6 +37,7 @@
   const notch = new WeakMap(); // knob → travel since its last notch
   const timers = new WeakMap(); // el → Map(class → timeout)
   const rolls = new WeakMap(); // el → its running roll animation
+  const speed = new WeakMap(); // knob → {t, v}: how fast it is being turned (courses per second, smoothed)
   let live = 0; // pending one-shot classes (tests: back to 0 = nothing left behind)
 
   const M = {
@@ -270,9 +271,14 @@
     // a knob turned by hand: dv = the change (fraction of its course), deg = the needle's new angle. Each notch (1/40 of
     // the course) gives a tiny squash and sparks off the needle's tip, along the turn, more when it turns faster.
     NOTCH: 1 / 40,
+    HOT: 1.6, // S7.4: courses per second above which a knob is « turned hard » (m-hot: a shockwave seen from afar)
     turn(el, dv, deg) {
       if (!el || !dv || !this.on()) return 0;
       this.pop(el, 'm-turning', { ms: 450 });
+      const now = performance.now(), sp = speed.get(el) || { t: now - 1000, v: 0 }, dt = Math.max(8, now - sp.t);
+      sp.v = sp.v * Math.pow(0.5, dt / 60) + Math.abs(dv) * (1000 / dt) * (1 - Math.pow(0.5, dt / 60)); sp.t = now; speed.set(el, sp);
+      const hot = sp.v > this.HOT;
+      if (hot) { this.pop(el, 'm-hot', { ms: this.ms('slow') + 80 }); const pn = el.closest && el.closest('.panel'); if (pn) this.pop(pn, 'm-heat', { ms: this.ms('slow') + 80 }); }
       const acc = (notch.get(el) || 0) + Math.abs(dv);
       if (acc < this.NOTCH) { notch.set(el, acc); return 0; }
       notch.set(el, acc % this.NOTCH);
@@ -282,7 +288,147 @@
       const a = ((deg - 90) * Math.PI) / 180, R = (r.width * 24) / 60;
       const x = r.left + r.width / 2 + Math.cos(a) * R, y = r.top + r.height / 2 + Math.sin(a) * R;
       const along = a + (dv > 0 ? Math.PI / 2 : -Math.PI / 2); // tangent, the way it turns
-      return this.burst({ x, y }, { n: Math.min(12, 2 + Math.floor(acc / this.NOTCH) * 2), angle: along, spread: 1.1, speed: 220, life: 0.4, color: sparkColor(el) });
+      return this.burst({ x, y }, { n: Math.min(hot ? 24 : 12, (hot ? 8 : 2) + Math.floor(acc / this.NOTCH) * 2), angle: along, spread: hot ? 2 : 1.1, speed: hot ? 420 : 220, life: hot ? 0.6 : 0.4, color: sparkColor(el) });
+    },
+
+    // ======== S7.4: the bar, Sculpter / Écouter, windows (same rules: the state changes at once, the motion dresses it)
+    LEAN: 22, // hover: the most a control leans towards the pointer (degrees × JUICE)
+    // a temporary element over everything (click-through, removed when its animation ends; never in the app's tree)
+    ghost(cls, css) {
+      const g = document.createElement('div'); g.className = 'm-ghost ' + cls; g.setAttribute('aria-hidden', 'true');
+      Object.assign(g.style, css || {}); document.body.append(g); return g;
+    },
+    // multicolour sparks (the neon palette) out of an element
+    rainbow(at, o = {}) {
+      let n = 0; for (const c of this.particles.COLORS.slice(0, 5)) n += this.burst(at, { ...o, n: o.n || 6, color: c });
+      return n;
+    },
+    // the scene reacts (a new landscape, a landscape chosen, full screen): the screen jolts and a bright scan crosses it
+    scene() {
+      const st = document.querySelector('.stage'), viz = document.getElementById('viz');
+      if (!st || !this.on()) return false;
+      if (viz && viz.animate) viz.animate([{ scale: 1 + 0.06 * Math.min(1.5, this.amp()), filter: 'brightness(1.8) saturate(1.6)' }, { scale: 1, filter: 'none' }], { duration: this.ms('slow') + 120, easing: EASE.spring });
+      const g = document.createElement('i'); g.className = 'm-scan'; g.setAttribute('aria-hidden', 'true'); st.append(g);
+      const an = g.animate([{ translate: '0 -100%', opacity: 1 }, { translate: '0 900%', opacity: 0.3 }], { duration: this.ms('slow') + 80, easing: EASE.out });
+      an.onfinish = an.oncancel = () => g.remove();
+      return true;
+    },
+    // ✦ Nouveau paysage: the die rolls, sparks, the name rolls in like a reel (glitch), the scene reacts
+    landscape(btn, sel) {
+      if (!this.on()) return false;
+      if (btn) { this.pop(btn.querySelector('.m-die') || btn, 'm-dice', { ms: this.ms('slow') + 260 }); this.rainbow(btn, { n: 5, speed: 420, life: 0.7 }); }
+      if (sel) { this.pop(sel, 'm-reel', { ms: this.ms('slow') + 60 }); this.glitch(sel); }
+      this.scene();
+      return true;
+    },
+    // a neon that goes out with a crackle (on = false) or lights up with a clap of sparks (on = true): a layer cut / back
+    neon(el, on) {
+      if (!el || !this.on()) return false;
+      this.unpop(el, on ? 'm-neon-off' : 'm-neon-on');
+      this.pop(el, on ? 'm-neon-on' : 'm-neon-off', { ms: this.ms('slow') + 200 });
+      if (on) this.burst(el, { n: 22, speed: 460, spread: Math.PI * 2, life: 0.5, color: sparkColor(el) || '#fff3c4' });
+      else this.burst(el, { n: 6, speed: 120, spread: 1.2, angle: Math.PI / 2, life: 0.35, G: 1600, color: '#fff3c4' }); // (a few dying sparks fall)
+      return true;
+    },
+    // an explosion (● Rec stopped): a shockwave ring and a big burst of sparks in the element's colour
+    boom(el, color) {
+      if (!el || !this.on()) return 0;
+      const r = el.getBoundingClientRect(); if (!r.width) return 0;
+      this.pop(el, 'm-boom', { ms: this.ms('slow') + 120 });
+      const s = Math.max(r.width, r.height), g = this.ghost('m-ring', { left: r.left + r.width / 2 - s / 2 + 'px', top: r.top + r.height / 2 - s / 2 + 'px', width: s + 'px', height: s + 'px', color: color || sparkColor(el) || '#ff4f6a' });
+      const an = g.animate([{ scale: 0.4, opacity: 1 }, { scale: 1 + 3 * Math.min(1.5, this.amp()), opacity: 0 }], { duration: this.ms('slow') + 120, easing: EASE.out });
+      an.onfinish = an.oncancel = () => g.remove();
+      return this.burst(el, { n: 40, speed: 620, spread: Math.PI * 2, life: 0.7, color: color || '#ff4f6a' }) + this.burst(el, { n: 14, speed: 380, spread: Math.PI * 2, life: 0.5, color: '#fff3c4' });
+    },
+    // a light that runs along a slider from value x0 to x1 (0..1): the scenes' morph
+    run(input, x0, x1) {
+      if (!input || !this.on() || Math.abs(x1 - x0) < 0.01) return null;
+      const r = input.getBoundingClientRect(); if (!r.width) return null;
+      const g = this.ghost('m-comet', { left: r.left + 7 + 'px', top: r.top + r.height / 2 - 5 + 'px' }), w = r.width - 14;
+      const an = g.animate([{ translate: `${x0 * w}px 0`, opacity: 1, scale: '1 1' }, { translate: `${(x0 + (x1 - x0) * 0.6) * w}px 0`, scale: '3 .7', opacity: 1, offset: 0.6 }, { translate: `${x1 * w}px 0`, scale: '1 1', opacity: 0 }],
+        { duration: this.ms('slow') + 100, easing: EASE.snap });
+      an.onfinish = an.oncancel = () => { g.remove(); this.burst({ x: r.left + 7 + x1 * w, y: r.top + r.height / 2 }, { n: 10, speed: 260 }); };
+      return an;
+    },
+    // a card that pops out of an element and falls (a moment kept: it drops into « Mes paysages » when the landscape
+    // menu is on screen, else it falls off the bottom)
+    card(from, text, into) {
+      if (!from || !this.on()) return null;
+      const r = from.getBoundingClientRect(); if (!r.width) return null;
+      const g = this.ghost('m-card', { left: r.left + r.width / 2 + 'px', top: r.top + 'px' }); g.textContent = text;
+      const t = into && into.getBoundingClientRect(), vh = window.innerHeight || 800, seen = !!(t && t.width && t.bottom > 0 && t.top < vh);
+      const dx = seen ? t.left + t.width / 2 - (r.left + r.width / 2) : 40, dy = seen ? t.top + t.height / 2 - r.top : vh - r.top + 60;
+      const up = -60 * Math.min(1.5, this.amp());
+      const an = g.animate([
+        { translate: '-50% 0', scale: 0.2, rotate: '0deg', opacity: 0 },
+        { translate: `-50% ${up}px`, scale: 1.1, rotate: '-8deg', opacity: 1, offset: 0.25, easing: 'ease-in' },
+        { translate: `calc(-50% + ${dx}px) ${dy}px`, scale: seen ? 0.3 : 0.8, rotate: seen ? '6deg' : '40deg', opacity: 1, offset: 0.92 },
+        { translate: `calc(-50% + ${dx}px) ${dy}px`, scale: 0.2, rotate: seen ? '6deg' : '40deg', opacity: 0 }],
+        { duration: this.ms('slow') * 2.4, easing: 'linear' });
+      an.onfinish = an.oncancel = () => { g.remove(); if (seen && into.isConnected) { this.pop(into, 'm-reel', { ms: this.ms('slow') + 60 }); this.burst(into, { n: 16, color: '#ff4fa0' }); } };
+      return an;
+    },
+    // windows (.modal): open = a CRT that switches on (a bright line that opens into the card) over a darkening
+    // backdrop with scan lines; close = the card is sucked into a line, then a dot (a ghost: the window is already gone)
+    rects: new WeakMap(),
+    crt(modal, open) {
+      const card = modal && modal.querySelector(':scope > .modal-card:not(.open-card):not(.tree-card)'); // (the Parcours' cards: their own entry, S7.3)
+      if (!card || !this.on()) return null;
+      if (open) {
+        const d = this.ms('slow') + 80;
+        modal.animate([{ opacity: 0 }, { opacity: 1 }], { duration: this.ms('med'), easing: EASE.out });
+        this.pop(modal, 'm-crt-on', { ms: d + 400 });
+        requestAnimationFrame(() => { const r = card.getBoundingClientRect(); if (r.width) this.rects.set(modal, r); });
+        return card.animate([
+          { scale: '.6 .006', filter: 'brightness(5)', opacity: 0.9 },
+          { scale: '1.04 .012', filter: 'brightness(4)', opacity: 1, offset: 0.3 },
+          { scale: '.98 1.04', filter: 'brightness(1.6)', offset: 0.7 },
+          { scale: '1 1', filter: 'none' }], { duration: d, easing: EASE.out });
+      }
+      const r = this.rects.get(modal); if (!r) return null;
+      const bg = this.ghost('m-ghost-bg', {});
+      const g = this.ghost('m-ghost-card', { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+      const d = this.ms('med') + 120;
+      bg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: d, easing: EASE.in });
+      const an = g.animate([
+        { scale: '1 1', filter: 'brightness(1)', opacity: 1 },
+        { scale: '1 .01', filter: 'brightness(4)', offset: 0.55 },
+        { scale: '.004 .006', filter: 'brightness(6)', opacity: 1, offset: 0.9 },
+        { scale: '0 0', opacity: 0 }], { duration: d, easing: EASE.in });
+      an.onfinish = an.oncancel = () => { g.remove(); bg.remove(); };
+      return an;
+    },
+    // wired once the page is there (observers and the bus only: no listener per element)
+    wired: false,
+    wire() {
+      if (this.wired) return; this.wired = true;
+      if (typeof MutationObserver === 'function') {
+        // windows open and close (hidden), ● Rec starts and stops (.rec)
+        new MutationObserver((ms) => {
+          for (const m of ms) {
+            const t = m.target;
+            if (m.attributeName === 'hidden' && t.classList && t.classList.contains('modal')) { if ((m.oldValue !== null) !== t.hidden) this.crt(t, !t.hidden); } // (a real change only)
+            else if (m.attributeName === 'class' && t.id === 'rec') {
+              const was = /(^|\s)rec(\s|$)/.test(m.oldValue || ''), is = t.classList.contains('rec');
+              if (is && !was) { this.pop(t, 'pop'); this.burst(t, { n: 14, color: '#ff4f6a' }); } else if (was && !is) this.boom(t, '#ff4f6a');
+            }
+          }
+        }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['hidden', 'class'], attributeOldValue: true });
+      }
+      if (typeof ResizeObserver === 'function') { // the size a window had, for its exit
+        const ro = new ResizeObserver((es) => { for (const e of es) { const md = e.target.parentElement, r = e.target.getBoundingClientRect(); if (md && r.width) this.rects.set(md, r); } });
+        document.querySelectorAll('.modal > .modal-card').forEach((c) => ro.observe(c));
+      }
+      const bus = AMB.bus, store = AMB.store;
+      // MIDI: the key flashes when a note comes in from the keyboard
+      if (bus && bus.on) bus.on('live', (n) => { if (n && n.raw != null) { const b = document.getElementById('midi'); if (b && this.pop(b, 'm-flash', { ms: this.ms('med') + 80 })) this.burst(b, { n: 3, speed: 200, color: '#4fe0ff' }); } });
+      // a layer switched off: its neon goes out with a crackle; back on: it lights up, its controls cascade in
+      if (store && store.on) store.on((k, v, src, prev) => {
+        if (!/^[a-z]+\.on$/.test(k) || !!v === !!prev) return;
+        const pn = document.querySelector(`.panel[data-sec="${k.slice(0, -3)}"]`);
+        document.querySelectorAll(`.tog[data-key="${k}"]`).forEach((t) => this.neon(t, !!v));
+        if (pn && pn.offsetWidth) { this.neon(pn, !!v); if (v) { const c = pn.querySelector('.ctls'); if (c) this.stagger(c.children, { y: 10, max: 10 }); } }
+      });
     },
 
     // ---- base controls, once (global listeners only)
@@ -290,6 +436,7 @@
     init() {
       if (this.installed) return; this.installed = true;
       this.apply();
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => this.wire()); else setTimeout(() => this.wire()); // (S7.4)
       if (mq && mq.addEventListener) mq.addEventListener('change', () => this.apply());
       // press: sinks (squash) while held, springs back when let go (css .is-pressed / .is-released)
       let held = null, safety = 0;
@@ -313,10 +460,15 @@
         const d = e.target;
         if (!d || d.tagName !== 'DETAILS' || !d.open) return;
         const menu = d.querySelector(':scope > .menu');
-        if (menu && this.pop(menu, 'pop')) this.stagger(menu.children, { y: -8 });
+        if (menu && this.pop(menu, 'pop')) { const big = d.classList.contains('more'); this.stagger(menu.children, big ? { x: 26, y: -12, max: 12 } : { y: -8 }); if (big) this.burst(d.querySelector('summary'), { n: 10, angle: Math.PI / 2, spread: 1.6 }); } // (S7.4: ⋯ springs out further)
       }, true);
       // a select changed by hand: its LCD glitches once
-      document.addEventListener('change', (e) => { if (e.target && e.target.tagName === 'SELECT' && this.glitch(e.target)) this.burst(e.target, { n: 8 }); }, true);
+      document.addEventListener('change', (e) => {
+        const t = e.target; if (!t || t.tagName !== 'SELECT' || !this.glitch(t)) return;
+        this.burst(t, { n: 8 });
+        if (t.id === 'preset') { this.pop(t, 'm-reel', { ms: this.ms('slow') + 60 }); this.scene(); } // S7.4: a landscape chosen: its name rolls in, the scene reacts
+        if (t.id === 'mood') this.pop(document.querySelector('#dice .m-die'), 'm-dice', { ms: this.ms('slow') + 260 }); // the die shivers: the next landscape takes this mood
+      }, true);
       // hover (a fine pointer): the control under it lifts in 3D and leans towards the pointer (css .m-tilt, --m-rx /
       // --m-ry), one element at a time, at most once per frame
       let tilted = null, pend = null, raf = 0;
@@ -326,7 +478,7 @@
         const t = this.on() && e.target && e.target.closest ? e.target.closest(TILT) : null;
         if (t !== tilted) { untilt(); if (t && !t.disabled) { tilted = t; t.classList.add('m-tilt'); } }
         if (!tilted) return;
-        const r = tilted.getBoundingClientRect(), A = 16 * Math.min(1.5, this.amp());
+        const r = tilted.getBoundingClientRect(), A = this.LEAN * Math.min(1.5, this.amp());
         if (!r.width || !r.height) return;
         tilted.style.setProperty('--m-rx', (-((e.clientY - r.top) / r.height - 0.5) * A).toFixed(1) + 'deg');
         tilted.style.setProperty('--m-ry', (((e.clientX - r.left) / r.width - 0.5) * A).toFixed(1) + 'deg');
