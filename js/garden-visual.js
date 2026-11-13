@@ -14,6 +14,8 @@
 // strong beat its layer comes in on (garden.beat / growAt); the sky follows the chord and the scale (cached skies,
 // cross-faded with globalAlpha); the ground pulses on the beat; the finale replays the recorded song (replayStart):
 // night -> dawn, each plant lights up when its layer plays. Reduced motion: no growth, no pulse (the sky still follows).
+// S4.6: each plant shows its layer's settings (one table, LOOK below: size, light, shape, halo, sway, pace, bloom) and
+// bounces when one of them is touched.
 // Perf: LED sprites pre-rendered in offscreen canvases (cache by species / size / pixel size), cached
 // background and labels, real dt, nothing drawn while the tab is hidden or the canvas off screen, reduced motion =
 // no sway nor particles. stats() gives the cost per frame (ms).
