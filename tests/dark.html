@@ -1,5 +1,5 @@
 <!doctype html><html><head><meta charset="utf-8"></head><body>
-<!-- Dark landscapes (v1.14 sound prototype): each one is in the menu, loads, and makes sound (no silence, no NaN, no master clipping),
+<!-- Dark landscapes (v1.14 sound prototype, + Arpège 1983 in S6.1): each one is in the menu, loads, and makes sound (no silence, no NaN, no master clipping),
      with its own bricks (timbres, Métal kit, Montée shape); a note played on the melody voice (keys, pads, MIDI) sounds too. -->
 <script src="lib.js"></script>
 <div id="scenes"></div><div id="journal"></div><div id="layers"></div><div id="seqrow"></div><div id="macros"></div><div id="globals"></div><button data-mode="listen"></button><button data-mode="sculpt"></button><button data-mode="compose"></button>
@@ -14,10 +14,10 @@ async function level(secs) {
 }
 window.addEventListener('load', async () => {
   try {
-    const st = AMB.store, DARK = ['Pluie sur la ville', 'Ruines', 'Menace'];
+    const st = AMB.store, DARK = ['Pluie sur la ville', 'Ruines', 'Menace', 'Arpège 1983'];
     const menu = [...document.querySelectorAll('#preset option')].map((o) => o.value);
-    ok(DARK.every((p) => AMB.PRESETS[p] && menu.includes('f:' + p)), 'les 3 paysages sombres sont dans « Paysages prêts »');
-    const ev = { note: 0, perc: 0 }; AMB.bus.on('note', () => ev.note++); AMB.bus.on('perc', () => ev.perc++);
+    ok(DARK.every((p) => AMB.PRESETS[p] && menu.includes('f:' + p)), 'les 4 paysages sombres sont dans « Paysages prêts »');
+    const ev = { note: 0, perc: 0, arp: [] }; AMB.bus.on('note', (e) => { ev.note++; if (e.layer === 'seq') ev.arp.push(e.time); }); AMB.bus.on('perc', () => ev.perc++);
     await AMB.ui.play();
     for (const p of DARK) {
       AMB.ui.applyPatch(AMB.PRESETS[p]);
@@ -28,8 +28,15 @@ window.addEventListener('load', async () => {
       await wait(2500 * S);
       const m = await level(Math.max(1, 2500 * S / 1000));
       ok(!m.nan && m.rms > 0.01 && m.peak < 0.999, `${p} : du son (rms ${m.rms.toFixed(3)}, crête ${m.peak.toFixed(3)}, notes ${ev.note}, coups ${ev.perc})`);
+      if (p === 'Arpège 1983') { // the arpeggio never stops: one note every sixteenth (audio clock), filter opened by a Montée
+        const t = ev.arp.slice(1), gaps = t.slice(1).map((v, i) => v - t[i]).sort((a, b) => a - b), six = 60 / st.get('global.tempo') / 4;
+        const med = gaps[gaps.length >> 1] || 0, maxGap = gaps[gaps.length - 1] || 0;
+        ok(gaps.length >= 4 && Math.abs(med - six) < 0.15 * six && maxGap < 1.6 * six && st.get('seq.mode') === 'Arpège' && st.get('mod.l1target') === 'seq.tone' && st.get('mod.l1shape') === 'Montée' && st.get('bass.on'),
+          `Arpège 1983 : l'arpège tourne en doubles croches sans trou (${t.length} notes, écart médian ${(med * 1000).toFixed(0)} ms pour ${(six * 1000).toFixed(0)}, max ${(maxGap * 1000).toFixed(0)}), filtre qui s'ouvre (Montée), basse pulsée`);
+      }
     }
     // the bricks are really there: Métal kit hits, Montée shape on both slow movements, melody voice Lame plays a held note
+    AMB.ui.applyPatch(AMB.PRESETS.Menace);
     ok(st.get('perc.kit') === 'Métal' && st.get('mod.l1shape') === 'Montée' && st.get('bass.wave') === 'Saturée' && st.get('drone.wave') === 'Abîmé', 'Menace : kit Métal, basse Saturée, drone Abîmé, Mouvement en Montée');
     const h = AMB.seq.playMidi(62, 0.8, 0.7, true); const h2 = AMB.seq.playMidi(65, 0.8, 0.7, true);
     ok(h && typeof h.release === 'function' && h2, 'Lame : une note jouée (clavier, pastilles, MIDI) tient et glisse, puis se relâche');

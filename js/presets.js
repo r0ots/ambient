@@ -114,5 +114,23 @@
       'mod.l1target': 'drone.tone', 'mod.l1shape': 'Montée', 'mod.l1rate': 0.62, 'mod.l1depth': 0.85,
       'mod.l2target': 'perc.prob', 'mod.l2shape': 'Montée', 'mod.l2rate': 0.62, 'mod.l2depth': 0.8,
     },
+    // 80s synth score (S6.1): a sixteenth-note arpeggio that never stops, its filter opening over ~30 s,
+    // a round bass pulsing in eighths, a dark brass pad underneath, a soft kick on the beat
+    'Arpège 1983': {
+      'global.tempo': 88, 'global.key': 'E', 'global.scale': 'Éolien (mineur)', 'global.swing': 0, 'global.evolve': 0.1, 'global.humanize': 0.05,
+      'drone.wave': 'Sub', 'drone.vol': 0.4, 'drone.tone': 0.15, 'drone.motion': 0.1,
+      'pad.wave': 'Cuivres', 'pad.vol': 0.45, 'pad.tone': 0.25, 'pad.attack': 0.6, 'pad.length': 2, 'pad.prog': 'i–VI–III–VII', 'pad.voicing': 0.2, 'pad.counter': 0, 'pad.send': 0.7,
+      'bells.on': false, 'grains.on': false,
+      'seq.on': true, 'seq.wave': 'Pluck', 'seq.mode': 'Arpège', 'seq.arpRate': '1/16', 'seq.arpDir': 'Monte', 'seq.arpOct': '2 oct.', 'seq.octave': '0',
+      'seq.vol': 0.55, 'seq.tone': 0.45, 'seq.decay': 0.2, 'seq.send': 0.45,
+      'bass.on': true, 'bass.wave': 'Ronde', 'bass.vol': 0.7, 'bass.tone': 0.35, 'bass.decay': 0.45, 'bass.send': 0.1,
+      'bass.pattern': '1010101010101000.0000000000000000.0000000000000010.0000000000000000',
+      'perc.on': true, 'perc.kit': 'Feutré', 'perc.steps': '16', 'perc.vol': 0.4, 'perc.prob': 1, 'perc.send': 0.25, 'perc.tone': 0.3,
+      'perc.pattern': '2000200020002000.0000000000000000.0000000000000000.0000000000000000',
+      'texture.on': false,
+      'fx.space': 0.55, 'fx.size': 0.75, 'fx.revType': 'Plate', 'fx.predelay': 0.2, 'fx.shimmer': 0, 'fx.echo': 0.3, 'fx.echoTime': '1/8.', 'fx.feedback': 0.4, 'fx.tape': 0.25, 'fx.lofi': 0.1,
+      'mod.l1target': 'seq.tone', 'mod.l1shape': 'Montée', 'mod.l1rate': 0.58, 'mod.l1depth': 0.45,
+      'mod.l2target': 'pad.tone', 'mod.l2shape': 'Sinus', 'mod.l2rate': 0.4, 'mod.l2depth': 0.4,
+    },
   };
 })();
