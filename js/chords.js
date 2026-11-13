@@ -161,7 +161,7 @@
       const cur = sl[Math.min(this.sel, sl.length - 1)];
       for (const n of [1, 2, 4, 8]) {
         const b = document.createElement('button');
-        b.className = 'btn small' + (cur && (cur.b || def) === n ? ' on' : '');
+        b.className = 'btn small' + (cur && eff[Math.min(this.sel, sl.length - 1)] === n ? ' on' : ''); // as heard (fitted in a section)
         b.textContent = `${n} mes.`;
         b.addEventListener('click', () => this.setBars(n));
         this.dursEl.append(b);
