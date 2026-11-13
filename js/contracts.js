@@ -67,7 +67,7 @@
 
     // Espace
     C('e.resonne', ['e.reverb', 'm.bells'], 'Ouvre l\'espace (au-dessus de 60), puis joue 3 notes', 4, thenNotes((k, v) => k === 'fx.space' && v >= 0.6),
-      'Sculpter > Espace > Espace au-dessus de 60, puis joue 3 notes et écoute-les se prolonger.'),
+      'Sculpter > Espace > Reverb au-dessus de 60, puis joue 3 notes et écoute-les se prolonger.'),
     C('m.respire', ['e.reverb', 'm.bells'], 'Laisse respirer : 3 notes, une seconde et demie entre chacune', 3, run((p, n) => n.time - p.time >= 1.5 && n.time - p.time <= 6),
       'Joue une note, laisse-la s\'éteindre dans l\'espace (au moins une seconde et demie), puis la suivante : trois fois.'),
     C('e.noyer', ['e.reverb', 'h.pad'], 'Noie le Pad dans l\'espace, puis force un accord', 2, thenChords((k, v) => k === 'pad.send' && v >= 0.7),
@@ -120,7 +120,7 @@
     // the path's last challenge: proposed first as soon as Morceau is owned (`first`); it opens no node, it ends the path
     C('c.morceau', ['c.song'], 'Enregistre ton morceau', 1, {
       act(st, id) { if (id === 'songRec') st.n = 1; },
-    }, 'Composer > Morceau : + Section pour garder un son (fais-en au moins deux), puis ● Rec : le morceau joue du début à la fin et s\'enregistre.'),
+    }, 'Composer > Morceau : + Section pour garder le paysage du moment (fais-en au moins deux), puis ● Rec : le morceau joue du début à la fin et s\'enregistre.'),
 
     // gates opened by a Réponse (S4.3: they replaced the « set the knobs to a target » puzzles; S4.2: played in the music)
     E('p.premier', ['t.son', 'h.pad', 'm.bells'], 'Premier reflet'),

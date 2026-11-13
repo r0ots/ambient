@@ -234,13 +234,13 @@
         AMB.bus.on('game:unlock', (d) => {
           const n = AMB.tree.byId[d.id]; if (!AMB.game.path || !n || !n.req.length) return;
           if (this.checkEnd()) return;
-          this.lcd(`✦ ${n.name} ouvert`);
+          this.lcd(`✦ Ouvert : ${n.name}`); // « Ouvert : » agrees with every node name (Phrases, Grands réglages…)
           this.beat(d.id);
           if (d.by) this.unlockSeq(d.id); else this.chime('unlock', this.beatOf(d.id));
         });
         AMB.bus.on('game:contracts', (d) => { // the last challenge opens no node: its own small chime
           const c = AMB.contracts.byId[d && d.id]; if (!AMB.game.path || !c || c.node) return;
-          this.chime('small'); this.lcd('✓ défi réussi', 2500);
+          this.chime('small'); this.lcd('✓ Défi réussi', 2500);
         });
         AMB.bus.on('game:puzzle', (e) => this.reponse(e));
         AMB.bus.on('panic', () => this.finaleEnd()); // ■ Stop also stops the replay of the finale (then the handover)

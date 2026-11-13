@@ -481,7 +481,7 @@
       const G = AMB.game, plain = !!(G && G.path && !G.has('h.key'));
       document.body.classList.toggle('jargon-off', plain);
       top.classList.toggle('lcd-flash', !!on);
-      top.textContent = on ? m.text.toUpperCase().slice(0, 26) : (plain ? 'AMBIENT' : patch.toUpperCase().slice(0, 24)) + (rec ? '  ● REC' : '');
+      top.textContent = on ? m.text.toUpperCase().slice(0, 28) : (plain ? 'AMBIENT' : patch.toUpperCase().slice(0, 24)) + (rec ? '  ● REC' : '');
       const bar = String(Math.floor(AMB.seq.step / 16) + 1).padStart(3, '0');
       line.textContent = plain ? (started ? `▶ M${bar}` : '■ STOP') : `${started ? '▶' : '■'} ${store.get('global.key')} ${abbr(store.get('global.scale'))} · ${String(Math.round(store.get('global.tempo'))).padStart(3, '0')} BPM` +
         (started ? ` · ${name.textContent} · M${bar}` : ' · STOP');

@@ -3,7 +3,7 @@
 // path (free mode: nothing is detected nor shown). Rewards persist in game.s.secrets:
 //   found {id: time}, midi (a MIDI keyboard was connected), gifts {timbres [{sec,opt}]}.
 // S3.2 « secrets-clés »: a secret found OPENS A NODE of the tree (game.unlock: the normal unlock path, so its sound,
-// chime and LCD apply; here the LCD ends on « ✦ <Nœud> ouvert »). The secret -> node table is OPENS below (the only
+// chime and LCD apply; here the LCD ends on « ✦ Ouvert : <Nœud> »). The secret -> node table is OPENS below (the only
 // place; musical sense in parentheses):
 //   tons -> Phrases (m.phrase)         dim -> Accords riches (h.pad2)    jazz -> Progression (h.prog, II-V-I)
 //   lent -> Dérive (m.evolve)          pulse -> Tempo (m.tempo)          silence -> Salles (e.salle)
@@ -200,9 +200,9 @@
     // node null = the instrument was handed over (or the whole tree owned): the LCD names the secret, the toast its gift
     celebrate(d, node) {
       const G = AMB.garden;
-      if (G) { if (!node && G.chime) G.chime('solve'); if (G.lcd) G.lcd(`✦ ${node ? node.name + ' ouvert' : d.title}`, 6000); } // a node: the unlock chime already played
+      if (G) { if (!node && G.chime) G.chime('solve'); if (G.lcd) G.lcd(`✦ ${node ? 'Ouvert : ' + node.name : d.title}`, 6000); } // a node: the unlock chime already played
       const gift = d.reward.gift;
-      if (AMB.ui && AMB.ui.toast) AMB.ui.toast(`✦ Secret trouvé : ${d.title}${node ? ` · ${node.name} ouvert` : ''}${gift ? ' · ' + gift.label : ''}`);
+      if (AMB.ui && AMB.ui.toast) AMB.ui.toast(`✦ Secret trouvé : ${d.title}${node ? ` · ouvre ${node.name}` : ''}${gift ? ' · ' + gift.label : ''}`);
       this.render();
     },
     giveGift(gift) {
