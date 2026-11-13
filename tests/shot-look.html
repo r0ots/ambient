@@ -1,0 +1,28 @@
+<!doctype html><html><head><!-- Dev captures (not in the suite), S4.6 settings → look: ?w=390&h=780 for phone width.
+  #small (every layer: low level, dark, round timbre, dry, few notes), #big (loud, bright, pointed timbre, wide space, dense),
+  #kick (default settings, the Pad plant held in the middle of its impulse, as just touched). --><meta charset="utf-8"><style>body{margin:0}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body>
+<script>localStorage.removeItem('ambient.game.shot-look');</script>
+<iframe id="f" src="../index.html?gamekey=ambient.game.shot-look"></iframe>
+<script>{const q=new URLSearchParams(location.search),f=document.getElementById('f');if(q.get('w'))f.style.width=q.get('w')+'px';if(q.get('h'))f.style.height=q.get('h')+'px';}</script>
+<script>
+document.getElementById('f').addEventListener('load', () => {
+  const A = document.getElementById('f').contentWindow.AMB, doc = document.getElementById('f').contentDocument, h = location.hash;
+  A.game.setMode('path'); A.garden.welcome(false);
+  ['t.son', 'h.pad', 'e.reverb', 'm.bells', 't.viz', 'h.key', 'm.grains', 'c.seq', 'c.rythme', 'e.texture', 'h.pad2'].forEach((i) => A.game.unlock(i));
+  const GV = A.gardenVisual, S = A.store, L = ['drone', 'pad', 'bells', 'texture', 'grains', 'seq', 'bass', 'perc'];
+  const small = h.includes('small'), big = h.includes('big');
+  setTimeout(() => {
+    A.garden.showTree(false); A.perform.setMode('listen'); A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none'; GV.sig = null;
+    const v = {};
+    if (small || big) {
+      for (const l of L) { v[l + '.vol'] = small ? 0.08 : 1; v[l + '.tone'] = small ? 0 : 1; v[l + '.send'] = small ? 0 : 1; }
+      Object.assign(v, small
+        ? { 'drone.wave': 'Sub', 'pad.wave': 'Nappe', 'bells.wave': 'Doux', 'seq.wave': 'Doux', 'bass.wave': 'Sub', 'perc.kit': 'Feutré', 'texture.type': 'Océan', 'grains.size': 1, 'fx.space': 0.1, 'pad.voicing': 0, 'bells.density': 0, 'grains.density': 0, 'fx.tape': 0.9, 'fx.lofi': 0.6 }
+        : { 'drone.wave': 'Orgue', 'pad.wave': 'FM', 'bells.wave': 'Pluck', 'seq.wave': 'Pluck', 'bass.wave': 'Pluck', 'perc.kit': 'Organique', 'texture.type': 'Feu', 'grains.size': 0, 'fx.space': 1, 'pad.voicing': 1, 'bells.density': 1, 'grains.density': 1, 'fx.tape': 0, 'fx.lofi': 0, 'seq.pattern': Array.from({ length: 16 }, (_, i) => (i * 2).toString(36) + '.' + (i % 7).toString(36) + '.1').join(',') });
+      S.setMany(v, 'game');
+    }
+    if (h.includes('kick')) setInterval(() => { GV.kicks.pad = { t0: GV.t - 0.05, last: GV.t }; }, 10); // held at 50 ms into the bounce
+    setInterval(() => A.visual.draw(), 40); // headless captures barely run requestAnimationFrame: draw on a timer
+  }, 1600);
+});
+</script></body></html>
