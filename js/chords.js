@@ -116,8 +116,8 @@
       let heard = list.length;
       if (sec && active) { heard = 0; for (let t = 0; heard < eff.length && t < sec.bars; t += eff[heard]) heard++; }
       this.panel.querySelector('.chords-mode').textContent = !active ? `Suite automatique · ${def} mes. par accord`
-        : [`${sl.length} accords · ${total} mesures`, fitted && `durées réduites pour tenir dans « ${sec.name} » (${sec.bars} mes.)`,
-          heard < list.length && `« ${sec.name} » (${sec.bars} mes.) n'en joue que ${heard}`].filter(Boolean).join(' · ');
+        : [`${sl.length} accords · ${total} mesures`, heard < list.length ? `« ${sec.name} » (${sec.bars} mes.) n'en joue que ${heard} : allonge la section`
+          : fitted && `durées réduites pour tenir dans « ${sec.name} » (${sec.bars} mes.)`].filter(Boolean).join(' · ');
       // mode chips (single source of truth for the progression)
       this.modesEl.innerHTML = '<span class="roll-hint" style="margin:0 6px 0 0">Mode :</span>';
       for (const m of MODES) {

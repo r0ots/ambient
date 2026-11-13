@@ -29,6 +29,39 @@ window.addEventListener('load', async ()=>{
   // per-slot duration: slot 0 = 2 bars
   st.set('pad.custom','1 5'); AMB.chords.sel=0; AMB.chords.setBars(2); log('with dur='+st.get('pad.custom')+' bars0='+AMB.seq.chordBars(0)+' bars1='+AMB.seq.chordBars(1));
   log('mode chips='+document.querySelectorAll('.chord-modes .btn').length);
+
+  // --- S6.7: chord names in the key and scale, progressions whose chords follow the scale
+  const T=AMB.theory, qa=(s)=>[...document.querySelectorAll(s)], txt=(e)=>e.textContent.replace(/\s+/g,' ').trim();
+  { let bad=[]; for (const sc of Object.keys(T.SCALES).filter(n=>T.SCALES[n].length===7)) for (const m of Object.keys(T.PROGS)) { const d=T.progDegrees(m,T.SCALES[sc]); if (!d.length || d.some(x=>T.triad(x,T.SCALES[sc])==='dim')) bad.push(sc+'/'+m); }
+    ok(!bad.length, 'aucun accord diminué (♭5) dans les progressions toutes faites, sur les 6 gammes à 7 notes '+bad.join(' ')); }
+  st.set('global.key','A'); st.set('global.scale','Éolien (mineur)');
+  let modes=qa('.chord-modes .btn').map(txt);
+  ok(modes.includes('Épique Am – F – C – G') && modes.includes('Montée Am – C – Dm – Em') && modes.includes('Pop Am – Em – F – Dm') && !modes.some(t=>/I–ii|i–VI|I–IV/.test(t)), 'boutons en la mineur, noms d\'accords : '+modes.join(' | '));
+  st.set('global.key','C'); st.set('global.scale','Ionien (majeur)'); modes=qa('.chord-modes .btn').map(txt);
+  ok(modes.includes('Pop C – G – Am – F') && modes.includes('Épique Am – F – C – G') && modes.includes('Montée C – Dm – Em – F'), 'en do majeur, « Épique » garde ses accords (vi–IV–I–V), pas de B° : '+modes.join(' | '));
+  st.set('global.key','A'); st.set('global.scale','Éolien (mineur)');
+  st.set('pad.prog','i–VI–III–VII');
+  let cells=qa('.chord-slot:not(.empty)').map(b=>b.querySelector('b').textContent+'/'+b.querySelector('span').textContent);
+  ok(cells.join()==='Am7/i,Fmaj7/VI,Cmaj7/III,G7/VII' && !document.querySelector('.chords-auto'), 'cases : la progression jouée, nom en grand, degré en petit ('+cells.join(' ')+')');
+  ok(qa('.chord-chip b')[1].textContent==='ii°', 'palette : degré écrit selon la gamme (ii°)');
+  C.sel=1; qa('.chord-chip')[6].click();
+  ok(st.get('pad.prog')==='Perso' && st.get('pad.custom')==='1 7 3 7', 'éditer une case d\'une progression toute faite : « Mes accords » part d\'elle ('+st.get('pad.custom')+')');
+
+  // --- S6.7: the progression fits its song section
+  const SG=AMB.song, head=()=>document.querySelector('.chords-panel .chords-mode').textContent;
+  SG.replace({sections:[]}); st.set('pad.prog','i–VI–III–VII','user'); st.set('pad.length',4,'user');
+  ok(AMB.seq.chordDurs().join()==='4,4,4,4', 'sans section : 4 mes. par accord, comme avant');
+  document.querySelector('[data-s=add]').click();
+  ok(SG.sel().bars===8 && AMB.seq.chordDurs().join()==='2,2,2,2' && /tenir dans « Intro » \(8 mes\.\)/.test(head()) && qa('.chord-slot em').slice(0,4).every(e=>e.textContent==='2 mes.'), 'section de 8 mes., 4 accords de 4 mes. : 2 mes. chacun, les 4 sonnent ; le panneau le dit (« '+head()+' »)');
+  const bs=document.querySelector('.song-bars'); bs.value='2'; bs.dispatchEvent(new Event('change'));
+  ok(/n'en joue que 2/.test(head()) && qa('.chord-slot.unheard').length===2, 'section de 2 mes. : 1 mes. par accord, les 2 derniers grisés (« '+head()+' »)');
+  bs.value='4'; bs.dispatchEvent(new Event('change')); st.set('pad.length',2,'user');
+  ok(AMB.seq.chordDurs().join()==='1,1,1,1' && SG.sections[0].snap['pad.length']===2, 'section de 4 mes. : 1 mes. par accord');
+  const heard=[]; const off=AMB.bus.on('chord',c=>heard.push(c.deg));
+  SG.start(); const ctx=AMB.engine.ctx, t1=ctx.currentTime+9;
+  while (ctx.currentTime<t1 && heard.length<5) await new Promise(r=>setTimeout(r,50));
+  ok(heard.slice(0,4).join()==='0,5,2,6', 'le morceau joue i, VI, III, VII dans la section de 4 mes. ('+heard.join()+')');
+  SG.stop(); SG.replace({sections:[]});
   log('DONE');
   }catch(e){log('EXC '+e.stack)}
 });
