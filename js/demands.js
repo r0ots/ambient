@@ -233,7 +233,7 @@
       if (c.how === 'notes' && c.got.length) { n = `${c.got.length}/${c.d.ask.n}`; hot = true; }
       else if (c.how === 'hold' && c.onset != null) { const r = Math.max(1, Math.ceil((c.tT + (c.d.ask.bars || 1) * bar - now) / bar - 1e-3)); n = `tiens ${r} mes.`; hot = true; }
       else {
-        const goal = c.how === 'by' ? c.tT - c.span * c.sd : c.tT, r = goal - now; // 'by': the countdown runs to its bar
+        const goal = c.how === 'by' ? c.tT - c.span * c.sd : c.tT, r = goal - Math.max(now, c.at0); // 'by': the countdown runs to its bar (from the bar line it was asked on, scheduled a little ahead)
         if (c.how === 'by' && r <= 0) { n = `${Math.max(1, Math.ceil((c.tT - now) / beat - 1e-3))}…`; hot = true; } // the beats left in its bar(s)
         else if (r > bar) { const m = Math.ceil(r / bar - 1e-3); n = `dans ${m} mesure${m > 1 ? 's' : ''}`; }
         else if (r > tol) n = String(Math.ceil(r / beat - 1e-3));
