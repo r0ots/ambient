@@ -18,7 +18,7 @@ f.addEventListener('load', async ()=>{
   ok(Math.abs(Gd.view.k-0.6)<0.01, 'écran étroit ('+map.clientWidth+' px) : ouverture à k='+Gd.view.k.toFixed(2));
   ok(Math.abs((rr.left+rr.width/2)-(mr.left+mr.width/2))<12 && rr.bottom<=mr.bottom && rr.top>mr.top, 'racine centrée et visible en bas de la carte');
   // --- legend on one line, zoom buttons clear of it
-  const items=[...d.querySelectorAll('.tree-legend > span')], tops=new Set(items.map(e=>Math.round(R(e).top)));
+  const items=[...d.querySelectorAll('.tree-legend > span:not(.tree-tip)')], tops=new Set(items.map(e=>Math.round(R(e).top)));
   ok(items.length===3 && tops.size===1, 'légende : 3 états sur une seule ligne');
   const lg=R(d.querySelector('.tree-legend')), zb=R(d.querySelector('.tree-zoom'));
   ok(zb.top>=lg.bottom, 'boutons + − ⤢ sous la légende (pas de recouvrement)');

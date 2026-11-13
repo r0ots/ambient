@@ -37,7 +37,7 @@ f.addEventListener('load', async ()=>{
   A.game.setMode('free'); await wait(100);
   const same=(()=>{ const b=JSON.parse(before), a=A.store.snapshot(); const bad=Object.keys(a).filter(k=>typeof a[k]==='number'?Math.abs(a[k]-b[k])>0.03:JSON.stringify(a[k])!==JSON.stringify(b[k])); if(bad.length) log('diff '+bad.join(',')); return !bad.length; })(); // the drift (Évolution) keeps moving knobs a little
   ok(!d.querySelector('.is-locked') && same && d.querySelectorAll('[data-key]').length===ctrls, 'retour au mode libre : son et interface intacts');
-  ok(/Jardin sonore/.test(d.getElementById('helpDlg').textContent), 'aide : section Jardin sonore');
+  ok(/Parcours/.test(d.getElementById('helpDlg').textContent), 'aide : section Parcours');
   log('DONE');
   }catch(e){log('EXC '+e.stack)}
 });

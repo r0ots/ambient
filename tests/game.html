@@ -51,8 +51,8 @@ window.addEventListener('load', async ()=>{
     ok(!ids.some(loop) && K.byId[K.OPENS['m.bells']].need.join()==='racine', 'nœuds + ce dont leur défi a besoin : sans cycle, aucun ordre ne bloque (le 1er défi ne demande que la Graine)');
     const gone=['k.paysages','h.ecrire','m.scenes','b.gamme','b.pad','b.salle','b.radio','b.grains','b.groove','c.dessin','k.souffle'];
     ok(gone.every(id=>!K.byId[id]) && !Pz.DEFS && !Pz.keyScore && !Pz.listen && !Pz.ab, 'énigmes « régler des boutons sur une cible » et défis sans nœud retirés');
-    const ech=K.DEFS.filter(d=>d.kind==='echo'); log('Portes à Réponse : '+ech.map(d=>d.title+' → '+T.byId[d.node].name+' ('+Pz.echoLen(d.d)+' notes)').join(' · '));
-    ok(ech.length===6 && ech.every(d=>d.need.includes('m.bells') && new RegExp(Pz.need(d)+' notes justes').test(d.hint)) && Pz.echoLen(K.byId['p.premier'].d)===3 && Pz.echoLen(K.byId['p.mouvement'].d)===4 && Pz.need(K.byId['p.mouvement'])===4, 'portes à Réponse : 6, longueur selon la profondeur (3 notes près de la racine, 4 plus haut), dite par l\'aide');
+    const ech=K.DEFS.filter(d=>d.kind==='reponse'); log('Portes à Réponse : '+ech.map(d=>d.title+' → '+T.byId[d.node].name+' ('+Pz.respLen(d.d)+' notes)').join(' · '));
+    ok(ech.length===6 && ech.every(d=>d.need.includes('m.bells') && new RegExp(Pz.need(d)+' notes justes').test(d.hint)) && Pz.respLen(K.byId['p.premier'].d)===3 && Pz.respLen(K.byId['p.mouvement'].d)===4 && Pz.need(K.byId['p.mouvement'])===4, 'portes à Réponse : 6, longueur selon la profondeur (3 notes près de la racine, 4 plus haut), dite par l\'aide');
     ok(!Pz.openPuzzle && !Pz.echoPlay && !Pz.start && !Pz.attempt, 'S4.2 : plus de carte Écho (ni lancer, ni rejouer, ni essai sur carte)'); }
   // --- the queue (one at a time, in the order of the table)
   g.reset(); g.setMode('path'); K.refill(); ev.length=0;

@@ -185,6 +185,7 @@ body.mode-compose .globals, body.mode-compose .layers, body.mode-compose #scenes
 .layer-chips { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
 .layer-chips .tog { margin: 0; padding: 6px 14px; font-size: 12px; }
 .macros .ctls { justify-content: space-around; }
+body.game .macros .panel:not(:has(.ctls > :not(.is-locked))) > header { display: none; } /* Parcours, grands réglages fermés : les couches seules, sans titre */
 .macros .ctl { width: 110px; }
 .macros .knob svg { width: 92px; height: 92px; }
 .macros .k-val { font-size: 13px; }
@@ -302,7 +303,6 @@ h1 { font: 600 20px var(--f-ui); letter-spacing: .35em; }
 .panel { background: var(--panel); border: 0; border-radius: var(--radius); box-shadow: var(--bevel); padding: 14px 14px 14px; }
 .panel::before { left: 0; right: 0; top: 0; height: 4px; border-radius: var(--radius) var(--radius) 0 0; opacity: 1; }
 .panel h2 { font: 600 12px var(--f-ui); letter-spacing: .22em; color: var(--text); border-bottom: 1px solid var(--line); padding-bottom: 4px; flex: 1; margin-right: 10px; }
-.panel h2[data-n]::before { content: attr(data-n) " "; color: var(--c); font-family: var(--f-num); letter-spacing: .05em; }
 .scenes { background: var(--panel); border: 0; box-shadow: var(--bevel); border-radius: var(--radius); }
 .sc-title { color: var(--text); font: 600 12px var(--f-ui); letter-spacing: .22em; }
 
@@ -458,7 +458,8 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .tree-legend i { display: inline-block; flex: none; width: 11px; height: 11px; border-radius: 50%; background: #121110; box-shadow: 0 0 0 1px #4a4844; }
 .tree-legend i.st-owned { background: #8fe3a0; box-shadow: 0 0 6px #8fe3a0; }
 .tree-legend i.st-available { background: var(--lcd-fg); box-shadow: 0 0 6px var(--lcd-fg); }
-.tree-legend::after { content: 'Survole ou touche un nœud : vert = ce qu\'il demande, pointillés = ce qu\'il ouvre · glisse pour te déplacer, pince ou molette pour zoomer'; flex-basis: 100%; font-size: 11px; }
+.tree-legend > .tree-tip { flex-basis: 100%; font-size: 11px; white-space: normal; display: block; }
+.tree-tip .tip-short { display: none; }
 .tree-view { position: relative; flex: 1 1 auto; min-height: 340px; margin-top: 8px; border-radius: var(--radius, 4px); background: radial-gradient(ellipse 70% 60% at 50% 100%, #2b2414 0, #151412 75%); box-shadow: var(--bevel-in, inset 0 2px 3px #000a); overflow: hidden; }
 .tree-map { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
 .tree-map.panning { cursor: grabbing; }
@@ -501,7 +502,7 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .tree-node:focus { outline: none; }
 .tree-node:focus-visible .led { outline: 2px solid #fff; outline-offset: 4px; }
 .tree-map:has(.is-focus) .tree-node:not(.is-focus):not(.is-req):not(.is-dep) { opacity: .35; }
-.tree-node.is-req .led { outline: 2px solid #8fe3a0; outline-offset: 3px; }
+.tree-node.is-req .led { outline: 2px solid var(--text); outline-offset: 3px; }
 .tree-node.is-dep .led { outline: 2px dashed var(--lcd-fg); outline-offset: 3px; }
 .tree-node.is-sel .led { outline: 2px solid #fff; outline-offset: 4px; }
 /* unlock sequence (G8.5) */
@@ -526,7 +527,8 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
   .tree-card { padding: 12px 10px 10px; height: calc(100vh - 12px); max-height: none; border-radius: 6px; }
   .tree-card h3 { font-size: 24px; }
   .tree-count { margin-right: 26px; font-size: 22px; }
-  .tree-legend::after { content: 'Touche un nœud pour sa fiche · glisse, pince pour zoomer'; }
+  .tree-tip .tip-long { display: none; }
+  .tree-tip .tip-short { display: inline; }
   .tree-view { min-height: 300px; }
   .tree-info, .tree-info.right { left: 6px; right: 6px; bottom: 6px; width: auto; }
   .tree-zoom { flex-direction: row; top: 6px; bottom: auto; right: 6px; }
@@ -537,7 +539,7 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
   .modal-card .tree-legend { font-size: 11px; gap: 2px 10px; flex-wrap: wrap; }
   .tree-legend .lg-long { display: none; }
   .tree-legend .lg-short { display: inline; }
-  .tree-legend::after { font-size: 10.5px; }
+  .tree-legend > .tree-tip { font-size: 10.5px; }
   .tree-zoom .btn { min-width: 28px; padding: 3px 7px; }
 }
 @media (prefers-reduced-motion: reduce) {

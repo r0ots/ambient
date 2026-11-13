@@ -4,7 +4,7 @@
 // plant: right, or red. Successes in a row make the phrases longer (3 → 8 notes); from 5 notes the rhythm counts too
 // (each note against its place in the answer bar, timed with 'live'.played = seq.playedAt, latency compensated); a miss
 // gives a shorter phrase. A phrase left unanswered changes nothing: the music goes on. Nothing is earned without playing.
-// The gates (challenges kind 'echo', js/contracts.js) open on a right answer of N notes (N from the depth of the node:
+// The gates (challenges kind 'reponse', js/contracts.js) open on a right answer of N notes (N from the depth of the node:
 // 3 or 4 notes, never timed), or after 6 misses (never a dead end). Nothing in free mode nor once the instrument is
 // handed over. The ambience is never touched: only the Melody auto yields during the phrase and its answer.
 (function () {
@@ -15,7 +15,7 @@
   const SHOW = 3; // seconds the leaves of the last answer stay on the plant
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   // a gate's length from its difficulty d (0..1): 3 notes at 0, up to 6 at 1
-  const echoLen = (d) => clamp(3 + Math.round((d || 0) * 3), 3, 6);
+  const respLen = (d) => clamp(3 + Math.round((d || 0) * 3), 3, 6);
   // a singable phrase of n notes: a walk of steps (seconds, thirds; a fourth from 5 notes) inside A–L, no note twice in a row
   function phrase(n, rnd) {
     const steps = n >= RHYTHM ? [-3, -2, -1, 1, 2, 3] : [-2, -1, 1, 2];
@@ -36,7 +36,7 @@
   }
 
   const R = {
-    MIN, MAX, RHYTHM, TRIES, GAP, echoLen, phrase, rhythm,
+    MIN, MAX, RHYTHM, TRIES, GAP, respLen, phrase, rhythm,
     cur: null, // the phrase waiting for its answer: { gate, degs, midis, steps, len, timed, sd, t0, from, ans, until, row }
     last: null, // the phrase just answered (its leaves stay a moment on the plant)
     wait: GAP.free, // bar lines to let pass before the next phrase (the music first)
@@ -48,12 +48,12 @@
       s.len = clamp(s.len | 0 || MIN, MIN, MAX); s.streak = s.streak | 0; s.best = s.best | 0; s.miss = s.miss || {};
       return s;
     },
-    // the gate to open now: the active challenge, when it is a kind 'echo'
+    // the gate to open now: the active challenge, when it is a kind 'reponse'
     gate(g = AMB.game) {
       const K = AMB.contracts, id = K && g.path ? K.state(g).active[0] : null, d = id && K.byId[id];
-      return d && d.kind === 'echo' ? d : null;
+      return d && d.kind === 'reponse' ? d : null;
     },
-    need(d) { return echoLen(d.d); },
+    need(d) { return respLen(d.d); },
     // path only, once the Melody is there; never in free mode nor once the instrument is handed over
     can(g = AMB.game) { return !!g && g.counts() && g.has('m.bells'); },
     busy() { return !!this.cur; },

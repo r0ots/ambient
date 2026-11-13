@@ -26,9 +26,9 @@
     { id: 'bells', node: 'm.bells', label: 'Mélodie', short: 'Mélo', col: [255, 196, 110], kind: 'bell' },
     { id: 'texture', node: 'e.texture', label: 'Texture', short: 'Text.', col: [120, 210, 200], kind: 'fern' },
     { id: 'grains', node: 'm.grains', label: 'Grains', short: 'Grain', col: [111, 207, 159], kind: 'puff' },
-    { id: 'seq', node: 'c.seq', label: 'Séquence', short: 'Séq.', col: [255, 150, 71], kind: 'vine' },
+    { id: 'seq', node: 'c.seq', label: 'Mélodie écrite', short: 'Écrite', col: [255, 150, 71], kind: 'vine' },
     { id: 'bass', node: 'c.rythme', label: 'Basse', short: 'Basse', col: [127, 159, 224], kind: 'cactus' },
-    { id: 'perc', node: 'c.rythme', label: 'Pulsations', short: 'Puls.', col: [255, 90, 60], kind: 'shroom' },
+    { id: 'perc', node: 'c.rythme', label: 'Pulsations', short: 'Rythme', col: [255, 90, 60], kind: 'shroom' },
   ];
   const byLayer = Object.fromEntries(LAYERS.map((l) => [l.id, l]));
 
@@ -418,7 +418,7 @@
       g.globalCompositeOperation = 'source-over'; g.imageSmoothingEnabled = true; // nearest-neighbour above: crisp LEDs, cheaper shear
       for (const id in this.energy) this.energy[id] = Math.max(0, this.energy[id] - dt * (red ? 1.2 : 1.6));
       for (const id in this.lit) this.lit[id] = Math.max(0, this.lit[id] - dt * 0.35);
-      if (!all.length) { g.font = `${fs * 1.3}px VT323, monospace`; g.fillStyle = '#b38a4f'; g.textAlign = 'center'; g.fillText('Débloque une couche pour planter ton jardin', W / 2, H * 0.5); g.textAlign = 'start'; }
+      if (!all.length) { g.font = `${fs * 1.3}px VT323, monospace`; g.fillStyle = '#b38a4f'; g.textAlign = 'center'; g.fillText('Ouvre une couche pour planter ton jardin', W / 2, H * 0.5); g.textAlign = 'start'; }
       const ms = this.now() - t0;
       this.times.push(ms); if (this.times.length > 240) this.times.shift();
       this.frames++;

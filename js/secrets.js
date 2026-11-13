@@ -249,7 +249,7 @@
         const p = el('p', 'sc-item' + (it.found ? ' found' : '')); p.dataset.id = it.id;
         const b = document.createElement('b'), s = document.createElement('span');
         b.textContent = it.found ? `✦ ${it.title}` : '???';
-        s.textContent = it.found ? `${it.hint} → ${it.reward}` : it.hint || (it.midi && AMB.game.has(it.node) ? 'Au clavier MIDI : branche-en un (🎹 MIDI dans ⋯).' : 'Débloque d\'abord le nœud lié.');
+        s.textContent = it.found ? `${it.hint} → ${it.reward}` : it.hint || (it.midi && AMB.game.has(it.node) ? 'Au clavier MIDI : branche-en un (bouton MIDI de la barre).' : 'Ouvre d\'abord le nœud lié.');
         p.append(b, s);
       }
     },

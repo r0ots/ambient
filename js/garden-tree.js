@@ -79,7 +79,7 @@
     // what opens a node: its challenge, or a secret (S4.3) — « ◇ Joue 6 notes », « ↺ Réponse « Premier reflet » (3 notes) », « ✦ Secret : ??? »
     openers(id) {
       const K = AMB.contracts, S = AMB.secrets, d = K && K.forNode(id), out = [];
-      if (d) out.push({ kind: d.kind === 'echo' ? 'echo' : 'défi', d, text: d.kind === 'echo' ? `↺ Réponse « ${d.title} » (${AMB.puzzles.need(d)} notes)` : `◇ ${d.title}` });
+      if (d) out.push({ kind: d.kind === 'reponse' ? 'reponse' : 'défi', d, text: d.kind === 'reponse' ? `↺ Réponse « ${d.title} » (${AMB.puzzles.need(d)} notes)` : `◇ ${d.title}` });
       if (S) for (const [sid, nid] of Object.entries(S.OPENS)) if (nid === id) out.push({ kind: 'secret', text: `✦ Secret : ${S.has(sid) ? S.byId[sid].title : '???'}` });
       return out;
     },
@@ -141,7 +141,7 @@
         const n = T.byId[b.dataset.id]; if (!n) return;
         const st = T.status(n.id), op = this.openers(n.id)[0];
         for (const s of Object.keys(STATE_TXT)) b.classList.toggle('st-' + s, s === st);
-        b.querySelector('span').textContent = st === 'owned' ? '✓' : !op ? '' : op.kind === 'echo' ? '↺ Réponse' : '◇ défi';
+        b.querySelector('span').textContent = st === 'owned' ? '✓' : !op ? '' : op.kind === 'reponse' ? '↺ Réponse' : '◇ défi';
         const ext = n.req.filter((r) => T.byId[r].branch !== n.branch);
         b.setAttribute('aria-label', `${n.name}, ${T.BRANCHES[n.branch].name}, ${STATE_TXT[st]}`
           + (st !== 'owned' && op ? `, s'ouvre par : ${op.text.slice(2)}` : '')

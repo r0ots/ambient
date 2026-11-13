@@ -15,8 +15,8 @@ const mulberry = (a) => () => { a = (a + 0x6d2b79f5) >>> 0; let t = Math.imul(a 
 document.getElementById('f').addEventListener('load', async () => {
   try {
     const w = document.getElementById('f').contentWindow, A = w.AMB, T = A.tree, K = A.contracts, nodes = T.NODES;
-    const TIME = { contract: (d) => 40 + 12 * Math.min(d.goal, 8), echo: (d) => 45 + 15 * A.puzzles.echoLen(d.d), secret: 45 };
-    const tOf = (d) => (d.kind === 'echo' ? TIME.echo(d) : TIME.contract(d));
+    const TIME = { contract: (d) => 40 + 12 * Math.min(d.goal, 8), echo: (d) => 45 + 15 * A.puzzles.respLen(d.d), secret: 45 };
+    const tOf = (d) => (d.kind === 'reponse' ? TIME.echo(d) : TIME.contract(d));
     const fmt = (s) => (s / 60).toFixed(1);
     // a key secret is reachable once its node is owned (Lenteur céleste also plays Halo and Tempo); MIDI-only ones for the musician
     const SECRET_NEED = { lent: ['e.halo', 'm.tempo'] };
@@ -48,7 +48,7 @@ document.getElementById('f').addEventListener('load', async () => {
       return { t, gap, gapAt, firstNode, steps, left: nodes.filter((n) => !own.has(n.id)).map((n) => n.id), fin: done.has(A.garden.FINALE), secrets: found.size };
     }
 
-    const echoes = K.DEFS.filter((d) => d.kind === 'echo').map((d) => `${d.title} ${A.puzzles.echoLen(d.d)}`);
+    const echoes = K.DEFS.filter((d) => d.kind === 'reponse').map((d) => `${d.title} ${A.puzzles.respLen(d.d)}`);
     const base = K.DEFS.reduce((a, d) => a + tOf(d), 0);
     log(`${K.DEFS.length} défis (${echoes.length} Échos : ${echoes.join(', ')}), ${nodes.length - 1} nœuds à ouvrir ; somme des temps nominaux ${fmt(base)} min`);
 

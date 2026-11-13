@@ -18,7 +18,7 @@
     },
     renderSwitch() {
       const b = $('#gameMode'); if (!b) return;
-      b.textContent = AMB.game.path ? '◎ Passer en mode libre' : '🌱 Parcours (débloquer pas à pas)';
+      b.textContent = AMB.game.path ? '◎ Passer en mode libre' : '🌱 Parcours (ouvrir pas à pas)';
     },
     // ---- the challenge on the 2nd line of the LCD (v1.06): one at a time, ↷ = the next one, a tap = how to do it ----
     renderContracts(flashId) {
@@ -37,11 +37,11 @@
       if (!d) return;
       if (box.dataset.id !== id) box.classList.remove('help');
       box.dataset.id = id;
-      const n = K.progress(id), echo = d.kind === 'echo', help = box.classList.contains('help') && d.hint;
+      const n = K.progress(id), resp = d.kind === 'reponse', help = box.classList.contains('help') && d.hint;
       const txt = box.querySelector('.lcd-task-txt');
-      txt.textContent = help ? d.hint : echo ? `↺ Réponse : ${d.title}` : `◇ ${d.title}`;
+      txt.textContent = help ? d.hint : resp ? `↺ Réponse : ${d.title}` : `◇ ${d.title}`;
       txt.title = help ? 'Toucher : revenir au défi' : `${d.hint}\n(Toucher : comment faire)`;
-      box.querySelector('.lcd-task-n').textContent = echo ? `${AMB.puzzles.need(d)} ♪` : d.goal > 1 ? `${n}/${d.goal}` : n ? '✓' : '·';
+      box.querySelector('.lcd-task-n').textContent = resp ? `${AMB.puzzles.need(d)} ♪` : d.goal > 1 ? `${n}/${d.goal}` : n ? '✓' : '·';
       if (flashId === id) { box.classList.remove('bump'); void box.offsetWidth; box.classList.add('bump'); }
     },
     paramLabel(key) {

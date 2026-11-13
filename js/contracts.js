@@ -21,7 +21,7 @@
   const C = (id, need, title, goal, on, hint) => ({ id, need, title, goal, on, hint: hint || '' });
   // a gate opened by a « Réponse » (S4.2, js/puzzles.js): during playback the Melody marks a phrase, the player plays it
   // back right after; N notes right open the node (N from the depth of the node, `d` below). `need` holds the Melody.
-  const E = (id, need, title) => ({ id, kind: 'echo', need, title, goal: 1, on: {} });
+  const E = (id, need, title) => ({ id, kind: 'reponse', need, title, goal: 1, on: {} });
   // counting helpers: a run of notes where each one follows `rule` from the previous one; a setting, then playing
   const run = (rule) => ({ note(st, n) { st.n = st.p && rule(st.p, n) ? (st.n || 1) + 1 : 1; st.p = { midi: n.midi, time: n.time }; } });
   const thenNotes = (test) => ({
@@ -37,11 +37,11 @@
     C('k.xy', ['racine'], 'Glisse sur l\'écran : 4 glissés', 4, {
       act(st, id) { if (id === 'xy' && gesture(st, 'xy', 700)) st.n = (st.n || 0) + 1; },
     }, 'Glisse le doigt ou la souris sur l\'écran (le son démarre) : à gauche plus sombre, à droite plus clair. Lève-le entre chaque glissé.'),
-    C('k.couleur', ['racine'], 'Fais varier la couleur du drone pendant qu\'il joue', 2, {
+    C('k.couleur', ['racine'], 'Fais varier la lumière du drone pendant qu\'il joue', 2, {
       param(st, k, v, src) { if (k === 'drone.tone' && src === 'user' && playing() && gesture(st, k)) st.n = (st.n || 0) + 1; },
-    }, 'Lance la lecture, puis Sculpter > Drone > Couleur : tourne le bouton deux fois en écoutant le son s\'ouvrir et se fermer.'),
-    C('k.timbre', ['t.son', 'm.bells'], 'Change le son du drone, puis joue 3 notes dessus', 4, thenNotes((k) => k === 'drone.wave'),
-      'Sculpter > Drone > Son : choisis-en un autre, puis joue 3 notes (pastilles ou A à L) et écoute-les sur ce fond.'),
+    }, 'Lance la lecture, puis Sculpter > Drone > Lumière : tourne le bouton deux fois en écoutant le son s\'ouvrir et se fermer.'),
+    C('k.timbre', ['t.son', 'm.bells'], 'Change le timbre du drone, puis joue 3 notes dessus', 4, thenNotes((k) => k === 'drone.wave'),
+      'Sculpter > Drone > Timbre : choisis-en un autre, puis joue 3 notes (pastilles ou A à L) et écoute-les sur ce fond.'),
     C('k.moments', ['t.journal'], 'Garde un moment (♥), puis reviens à un moment passé', 2, {
       act(st, id) { if (id === 'keep') st.n = Math.max(st.n || 0, 1); else if (id === 'restore' && st.n === 1) st.n = 2; },
     }, 'Sculpter > Journal : ♥ garde le son de l\'instant ; un clic sur un moment passé le fait revenir.'),
@@ -55,8 +55,8 @@
     C('h.forcer', ['h.pad'], 'Force 3 accords (Z à M, ou appui long sur une pastille)', 3, {
       act(st, id) { if (id === 'chord' && gesture(st, 'chord', 600)) st.n = (st.n || 0) + 1; },
     }, 'Pendant la lecture, les touches Z, X, C, V, B, N, M jouent les accords I à VII ; au doigt, un appui long sur une pastille force l\'accord de son degré (au clavier MIDI : les notes graves).'),
-    C('h.son', ['h.pad'], 'Change le son du Pad, puis force un accord', 2, thenChords((k) => k === 'pad.wave'),
-      'Sculpter > Pad > Son : choisis-en un autre, puis force un accord (Z à M, ou appui long sur une pastille) pour l\'entendre.'),
+    C('h.son', ['h.pad'], 'Change le timbre du Pad, puis force un accord', 2, thenChords((k) => k === 'pad.wave'),
+      'Sculpter > Pad > Timbre : choisis-en un autre, puis force un accord (Z à M, ou appui long sur une pastille) pour l\'entendre.'),
     C('h.suivre', ['h.drone'], 'Fais suivre les accords au drone, puis force un accord', 2, {
       param(st, k, v, src) { if (k === 'drone.follow' && src === 'user' && v) st.n = Math.max(st.n || 0, 1); },
       act(st, id) { if (id === 'chord' && st.n === 1 && store.get('drone.follow')) st.n = 2; },
@@ -98,7 +98,7 @@
     C('m.phrase', ['m.phrase'], 'Mets la mélodie en Phrase et écoute-la tourner 2 fois', 2, {
       param(st, k, v, src) { if (k === 'bells.mode' && src === 'user' && v === 'Phrase') st.on = 1; else if (k === 'bells.mode' && v !== 'Phrase') st.on = 0; },
       phrase(st) { if (st.on && store.get('bells.mode') === 'Phrase') st.n = (st.n || 0) + 1; },
-    }, 'Sculpter > Mélodie > Jeu : Phrase. Le motif se répète et varie un peu à chaque tour.'),
+    }, 'Sculpter > Mélodie auto > Jeu : Phrase. Le motif se répète et varie un peu à chaque tour.'),
     C('m.nuage', ['m.grains', 'm.bells'], 'Épaissis les grains (au-dessus de 60), puis joue 3 notes', 4, thenNotes((k, v) => k === 'grains.density' && v >= 0.6),
       'Sculpter > Grains > Densité au-dessus de 60, puis joue 3 notes au milieu du nuage.'),
     C('m.figer', ['m.grains2'], 'Fige le son 2 fois (❄ ou Entrée)', 2, {
@@ -116,7 +116,7 @@
         const bar = Math.floor((S.step - (S.origin || 0)) / 16);
         if (bar !== st.bar) { st.bar = bar; st.n = (st.n || 0) + 1; }
       },
-    }, 'Composer > Rythme : allume ou éteins des pas de la grille de basse, puis laisse jouer 4 mesures avec les pulsations.'),
+    }, 'Composer > Basse : allume ou éteins des pas de la grille, puis laisse jouer 4 mesures avec les pulsations.'),
     // the path's last challenge: proposed first as soon as Morceau is owned (`first`); it opens no node, it ends the path
     C('c.morceau', ['c.song'], 'Enregistre ton morceau', 1, {
       act(st, id) { if (id === 'songRec') st.n = 1; },
@@ -148,9 +148,9 @@
   const ORDER = Object.values(OPENS).map((id) => byId[id]).concat(DEFS.filter((d) => !d.node));
   // a Réponse gate's difficulty from the depth of its node: 3 notes up to depth 3, one more per level, up to 6
   const depth = (id) => { const n = AMB.tree.byId[id]; return n.req.length ? 1 + Math.max(...n.req.map(depth)) : 0; };
-  for (const d of DEFS) if (d.kind === 'echo') {
+  for (const d of DEFS) if (d.kind === 'reponse') {
     d.d = Math.max(0, Math.min(1, (depth(d.node) - 3) / 3));
-    const n = 3 + Math.round(d.d * 3); // AMB.puzzles.echoLen
+    const n = 3 + Math.round(d.d * 3); // AMB.puzzles.respLen
     d.hint = `Pendant la lecture, la plante Mélodie s'allume et l'écran dit « ↺ À toi » : rejoue la phrase juste après (pastilles, A à L ou MIDI). ${n} notes justes ouvrent le nœud.`;
   }
 

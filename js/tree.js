@@ -17,21 +17,21 @@
   const N = (id, branch, name, req, params, ui, desc) => ({ id, branch, name, req, params, ui, desc });
   const NODES = [
     // Tronc — the starting point and the tools to keep / share a sound
-    N('racine', 'tronc', 'Graine', [], ['drone.on', 'drone.vol', 'drone.tone', 'global.volume'], ['play', 'mode-sculpt', 'xy'], 'Une note tenue et sa couleur ; la glisser sur l\'écran. Tout part de là.'),
+    N('racine', 'tronc', 'Graine', [], ['drone.on', 'drone.vol', 'drone.tone', 'global.volume'], ['play', 'mode-sculpt', 'xy'], 'Une note tenue et sa lumière ; la glisser sur l\'écran. Tout part de là.'),
     N('t.son', 'tronc', 'Timbre du drone', ['racine'], ['drone.wave', 'drone.motion'], [], 'Choisir le son du drone et le faire respirer.'),
     N('t.viz', 'tronc', 'Écran', ['racine'], [], ['viz', 'listen'], 'Changer de visuel, passer en plein écran.'),
-    N('t.journal', 'tronc', 'Journal', ['t.son'], [], ['journal', 'save'], 'Revenir à un moment passé, garder un son comme patch.'),
+    N('t.journal', 'tronc', 'Journal', ['t.son'], [], ['journal', 'save'], 'Revenir à un moment passé, garder un paysage.'),
     N('t.rec', 'tronc', 'Enregistreur', ['t.son'], [], ['rec'], 'Enregistrer ce que tu entends.'),
     N('t.macros', 'tronc', 'Grands réglages', ['t.son', 'h.pad', 'm.bells'], ['macro.*'], [], 'Les 5 grands réglages : beaucoup de réglages d\'un geste.'),
-    N('t.share', 'tronc', 'Partage', ['t.journal'], [], ['share', 'patches'], 'Partager un lien, exporter et importer ses patchs.'),
-    N('t.dice', 'tronc', 'Paysages', ['t.macros'], [], ['dice', 'preset'], '✦ Nouveau paysage et presets par humeur.'),
+    N('t.share', 'tronc', 'Partage', ['t.journal'], [], ['share', 'patches'], 'Partager un lien, exporter et importer ses paysages.'),
+    N('t.dice', 'tronc', 'Paysages', ['t.macros'], [], ['dice', 'preset'], '✦ Nouveau paysage par humeur, et les paysages prêts.'),
 
     // Harmonie — chords, key, scale, progression
     N('h.pad', 'harmonie', 'Pad', ['racine'], ['pad.on', 'pad.vol', 'pad.wave', 'pad.tone'], [], 'Des accords tenus au-dessus du drone.'),
     N('h.drone', 'harmonie', 'Drone qui suit', ['h.pad'], ['drone.follow'], [], 'Le drone change de note avec les accords.'),
     N('h.pad2', 'harmonie', 'Accords riches', ['h.pad'], ['pad.attack', 'pad.voicing', 'pad.counter', 'pad.length'], [], 'Attaque, accords enrichis, voix intérieure, durée des accords.'),
     N('h.key', 'harmonie', 'Tonalité', ['h.pad'], ['global.key', 'global.tuning'], [], 'Changer la note de départ de tout le morceau.'),
-    N('h.scale', 'harmonie', 'Gammes', ['h.key'], ['global.scale'], [], '11 couleurs harmoniques, du lumineux au mélancolique.'),
+    N('h.scale', 'harmonie', 'Gammes', ['h.key'], ['global.scale'], [], '11 gammes, de la plus lumineuse à la plus mélancolique.'),
     N('h.prog', 'harmonie', 'Progression', ['h.scale', 'h.pad2'], ['pad.prog', 'pad.custom'], ['chords', 'mode-compose'], 'Écrire sa suite d\'accords case par case.'),
 
     // Espace — reverb, echo, tape, textures
@@ -45,7 +45,7 @@
 
     // Mouvement — melody, time, drift, grains, slow movements, scenes
     N('m.bells', 'mouvement', 'Mélodie auto', ['racine'], ['bells.on', 'bells.vol', 'bells.wave', 'bells.density', 'bells.tone', 'bells.decay', 'bells.range'], ['keys', 'midi'], 'Des notes qui improvisent sur les accords ; les jouer toi-même au clavier (A–L) ou au clavier MIDI.'),
-    N('m.tempo', 'mouvement', 'Tempo', ['m.bells'], ['global.tempo', 'global.time'], [], 'Vitesse, et rythme pulsé ou flottant.'),
+    N('m.tempo', 'mouvement', 'Tempo', ['m.bells'], ['global.tempo', 'global.time'], [], 'Vitesse, et temps pulsé ou flottant.'),
     N('m.phrase', 'mouvement', 'Phrases', ['m.bells'], ['bells.mode', 'bells.phraseLen', 'bells.mutate'], [], 'Un motif qui se répète et varie lentement.'),
     N('m.evolve', 'mouvement', 'Dérive', ['m.tempo'], ['global.evolve'], [], 'Tes réglages dérivent tout seuls autour de leur valeur.'),
     N('m.grains', 'mouvement', 'Grains', ['m.bells'], ['grains.on', 'grains.vol', 'grains.density', 'grains.size', 'grains.scan', 'grains.spray', 'grains.pitch'], [], 'Un nuage de minuscules fragments de son.'),
@@ -87,9 +87,9 @@
   };
 
   const UI_LABEL = {
-    play: 'Lecture', viz: 'Visuels', listen: 'Plein écran', journal: 'Journal des moments', save: 'Sauver un patch',
-    rec: 'Enregistrement', share: 'Lien de partage', patches: 'Export / import des patchs', dice: '✦ Nouveau paysage',
-    preset: 'Presets', xy: 'Glisser sur l\'écran', freeze: 'Échantillon, micro, Figer', scenes: 'Scènes A/B', automation: 'Automation',
+    play: 'Lecture', viz: 'Visuels', listen: 'Plein écran', journal: 'Journal des moments', save: 'Sauver un paysage',
+    rec: 'Enregistrement', share: 'Lien de partage', patches: 'Export / import des paysages', dice: '✦ Nouveau paysage',
+    preset: 'Paysages prêts', xy: 'Glisser sur l\'écran', freeze: 'Échantillon, micro, Figer', scenes: 'Scènes A/B', automation: 'Automation',
     chords: 'Panneau Progression', song: 'Morceau', pianoroll: 'Piano roll', motifs: 'Motifs A–D', reclive: 'Rec live',
     keys: 'Jouer au clavier (A–L)', midi: 'Clavier MIDI', midiFile: 'Import / export .mid', 'mode-sculpt': 'Mode Sculpter', 'mode-compose': 'Mode Composer',
   };

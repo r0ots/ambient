@@ -31,7 +31,7 @@
       const name = `♥ ${it ? it.label : 'Moment'} · ${new Date().toLocaleTimeString().slice(0, 5)}`;
       AMB.ui.saveUserPatch(name, state);
       if (AMB.bus) AMB.bus.emit('act', 'keep');
-      AMB.ui.toast(`Gardé dans « Mes patchs » : ${name}`);
+      AMB.ui.toast(`Gardé dans « Mes paysages » : ${name}`);
     },
     render() {
       if (!this.list) return;
@@ -52,7 +52,7 @@
     build(el) {
       this.el = el;
       el.innerHTML = `<span class="sc-title">Journal</span><div class="moments"></div>
-        <button class="btn small" id="keepMoment" title="Garder l'état actuel comme patch">♥ Garder</button>`;
+        <button class="btn small" id="keepMoment" title="Garder l'état actuel dans Mes paysages">♥ Garder</button>`;
       this.list = el.querySelector('.moments');
       el.querySelector('#keepMoment').addEventListener('click', () => this.keep());
       AMB.bus.on('chord', (c) => {

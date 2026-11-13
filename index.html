@@ -35,9 +35,9 @@
             <button id="midi" class="btn" hidden title="Clavier MIDI : notes graves = accords (tenus avec les touches ou la pédale), CC1 Densité, CC74 Lumière, CC91 Espace, CC93 Nostalgie, CC64 pédale">MIDI</button>
           </div>
         </div>
-        <div class="tgrp"><small>Son</small>
+        <div class="tgrp"><small>Paysage</small>
           <div class="tgrp-row">
-            <select id="preset" title="Choisir un son prêt à l'emploi (preset)" aria-label="Son"></select>
+            <select id="preset" title="Choisir un paysage prêt ou un des tiens" aria-label="Paysage"></select>
             <button id="dice" class="btn" title="Créer un nouveau paysage cohérent selon l'humeur choisie">✦ Nouveau paysage</button>
             <select id="mood" title="Humeur du prochain paysage" aria-label="Humeur">
               <option value="">toutes humeurs</option><option value="__day">☀ du jour</option><option>Lumineux</option><option>Mélancolique</option><option>Mystérieux</option>
@@ -60,25 +60,25 @@
         </div>
         <div class="tgrp"><small>Mode</small>
           <div class="modes" role="group" aria-label="Mode">
-            <button class="mode-btn" data-mode="listen" title="Écouter : l'écran, 5 grands réglages et les couches">Écouter</button>
+            <button class="mode-btn" data-mode="listen" title="Écouter : l'écran, les 5 grands réglages et les couches">Écouter</button>
             <button class="mode-btn" data-mode="sculpt" title="Sculpter : tous les réglages du son">Sculpter</button>
             <button class="mode-btn" data-mode="compose" title="Composer : accords, mélodie écrite, basse, rythmes, morceau">Composer</button>
           </div>
         </div>
-        <div class="tgrp tree-grp"><small>Jardin</small>
-          <div class="tgrp-row"><button id="treeBtn" class="btn tree-btn" title="L'arbre du jardin : ce que tu as débloqué et ce qui t'attend">🌱 Arbre</button></div>
+        <div class="tgrp tree-grp"><small>Parcours</small>
+          <div class="tgrp-row"><button id="treeBtn" class="btn tree-btn" title="L'arbre du Parcours : ce qui est ouvert et ce qui t'attend">🌱 Arbre</button></div>
         </div>
         <span id="sleepLeft" class="sleep-left" title="Minuteur de sommeil"></span>
         <details class="more">
           <summary class="btn" title="Plus d'options">⋯</summary>
           <div class="menu">
-            <button id="save" class="btn" title="Sauvegarder le patch">💾 Sauver le patch</button>
-            <button id="renamePatch" class="btn" title="Renommer le patch utilisateur sélectionné">✎ Renommer le patch</button>
-            <button id="deletePatch" class="btn" title="Supprimer le patch utilisateur sélectionné">🗑 Supprimer le patch</button>
-            <button id="exportPatches" class="btn" title="Télécharger tous mes patchs et scènes (.json)">⬇ Exporter mes patchs</button>
-            <label class="btn" title="Importer un fichier exporté">⬆ Importer des patchs<input id="importFile" type="file" accept="application/json,.json" hidden></label>
+            <button id="save" class="btn" title="Sauver ce paysage dans les tiens">💾 Sauver le paysage</button>
+            <button id="renamePatch" class="btn" title="Renommer le paysage sélectionné (un des tiens)">✎ Renommer le paysage</button>
+            <button id="deletePatch" class="btn" title="Supprimer le paysage sélectionné (un des tiens)">🗑 Supprimer le paysage</button>
+            <button id="exportPatches" class="btn" title="Télécharger tous mes paysages et scènes (.json)">⬇ Exporter mes paysages</button>
+            <label class="btn" title="Importer un fichier exporté">⬆ Importer des paysages<input id="importFile" type="file" accept="application/json,.json" hidden></label>
             <button id="exportMidi" class="btn" title="Progression, séquenceur et pulsations en fichier .mid">🎼 Exporter en MIDI</button>
-            <button id="share" class="btn" title="Copier un lien vers ce patch">🔗 Partager (lien)</button>
+            <button id="share" class="btn" title="Copier un lien vers ce paysage">🔗 Partager (lien)</button>
             <label class="sleep" title="Minuteur de sommeil : fondu puis arrêt">☾ Sommeil
               <select id="sleep">
                 <option value="0">off</option>
@@ -88,7 +88,7 @@
                 <option value="120">2 h</option>
               </select>
             </label>
-            <button id="gameMode" class="btn" title="Parcours (débloquer l'outil pièce par pièce) ou mode libre (tout ouvert)">🌱 Parcours</button>
+            <button id="gameMode" class="btn" title="Parcours (ouvrir l'instrument pièce par pièce) ou mode libre (tout ouvert)">🌱 Parcours</button>
             <button id="help" class="btn" title="Aide et raccourcis (?)">? Aide &amp; raccourcis</button>
           </div>
         </details>
@@ -108,7 +108,7 @@
       <div id="toast" class="toast"></div>
       <div class="stage-tools">
         <button id="vizMode" class="chip" title="Changer de visuel">Orbes</button>
-        <button id="listen" class="chip" title="Mode écoute plein écran (Échap pour sortir)">⤢ Écoute</button>
+        <button id="listen" class="chip" title="Plein écran (Échap pour sortir)">⤢ Plein écran</button>
       </div>
       <div class="hint">Glisse sur l'écran pour changer la lumière et la densité · Espace : lecture/stop · touches A–L : jouer des notes · ? : aide</div>
     </div>
@@ -125,7 +125,7 @@
 
     <div id="welcomeDlg" class="modal" hidden>
       <div class="modal-card welcome-card" role="dialog" aria-label="Bienvenue">
-        <h3>Jardin sonore</h3>
+        <h3>Ambient</h3>
         <p>Une machine à paysages sonores qui joue toute seule. Comment veux-tu la découvrir ?</p>
         <div class="welcome-choices">
           <button class="welcome-choice" data-choose="path"><b>🌱 Parcours</b><span>Commence avec une seule note. Relève des défis musicaux, rejoue des phrases à l'oreille : chaque réussite ouvre une pièce de l'instrument.</span></button>
@@ -135,10 +135,10 @@
     </div>
 
     <div id="treeDlg" class="modal" hidden>
-      <div class="modal-card tree-card" role="dialog" aria-label="Arbre du jardin">
+      <div class="modal-card tree-card" role="dialog" aria-label="Arbre du Parcours">
         <button class="modal-x" data-close>✕</button>
-        <h3>Arbre du jardin <span class="tree-count"></span></h3>
-        <p class="tree-legend"><span><i class="st-owned"></i>ouvert</span><span><i class="st-available"></i><em class="lg-long">peut s'ouvrir maintenant</em><em class="lg-short">à ouvrir</em></span><span><i class="st-locked"></i><em class="lg-long">pas encore accessible</em><em class="lg-short">fermé</em></span></p>
+        <h3>Arbre du Parcours <span class="tree-count"></span></h3>
+        <p class="tree-legend"><span><i class="st-owned"></i>ouvert</span><span><i class="st-available"></i><em class="lg-long">peut s'ouvrir maintenant</em><em class="lg-short">à ouvrir</em></span><span><i class="st-locked"></i><em class="lg-long">pas encore accessible</em><em class="lg-short">fermé</em></span><span class="tree-tip"><em class="tip-long">Survole ou touche un nœud : trait plein = ce qu'il demande, pointillés = ce qu'il ouvre · glisse pour te déplacer, pince ou molette pour zoomer</em><em class="tip-short">Touche un nœud pour sa fiche · glisse, pince pour zoomer</em></span></p>
         <div class="tree-view">
           <div class="tree-map" role="group" aria-label="Carte des talents : glisse pour te déplacer, pince ou molette pour zoomer"></div>
           <div class="tree-zoom"><button type="button" class="btn small" data-zoom="in" aria-label="Zoomer">+</button><button type="button" class="btn small" data-zoom="out" aria-label="Dézoomer">−</button><button type="button" class="btn small" data-zoom="fit" aria-label="Voir tout l'arbre">⤢</button></div>
@@ -175,11 +175,11 @@
         <p><b>Écouter</b> pour profiter, <b>Sculpter</b> pour régler le son, <b>Composer</b> pour écrire accords, mélodies et morceau. Ambient joue tout seul : cinq couches (Drone, Pad, Mélodie, Grains, Texture) improvisent dans la gamme choisie, et la <b>Dérive</b> fait bouger lentement les réglages autour des tiens.</p>
         <div class="help-grid">
           <div><h4>Démarrer</h4><ul>
-            <li><b>✦ Paysage</b> : génère un paysage cohérent selon une humeur</li>
-            <li><b>Presets</b> : points de départ soignés</li>
+            <li><b>✦ Nouveau paysage</b> : en génère un, cohérent, selon une humeur</li>
+            <li><b>Paysage</b> (le menu) : des points de départ soignés, et les tiens (⋯ Sauver le paysage)</li>
             <li><b>Scènes A/B</b> : mémorise deux états et glisse de l'un à l'autre (Auto = morph lent)</li></ul></div>
           <div><h4>Jouer</h4><ul>
-            <li>Glisser sur l'écran : <b>pad XY</b> (gauche/droite = ombre/lumière, bas/haut = densité)</li>
+            <li>Glisser sur l'écran : <b>pad XY</b> (gauche/droite = Lumière, sombre ↔ clair ; bas/haut = Densité)</li>
             <li><kbd>A</kbd>…<kbd>L</kbd> notes · <kbd>Q</kbd>…<kbd>P</kbd> octave au-dessus · <kbd>Z</kbd>…<kbd>M</kbd> accords</li>
             <li><b>MIDI</b> : notes graves = accords (tenus tant que les touches ou la pédale le sont), au-dessus = notes, même à l'arrêt ; vélocité = force et éclat · CC1 Densité, CC74 Lumière, CC91 Espace, CC93 Nostalgie, CC64 pédale</li></ul></div>
           <div><h4>Sculpter</h4><ul>
@@ -192,12 +192,12 @@
             <li><b>Basse</b> et <b>Pulsations</b> : grilles 16/32 pas qui suivent l'accord ; ⚄ Euclidien</li>
             <li><b>Automation</b> : dessine la courbe d'un réglage ; <b>Morceau</b> : enchaîne des sections, ● Rec l'enregistre en WAV du début à la fin</li>
             <li>⬇/⬆ <b>MIDI</b> pour passer dans ton logiciel de musique</li></ul></div>
-          <div><h4>Jardin sonore</h4><ul>
-            <li><b>Parcours</b> (menu ⋯) : commence avec une seule note et débloque l'outil pièce par pièce en jouant ; ton mode libre n'est pas touché</li></ul></div>
+          <div><h4>Parcours</h4><ul>
+            <li><b>🌱 Parcours</b> (menu ⋯) : commence avec une seule note et ouvre l'instrument pièce par pièce en jouant ; ton mode libre n'est pas touché</li></ul></div>
           <div><h4>Garder</h4><ul>
             <li><b>Rec</b> WAV ou compressé, durée fixe avec fondu</li>
-            <li><b>Partager</b> : lien qui contient tout le patch</li>
-            <li><b>☾</b> minuteur de sommeil · <b>⤢ Écoute</b> plein écran</li></ul></div>
+            <li><b>Partager</b> : lien qui contient tout le paysage</li>
+            <li><b>☾</b> minuteur de sommeil · <b>⤢ Plein écran</b></li></ul></div>
         </div>
         </div>
         <p class="muted"><kbd>Espace</kbd> lecture/stop · <kbd>⌘Z</kbd> annuler · <kbd>⇧⌘Z</kbd> rétablir · <kbd>?</kbd> cette aide · <kbd>Échap</kbd> fermer</p>

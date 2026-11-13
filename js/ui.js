@@ -13,10 +13,7 @@
     panel.dataset.sec = secKey;
     if (sec.color) panel.style.setProperty('--c', sec.color);
     const head = h('header');
-    const NUM = { global: '01', fx: '02', mod: '03', drone: '04', pad: '05', bells: '06', grains: '07', texture: '08', seq: '10', bass: '11', perc: '12', auto: '13', macro: '00' };
-    const h2 = h('h2', null, sec.label);
-    if (NUM[secKey]) h2.dataset.n = NUM[secKey];
-    head.append(h2);
+    head.append(h('h2', null, sec.label));
     const ctls = h('div', 'ctls');
     for (const [k, sp] of Object.entries(sec.params)) {
       const key = `${secKey}.${k}`;
@@ -191,14 +188,14 @@
     const name = prompt('Nouveau nom :', old);
     if (!name || name === old) return;
     const u = loadUser();
-    if (u[name] && !confirm(`Un patch « ${name} » existe déjà. Le remplacer ?`)) return;
+    if (u[name] && !confirm(`Un paysage « ${name} » existe déjà. Le remplacer ?`)) return;
     u[name] = u[old]; delete u[old]; saveUser(u);
     fillPresetSelect(); $('#preset').value = 'u:' + name; updatePatchButtons();
     toast(`Renommé en « ${name} »`);
   }
   function deletePatch() {
     const name = currentUserPatch(); if (!name) return;
-    if (!confirm(`Supprimer définitivement le patch « ${name} » ?`)) return;
+    if (!confirm(`Supprimer définitivement le paysage « ${name} » ?`)) return;
     const u = loadUser(); delete u[name]; saveUser(u);
     fillPresetSelect(); updatePatchButtons();
     toast(`« ${name} » supprimé`);
@@ -208,7 +205,7 @@
     try { scenes = JSON.parse(localStorage.getItem('ambient.scenes.v1')); } catch (e) {}
     const data = { app: 'ambient', version: 1, exported: new Date().toISOString(), patches: loadUser(), scenes, current: store.stableSnapshot(), song: AMB.song ? { sections: AMB.song.sections, loop: AMB.song.loop } : null };
     AMB.rec.download(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }), 'json');
-    toast(`${Object.keys(data.patches).length} patch(s) exporté(s)`);
+    toast(`${Object.keys(data.patches).length} paysage(s) exporté(s)`);
   }
   async function importPatches(file) {
     try {
@@ -226,19 +223,19 @@
       if (data.song && Array.isArray(data.song.sections) && AMB.song && (!AMB.song.sections.length || confirm('Remplacer le morceau actuel par celui du fichier ?'))) {
         AMB.song.sections = data.song.sections; AMB.song.loop = data.song.loop !== false; AMB.song.save(); AMB.song.render();
       }
-      toast(`${n} patch(s) importé(s)`);
+      toast(`${n} paysage(s) importé(s)`);
     } catch (e) { toast('Fichier non reconnu'); console.warn(e); }
   }
 
   function fillPresetSelect() {
     const s = $('#preset');
     s.innerHTML = '';
-    const g1 = h('optgroup'); g1.label = 'Usine';
+    const g1 = h('optgroup'); g1.label = 'Paysages prêts';
     Object.keys(AMB.PRESETS).forEach((n) => { const o = h('option', null, n); o.value = 'f:' + n; g1.append(o); });
     s.append(g1);
     const user = loadUser();
     if (Object.keys(user).length) {
-      const g2 = h('optgroup'); g2.label = 'Mes patchs';
+      const g2 = h('optgroup'); g2.label = 'Mes paysages';
       Object.keys(user).forEach((n) => { const o = h('option', null, n); o.value = 'u:' + n; g2.append(o); });
       s.append(g2);
     }
@@ -339,7 +336,7 @@
       else if (loadUser()[v.slice(2)]) applyPatch(loadUser()[v.slice(2)]);
     });
     bind('#save', 'click', () => {
-      const name = prompt('Nom du patch :', 'Mon ambient ' + (Object.keys(loadUser()).length + 1));
+      const name = prompt('Nom du paysage :', 'Mon ambient ' + (Object.keys(loadUser()).length + 1));
       if (!name) return;
       saveUserPatch(name, store.stableSnapshot());
       if (AMB.bus) AMB.bus.emit('act', 'save'); // counted only once really saved
@@ -416,7 +413,7 @@
   // ---------- listening mode ----------
   function setListen(on) {
     document.body.classList.toggle('listen', on);
-    const b = $('#listen'); if (b) b.textContent = on ? '✕ Quitter' : '⤢ Écoute';
+    const b = $('#listen'); if (b) b.textContent = on ? '✕ Quitter' : '⤢ Plein écran';
     window.dispatchEvent(new Event('resize'));
   }
   function toggleListen() {
@@ -448,13 +445,13 @@
   async function sharePatch() {
     const url = location.href.split('#')[0] + '#p=' + encodePatch();
     history.replaceState(null, '', url);
-    try { await navigator.clipboard.writeText(url); toast('Lien du patch copié ✓'); }
+    try { await navigator.clipboard.writeText(url); toast('Lien du paysage copié ✓'); }
     catch (e) { toast('Lien dans la barre d\'adresse'); }
   }
   function loadFromHash() {
     const m = location.hash.match(/p=([A-Za-z0-9_-]+)/);
     if (!m) return;
-    try { applyPatch(JSON.parse(b64d(m[1]))); toast('Patch chargé depuis le lien'); }
+    try { applyPatch(JSON.parse(b64d(m[1]))); toast('Paysage chargé depuis le lien'); }
     catch (e) { console.warn('bad patch in URL', e); }
   }
 
