@@ -912,6 +912,7 @@ input[type=range]:active::-moz-range-thumb { scale: calc(1 + .3 * var(--m-amp)) 
 .modes.m-placed > .mode-btn:hover { box-shadow: none; }
 
 /* a view change (motion.swap): a neon scan crosses the window, the sections come in behind it (Web Animations) */
+.m-wipe[hidden] { display: none; }
 .m-wipe { position: fixed; top: 0; bottom: 0; left: 0; width: 40vw; z-index: 45; pointer-events: none; opacity: 0;
   background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--lcd-fg) 8%, transparent) 55%, color-mix(in srgb, var(--lcd-fg) 30%, transparent) 94%, color-mix(in srgb, #fff 50%, var(--lcd-fg)) 97%, transparent); }
 
@@ -932,10 +933,13 @@ input[type=range]:active::-moz-range-thumb { scale: calc(1 + .3 * var(--m-amp)) 
 .lcd { --lcd-face: var(--lcd-bg); }
 body.game .lcd { --lcd-face: var(--arc-bg); }
 #lcdTop, #lcdLine { position: relative; }
+/* the cover is anchored on the right and shrinks towards it (its left edge = the cursor walks right): it never pokes
+   out of the line (the fit of a long message reads the line's scrollWidth) */
 .m-type { animation: m-type-jolt var(--m-med) steps(1, end); }
-.m-type::after { content: ""; position: absolute; inset: -1px -3px; pointer-events: none; background: var(--lcd-face, var(--lcd-bg));
-  border-left: .42em solid var(--lcd-fg); box-shadow: -3px 0 10px var(--lcd-glow); animation: m-type var(--m-med) steps(8, jump-end) both; }
-@keyframes m-type { from { translate: 0 0; } to { translate: 101% 0; } }
+.m-type::after { content: ""; position: absolute; inset: -1px 0; pointer-events: none; transform-origin: 100% 50%;
+  background: linear-gradient(90deg, var(--lcd-fg) 0 .42em, var(--lcd-face, var(--lcd-bg)) .42em); box-shadow: -4px 0 10px var(--lcd-glow);
+  animation: m-type var(--m-med) steps(8, jump-end) both; }
+@keyframes m-type { from { scale: 1 1; } to { scale: 0 1; } }
 @keyframes m-type-jolt { 0% { translate: calc(-2px * var(--m-amp)) 0; } 25% { translate: calc(2px * var(--m-amp)) 0; } 50%, 100% { translate: 0 0; } }
 .m-nudge { animation: m-nudge var(--m-med) var(--m-snap); }
 @keyframes m-nudge { 35% { rotate: calc(-2deg * var(--m-amp)); scale: calc(1 + .06 * var(--m-amp)); } 70% { rotate: calc(1.2deg * var(--m-amp)); } }

@@ -175,7 +175,11 @@
       let w = document.querySelector('.m-wipe');
       if (!w) { w = document.createElement('div'); w.className = 'm-wipe'; w.setAttribute('aria-hidden', 'true'); document.body.append(w); }
       const vw = window.innerWidth || 1000, from = dir < 0 ? vw : -0.4 * vw, to = dir < 0 ? -0.4 * vw : vw;
-      const out = [w.animate([{ translate: `${from}px 0`, opacity: 1 }, { translate: `${to}px 0`, opacity: 1 }], { duration: this.ms('med') + 60, easing: EASE.snap })];
+      w.hidden = false; // (hidden at rest)
+      const an = w.animate([{ translate: `${from}px 0`, scale: dir < 0 ? '-1 1' : '1 1', opacity: 1 }, { translate: `${to}px 0`, scale: dir < 0 ? '-1 1' : '1 1', opacity: 1 }],
+        { duration: this.ms('med') + 60, easing: EASE.snap });
+      an.onfinish = an.oncancel = () => { if (!w.getAnimations().length) w.hidden = true; };
+      const out = [an];
       const els = [...document.querySelectorAll(this.SECTIONS)];
       return out.concat(this.stagger(els, { x: 22 * Math.sign(dir || 1), y: 10, delay: this.ms(MS.stagger) }));
     },
