@@ -394,6 +394,8 @@ Vague 3
 
 Précision de l'utilisateur (après v1.28) : « dans le juice je voulais surtout du motion design sur tous les bouts d'interfaces ». Les saisons 5–6 ont mis le juice dans les fêtes et la scène ; ici, chaque élément d'interface bouge avec du caractère : entrée, appui, changement de valeur, sortie. Style : arcade années 80, goofy assumé (rebond, élan, cascade, glitch néon), mais lisible et rapide (une interaction ne doit jamais attendre une animation). Un seul système de mouvement (jetons de durée et de courbes, quelques utilitaires JS), réglé par `JUICE`, coupé en reduced-motion. Parcours ET mode libre (c'est l'apparence de l'app ; le son et les commandes du mode libre ne changent pas).
 
+Précision de l'utilisateur : « chaque bouton, chaque rotacteur, chaque interaction doit être visible et fun » : au survol, lueur, ombre et élévation 3D ; à l'appui ou à la rotation, l'élément s'écrase et émet des particules.
+
 Vague 1
 - [ ] S7.1 Système de mouvement + commandes de base : jetons (durées, courbes ressort / élan / rebond), utilitaires (cascade d'entrée, FLIP pour les réordonnancements, compteur qui roule), et application aux boutons, bascules, potentiomètres, curseurs, menus, LCD (texte qui s'écrit / glitch au changement), toasts, changement de mode Écouter / Sculpter / Composer
 
