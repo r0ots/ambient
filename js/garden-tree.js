@@ -6,9 +6,9 @@
   const SVGNS = 'http://www.w3.org/2000/svg';
   // fan order, left to right: the trunk in the middle, Composer between its two parents
   const FAN = ['espace', 'harmonie', 'tronc', 'composer', 'mouvement'];
-  const STATE_TXT = { owned: 'ouvert', available: 'peut s\'ouvrir', locked: 'fermé' };
+  const STATE_TXT = { owned: 'ouvert', ready: 'prêt', available: 'peut s\'ouvrir', locked: 'fermé' };
   const L = { W: 1220, ROW: 98, TOP: 60, BOT: 66, MIN: 94, GAP: 94, A: 46, B: 50, M: 50 };
-  const SEQ = { link: 380, end: 1200, reduced: 650 }; // unlock sequence timing (ms)
+  const SEQ = { link: 380, end: 1700, reduced: 650 }; // unlock sequence timing (ms; S4.6: a bit longer, to see it)
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
   Object.assign(AMB.garden, {
@@ -141,10 +141,10 @@
         const n = T.byId[b.dataset.id]; if (!n) return;
         const st = T.status(n.id), op = this.openers(n.id)[0];
         for (const s of Object.keys(STATE_TXT)) b.classList.toggle('st-' + s, s === st);
-        b.querySelector('span').textContent = st === 'owned' ? '✓' : !op ? '' : op.kind === 'reponse' ? '↺ Réponse' : '◇ défi';
+        b.querySelector('span').textContent = st === 'owned' ? '✓' : st === 'ready' ? '✦ prêt' : !op ? '' : op.kind === 'reponse' ? '↺ Réponse' : '◇ défi';
         const ext = n.req.filter((r) => T.byId[r].branch !== n.branch);
         b.setAttribute('aria-label', `${n.name}, ${T.BRANCHES[n.branch].name}, ${STATE_TXT[st]}`
-          + (st !== 'owned' && op ? `, s'ouvre par : ${op.text.slice(2)}` : '')
+          + (st === 'ready' ? ', réussi : à toi de l\'ouvrir' : st !== 'owned' && op ? `, s'ouvre par : ${op.text.slice(2)}` : '')
           + (n.req.length && st !== 'owned' ? `, demande ${n.req.map((r) => T.byId[r].name).join(', ')}` : '')
           + (ext.length && st === 'owned' ? `, relié à ${ext.map((r) => T.byId[r].name).join(', ')}` : ''));
       });
@@ -223,7 +223,7 @@
       const box = $('#treeDlg .tree-info'); if (!box) return;
       const T = AMB.tree, g = AMB.game, K = AMB.contracts, n = id && T.byId[id];
       if (!n) { box.hidden = true; box.dataset.id = ''; return; }
-      const st = T.status(id), br = T.BRANCHES[n.branch], ops = st === 'owned' ? [] : this.openers(id);
+      const st = T.status(id), br = T.BRANCHES[n.branch], ops = st === 'owned' || st === 'ready' ? [] : this.openers(id);
       const req = n.req.map((r) => `<span class="${g.has(r) ? 'ok' : ''}">${g.has(r) ? '✓' : '·'} ${T.byId[r].name}</span>`).join(' ');
       const now = ops.find((o) => o.d && K.state().active[0] === o.d.id);
       box.style.setProperty('--c', br.color);
@@ -232,7 +232,10 @@
         + `<p class="ti-d">${n.desc}</p>`
         + `<p class="ti-g">Ouvre : ${T.grantsText(id) || '—'}</p>`
         + (n.req.length ? `<p class="ti-r">Demande : ${req}</p>` : '')
-        + (ops.length ? `<p class="ti-o">Pour l'ouvrir : ${ops.map((o) => `<span>${o.text}</span>`).join(' · ou ')}${now ? ' <em>(le défi en cours)</em>' : ''}</p>` : '');
+        + (ops.length ? `<p class="ti-o">Pour l'ouvrir : ${ops.map((o) => `<span>${o.text}</span>`).join(' · ou ')}${now ? ' <em>(le défi en cours)</em>' : ''}</p>` : '')
+        // S4.6: won, waiting for the player: the same « ✦ Ouvrir » as on the LCD (after its prerequisites, for a secret's chain)
+        + (st === 'ready' ? (n.req.every((r) => g.has(r)) ? '<p class="ti-o">✓ Réussi : à toi de l\'ouvrir. <button type="button" class="btn primary small ti-open">✦ Ouvrir</button></p>'
+          : `<p class="ti-o">✓ Réussi : s'ouvre après ${n.req.filter((r) => !g.has(r)).map((r) => T.byId[r].name).join(', ')}.</p>`) : '');
       // the card sits in the empty corner opposite to the node (the fan leaves both bottom corners free)
       const map = $('#treeDlg .tree-map'), el = map && map.querySelector(`.tree-node[data-id="${id}"]`);
       if (el && map) { const r = map.getBoundingClientRect(), e = el.getBoundingClientRect(); box.classList.toggle('right', e.left + e.width / 2 < r.left + r.width / 2); }
@@ -288,6 +291,8 @@
       map.addEventListener('mouseleave', () => { this.mark(this.sel); this.showInfo(this.sel); });
       map.addEventListener('focusin', (e) => { const b = e.target.closest('.tree-node'); if (!b) return; this.mark(b.dataset.id); this.showInfo(b.dataset.id); this.panToNode(b.dataset.id); });
       // click (mouse, finger or keyboard): select the node, its card says what opens it
+      const info = $('#treeDlg .tree-info');
+      if (info) info.addEventListener('click', (e) => { if (e.target.closest('.ti-open')) { const id = info.dataset.id; this.showTree(false); this.ask(id); } });
       map.addEventListener('click', (e) => {
         const b = e.target.closest('.tree-node');
         if (!b) { this.select(null); return; }
@@ -355,9 +360,11 @@
       this.showTree(false);
       // the plant grows once the map is gone (and not before the strong beat)
       const GV = AMB.gardenVisual, b = this.beatOf(s.id); if (GV) GV.growAt(Math.max(GV.clock(), b.at || 0));
+      if (s.held) AMB.tree.release(); // what it opened comes in now (tree.appear: unfolds, halo, « Nouveau »)
       this.reveal(s.id);
     },
-    // show what a node just opened: go to the right mode, scroll to it, make it glow for a while
+    // show what a node just opened: go to the right mode and scroll to it (S4.6: the animation and the highlight are
+    // tree.appear's, for every lock that opens)
     revealTargets(id) {
       const n = AMB.tree.byId[id]; if (!n) return [];
       const els = [...document.querySelectorAll(`[data-node="${id}"]`)];
@@ -365,14 +372,13 @@
       return els.filter((e) => !e.closest('.is-locked') && !e.closest('.menu') && !e.matches('.stage .hint')); // the keys line just appears
     },
     reveal(id) {
-      const els = this.revealTargets(id); if (!els.length) return;
-      // prefer the full panel over the Écouter shortcuts (layer chips, macros)
-      const first = els.find((e) => !e.closest('.macros')) || els[0];
+      const els = this.revealTargets(id), nf = AMB.tree.newFirst;
+      // the control tagged « Nouveau », else the full panel rather than the Écouter shortcuts (layer chips, macros)
+      const first = nf && els.includes(nf) ? nf : els.find((e) => !e.closest('.macros')) || els[0];
+      if (!first) return;
       const want = first.closest('.seqrow') ? 'compose' : first.closest('.globals, .layers, #scenes, #journal') ? 'sculpt' : first.closest('.macros') ? 'listen' : null;
       if (want && AMB.mode !== want && AMB.perform) AMB.perform.setMode(want);
-      els.forEach((e) => { e.classList.remove('is-new'); void e.offsetWidth; e.classList.add('is-new'); });
-      setTimeout(() => els.forEach((e) => e.classList.remove('is-new')), 6000);
-      try { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { first.scrollIntoView(); }
+      try { first.scrollIntoView({ behavior: this.reduced ? 'auto' : 'smooth', block: 'center' }); } catch (e) { first.scrollIntoView(); }
     },
 
   });

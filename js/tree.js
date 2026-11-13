@@ -61,6 +61,43 @@
     N('c.song', 'composer', 'Morceau', ['c.rythme', 'h.prog'], ['auto.*'], ['automation', 'song'], 'Enchaîner des sections, faire évoluer un réglage sur plusieurs mesures, enregistrer le morceau entier.'),
   ];
 
+  // S4.6 — what opening a node gives, in plain words for a child who is not a musician (the « ✦ Ouvrir » card, garden.js):
+  // one or two sentences, the words of the lexicon (ARCHITECTURE.md). The only table of these texts.
+  const EXPLAIN = {
+    't.son': 'Le drone change de voix : plus doux, plus rond ou plus pointu, et il peut respirer lentement. À régler dans Sculpter, Drone.',
+    't.viz': 'Tu peux changer le dessin qui bouge sur l\'écran, et passer en plein écran pour juste regarder et écouter.',
+    't.journal': 'L\'instrument se souvient de ce que tu as entendu : ♥ garde un moment, et tu peux revenir à un moment passé.',
+    't.rec': '● Rec enregistre ce que tu entends dans un fichier, pour le réécouter ou le faire écouter.',
+    't.macros': 'Cinq gros boutons qui changent beaucoup de choses d\'un coup : Lumière, Densité, Espace, Nostalgie, Nature. Ils sont dans Écouter.',
+    't.share': 'Tu peux envoyer ton paysage à quelqu\'un avec un lien, et garder tous tes paysages dans un fichier.',
+    't.dice': '✦ Nouveau paysage invente un son complet selon une humeur, et le menu Paysage en propose des tout prêts.',
+    'h.pad': 'Une nappe d\'accords, des notes tenues ensemble, qui s\'étend sous le drone. Tu pourras changer son timbre ou la couper dans Sculpter, Pad.',
+    'h.drone': 'Le drone ne reste plus sur la même note : il change avec les accords du Pad.',
+    'h.pad2': 'Les accords peuvent arriver doucement ou d\'un coup, avoir plus de notes, et durer plus ou moins longtemps.',
+    'h.key': 'Tu peux faire monter ou descendre toute la musique d\'un coup. L\'écran montre aussi le nom des notes et des accords.',
+    'h.scale': 'Une gamme, c\'est la famille de notes que joue l\'instrument. Il y en a 11, des plus joyeuses aux plus tristes.',
+    'h.prog': 'Tu choisis toi-même les accords et leur ordre, case par case, dans Composer.',
+    'e.reverb': 'Le son résonne comme dans une grande salle. Tu règles la taille de cet espace, et combien chaque couche y va.',
+    'e.texture': 'Une nouvelle couche : des bruits de nature sous la musique, comme la pluie, le vent, l\'océan ou les oiseaux.',
+    'e.salle': 'Tu choisis la forme de la salle où sonne la musique, et sa taille : une chapelle, une grotte, un nuage.',
+    'e.echo': 'Les notes se répètent toutes seules, de plus en plus doucement, en rythme avec la musique.',
+    'e.halo': 'Une lueur aiguë qui scintille autour du son, comme des étoiles dans la salle.',
+    'e.tape': 'Le son tremble un peu, comme sur une vieille cassette : plus chaud, plus rêveur.',
+    'e.lofi': 'Le son devient abîmé et granuleux, comme un vieux disque ou une radio lointaine.',
+    'm.bells': 'Une couche qui joue des notes toute seule, au-dessus du drone. Et toi aussi tu peux jouer : les pastilles sous l\'écran ou les touches A à L.',
+    'm.tempo': 'Tu choisis la vitesse de la musique, et si elle bat comme un cœur (Pulsé) ou si elle flotte (Flottant).',
+    'm.phrase': 'La Mélodie auto peut répéter une petite phrase, qui change un peu à chaque tour, comme une chanson.',
+    'm.evolve': 'Tes réglages bougent tout seuls, un tout petit peu, autour de là où tu les as mis : le son vit sans toi.',
+    'm.grains': 'Une nouvelle couche faite de minuscules morceaux de son, comme un nuage de poussière qui chante.',
+    'm.grains2': 'Les grains peuvent venir de ton propre son : un fichier, le micro, ou ❄ Figer qui attrape ce que tu entends.',
+    'm.lfo': 'Tu choisis un réglage et il bouge tout seul, très lentement, comme une vague qui va et vient.',
+    'm.scenes': 'Tu gardes deux sons, A et B, et tu glisses de l\'un à l\'autre, à la main ou tout seul.',
+    'c.seq': 'Tu écris ta propre mélodie note par note dans Composer, ou tu la joues et elle s\'écrit toute seule (● Rec live).',
+    'c.rythme': 'Une basse qui joue sous les accords, et des petits battements, comme une batterie toute douce.',
+    'c.song': 'Tu enchaînes plusieurs moments pour faire un vrai morceau, du début à la fin, et tu peux l\'enregistrer.',
+  };
+  for (const n of NODES) n.why = EXPLAIN[n.id] || n.desc;
+
   const byId = Object.fromEntries(NODES.map((n) => [n.id, n]));
   const exact = {}, suffix = {}, prefix = {};
   for (const n of NODES) for (const p of n.params) {
@@ -95,7 +132,7 @@
   };
 
   const tree = {
-    BRANCHES, NODES, byId, UI_SEL, UI_LABEL,
+    BRANCHES, NODES, byId, UI_SEL, UI_LABEL, EXPLAIN,
     // what a node opens, grouped by layer and deduplicated (node card): « Mélodie : Son, Volume · Pad · Piano roll »
     grantGroups(id) {
       const n = byId[id]; if (!n) return [];
@@ -134,11 +171,12 @@
       return suffix[key.slice(dot)] || prefix[key.slice(0, dot + 1)] || null;
     },
     nodeForUi(name) { return uiNode[name] || null; },
-    // can this node be opened now? (prerequisites owned)
+    // can this node be opened now? (prerequisites owned). S4.6: 'ready' = won, waiting for the player to open it
     status(id, g = AMB.game) {
       const n = byId[id];
       if (!n) return 'none';
       if (g.has(id)) return 'owned';
+      if (g.isReady && g.isReady(id)) return 'ready';
       return n.req.every((r) => g.has(r)) ? 'available' : 'locked';
     },
     paramUnlocked(key, g = AMB.game) {
@@ -155,29 +193,72 @@
   };
 
   // hide what is not unlocked yet (path mode only; free mode = the full app, untouched)
-  tree.applyLocks = function (g = AMB.game) {
+  // live = a node was just opened: what comes out of its lock is animated in (appear)
+  tree.applyLocks = function (g = AMB.game, live = false) {
     if (typeof document === 'undefined' || !document.body) return;
-    const on = g.path;
+    const on = g.path, fresh = [];
+    const lock = (el, locked) => { if (!locked && el.classList.contains('is-locked')) fresh.push(el); el.classList.toggle('is-locked', locked); };
     document.body.classList.toggle('game', on);
     document.querySelectorAll('[data-node]').forEach((el) => {
-      const locked = on && (el.dataset.ui ? !this.uiUnlocked(el.dataset.ui, g) : el.dataset.key ? !this.paramUnlocked(el.dataset.key, g) : !g.isUnlocked(el.dataset.node));
-      el.classList.toggle('is-locked', locked);
+      lock(el, on && (el.dataset.ui ? !this.uiUnlocked(el.dataset.ui, g) : el.dataset.key ? !this.paramUnlocked(el.dataset.key, g) : !g.isUnlocked(el.dataset.node)));
     });
     // a panel with nothing unlocked inside disappears as a whole
     document.querySelectorAll('.panel').forEach((p) => {
       if (p.dataset.node) return; // feature panels (chords, song) follow their own node
       const tagged = p.querySelectorAll('[data-node]');
-      p.classList.toggle('is-locked', on && tagged.length > 0 && !p.querySelector('[data-node]:not(.is-locked)'));
+      lock(p, on && tagged.length > 0 && !p.querySelector('[data-node]:not(.is-locked)'));
     });
     // top-bar groups whose buttons are all locked disappear with their caption
     document.querySelectorAll('.tgrp').forEach((t) => {
       const tagged = t.querySelectorAll('[data-node]');
-      t.classList.toggle('is-locked', on && tagged.length > 0 && !t.querySelector('[data-node]:not(.is-locked)'));
+      lock(t, on && tagged.length > 0 && !t.querySelector('[data-node]:not(.is-locked)'));
     });
+    if (live && on && fresh.length) this.appear(fresh);
     // never stay in a mode that is locked
     const cur = AMB.mode;
     if (on && cur && cur !== 'listen' && !this.uiUnlocked('mode-' + cur, g) && AMB.perform) AMB.perform.setMode('listen');
   };
+
+  // ---- S4.6: what a node opens comes in animated, then stays highlighted ----
+  // One generic class set, for every control, panel, button or mode a lock lets out: `is-appearing` (unfolds, fades and
+  // grows in, ~0.5 s, css), then `is-new` (a pulsing halo) until the player touches it, NEW_MS at most; a « Nouveau » tag
+  // (`is-new-first`) points at the first one. hold() keeps them back while the map's opening sequence plays
+  // (garden-tree.js), release() lets them in. Reduced motion: no unfolding nor pulse (css), the halo and the tag stay.
+  tree.NEW_MS = 8000;
+  tree.APPEAR_MS = 550;
+  tree.held = 0; tree.pending = [];
+  tree.hold = function () { this.held++; };
+  tree.release = function () {
+    this.held = Math.max(0, this.held - 1);
+    if (!this.held && this.pending.length) { const p = this.pending; this.pending = []; this.appear(p); }
+  };
+  tree.appear = function (els) {
+    if (this.held) { this.pending.push(...els); return []; }
+    els = [...new Set(els)].filter((e) => e.isConnected && !e.closest('.is-locked') && !e.closest('.menu'));
+    // the outermost unfolds (a panel with its controls unfolds once); the controls themselves get the halo
+    for (const e of els.filter((e) => !els.some((o) => o !== e && o.contains(e)))) {
+      e.classList.remove('is-appearing'); void e.offsetWidth; e.classList.add('is-appearing');
+      setTimeout(() => e.classList.remove('is-appearing'), this.APPEAR_MS + 100);
+    }
+    const hl = els.filter((e) => e.dataset.node && !e.matches('.stage .hint')); // (the keys line just appears)
+    if (!hl.length) return hl;
+    hl.forEach((e) => e.classList.add('is-new'));
+    // the tag: on the first full control (not an Écouter shortcut), never on a form field (no ::after there)
+    const tagOk = (e) => !e.matches('select, input, textarea, canvas, img');
+    const first = hl.find((e) => tagOk(e) && !e.closest('.macros')) || hl.find(tagOk) || null;
+    document.querySelectorAll('.is-new-first').forEach((e) => e.classList.remove('is-new-first', 'is-new-rel'));
+    if (first) { first.classList.add('is-new-first'); if (getComputedStyle(first).position === 'static') first.classList.add('is-new-rel'); }
+    this.newFirst = first || hl[0];
+    clearTimeout(this._newT); this._newT = setTimeout(() => this.clearNew(), this.NEW_MS);
+    return hl;
+  };
+  tree.clearNew = function (el) {
+    (el ? [el] : [...document.querySelectorAll('.is-new')]).forEach((e) => e.classList.remove('is-new', 'is-new-first', 'is-new-rel'));
+  };
+  // the first touch on a highlighted control ends its highlight
+  if (typeof document !== 'undefined') ['pointerdown', 'change'].forEach((t) => document.addEventListener(t, (e) => {
+    const el = e.target && e.target.closest && e.target.closest('.is-new'); if (el) tree.clearNew(el);
+  }, true));
 
   // ---- sound locking (G1.5) ----
   // While locked, a parameter is pinned to a neutral value; the store refuses any other write
@@ -238,6 +319,7 @@
     AMB.bus.on('game:reset', () => { if (AMB.game.path && !AMB.game.has('racine')) AMB.game.unlock('racine'); tree.pinLocked(); });
     AMB.bus.on('game:unlock', (d) => tree.onUnlock(d.id));
   }
-  if (AMB.bus) ['mode', 'unlock', 'reset'].forEach((e) => AMB.bus.on('game:' + e, () => tree.applyLocks()));
+  if (AMB.bus) ['mode', 'reset'].forEach((e) => AMB.bus.on('game:' + e, () => tree.applyLocks()));
+  if (AMB.bus) AMB.bus.on('game:unlock', (d) => tree.applyLocks(AMB.game, !!(d && d.id !== 'racine')));
   // the root is free: own it as soon as the path starts
 })();

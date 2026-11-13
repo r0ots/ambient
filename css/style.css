@@ -412,10 +412,17 @@ body.game .is-locked { display: none !important; }
 .tree-grp { display: none !important; }
 body.game .tree-grp { display: flex !important; }
 
-.is-new { position: relative; animation: is-new-glow 1.2s ease-in-out 4; outline: 2px solid var(--lcd-fg); outline-offset: 3px; border-radius: 8px; }
-.is-new::after { content: 'NOUVEAU'; position: absolute; top: -9px; right: -6px; font: 11px var(--f-lcd); letter-spacing: .08em; padding: 0 4px; border-radius: 3px; background: var(--lcd-fg); color: #1a1408; pointer-events: none; z-index: 2; }
-@keyframes is-new-glow { 50% { box-shadow: 0 0 18px color-mix(in srgb, var(--lcd-fg) 60%, transparent); } }
-@media (prefers-reduced-motion: reduce) { .is-new { animation: none; } }
+/* S4.6: what a node opens comes in (tree.appear): unfolds from the top, fades and grows in (~0.55 s), then a pulsing halo
+   until it is touched (8 s at most); the « Nouveau » tag points at the first one. Generic: any control, panel, button. */
+.is-appearing { animation: is-appear .55s cubic-bezier(.2, .8, .3, 1) both; transform-origin: 50% 0; }
+@keyframes is-appear { from { opacity: 0; transform: scale(.94); clip-path: inset(0 0 100% 0); } 60% { opacity: 1; } to { opacity: 1; transform: none; clip-path: inset(0 0 0 0); } }
+.is-new { outline: 2px solid var(--lcd-fg); outline-offset: 3px; border-radius: 8px; animation: is-new-glow 1.6s ease-in-out infinite; }
+.is-new.is-appearing { animation: is-appear .55s cubic-bezier(.2, .8, .3, 1) both, is-new-glow 1.6s ease-in-out .55s infinite; }
+.is-new-rel { position: relative; }
+.is-new-first::after { content: 'Nouveau ▾'; position: absolute; bottom: calc(100% + 5px); left: 50%; transform: translateX(-50%); font: 15px/1.1 var(--f-lcd); letter-spacing: .04em; padding: 1px 6px; border-radius: 4px; background: var(--lcd-fg); color: #1a1408; white-space: nowrap; pointer-events: none; z-index: 5; box-shadow: 0 2px 8px #0008; animation: is-new-tag 1.6s ease-in-out infinite; }
+@keyframes is-new-glow { 50% { outline-color: #fff3c4; box-shadow: 0 0 18px color-mix(in srgb, var(--lcd-fg) 60%, transparent); } }
+@keyframes is-new-tag { 50% { transform: translate(-50%, -3px); } }
+@media (prefers-reduced-motion: reduce) { .is-appearing, .is-new, .is-new.is-appearing, .is-new-first::after { animation: none; } }
 .lcd { position: relative; }
 body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* S4.3: no key / chord names before Tonalité */
 @keyframes lcd-bump { 30% { transform: scale(1.35); color: #fff3c4; } }
@@ -430,6 +437,23 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .lcd-skip { padding: 0 4px !important; font-size: 20px !important; color: var(--lcd-fg) !important; }
 .lcd-skip:hover, .lcd-task-txt:hover { color: #fff3c4 !important; }
 .lcd-task.bump { animation: lcd-bump .6s; }
+/* S4.6: a node won waits for the player — « ✦ Ouvrir : <nœud> » as a lit LCD key that breathes */
+.lcd-task.ready .lcd-task-txt { justify-self: start; padding: 1px 8px !important; border-radius: 4px; background: var(--lcd-fg); color: #1a1408; text-shadow: none; animation: ready-pulse 2s ease-in-out infinite; }
+.lcd-task.ready .lcd-task-txt:hover { color: #000 !important; background: #fff3c4; }
+.lcd-task.ready .lcd-task-n { color: var(--lcd-fg); font-size: 16px; }
+@keyframes ready-pulse { 50% { box-shadow: 0 0 12px var(--lcd-fg); filter: brightness(1.15); } }
+.tree-btn.has-ready::after { content: '✦'; position: absolute; top: -6px; right: -6px; font-size: 13px; color: var(--lcd-fg); text-shadow: 0 0 6px var(--lcd-fg); animation: ready-pulse 2s ease-in-out infinite; }
+/* the card that says what a node gives, before opening it */
+.open-card { max-width: 440px; border-top: 3px solid var(--c, var(--lcd-fg)); }
+.open-card .open-kicker { margin: 0 0 2px; font: 16px var(--f-lcd); letter-spacing: .06em; color: var(--lcd-fg); }
+.open-card h3 { color: var(--c, var(--lcd-fg)); margin-bottom: 6px; }
+.modal-card .open-why { font-size: 17px; line-height: 1.5; margin: 0 0 8px; }
+.modal-card .open-more { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+.modal-card .open-more:empty { display: none; }
+.open-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.open-actions .open-go { font-size: 16px; padding: 8px 18px; animation: ready-pulse 2s ease-in-out infinite; }
+.open-dlg:not([hidden]) .open-card { animation: is-appear .45s cubic-bezier(.2, .8, .3, 1) both; }
+@media (prefers-reduced-motion: reduce) { .lcd-task.ready .lcd-task-txt, .tree-btn.has-ready::after, .open-actions .open-go, .open-dlg:not([hidden]) .open-card { animation: none; } }
 @media (prefers-reduced-motion: reduce) { .lcd-task.bump { animation: none; } }
 #lcdTop.lcd-flash { animation: lcd-flash 1.2s ease-out; text-shadow: 0 0 10px var(--lcd-fg); }
 @keyframes lcd-flash { 0%, 30% { opacity: 1; } 10%, 20% { opacity: .35; } 100% { opacity: 1; } }
@@ -460,6 +484,7 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .tree-legend i { display: inline-block; flex: none; width: 11px; height: 11px; border-radius: 50%; background: #121110; box-shadow: 0 0 0 1px #4a4844; }
 .tree-legend i.st-owned { background: #8fe3a0; box-shadow: 0 0 6px #8fe3a0; }
 .tree-legend i.st-available { background: var(--lcd-fg); box-shadow: 0 0 6px var(--lcd-fg); }
+.tree-legend i.st-ready { background: #fff3c4; box-shadow: 0 0 0 2px var(--lcd-fg), 0 0 8px var(--lcd-fg); }
 .tree-legend > .tree-tip { flex-basis: 100%; font-size: 11px; white-space: normal; display: block; }
 .tree-tip .tip-short { display: none; }
 .tree-view { position: relative; flex: 1 1 auto; min-height: 340px; margin-top: 8px; border-radius: var(--radius, 4px); background: radial-gradient(ellipse 70% 60% at 50% 100%, #2b2414 0, #151412 75%); box-shadow: var(--bevel-in, inset 0 2px 3px #000a); overflow: hidden; }
@@ -495,6 +520,9 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .tree-node.st-locked b, .tree-node.st-locked span { opacity: .6; }
 .tree-node.st-available { color: var(--lcd-fg); }
 .tree-node.st-available .led { background: radial-gradient(circle at 35% 30%, #fff0c8, var(--lcd-fg) 45%, #8a4d10); animation: led-breathe 2.6s ease-in-out infinite; }
+.tree-node.st-ready { color: #fff3c4; }
+.tree-node.st-ready .led { background: radial-gradient(circle at 35% 30%, #fff, #fff3c4 40%, var(--lcd-fg)); box-shadow: 0 0 0 2px var(--lcd-fg), 0 0 16px var(--lcd-fg); animation: led-breathe 1.4s ease-in-out infinite; }
+.tree-node.st-ready span { color: var(--lcd-fg); }
 .tree-node.st-owned { color: var(--text); }
 .tree-node.st-owned .led { background: radial-gradient(circle at 35% 30%, #fff, var(--c) 42%, color-mix(in srgb, var(--c) 55%, #000)); box-shadow: inset 0 -2px 3px #0006, 0 0 0 2px #0b0a09, 0 0 14px color-mix(in srgb, var(--c) 70%, transparent); }
 .tree-node.st-owned span { color: var(--c); }
@@ -545,7 +573,7 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
   .tree-zoom .btn { min-width: 28px; padding: 3px 7px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .tree-node .led, .tree-node.st-available .led, .tree-node.is-buying .led, .tree-node.is-born .led, .tree-node.is-blink .led, .tree-link.available, .tree-glow.lit, .tree-glow.hint { animation: none; transition: none; }
+  .tree-node .led, .tree-node.st-available .led, .tree-node.st-ready .led, .tree-node.is-buying .led, .tree-node.is-born .led, .tree-node.is-blink .led, .tree-link.available, .tree-glow.lit, .tree-glow.hint { animation: none; transition: none; }
 }
 
 /* Touch pads (S4.4): the 9 notes of A–L under the screen; low to high = deep blue to warm gold; letters only with a mouse */
