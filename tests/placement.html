@@ -17,10 +17,11 @@ f.addEventListener('load', async () => {
     const fxs = []; const fx0 = A.garden.fx; A.garden.fx = function (k, o) { fxs.push(k); return fx0.apply(this, arguments); };
     const L0 = A.layers, n0 = P.now; let now = 0, step = 0;
     A.layers = { bells: { note() {}, ch: { setLevel() {} } } }; P.now = () => now; P.cancel();
-    const sd = 0.25, S = A.seq;
+    let sd = 0.25; const S = A.seq;
     const run = (secs) => { const end = now + secs; while (now < end) { P.onStep(step, now, sd); step++; now += sd; } };
     const until = (fn, secs = 120) => { const end = now + secs; while (now < end && !fn()) run(sd); return fn(); };
-    const lv = (m, t) => A.bus.emit('live', { midi: m, time: t + 0.1, vel: 0.85, raw: null, played: t });
+    let raw = null; // null: the pads (the son, the first virtuoso); a velocity: the MIDI keyboard (S6.7)
+    const lv = (m, t) => A.bus.emit('live', { midi: m, time: t + 0.1, vel: 0.85, raw, played: t });
     let res = null; A.bus.on('game:puzzle', (e) => { if (e.phase === 'end') res = e.res; });
     const places = []; A.bus.on('resp:place', (e) => places.push(e.id));
     const tri = (c, i) => c.midis.slice(3 * i, 3 * i + 3);
@@ -30,11 +31,12 @@ f.addEventListener('load', async () => {
     const phrase = (play) => { g.s.active = []; res = null; if (!until(() => P.cur)) return null; const c = P.cur; play(c); until(() => !P.cur, 30); return res; };
     const st = P.st(g);
 
-    // 1. the virtuoso: Phrases → … → Syncopes ×2 = Musicien
+    // 1. the virtuoso (at the pads): Phrases 3, 4, then a first long answer right and tight (S6.7: the Phrases skipped) →
+    //    Octaves ×2 → Syncopes ×2 = Musicien
     let k = 0, r; while (!places.length && k++ < 30) { r = phrase(virtuoso); if (!r || !r.ok) break; }
     const M = P.PLACE[0], ready = g.readyIds();
-    ok(places.join() === 'musicien' && r.place && r.place.name === 'Musicien' && k === 10 && P.level(st.lvl - 1).id === 'syncopes',
-      `virtuose : « Musicien détecté » après ${k} réussites, la 2e au palier Syncopes (niveau ${st.lvl - 1})`);
+    ok(places.join() === 'musicien' && r.place && r.place.name === 'Musicien' && k === 7 && st.skip && P.level(st.lvl - 1).id === 'syncopes',
+      `virtuose aux pastilles : « Musicien détecté » après ${k} réussites (la 3e, longue et serrée, saute les Phrases), la 2e au palier Syncopes (niveau ${st.lvl - 1})`);
     ok(M.nodes.every((id) => g.isReady(id) && !g.has(id)) && ready.length === r.place.nodes.length && ready.length >= 9,
       `toute la branche passe à « prêt » (${ready.length}) dans la file, rien d'ouvert : ${ready.join(' ')}`);
     await wait(50);
@@ -78,6 +80,20 @@ f.addEventListener('load', async () => {
     // gate phrases (capped, untimed) neither count nor break the run
     { const s4 = P.st(g); s4.lvl = 8; s4.pt = []; P.cancel(); g.s.active = ['p.suite']; g.s.prog['p.suite'] = { n: 0 }; res = null; until(() => P.cur); const c = P.cur; virtuoso(c); until(() => !P.cur, 30);
       ok(c.gate === 'p.suite' && res && res.ok && !s4.pt.length && !places.length, 'une porte réussie ne compte pas dans le placement'); }
+    ok(!P.midi, 'pastilles seulement (fils, joueur sans rythme) : jamais vu comme un clavier MIDI');
+
+    // S6.7 the nephew at the MIDI keyboard, default tempo (66 bpm): his scale at the start tells it, the Réponse starts at
+    // the Octaves; target « ⚡ Musicien détecté » in < 90 s from the Mélodie auto (one miss on the way allowed)
+    for (const miss of [false, true]) {
+      g.reset(); g.setMode('path'); g.unlock('m.bells'); P.cancel(); places.length = 0; P.midi = false;
+      sd = 60 / A.store.spec('global.tempo').def / 4; raw = 0.8;
+      [0, 2, 4, 5, 7].forEach((d, i) => lv(60 + d, now + i * 0.2)); // a scale at the MIDI keyboard, before any phrase
+      const t0 = now, s5 = P.st(g); let n = 0, missed = !miss;
+      while (!places.length && n++ < 12) phrase((c) => { if (!missed && n === 2) { missed = true; c.want.forEach((m, i) => lv(m + 1, c.ans + c.steps[i] * sd)); } else virtuoso(c); });
+      const secs = now - t0;
+      ok(places[0] === 'musicien' && secs < 90 && s5.skip, `musicien au clavier MIDI${miss ? ', un raté en route' : ''} : « ⚡ Musicien détecté » en ${Math.round(secs)} s (${n} phrases, < 90 s)`);
+    }
+    raw = null; sd = 0.25; P.midi = false;
 
     // 5. older saves load: the S2 placement fields (placed, placement), a resp of S4.2 (len) or S5.3 (lvl) without place
     localStorage.setItem(g.key, JSON.stringify({ v: 1, mode: 'path', nodes: ['racine', 'm.bells', 'h.pad'], placed: ['h.pad'], placement: { at: 1, passed: ['harmonie'] }, resp: { len: 6, streak: 2, best: 7, miss: {} } }));
