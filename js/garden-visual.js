@@ -723,18 +723,22 @@
     // a handful of splashes blink on the street; it stops at dawn
     drawRain(g, W, H, k) {
       if (k < 0.02) return 0;
-      const px = this.px || 3, T = this.st, r = mulberry(131), n = Math.round(60 * Math.min(2.5, Math.max(0.6, W / 1000)));
-      const lw = Math.max(1, Math.round(px * 0.34)), cols = [rgb(TOK.rain, 1, 0.2), rgb(TOK.rain, 1, 0.34), rgb(TOK.pink, 1, 0.4)];
-      for (let i = 0; i < n; i++) {
-        const z = r() < 0.6 ? 0.55 : 1, x0 = r() * W, y0 = r() * H, L = Math.round(px * (3 + 6 * z)), v = H * (0.55 + 0.5 * z), c = i % 13 === 0 ? 2 : z < 1 ? 0 : 1;
-        const y = ((y0 + T * v) % (H + L)) - L, x = ((x0 - (y + T * v) * 0.12) % W + W) % W;
-        g.fillStyle = cols[c]; g.globalAlpha = k; g.fillRect(Math.round(x), Math.round(y), lw, L);
+      const px = this.px || 3, T = this.st, key = W + 'x' + H + '|' + px;
+      if (!this.rain || this.rain.key !== key) { // [x0, y0, length, speed, colour] per streak, by colour
+        const r = mulberry(131), n = Math.round(60 * Math.min(2.5, Math.max(0.6, W / (this.dpr || 1) / 1000))), by = [[], [], []];
+        for (let i = 0; i < n; i++) { const z = r() < 0.6 ? 0.55 : 1, L = Math.round(px * (3 + 6 * z)); by[i % 13 === 0 ? 2 : z < 1 ? 0 : 1].push([r() * W, r() * H, L, H * (0.55 + 0.5 * z)]); }
+        this.rain = { key, by, n, lw: Math.max(1, Math.round(px * 0.34)), cols: [rgb(TOK.rain, 1, 0.2), rgb(TOK.rain, 1, 0.34), rgb(TOK.pink, 1, 0.4)] };
+      }
+      const Rn = this.rain, lw = Rn.lw; g.globalAlpha = k;
+      for (let c = 0; c < 3; c++) {
+        g.fillStyle = Rn.cols[c];
+        for (const [x0, y0, L, v] of Rn.by[c]) { const d = y0 + T * v, y = (d % (H + L)) - L, x = ((x0 - d * 0.12) % W + W) % W; g.fillRect(x | 0, y | 0, lw, L); }
       }
       const q = mulberry(Math.floor(T * 9)), gd = this.ground, s = Math.max(1, px >> 1);
-      g.fillStyle = rgb(TOK.rain, 1, 0.5); g.globalAlpha = k * 0.7;
-      for (let i = 0; i < 12; i++) g.fillRect(Math.round(q() * W / px) * px, Math.round((gd + px * 2 + q() * (H - gd - px * 3)) / px) * px, 2 * px, s);
+      g.fillStyle = Rn.cols[1]; g.globalAlpha = k * 0.9;
+      for (let i = 0; i < 10; i++) g.fillRect(Math.round(q() * W / px) * px, Math.round((gd + px * 2 + q() * (H - gd - px * 3)) / px) * px, 2 * px, s);
       g.globalAlpha = 1;
-      return n;
+      return Rn.n;
     },
     chordKey(deg) {
       let minor = false;
@@ -961,14 +965,7 @@
         g.globalAlpha = 0.42 * on * (R ? 0.3 + 0.7 * Math.min(1, this.lit[p.id] || 0) : 1);
         g.setTransform(p.kx, 0, (p.sway || 0) * ky * p.gy, -ky * p.gy * 0.62, p.x + ox, p.y + oy + this.px); g.drawImage(s.cv, -s.w / 2, -s.h);
       }
-      g.setTransform(1, 0, 0, 1, ox, oy); g.globalCompositeOperation = 'lighter';
-      for (const p of this.plants) { // its neon smeared down the wet asphalt, brighter as it plays
-        if (!p.gy || p.gy < 0.05) continue;
-        const Rg = Math.max(8, Math.round(this.px * 6)), gl = this.glow(p.col, Rg), on = p.look ? 0.3 + 0.7 * p.look.on : 1, e = this.energy[p.id] || 0;
-        g.globalAlpha = Math.min(1, (0.22 + 0.5 * e) * on * (R ? 0.3 + 0.7 * Math.min(1, this.lit[p.id] || 0) : 1));
-        g.drawImage(gl, p.x - Rg * 0.6, p.y + this.px, Rg * 1.2, Math.min(H - p.y, Rg * 5));
-      }
-      g.globalCompositeOperation = 'source-over';
+      g.setTransform(1, 0, 0, 1, ox, oy);
       const cv = this.fx('wet', W, H - gd, (w, h, px) => {
         const c = this.canvas(w, h), x = c.getContext('2d'), grd = x.createLinearGradient(0, 0, 0, h);
         grd.addColorStop(0, rgb(TOK.ground, 1, 0.05)); grd.addColorStop(0.6, rgb(TOK.ground, 1, 0.6)); grd.addColorStop(1, rgb(TOK.ground, 1, 0.95));
@@ -1100,8 +1097,7 @@
     drawCrt(g, W, H) {
       const k = this.crt(); if (!k) return 0;
       const bh = Math.round(H * 0.1), y = ((this.st * H * 0.08) % (H + 3 * bh)) - 2 * bh;
-      g.globalCompositeOperation = 'lighter'; g.fillStyle = '#b8a0ff';
-      for (let i = 0; i < 3; i++) { g.globalAlpha = Math.min(1, 0.022 * k * (i === 1 ? 1.6 : 1)); g.fillRect(0, Math.round(y + i * bh * 0.5), W, Math.round(bh * (i === 1 ? 0.5 : 1.5))); }
+      g.globalCompositeOperation = 'lighter'; g.fillStyle = '#b8a0ff'; g.globalAlpha = Math.min(1, 0.03 * k); g.fillRect(0, Math.round(y), W, bh);
       g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
       return 1;
     },
