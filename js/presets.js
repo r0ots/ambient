@@ -97,7 +97,7 @@
       'perc.on': true, 'perc.kit': 'Métal', 'perc.steps': '32', 'perc.vol': 0.6, 'perc.prob': 0.4, 'perc.send': 0.7, 'perc.tone': 0.1,
       'perc.pattern': '30000000000000000000000000000000.00000000000000000000000000000000.00000000000000000000001000000000.00000000000000000000000000000000',
       'fx.space': 0.7, 'fx.size': 0.85, 'fx.revType': 'Cloud', 'fx.predelay': 0.2, 'fx.shimmer': 0, 'fx.echo': 0.15, 'fx.tape': 0.6, 'fx.lofi': 0.5,
-      'mod.l1target': 'drone.tone', 'mod.l1rate': 0.2, 'mod.l1depth': 0.5, 'mod.l1shape': 'Dérive', 'mod.l2target': 'pad.vol', 'mod.l2rate': 0.3, 'mod.l2depth': 0.6, 'mod.l2shape': 'Dérive',
+      'mod.l1target': 'drone.tone', 'mod.l1rate': 0.2, 'mod.l1depth': 0.5, 'mod.l1shape': 'Dérive', 'mod.l2target': 'drone.vol', 'mod.l2rate': 0.5, 'mod.l2depth': 1, 'mod.l2shape': 'Triangle',
     },
     // pulsed distorted sub, metal and industrial percussion, waves that climb (filter + intensity) then fall back
     'Menace': {
