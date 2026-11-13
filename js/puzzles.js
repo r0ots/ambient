@@ -150,7 +150,7 @@
       const bar = 16 * sd, end = time + steps[len - 1] * sd, f = lv.f || 1;
       this.cur = {
         gate: gate ? gate.id : null, lvl: gate ? len - MIN : s.lvl, tier: lv.id, degs, midis, want, steps, len, timed, sd, f,
-        oct: !!lv.oct, tr, chord, cdeg, pcs, grp: null, off: null, t0: time, row: [],
+        oct: !!lv.oct, sync: !!lv.sync, tr, chord, cdeg, pcs, grp: null, off: null, t0: time, row: [],
         from: end + Math.min(0.15, sd), // notes played along with the phrase are not an answer
         ans: time + bar, // the answer bar
         until: timed ? time + 2 * bar + this.tol(sd, f) : time + bar + Math.max(2 * bar, 6), // untimed: take your time
@@ -171,7 +171,7 @@
       const c = this.cur; if (!c || !this.can()) return null;
       if (played > c.until) { this.close(); return null; }
       if (played < c.from) return null;
-      const i = c.row.length, t = c.want[i];
+      const i = c.row.length, t = (c.want || c.midis)[i];
       if (c.chord) { // by hand: its notes within GROUP s, in any order and octave; a foreign note = wrong
         const want = c.pcs[i], pc = pcOf(midi);
         if (!want.includes(pc)) return this.peg({ state: 'far', dir: null });
@@ -217,7 +217,7 @@
       const lv = level(s.lvl); s.len = lv.len;
       const res = { ok, len: c.len, row: c.row, next: s.len, lvl: s.lvl, name: tierName(lv), streak: s.streak, best: s.best, gate: c.gate };
       if (ok && lv.id !== was.id && lv.tier > was.tier) res.tier = lv.name; // a new tier reached
-      if (ok && best0 > 0 && s.streak === best0 + 1) res.record = s.best; // the record just beaten (once per series)
+      if (!ok) s.beat = false; else if (best0 > 0 && s.streak > best0 && !s.beat) { s.beat = true; res.record = s.best; } // the record beaten (once per series)
       this.last = Object.assign(c, { ok, at: this.now() });
       this.wait = gate ? GAP.gate : GAP.free;
       if (gate && c.gate === gate.id) {
