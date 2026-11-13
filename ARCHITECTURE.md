@@ -65,6 +65,35 @@ Règle de produit (v1.05) : le jeu se joue SUR l'instrument (ses commandes, son 
 - Pastilles (`play.js`) : une note de la Mélodie auto (`note` bells non live) allume 0,17 s la pastille de la même note, la plus proche en hauteur (`padForMidi`), de sa couleur (`.pad.auto`). La phrase de la Réponse est `live` : elle n'allume rien. Coût (`tests/garden-visual.html`, 8 notes jouées / s + accord / s + machine) ~0,3 ms par image.
 - Fêtes de la Réponse (S5.3, `garden.cheer`) : même système, lignes `streak` / `record` / `tier` de `SPLASH` sur la plante Mélodie (plus de particules, rebond plus ample ; record et palier secouent la scène), même `JUICE`. Il n'y a qu'un réglage d'intensité pour tout le juice du Jardin.
 
+## Chaque bouton a un impact visuel (S5.8)
+- Deux tables en tête de `garden-visual.js`, indépendantes du dessin : `LOOK` (plantes, S4.6 ; + aspect `on` : couche coupée = plante éteinte) et `SCENE` (calques de la scène). Un calque = une intensité 0..1, moyenne de ses réglages (liste = rang de l'option, interrupteur 0/1, texte = ce qu'il contient, bouton = sa course) ; `poll` = état hors store (mode, lecture, Morceau). `AMB.gardenVisual.layers()` les donne (pour les combos S5.10). Toucher (sources `user` / `macro` / `xy`, ou l'événement `ev` : `freeze`, `section`) = impulsion 1 → 0 en 0,8 s sur le calque (`kick`), en plus de l'état durable. Dessin : intensité² (réglages par défaut = scène calme) + impulsion ; tempo = vitesse de toute la scène (Flottant plus lent).
+- Audit (commande → reflet) :
+
+| Commande | Reflet |
+|---|---|
+| Niveau, Lumière, Timbre, Espace, mouvement, densité de chaque couche ; Volume ; Usure, Cassette, Reverb, Halo (sur les plantes) | plantes (`LOOK`, S4.6) |
+| On de chaque couche (coupure) | plante éteinte (`LOOK.on`) |
+| Grands réglages, pad XY, CC MIDI 1 / 74 / 91 / 93 | par les réglages qu'ils bougent (plantes et calques), impulsion |
+| Accord, Gamme | ciel (S4.5w) ; notes, accords forcés : éclats (S5.2) |
+| Tonalité, Diapason | `hue` : teinte du ciel |
+| Dérive | `clouds` : nuages qui dérivent |
+| Mouvements lents, automation du Morceau | `twinkle` : étoiles qui scintillent |
+| Halo | `aurora` : aurores |
+| Suit accords (Drone), Durée accord, Progression, Degrés perso, Voix intérieure | `rays` : rayons |
+| Mélodie auto (Jeu, Phrase, Variation, Registre), Mélodie écrite (Jeu, arpège, Longueur, Octave, Suit accords, Résonance, Variation, motifs B–D, Édition, Chaîne) | `fireflies` : lucioles |
+| Reverb, Salle, Taille, Pré-délai | `haze` : brume |
+| Grains (Zone, Hauteurs, À l'envers, Glissando) | `snow` : neige de pixels |
+| Source des grains, Gel | `frost` : givre |
+| Swing, Imprécision, Octave de la basse, Pas des pulsations | `ripple` : ondulation du sol |
+| Écho, Vitesse écho, Répétitions | `echo` : plantes fantômes |
+| Cassette | `tape` : bande qui défile, lignes qui tremblent |
+| Usure | `grain` : grain et vignette |
+| Écouter / Sculpter / Composer | `lens` : rien / grille / grille + portée |
+| Lecture / Stop | `play` : scène voilée à l'arrêt, éclair au changement |
+| Morceau (sections) | `song` : barre d'avancée, balayage à chaque section |
+| Tempo, Pulsé / Flottant | ondulation des plantes (S4.6) et vitesse de la scène |
+- Coût (`tests/garden-visual.html`, 1280×800, tous les calques au maximum, un réglage touché toutes les 6 images) ~0,3 ms par image. Calques en cache (canevas basse résolution, recréés au changement de taille), rien hors écran (`frame` ne tourne pas), aucune relecture du canevas (elle bloquerait le rendu). Mouvement réduit : calques présents mais immobiles (temps de scène figé, pas de balayage, grain fixe). Captures : `tests/shot-look.html#scene` (Usure, Reverb, tempo rapide), `#scene-default`, `#scene-lofi` / `#scene-reverb` / `#scene-fast`.
+
 ## Mode libre intact
 - En libre : aucun verrou, aucune interface de jeu (la 2e ligne du LCD redevient l'état du son), aucun gain ni détection, pas de carillon. Son, journal, annulation et liens partagés sans trace du jeu. `AMB.game.counts()` = Parcours et instrument pas encore remis.
 - Changements admis en libre : le MIDI (S4.1 : bouton dans la barre, notes audibles lecture arrêtée) ; et, par le même chemin `engine.liveInput`, A–L (déjà promis par la doc) et l'aperçu des notes du piano roll sonnent lecture arrêtée, une fois l'audio démarré. Les pastilles n'existent pas en libre.

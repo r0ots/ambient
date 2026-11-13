@@ -21,6 +21,9 @@
 // where the pitch sits on the stem (lit while held), particles, a flash, squash & stretch, a shake on chords and loud
 // MIDI notes; the machine's (Mélodie auto, Mélodie écrite, Basse, Pulsations) the same, smaller. Reduced motion: a
 // fixed, brief glow only. Still a reflection: nothing on the scene can be touched.
+// S5.8 « Chaque bouton a un impact visuel »: every control the plants do not show drives a layer of the scene (one table,
+// SCENE: sky tint, clouds, stars, aurora, rays, fireflies, mist, snow, frost, ground ripple, echo ghosts, tape, grain,
+// lens, playback veil, song), each an intensity 0..1 (layers()) plus an impulse when touched; the tempo is its speed.
 // Perf: LED sprites pre-rendered in offscreen canvases (cache by species / size / pixel size), cached
 // background and labels, real dt, nothing drawn while the tab is hidden or the canvas off screen, reduced motion =
 // no sway nor particles. stats() gives the cost per frame (ms).
@@ -66,9 +69,11 @@
     bass: { size: 'bass.vol', light: 'bass.tone', shape: sel('bass.wave', { Sub: 0, Ronde: 0.35, Pluck: 1 }), halo: 'bass.send', sway: 'bass.decay', bloom: fn(['bass.pattern'], (get) => Math.min(1, share(val(get, 'bass.pattern'), /1/g) * 6)) },
     perc: { size: 'perc.vol', light: 'perc.tone', shape: sel('perc.kit', { 'Feutré': 0.15, Organique: 0.85 }), halo: 'perc.send', sway: 'perc.swing', bloom: fn(['perc.pattern', 'perc.prob'], (get) => Math.min(1, share(val(get, 'perc.pattern'), /[1-9a-z]/gi) * 2) * (0.4 + 0.6 * norm('perc.prob', get('perc.prob')))) },
   };
+  // S5.8: on ← the layer's On (coupure de couche): a silent layer's plant goes dim
+  for (const id in LOOK) LOOK[id].on = id + '.on';
   // the general settings, the same for every plant
   const LOOK_ALL = { volume: 'global.volume', space: 'fx.space', shimmer: 'fx.shimmer', worn: fn(['fx.tape', 'fx.lofi'], (get) => 0.5 * norm('fx.tape', get('fx.tape')) + 0.5 * norm('fx.lofi', get('fx.lofi'))), pace: 'global.tempo', float: sel('global.time', { 'Pulsé': 0, Flottant: 1 }) };
-  const ASPECTS = ['size', 'light', 'shape', 'halo', 'sway', 'pace', 'bloom'];
+  const ASPECTS = ['size', 'light', 'shape', 'halo', 'sway', 'pace', 'bloom', 'on'];
   const spec = (key) => { const S = AMB.SCHEMA, [sec, k] = key.split('.'); return S && S[sec] && S[sec].params[k]; };
   const val = (get, k) => { const v = get(k); if (v != null) return v; const sp = spec(k); return sp ? sp.def : v; }; // unknown = the schema default
   function norm(key, v) {
@@ -86,7 +91,7 @@
     const out = {};
     for (const id in LOOK) {
       const L = LOOK[id], a = {};
-      for (const k of ['size', 'light', 'shape', 'halo', 'sway', 'bloom']) a[k] = cell(L[k], get);
+      for (const k of ['size', 'light', 'shape', 'halo', 'sway', 'bloom', 'on']) a[k] = cell(L[k], get);
       a.size = Math.min(1, a.size / 0.8) * (0.7 + 0.3 * Math.min(1, all.volume / 0.8));
       a.light *= 1 - 0.35 * all.worn;
       a.halo = Math.min(1, a.halo * (0.2 + 0.8 * all.space) + 0.25 * all.shimmer * a.halo);
@@ -103,6 +108,51 @@
     if (LOOK[sec]) return [sec];
     if (ALL_KEYS.has(key) || sec === 'fx') return Object.keys(LOOK);
     return [];
+  }
+
+  // ---- S5.8 « Chaque bouton a un impact visuel »: SETTINGS → SCENE, the second table. Every control the plants do not
+  // show drives a layer of the scene (sky, weather, lights, ground, full-screen filters). A layer is one intensity 0..1
+  // (the MEAN of its cells: a select = its option's rank, a toggle 0/1, a text = how much it holds, a knob = its range);
+  // `poll` = app state outside the store (mode, playback, song). The drawing (drawScene) reads intensities only: a later
+  // skin, or S5.10's combos, read the same `layers()`. A touched control (sources user / macro / xy, or the event `ev`)
+  // kicks its layer: an impulse 1 → 0 in ~0.8 s on top of the lasting state.
+  const SCENE = {
+    hue: { at: 'ciel : teinte', keys: ['global.key', 'global.tuning'] },
+    clouds: { at: 'ciel : nuages qui dérivent', keys: ['global.evolve'] },
+    twinkle: { at: 'ciel : étoiles qui scintillent', keys: ['mod.l1target', 'mod.l1shape', 'mod.l1rate', 'mod.l1depth', 'mod.l2target', 'mod.l2shape', 'mod.l2rate', 'mod.l2depth', 'auto.on', 'auto.target', 'auto.bars', 'auto.curve'] },
+    aurora: { at: 'lumières : aurores', keys: ['fx.shimmer'] },
+    rays: { at: 'lumières : rayons', keys: ['drone.follow', 'pad.length', 'pad.prog', 'pad.custom', 'pad.counter'] },
+    fireflies: { at: 'lumières : lucioles', keys: ['bells.mode', 'bells.phraseLen', 'bells.mutate', 'bells.range', 'seq.mode', 'seq.arpDir', 'seq.arpRate', 'seq.arpOct', 'seq.steps', 'seq.octave', 'seq.follow', 'seq.decay', 'seq.mutate', 'seq.patB', 'seq.patC', 'seq.patD', 'seq.slot', 'seq.chain'] },
+    haze: { at: 'météo : brume', keys: ['fx.space', 'fx.revType', 'fx.size', 'fx.predelay'] },
+    snow: { at: 'météo : neige de pixels', keys: ['grains.scan', 'grains.pitch', 'grains.reverse', 'grains.glide'] },
+    frost: { at: 'météo : givre', keys: ['grains.source'], ev: 'freeze' },
+    ripple: { at: 'sol : ondulation', keys: ['global.swing', 'global.humanize', 'bass.octave', 'perc.steps'] },
+    echo: { at: 'filtre : écho (plantes fantômes)', keys: ['fx.echo', 'fx.echoTime', 'fx.feedback'] },
+    tape: { at: 'filtre : bande qui défile, image qui tremble', keys: ['fx.tape'] },
+    grain: { at: 'filtre : grain et vignette', keys: ['fx.lofi'] },
+    lens: { at: 'filtre : grille (Sculpter), portée (Composer)', poll: () => ({ sculpt: 0.5, compose: 1 })[AMB.mode] || 0 },
+    play: { at: 'lumière : allumée en lecture, voilée à l\'arrêt', poll: () => (AMB.seq && AMB.seq.playing ? 1 : 0) },
+    song: { at: 'ciel : avancée du Morceau, balayage à chaque section', poll: () => { const S = AMB.song; return S && S.playing && S.sections && S.sections.length ? (S.idx + 1) / S.sections.length : 0; }, ev: 'section' },
+  };
+  const SCENE_OF = {}; for (const n in SCENE) for (const k of SCENE[n].keys || []) (SCENE_OF[k] = SCENE_OF[k] || []).push(n);
+  function level(key, get) {
+    const sp = spec(key), v = val(get, key);
+    if (!sp) return 0;
+    if (sp.type === 'select') { const i = sp.options.indexOf(v); return i < 0 ? 0 : i / Math.max(1, sp.options.length - 1); }
+    if (sp.type === 'toggle') return v ? 1 : 0;
+    if (sp.type === 'text') return Math.min(1, String(v || '').replace(/[^0-9a-z]/gi, '').length / 32);
+    return norm(key, v);
+  }
+  // get(key) → the store value (undefined = the schema default). Pure but for the `poll` layers (app state).
+  function scene(get) {
+    const out = {};
+    for (const n in SCENE) {
+      const L = SCENE[n];
+      if (L.poll) { let v = 0; try { v = +L.poll() || 0; } catch (e) {} out[n] = Math.max(0, Math.min(1, v)); continue; }
+      let s = 0; for (const k of L.keys) s += level(k, get);
+      out[n] = s / L.keys.length;
+    }
+    return out;
   }
 
   // ---- S5.2 « Chaque note se voit »: the TRIGGER (which plant, who plays, how strong), apart from the drawing (a later
@@ -297,6 +347,7 @@
     replay: null, lit: {}, // S4.5w finale
     LOOK, LOOK_ALL, ASPECTS, look, concerns, aim: null, cur: {}, kicks: {}, swPh: {}, lookDirty: true, // S4.6 settings → look
     JUICE, SPLASH, WAVES_PER_PLANT, PARTS_MAX, splash, waves: [], squash: {}, zap: {}, shake: null, ox: 0, oy: 0, // S5.2 notes seen
+    SCENE, scene, sc: {}, kick: {}, sAim: null, sPoll: {}, st: 0, speed: 1, fxc: {}, // S5.8 scene layers
     sprites: new Map(), glows: new Map(), labels: new Map(),
     plants: [], rares: [], parts: [], pending: [],
     energy: {}, // plant id -> 0..1 pulse
@@ -413,21 +464,23 @@
       return this.bg;
     },
     // the sky of a chord: 'night' (before any chord), 'dawn' (finale), or `${deg}|${minor}`; cached by key and size
-    skyColors(key) {
-      if (key === 'night') return [[0, '#0b0a08'], [1, '#17120b']];
+    // S5.8: off = hue shift (degrees) of the « hue » layer (Tonalité, Diapason), 0 at the default settings
+    skyColors(key, off = 0) {
+      if (key === 'night') return off ? [[0, '#0b0a08'], [1, `rgb(${hsl2rgb(((38 + off) % 360 + 360) % 360, 0.45, 0.075).join()})`]] : [[0, '#0b0a08'], [1, '#17120b']];
       if (key === 'dawn') return [[0, '#141a33'], [0.5, '#4d2f4f'], [0.82, '#b0584a'], [1, '#f2a65a']];
-      const [d, mi] = key.split('|'), h = HUES[(+d % 7 + 7) % 7] + (mi === '1' ? 18 : 0);
+      const [d, mi] = key.split('|'), h = ((HUES[(+d % 7 + 7) % 7] + (mi === '1' ? 18 : 0) + off) % 360 + 360) % 360;
       const c = (sa, l) => `rgb(${hsl2rgb(h, sa, l).join()})`;
       return [[0, c(0.35, 0.03)], [0.55, c(0.5, mi === '1' ? 0.07 : 0.09)], [1, c(0.6, mi === '1' ? 0.17 : 0.22)]];
     },
+    hueOff() { const D = this.sDef, v = this.sc.hue; return D && v != null ? Math.round((v - D.hue) * 22) * 15 : 0; },
     sky(key, W, ground) {
-      const k = key + '|' + W + 'x' + ground;
+      const off = key === 'dawn' ? 0 : this.hueOff(), k = key + '|' + off + '|' + W + 'x' + ground;
       let cv = this.skies.get(k);
       if (cv) return cv;
       this.cacheMisses++;
       cv = document.createElement('canvas'); cv.width = W; cv.height = Math.max(1, ground);
       const g = cv.getContext('2d'), grd = g.createLinearGradient(0, 0, 0, ground);
-      for (const [o, c] of this.skyColors(key)) grd.addColorStop(o, c);
+      for (const [o, c] of this.skyColors(key, off)) grd.addColorStop(o, c);
       g.fillStyle = grd; g.fillRect(0, 0, W, ground);
       this.skies.set(k, cv);
       if (this.skies.size > 16) this.skies.delete(this.skies.keys().next().value);
@@ -519,6 +572,7 @@
       this.lookDirty = true;
       if (!this.KICK.has(src) || !this.running()) return; // nothing is kept for a garden off screen
       const t = this.t || 0;
+      for (const n of SCENE_OF[key] || []) this.kick[n] = 1; // S5.8: the scene layer it drives
       for (const id of concerns(key)) { const k = this.kicks[id]; if (k && t - k.last < 0.25) k.last = t; else this.kicks[id] = { t0: t, last: t }; } // a slider held: one bounce, then it follows
     },
     // size aspect → scale of the plant: 1 at the layer's default setting (the plants of before S4.6), down to 0.5 at
@@ -537,6 +591,224 @@
         for (const k of ASPECTS) c[k] += (a[k] - c[k]) * kT;
         p.look = c;
       }
+    },
+
+    // ---- S5.8 scene layers: targets from the table (store + polled app state), smoothed like the plants (~0.35 s);
+    // a polled state that changes (mode, play / stop, section) kicks its layer; the impulses fade in ~0.8 s ----
+    layers() { const S = AMB.store; return scene(S && typeof S.get === 'function' ? (k) => S.get(k) : () => undefined); },
+    updateScene(dt) {
+      const S = AMB.store, get = S && typeof S.get === 'function' ? (k) => S.get(k) : () => undefined;
+      if (this.lookDirty || !this.sAim) { this.sAim = scene(get); this.sDef = this.sDef || scene(() => undefined); }
+      else for (const n in SCENE) if (SCENE[n].poll) { let v = 0; try { v = +SCENE[n].poll() || 0; } catch (e) {} this.sAim[n] = Math.max(0, Math.min(1, v)); }
+      for (const n in SCENE) if (SCENE[n].poll) { const v = this.sAim[n]; if (this.sPoll[n] != null && this.sPoll[n] !== v) this.kick[n] = 1; this.sPoll[n] = v; }
+      const kT = this.reduced ? 1 : 1 - Math.exp(-dt / 0.11);
+      for (const n in SCENE) { const a = this.sAim[n], c = this.sc[n]; this.sc[n] = c == null ? a : c + (a - c) * kT; }
+      for (const n in this.kick) { this.kick[n] -= dt / 0.8; if (this.kick[n] <= 0) delete this.kick[n]; }
+      // the tempo is the scene's speed (Flottant slower); reduced motion: the scene stands still
+      const tp = norm('global.tempo', get('global.tempo')), fl = val(get, 'global.time') === 'Flottant';
+      this.speed = (0.5 + 1.5 * tp) * (fl ? 0.6 : 1);
+      if (!this.reduced) this.st += dt * this.speed;
+    },
+    // how much of a layer is drawn: its intensity squared (the default settings keep a calm scene, the ends are loud),
+    // plus the impulse of a touch
+    amt(n) { const v = this.sc[n] || 0; return Math.min(1, v * v + 0.8 * (this.kick[n] || 0)); },
+    // cached canvases of the scene, rebuilt only when the size changes
+    fx(name, W, H, build) {
+      const key = name + '|' + W + 'x' + H + '|' + (this.px || 3);
+      let c = this.fxc[name];
+      if (c && c.key === key) return c.cv;
+      this.cacheMisses++;
+      const cv = build(W, H, this.px || 3);
+      this.fxc[name] = { key, cv };
+      return cv;
+    },
+    canvas(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; },
+    // the sky's layers (under the ground and the plants): tint flash, aurora, rays, clouds, twinkling stars, song
+    drawSky(g, W, gd) {
+      const px = this.px || 3, T = this.st, red = this.reduced;
+      let a;
+      if ((a = this.kick.hue || 0) > 0.02) { g.fillStyle = `rgba(255,226,190,${(0.16 * a).toFixed(3)})`; g.fillRect(0, 0, W, gd); }
+      g.globalCompositeOperation = 'lighter';
+      if ((a = this.amt('aurora')) > 0.03) {
+        const cv = this.fx('aurora', W, gd, (w, h) => {
+          const c = this.canvas(w / 4, h * 0.55 / 4), x = c.getContext('2d');
+          for (let i = 0; i < c.width; i++) for (let r = 0; r < 2; r++) {
+            const y = c.height * (0.35 + 0.22 * Math.sin(i * 0.035 + r * 2.1) + 0.08 * Math.sin(i * 0.11 + r)), hgt = c.height * (0.25 + 0.15 * Math.sin(i * 0.05 + r * 3));
+            const grd = x.createLinearGradient(0, y - hgt, 0, y + 4); grd.addColorStop(0, 'rgba(90,255,190,0)'); grd.addColorStop(0.8, r ? 'rgba(170,110,255,0.45)' : 'rgba(90,255,190,0.5)'); grd.addColorStop(1, 'rgba(90,255,190,0)');
+            x.fillStyle = grd; x.fillRect(i, y - hgt, 1, hgt + 4);
+          }
+          return c;
+        });
+        const dx = red ? 0 : Math.sin(T * 0.25) * W * 0.06;
+        g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.15 + 0.85 * a);
+        g.drawImage(cv, dx - W * 0.06, gd * 0.04, W * 1.12, gd * 0.55); g.imageSmoothingEnabled = false;
+      }
+      if ((a = this.amt('rays')) > 0.03) {
+        const cv = this.fx('rays', W, gd, (w, h) => {
+          const c = this.canvas(w / 4, h / 4), x = c.getContext('2d');
+          for (let i = 0; i < 5; i++) {
+            const x0 = c.width * (0.1 + 0.2 * i), sp = c.width * (0.05 + 0.03 * (i % 3));
+            const grd = x.createLinearGradient(0, 0, 0, c.height); grd.addColorStop(0, 'rgba(255,214,150,0.5)'); grd.addColorStop(1, 'rgba(255,214,150,0)');
+            x.fillStyle = grd; x.beginPath(); x.moveTo(x0, 0); x.lineTo(x0 + sp * 0.4, 0); x.lineTo(x0 + sp * 3 + c.width * 0.15, c.height); x.lineTo(x0 + c.width * 0.15, c.height); x.closePath(); x.fill();
+          }
+          return c;
+        });
+        g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.6 * a * (red ? 1 : 0.8 + 0.2 * Math.sin(T * 0.6)));
+        g.drawImage(cv, red ? 0 : Math.sin(T * 0.15) * W * 0.03, 0, W, gd); g.imageSmoothingEnabled = false;
+      }
+      if ((a = this.amt('twinkle')) > 0.03) { // 48 stars: how many and how fast they twinkle
+        const r = mulberry(31), n = Math.round(8 + 40 * a), s = Math.max(1, px - 1);
+        for (let i = 0; i < n; i++) {
+          const x = Math.floor(r() * W / px) * px, y = Math.floor(r() * gd * 0.8 / px) * px, ph = r() * 6.283;
+          g.globalAlpha = Math.min(1, (0.25 + 0.75 * a) * (red ? 0.7 : 0.5 + 0.5 * Math.sin(T * (1.5 + 5 * a) + ph)));
+          g.fillStyle = i % 5 ? '#fff4d6' : '#bfe6ff'; g.fillRect(x, y, s, s);
+          if (a > 0.5 && i % 7 === 0) { g.fillRect(x - px, y, s, s); g.fillRect(x + px, y, s, s); g.fillRect(x, y - px, s, s); g.fillRect(x, y + px, s, s); }
+        }
+      }
+      g.globalCompositeOperation = 'source-over';
+      if ((a = this.amt('clouds')) > 0.03) { // pixel clouds drifting across the sky (Dérive)
+        const cv = this.fx('cloud', W, gd, (w, h, px) => {
+          const c = this.canvas(48 * px, 12 * px), x = c.getContext('2d'), r = mulberry(5);
+          for (let j = 0; j < 12; j++) for (let i = 0; i < 48; i++) { const d = ((i - 24) / 24) ** 2 + ((j - 8) / (j < 8 ? 7 : 4)) ** 2 + 0.25 * Math.sin(i * 0.7) * (j < 6 ? 1 : 0); if (d < 1 && r() < 0.92) { x.fillStyle = j < 5 ? 'rgba(232,214,196,0.9)' : 'rgba(170,150,140,0.85)'; x.fillRect(i * px, j * px, px - 1, px - 1); } }
+          return c;
+        });
+        const r = mulberry(17), n = Math.max(1, Math.round(a * 6)), span = W + cv.width;
+        for (let i = 0; i < n; i++) {
+          const x0 = r() * span, y = gd * (0.08 + 0.4 * r()), sc = 0.6 + 0.6 * r(), v = (6 + 10 * r()) * px * (0.3 + a);
+          const x = ((x0 + T * v) % span + span) % span - cv.width;
+          g.globalAlpha = Math.min(1, 0.12 + 0.4 * a); g.drawImage(cv, Math.round(x), Math.round(y), Math.round(cv.width * sc), Math.round(cv.height * sc));
+        }
+      }
+      if ((a = this.sc.song || 0) > 0.01) { g.globalAlpha = 0.6; g.fillStyle = '#ffb347'; g.fillRect(0, 0, Math.round(W * a), Math.max(2, px)); }
+      if ((a = this.kick.song || 0) > 0.02 && !red) { const x = (1 - a) * W * 1.2 - W * 0.1; g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.35 * a; g.fillStyle = '#ffd9a0'; g.fillRect(Math.round(x), 0, Math.round(W * 0.08), gd); g.globalCompositeOperation = 'source-over'; }
+      g.globalAlpha = 1;
+    },
+    // the ground ondulates (rhythm feel): two wavy lines of light along its edge
+    drawGround(g, W, H, gd) {
+      const a = this.amt('ripple'); if (a < 0.03) return;
+      const px = this.px || 3, T = this.st, A = px * (0.5 + 3 * a), st = px * 2, s = Math.max(1, px >> 1);
+      g.globalCompositeOperation = 'lighter';
+      for (let j = 0; j < 2; j++) {
+        g.fillStyle = `rgba(255,179,71,${((0.12 + 0.3 * a) / (j + 1)).toFixed(3)})`;
+        const y0 = gd + px * (2 + 5 * j), f = 0.012 + 0.01 * j;
+        for (let x = 0; x < W; x += st) g.fillRect(x, Math.round(y0 + Math.sin(x * f + T * (2.5 + j)) * A), st - 1, s);
+      }
+      g.globalCompositeOperation = 'source-over';
+    },
+    // S5.8 echo: faded copies of a plant trailing to its right (Écho: how many, how far)
+    drawEcho(g, p, s, kx, ky, sway, gy, ox, oy) {
+      const a = this.amt('echo'); if (a < 0.1 || gy < 0.05) return;
+      const n = 1 + Math.round(a * 2), d = this.px * (3 + 7 * a);
+      for (let i = n; i >= 1; i--) {
+        g.globalAlpha = Math.min(1, (0.08 + 0.3 * a) / i);
+        g.setTransform(kx, 0, -sway * ky * gy, ky * gy, p.x + ox + i * d, p.y + oy); g.drawImage(s.cv, -s.w / 2, -s.h);
+      }
+      g.globalAlpha = 1;
+    },
+    // in front of the plants: mist, fireflies, snow, frost, lens (grid / staff)
+    drawFront(g, W, H, gd) {
+      const px = this.px || 3, T = this.st, red = this.reduced, s = Math.max(1, px - 1);
+      let a;
+      if ((a = this.amt('haze')) > 0.03) {
+        const bh = Math.round(H * 0.32), cv = this.fx('haze', W, H, (w, h) => {
+          const c = this.canvas(w / 4, bh / 4), x = c.getContext('2d'), r = mulberry(11);
+          const grd = x.createLinearGradient(0, 0, 0, c.height); grd.addColorStop(0, 'rgba(200,190,220,0)'); grd.addColorStop(0.6, 'rgba(200,190,220,0.4)'); grd.addColorStop(1, 'rgba(200,190,220,0.1)');
+          x.fillStyle = grd; x.fillRect(0, 0, c.width, c.height);
+          for (let i = 0; i < 14; i++) { const cx = r() * c.width, cy = c.height * (0.35 + 0.4 * r()), R = c.height * (0.2 + 0.3 * r()), gg = x.createRadialGradient(cx, cy, 0, cx, cy, R); gg.addColorStop(0, 'rgba(220,210,235,0.35)'); gg.addColorStop(1, 'rgba(220,210,235,0)'); x.fillStyle = gg; x.fillRect(cx - R, cy - R, 2 * R, 2 * R); }
+          return c;
+        });
+        const off = red ? 0 : ((T * px * 4) % W + W) % W, y = gd - bh * 0.7;
+        g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.9 * a);
+        g.drawImage(cv, off, y, W, bh); g.drawImage(cv, off - W, y, W, bh); g.imageSmoothingEnabled = false;
+      }
+      g.globalCompositeOperation = 'lighter';
+      if ((a = this.amt('fireflies')) > 0.03) {
+        const r = mulberry(23), n = Math.round(4 + 26 * a);
+        for (let i = 0; i < n; i++) {
+          const bx = r() * W, by = gd - (0.08 + 0.5 * r()) * gd * 0.7, ph = r() * 6.283, f = 0.3 + r() * 0.5;
+          const x = bx + (red ? 0 : Math.sin(T * f + ph) * 14 * px), y = by + (red ? 0 : Math.cos(T * f * 1.3 + ph) * 6 * px);
+          g.globalAlpha = Math.min(1, (0.3 + 0.7 * a) * (red ? 0.8 : 0.5 + 0.5 * Math.sin(T * 3 * f + ph * 2)));
+          g.fillStyle = '#ffe07a'; g.fillRect(Math.round(x / px) * px, Math.round(y / px) * px, s, s);
+          g.globalAlpha *= 0.35; g.fillRect(Math.round(x / px) * px - px, Math.round(y / px) * px - px, 3 * px - 1, 3 * px - 1);
+        }
+      }
+      g.globalCompositeOperation = 'source-over';
+      if ((a = this.amt('snow')) > 0.03) {
+        const r = mulberry(41), n = Math.round(6 + 64 * a); g.fillStyle = '#e4efff';
+        for (let i = 0; i < n; i++) {
+          const x0 = r() * W, y0 = r() * H, v = (8 + 14 * r()) * px, ph = r() * 6.283;
+          const y = ((y0 + T * v) % H + H) % H, x = x0 + (red ? 0 : Math.sin(T * 0.8 + ph) * 3 * px);
+          g.globalAlpha = Math.min(1, 0.3 + 0.6 * a); g.fillRect(Math.round(x / px) * px, Math.round(y / px) * px, s, s);
+        }
+      }
+      if ((a = this.amt('frost')) > 0.03) {
+        const cv = this.fx('frost', W, H, (w, h, px) => {
+          const c = this.canvas(w, h), x = c.getContext('2d'), r = mulberry(53), q = px * 2;
+          x.fillStyle = 'rgba(200,235,255,0.85)';
+          for (let k = 0; k < 40; k++) { // branches growing in from the edges
+            const side = k % 4; let cx = side === 1 ? w : side === 3 ? 0 : r() * w, cy = side === 0 ? 0 : side === 2 ? h : r() * h;
+            let dx = side === 1 ? -1 : side === 3 ? 1 : (r() - 0.5), dy = side === 0 ? 1 : side === 2 ? -1 : (r() - 0.5);
+            for (let i = 0, L = 6 + r() * 16; i < L; i++) { x.fillRect(Math.round(cx / q) * q, Math.round(cy / q) * q, q - 1, q - 1); cx += dx * q; cy += dy * q; if (r() < 0.3) dx += (r() - 0.5); if (r() < 0.3) dy += (r() - 0.5); }
+          }
+          return c;
+        });
+        g.globalAlpha = Math.min(1, 0.85 * a); g.drawImage(cv, 0, 0);
+      }
+      if ((a = this.amt('lens')) > 0.03) {
+        const cv = this.fx('lens', W, H, (w, h, px) => {
+          const c = this.canvas(w, h), x = c.getContext('2d'), q = px * 12;
+          x.fillStyle = 'rgba(140,200,255,0.5)';
+          for (let X = 0; X < w; X += q) for (let Y = 0; Y < h; Y += px * 3) x.fillRect(X, Y, Math.max(1, px >> 1), Math.max(1, px >> 1));
+          for (let Y = 0; Y < h; Y += q) for (let X = 0; X < w; X += px * 3) x.fillRect(X, Y, Math.max(1, px >> 1), Math.max(1, px >> 1));
+          return c;
+        });
+        const sv = this.sc.lens || 0, k = this.kick.lens || 0;
+        g.globalAlpha = Math.min(1, 0.5 * Math.min(1, 2 * sv) + 0.4 * k); g.drawImage(cv, 0, 0);
+        const staff = Math.max(0, 2 * sv - 1); // Composer: the five lines of a staff across the sky
+        if (staff > 0.02) { g.globalAlpha = Math.min(1, 0.35 * staff + 0.3 * k); g.fillStyle = '#ffd9a0'; for (let i = 0; i < 5; i++) g.fillRect(0, Math.round(gd * 0.18 + i * px * 4), W, Math.max(1, px >> 1)); }
+      }
+      g.globalAlpha = 1;
+    },
+    // full-screen filters, last: the tape band and wobble (Cassette), grain and vignette (Usure), the veil when stopped
+    drawPost(g, W, H) {
+      const px = this.px || 3, T = this.st, red = this.reduced;
+      let a;
+      if ((a = this.amt('tape')) > 0.03) {
+        const bh = Math.round(H * 0.07), cv = this.fx('tape', W, H, (w) => {
+          const c = this.canvas(w / 4, bh), x = c.getContext('2d'), r = mulberry(61);
+          const grd = x.createLinearGradient(0, 0, 0, bh); grd.addColorStop(0, 'rgba(255,255,255,0)'); grd.addColorStop(0.5, 'rgba(220,230,255,0.25)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+          x.fillStyle = grd; x.fillRect(0, 0, c.width, bh);
+          for (let i = 0; i < 60; i++) { x.fillStyle = ['rgba(255,60,60,0.5)', 'rgba(60,255,200,0.5)', 'rgba(80,120,255,0.5)'][i % 3]; x.fillRect(r() * c.width, bh * (0.3 + 0.4 * r()), 2 + r() * 10, 1); }
+          return c;
+        });
+        const y = red ? H * 0.6 : ((T * H * 0.12) % (H + bh)) - bh;
+        g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, 0.2 + 0.7 * a); g.imageSmoothingEnabled = true;
+        g.drawImage(cv, 0, Math.round(y), W, bh); g.imageSmoothingEnabled = false; g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+        if (a > 0.2) for (let i = 0; i < 3; i++) { // tracking lines: a dark and a coloured line that jitter (no read-back of the canvas: it would stall)
+          const sy = Math.round(((T * (40 + 30 * i) * px + i * H / 3) % H) / px) * px, dx = red ? 0 : Math.round(Math.sin(T * 9 + i * 2) * a * px * 6);
+          g.globalAlpha = Math.min(1, 0.5 * a); g.fillStyle = 'rgba(0,0,0,0.8)'; g.fillRect(0, sy, W, px);
+          g.globalCompositeOperation = 'lighter'; g.fillStyle = i % 2 ? 'rgba(255,70,90,0.6)' : 'rgba(70,200,255,0.6)'; g.fillRect(dx, sy + px, W, Math.max(1, px >> 1)); g.globalCompositeOperation = 'source-over';
+        }
+        g.globalAlpha = 1;
+      }
+      if ((a = this.amt('grain')) > 0.03) {
+        const nw = Math.ceil(W / (2 * px)), nh = Math.ceil(H / (2 * px)), f = red ? 0 : Math.floor(T * 14) % 4;
+        const cv = this.fx('grain' + f, W, H, () => {
+          const c = this.canvas(nw, nh), x = c.getContext('2d'), d = x.createImageData(nw, nh), r = mulberry(70 + f);
+          for (let i = 0; i < d.data.length; i += 4) { const v = r(), on = v < 0.18; const l = v < 0.09 ? 255 : 0; d.data[i] = d.data[i + 1] = d.data[i + 2] = l; d.data[i + 3] = on ? 90 : 0; }
+          x.putImageData(d, 0, 0); return c;
+        });
+        const vg = this.fx('vignette', W, H, (w, h) => {
+          const c = this.canvas(w / 4, h / 4), x = c.getContext('2d'), gg = x.createRadialGradient(c.width / 2, c.height / 2, c.height * 0.3, c.width / 2, c.height / 2, c.width * 0.62);
+          gg.addColorStop(0, 'rgba(20,10,0,0)'); gg.addColorStop(1, 'rgba(20,10,0,0.9)'); x.fillStyle = gg; x.fillRect(0, 0, c.width, c.height); return c;
+        });
+        g.globalAlpha = Math.min(1, 0.15 + 0.85 * a); g.drawImage(cv, 0, 0, W, H);
+        g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.75 * a); g.drawImage(vg, 0, 0, W, H); g.imageSmoothingEnabled = false;
+      }
+      const pl = this.sc.play == null ? 1 : this.sc.play, pk = this.kick.play || 0;
+      if (pl < 0.98) { g.globalAlpha = 1; g.fillStyle = `rgba(6,4,2,${(0.3 * (1 - pl)).toFixed(3)})`; g.fillRect(0, 0, W, H); }
+      if (pk > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 1; g.fillStyle = `rgba(255,200,130,${(0.12 * pk).toFixed(3)})`; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over'; }
+      g.globalAlpha = 1;
     },
 
     // ---- events: queued with their audio time, applied when they sound ----
@@ -643,7 +915,7 @@
       const dt = this.lastT == null ? 1 / 60 : Math.max(0, Math.min(0.1, (t0 - this.lastT) / 1000));
       this.lastT = t0; this.t = (this.t || 0) + dt;
       const now = this.clock();
-      this.watch(); this.updateLook(dt);
+      this.watch(); this.updateScene(dt); this.updateLook(dt);
       for (let i = this.pending.length - 1; i >= 0; i--) { const e = this.pending[i]; if (e.time <= now + 0.02) { this.pending.splice(i, 1); this.hit(e.layer, e.vel); } }
       const ans = this.answer(now);
       if (ans) this.lightAnswer(ans);
@@ -666,7 +938,8 @@
       g.globalAlpha = sf; g.drawImage(this.sky(this.skyKey || 'night', W, gd), 0, 0);
       if (dawn > 0) { g.globalAlpha = dawn * 0.92; g.drawImage(this.sky('dawn', W, gd), 0, 0); }
       g.globalAlpha = 1 - dawn * 0.85; g.drawImage(bg.stars, 0, 0);
-      g.globalAlpha = 1; g.drawImage(bg.ground, 0, gd);
+      g.globalAlpha = 1; this.drawSky(g, W, gd); // S5.8 sky layers
+      g.drawImage(bg.ground, 0, gd); this.drawGround(g, W, H, gd);
       const px = this.px, red = this.reduced, fs = Math.round(Math.max(11 * dpr, px * 2.6));
       this.dpr = dpr;
       // the ground breathes on the beat (stronger on beats 1 and 3); still in reduced motion and during the finale
@@ -703,7 +976,9 @@
           g.drawImage(gl, p.x - Rg, p.y - this.heightCells(p) * px * p.sz * gy * 0.6 - Rg);
           g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
         }
+        if (!p.rare && !R) this.drawEcho(g, p, s, kx, ky, sway, gy, ox, oy); // S5.8 Écho: ghost copies behind it
         if (R && !p.rare) g.globalAlpha = 0.3 + 0.7 * Math.min(1, this.lit[p.id] || 0); // finale: dark until its layer plays
+        if (a && a.on < 0.99) g.globalAlpha *= 0.3 + 0.7 * a.on; // S5.8: its layer switched off = a dim plant
         if (gy > 0.01) {
           g.setTransform(kx, 0, -sway * ky * gy, ky * gy, p.x + ox, p.y + oy); g.drawImage(s.cv, -s.w / 2, -s.h); // shear from the base: the plant bends, the root stays put; it grows from there
           const lit = Math.max(0.5 * hot, 0.75 * (this.zap[p.id] || 0)); // S4.6: lit while touched; S5.2: a flash on each note
@@ -734,7 +1009,9 @@
         g.fillStyle = rgb(q.col, 1, q.life * 0.9);
         g.fillRect(Math.round(q.x / px) * px, Math.round(q.y / px) * px, px * q.s - 1, px * q.s - 1);
       }
-      g.globalCompositeOperation = 'source-over'; g.imageSmoothingEnabled = true; g.setTransform(1, 0, 0, 1, 0, 0); // nearest-neighbour above: crisp LEDs, cheaper shear
+      g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+      this.drawFront(g, W, H, gd); g.setTransform(1, 0, 0, 1, 0, 0); this.drawPost(g, W, H); // S5.8 scene layers in front, then the filters
+      g.imageSmoothingEnabled = true; // nearest-neighbour above: crisp LEDs, cheaper shear
       for (const id in this.zap) this.zap[id] = Math.max(0, this.zap[id] - dt * 3.5);
       for (const id in this.energy) this.energy[id] = Math.max(0, this.energy[id] - dt * (red ? 1.2 : 1.6));
       for (const id in this.lit) this.lit[id] = Math.max(0, this.lit[id] - dt * 0.35);
@@ -809,6 +1086,7 @@
         if (!c) return; this.onEvent('drone', c.time, 0.6); this.onEvent('pad', c.time, 0.3); this.onSplash('chord', c);
         if (this.running() && !this.replay) { this.skyQ.push({ time: c.time || 0, key: this.chordKey(c.deg) }); if (this.skyQ.length > 8) this.skyQ.shift(); }
       });
+      for (const n in SCENE) if (SCENE[n].ev) bus.on(SCENE[n].ev, () => { if (this.running()) this.kick[n] = 1; }); // S5.8: Gel, section
       bus.on('game:puzzle', (e) => { if (e && e.peg && e.peg.state === 'ok') this.onEvent('bells', 0, 0.9); }); // a right note: a spark
       ['game:unlock', 'game:reset', 'game:secret'].forEach((ev) => bus.on(ev, () => { this.sig = null; }));
     },
