@@ -312,6 +312,7 @@
     slam(txt, rec) {
       const el = this.countEl, m = M(); if (!el) return;
       el.textContent = txt; el.classList.toggle('is-rec', !!rec);
+      const b = this.btnRec; el.style.left = b.offsetLeft + b.offsetWidth / 2 + 'px'; el.style.top = b.offsetTop + b.offsetHeight / 2 + 'px'; // (over ● Boucle)
       if (!m) return;
       const beat = 4 * seq().stepDur() * 1000;
       const an = m.fx(el, (a) => [{ scale: 1 + 2.2 * a, rotate: `${-10 * a}deg`, opacity: 0 }, { scale: 1 - 0.12 * Math.min(1, a), rotate: `${2 * a}deg`, opacity: 1, offset: 0.18 }, { scale: 1, rotate: '0deg', opacity: 1, offset: 0.4 }, { scale: 1 + 0.15 * a, opacity: 0 }],

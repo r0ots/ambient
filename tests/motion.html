@@ -102,6 +102,19 @@ EventTarget.prototype.addEventListener = function (...a) { LISTENERS++; return a
     ts.classList.add('show'); await wait(M.MS.slow + 100);
     ok(hid[0] === '0' && parseFloat(hid[1]) < 0.5 && cs(ts).opacity === '1' && cs(ts).scale === '1', 'toast : arrive en rebond (caché ' + hid.join(' / ') + ')');
 
+    // 8b. S7.2 fx (a Web Animation over the css ones) and shatter (a ghost squashes, then sparks): nothing stays
+    const fxa = M.fx(b, (a) => [{ scale: 1 + 0.2 * a }, { scale: 1 }], { dur: 'fast', ease: 'bounce' });
+    ok(fxa && fxa.effect.getTiming().duration === M.MS.fast && b.getAnimations().includes(fxa), 'fx : une animation à la durée du jeton (' + (fxa && fxa.effect.getTiming().duration) + ' ms)');
+    const vic = document.createElement('span'); vic.className = 'btn'; vic.textContent = 'X'; vic.style.setProperty('--c', '#ff5e7a'); $('#list').append(vic);
+    const gh = M.shatter(vic); vic.remove();
+    ok(gh && document.querySelectorAll('.m-ghost').length === 1 && !vic.isConnected, 'shatter : l\'élément part tout de suite, un fantôme s\'écrase à sa place');
+    await gh.finished.catch(() => {}); await wait(30);
+    ok(!document.querySelector('.m-ghost') && !b.getAnimations().length, 'shatter / fx : fantôme retiré, rien ne reste');
+    M.set({ reduced: true });
+    const v2 = document.createElement('span'); v2.className = 'btn'; v2.textContent = 'Y'; $('#list').append(v2);
+    ok(!M.fx(b, [{ scale: 2 }, { scale: 1 }]) && !M.shatter(v2) && !document.querySelector('.m-ghost'), 'mouvement réduit : ni fx ni fantôme');
+    v2.remove(); M.set({ reduced: null });
+
     // 9. no listener left behind: the utilities add none, init() twice adds none
     M.init(); for (let i = 0; i < 20; i++) { M.pop(b, 'pop'); M.roll(v, i); M.stagger([b]); M.burst(b); M.turn(k, 0.05, i); }
     ok(LISTENERS === L0, 'aucun écouteur ajouté par les utilitaires ni par un 2e init() (' + (LISTENERS - L0) + ')');

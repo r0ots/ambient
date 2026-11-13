@@ -227,10 +227,12 @@
         if (h >= 0) for (let k = m.length - 1; k >= 0; k--) if (m[k][0] <= h) { v = m[k][1]; vs = m[k][2]; break; }
         if (v !== this.vStep || vs !== this.vSlot) {
           if (v >= 0 && v !== this.vStep && vs === store.get('seq.slot')) this.flash(v);
-          this.vStep = v; this.vSlot = vs; this.draw();
+          this.vStep = v; this.vSlot = vs; if (this.seen) this.draw(); else this.renderTabs(); // (off screen: redrawn when it comes back)
         } else if (this.fx.length) this.draw();
         requestAnimationFrame(loop);
       };
+      this.seen = true;
+      if (window.IntersectionObserver) new IntersectionObserver((es) => { this.seen = es[es.length - 1].isIntersecting; if (this.seen) this.draw(); }).observe(this.canvas);
       requestAnimationFrame(loop);
       this.draw();
     },
@@ -257,6 +259,7 @@
       if (M) ns.slice(0, 6).forEach((n) => M.burst(this.notePt(n), { n: 6, spread: Math.PI * 2, speed: 200, life: 0.35, G: 1400, color: '#ff8a5c' }));
     },
     flash(v) {
+      if (!this.seen) return; // (off screen: no per-frame redraw for nobody)
       const ns = this.notes().filter((n) => n.s === v);
       if (ns.length) this.addFx('flash', ns, 'slow');
     },

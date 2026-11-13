@@ -152,5 +152,5 @@
   }
   AMB.gridMotion = { heardMark, stepsLit };
 
-  AMB.pulses = { ...pulses, build: pulses.build.bind(pulses), render: pulses.render.bind(pulses), buildCells: pulses.buildCells.bind(pulses), onStep, parse, encode, euclid, euclidPattern, TRACKS };
+  AMB.pulses = { ...pulses, build: pulses.build.bind(pulses), render: pulses.render.bind(pulses), beat: pulses.beat.bind(pulses), buildCells: pulses.buildCells.bind(pulses), onStep, parse, encode, euclid, euclidPattern, TRACKS };
 })();
