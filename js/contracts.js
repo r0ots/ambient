@@ -33,13 +33,12 @@
   const BY = 'Pendant la lecture, l\'écran te le demandera avec un compte à rebours : fais-le avant la fin de la mesure. ';
   const DEFS = [
     // Tronc
-    // S5.7: the first challenge is a note (a pad, a key or a MIDI keyboard: they all play from the Graine); gliding on
-    // the screen is still there, but no longer a challenge
+    // S5.7: the first challenge is a note (a pad, a key or a MIDI keyboard: they all play from the Graine)
     C('k.note', ['racine'], 'Joue une note{ (pastille, touche A à L ou MIDI)| : touche une pastille}', 1, {
       note(st) { st.n = 1; },
     }, '{Touche une pastille sous l\'écran, une touche de A à L ou ton clavier MIDI : le son démarre.|Touche une pastille de couleur sous l\'écran : le son démarre.}'),
-    Dm('k.couleur', ['racine'], 'Tourne la lumière du drone sur MAINTENANT', { how: 'hit', param: 'drone.tone', src: ['user', 'xy'] },
-      ON1 + 'Sculpter > Drone > Lumière, ou glisse sur l\'écran : le son s\'ouvre et se ferme.'),
+    Dm('k.couleur', ['racine'], 'Tourne la lumière du drone sur MAINTENANT', { how: 'hit', param: 'drone.tone', src: ['user', 'cc'] },
+      ON1 + 'Sculpter > Drone > Lumière{ (ou la molette CC74 du clavier MIDI)|} : le son s\'ouvre et se ferme.'),
     Dm('k.timbre', ['t.son'], 'Change le timbre du drone sur MAINTENANT', { how: 'hit', param: 'drone.wave' },
       ON1 + 'Sculpter > Drone > Timbre : choisis-en un autre.'),
     Dm('k.moments', ['t.journal'], 'Garde ce moment (♥) sur MAINTENANT', { how: 'hit', act: 'keep' },
@@ -48,7 +47,7 @@
       rec(st, secs) { if (secs >= 30) st.n = 1; }, // real duration of the finished recording
     }, '● Rec, joue au moins 30 s, puis ● Rec à nouveau pour arrêter (ou choisis une durée fixe dans ▾).'),
     Dm('k.macros', ['t.macros'], 'Tourne un grand réglage avant la fin de la mesure', { how: 'by', param: 'macro.*', src: ['user', 'sync'] },
-      BY + 'Écouter : Lumière, Densité, Espace, Nostalgie ou Nature (ou glisse sur l\'écran).'),
+      BY + 'Écouter : Lumière, Densité, Espace, Nostalgie ou Nature.'),
 
     // Harmonie
     C('h.forcer', ['h.pad'], 'Force 3 accords ({Z à M, ou appui long sur une pastille|appui long sur une pastille})', 3, {
@@ -93,7 +92,7 @@
       BY + 'Sculpter > Global > Tempo sous 60 : tout le paysage ralentit.'),
     Dm('m.phrase', ['m.phrase'], 'Passe la Mélodie auto en Phrase sur MAINTENANT', { how: 'hit', param: 'bells.mode', v: (v) => v === 'Phrase' },
       ON1 + 'Sculpter > Mélodie auto > Jeu : Phrase. Le motif se répète et varie un peu à chaque tour.'),
-    Dm('m.nuage', ['m.grains'], 'Épaissis les grains (Densité au-dessus de 60) avant la fin de la mesure', { how: 'by', param: 'grains.density', src: ['user', 'macro', 'xy'], v: (v) => v >= 0.6 },
+    Dm('m.nuage', ['m.grains'], 'Épaissis les grains (Densité au-dessus de 60) avant la fin de la mesure', { how: 'by', param: 'grains.density', src: ['user', 'macro', 'cc'], v: (v) => v >= 0.6 },
       BY + 'Sculpter > Grains > Densité au-dessus de 60 (ou Densité dans Écouter{, ou la molette de modulation MIDI|}).'),
     Dm('m.figer', ['m.grains2'], 'Fige le son sur MAINTENANT (❄{ ou Entrée|})', { how: 'hit', act: 'freeze' },
       ON1 + '❄ Figer{ (ou Entrée)|} capture les 4 dernières secondes : les grains les rejouent.'),

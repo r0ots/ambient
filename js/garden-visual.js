@@ -115,7 +115,7 @@
   // show drives a layer of the scene (sky, weather, lights, ground, full-screen filters). A layer is one intensity 0..1
   // (the MEAN of its cells: a select = its option's rank, a toggle 0/1, a text = how much it holds, a knob = its range);
   // `poll` = app state outside the store (mode, playback, song). The drawing (drawScene) reads intensities only: a later
-  // skin, or S5.10's combos, read the same `layers()`. A touched control (sources user / macro / xy, or the event `ev`)
+  // skin, or S5.10's combos, read the same `layers()`. A touched control (sources user / macro / cc, or the event `ev`)
   // kicks its layer: an impulse 1 → 0 in ~0.8 s on top of the lasting state.
   const SCENE = {
     hue: { at: 'ciel : teinte', keys: ['global.key', 'global.tuning'] },
@@ -704,7 +704,7 @@
 
     // ---- S4.6 the look follows the settings: targets from the store (look), smoothed per plant (cur, ~0.35 s);
     // a touched control (sources below) kicks its plants: a damped bounce, a wider sway, the plant lit while it is touched ----
-    KICK: new Set(['user', 'macro', 'xy']),
+    KICK: new Set(['user', 'macro', 'cc']),
     watch() {
       const S = AMB.store;
       if (!S || S === this.watched || typeof S.on !== 'function') return;

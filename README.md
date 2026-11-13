@@ -13,7 +13,7 @@ python3 -m http.server 8765    # puis http://localhost:8765
 Clique **▶ Lecture** ou **✦ Nouveau paysage**, puis laisse tourner. `?` ouvre l'aide (une page Parcours en plus dans le Parcours).
 
 Trois modes (en haut) :
-- **Écouter** — l'écran (glisse dessus : Lumière, sombre ↔ clair ; Densité, plus ou moins de notes), les 5 grands réglages, les couches.
+- **Écouter** — l'écran (le reflet de la musique, jamais une commande), les 5 grands réglages, les couches.
 - **Sculpter** — tous les réglages du son (couches, espace, mouvements lents, scènes, journal).
 - **Composer** — progression d'accords, mélodie écrite (piano roll), basse, pulsations, automation, morceau.
 
@@ -31,7 +31,7 @@ Look : façade de synthé japonais fin 80 (version nuit), écran LCD d'état en 
 | **Harmonie** | 11 gammes, progressions (aléatoire, I–V–vi–IV, i–VI–III–VII, perso « 1 6 4 5 »…), Temps Pulsé ou Flottant |
 | **Effets** | Reverb Hall/Plate/Cloud + pré-délai + shimmer (octave), delay ping-pong, tape (wow/flutter/saturation), lo-fi |
 | **Mouvement** | Dérive (autour de tes réglages), 2 Mouvements lents assignables, scènes A/B avec fondu auto |
-| **Jouer** | Pad XY sur l'écran, clavier (A–L notes, même lecture arrêtée ; Z–M accords), MIDI ; dans le Parcours, 9 pastilles au doigt (appui long = accord) ; « ⤓ Garder » range les 4 dernières mesures jouées (ou, sans rien jouer, celles de la Mélodie) dans un motif |
+| **Jouer** | Clavier (A–L notes, même lecture arrêtée ; Z–M accords), MIDI ; dans le Parcours, 9 pastilles au doigt (appui long = accord) ; « ⤓ Garder » range les 4 dernières mesures jouées (ou, sans rien jouer, celles de la Mélodie) dans un motif |
 | **Composer** | Progression d'accords en cases (I–VII), Séquenceur piano roll (vélocité, probabilité, mutation, sélection/copier-coller, motifs A–D + chaîne, arpégiateur, Rec live avec métronome, import/export MIDI), Basse en grille qui suit les accords, Pulsations (4 pistes, 16/32 pas, kits Feutré/Organique, euclidien), Automation dessinée, mode Morceau (sections enchaînées avec fondus), réglage « Humain » |
 | **Vues** | Écouter (5 grands réglages : Lumière, Densité, Espace, Nostalgie, Nature), Sculpter, Composer ; visuels Orbes/Horizon/Spectre (et Jardin dans le Parcours) ; ⤢ Plein écran |
 | **Garder** | Paysages prêts + ✦ Nouveau paysage par humeur, Mes paysages (sauver, exporter, importer), journal des moments, ⌘Z/⇧⌘Z, partage par lien, Rec WAV/compressé à durée fixe, minuteur de sommeil |

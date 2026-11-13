@@ -59,16 +59,6 @@ f.addEventListener('load', async () => {
       ok(seq.join('|') === 'prêt ?|3|2|1|MAINTENANT !' && !/sur le 1\b/.test(all) && /MAINTENANT/.test(c.text), 'S5.7 compte à rebours : ' + seq.join(' · ') + ' ; « ' + c.text + ' »');
       D.cancel(); D.now = n0; }
 
-    // --- 9. one glide = one action, however fast
-    { const acts = []; A.bus.on('act', (id) => { if (id === 'xy') acts.push(id); }); const v = d.getElementById('viz'), r = v.getBoundingClientRect();
-      A.seq.playing = true; // (no sound start)
-      for (let i = 0; i < 4; i++) {
-        const PE = (t, x) => new w.PointerEvent(t, { bubbles: true, pointerId: 20 + i, clientX: r.left + x, clientY: r.top + r.height / 2 });
-        v.dispatchEvent(PE('pointerdown', 20)); for (let x = 30; x < 200; x += 40) v.dispatchEvent(PE('pointermove', x)); v.dispatchEvent(PE('pointerup', 200));
-      }
-      A.seq.playing = false;
-      ok(acts.length === 4, 'S5.7 : 4 glissés rapides = 4 gestes (' + acts.length + ')'); }
-
     // --- 10. the song's ● Rec: no Réponse phrase, no ask
     { const sr = A.rec.songRecording; A.rec.songRecording = () => true; A.seq.playing = true;
       const n0 = D.now; let now = 200; D.now = () => now; D.cur = null; D.launch({ d: D.byId.accord, text: 'x' }, 0, now, 0.25);
@@ -78,7 +68,7 @@ f.addEventListener('load', async () => {
 
     // --- 14. « Épaissis les grains » counts the macro and a MIDI CC too
     { const a = K.byId['m.nuage'].ask;
-      ok(['user', 'macro', 'xy'].every((src) => D.match(a, 'param', 'grains.density', 0.9, src)) && !D.match(a, 'param', 'grains.density', 0.9, 'lfo'), 'S5.7 : la densité des grains par le bouton, le grand réglage Densité, le glissé ou le CC1'); }
+      ok(['user', 'macro', 'cc'].every((src) => D.match(a, 'param', 'grains.density', 0.9, src)) && !D.match(a, 'param', 'grains.density', 0.9, 'lfo'), 'S5.7 : la densité des grains par le bouton, le grand réglage Densité ou le CC1'); }
 
     // --- 16. a seventh chord inverted: Amaj7 with C# in the bass is I (A), not iii (C#m)
     { A.store.set('global.key', 'A', 'user'); A.store.set('global.scale', 'Ionien (majeur)', 'user'); await wait(30);
