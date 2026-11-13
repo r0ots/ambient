@@ -265,7 +265,7 @@
       if (!n) return 0;
       const color = o.color || (el && sparkColor(el)) || '#ffb347';
       return this.particles.burst(n, null, { x, y, angle: o.angle != null ? o.angle : -Math.PI / 2, spread: o.spread != null ? o.spread : Math.PI * 1.6,
-        speed: (o.speed || 260) * Math.min(1.6, 0.6 + 0.4 * this.JUICE), life: o.life || 0.45, size: o.size || 2 + (Math.random() < 0.3 ? 1 : 0), G: o.G != null ? o.G : 900, color });
+        speed: (o.speed || 320) * Math.min(1.6, 0.6 + 0.4 * this.JUICE), life: o.life || 0.45, size: o.size || 3 + (Math.random() < 0.3 ? 1 : 0), G: o.G != null ? o.G : 900, color });
     },
     // a knob turned by hand: dv = the change (fraction of its course), deg = the needle's new angle. Each notch (1/40 of
     // the course) gives a tiny squash and sparks off the needle's tip, along the turn, more when it turns faster.
@@ -298,7 +298,7 @@
         const e = held; held = null;
         e.classList.remove('is-pressed');
         this.pop(e, 'is-released', { ms: this.ms('slow') + 40 });
-        if (!e.classList.contains('knob') && e.isConnected) this.burst(e, { n: e.matches(SPARKY) ? 12 : 6 }); // let go: it sparks (toggles, chips: more)
+        if (!e.classList.contains('knob') && e.isConnected) this.burst(e, { n: e.matches(SPARKY) ? 16 : 10 }); // let go: it sparks (toggles, chips: more)
       };
       document.addEventListener('pointerdown', (ev) => {
         const t = ev.target && ev.target.closest && ev.target.closest(PRESS);
@@ -326,7 +326,7 @@
         const t = this.on() && e.target && e.target.closest ? e.target.closest(TILT) : null;
         if (t !== tilted) { untilt(); if (t && !t.disabled) { tilted = t; t.classList.add('m-tilt'); } }
         if (!tilted) return;
-        const r = tilted.getBoundingClientRect(), A = 10 * Math.min(1.5, this.amp());
+        const r = tilted.getBoundingClientRect(), A = 16 * Math.min(1.5, this.amp());
         if (!r.width || !r.height) return;
         tilted.style.setProperty('--m-rx', (-((e.clientY - r.top) / r.height - 0.5) * A).toFixed(1) + 'deg');
         tilted.style.setProperty('--m-ry', (((e.clientX - r.left) / r.width - 0.5) * A).toFixed(1) + 'deg');

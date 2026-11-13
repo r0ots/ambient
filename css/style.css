@@ -852,14 +852,14 @@ body.game .lcd.lcd-pin .lcd-score { display: none; }
 /* hover (a fine pointer): it lifts, glows in its own colour (--c) and casts a shadow; js (.m-tilt) leans it in 3D
    towards the pointer. A finger gets the same glow when it presses (.is-pressed). */
 @media (hover: hover) {
-  :where(.btn, .mode-btn, .tog, .chip, label.btn, .song-chip, .chord-slot, .slot-tab, .sc-slot, .song-btns button, .loop-chip button):hover:not(:disabled) {
+  :where(.btn, .mode-btn, .tog, .chip, label.btn, .song-chip, .chord-slot, .slot-tab, .sc-slot, .song-btns button, .loop-chip button):is(:hover, .m-tilt):not(:disabled) {
     translate: 0 calc(-2px * var(--m-amp)); filter: brightness(1.12);
-    box-shadow: var(--bevel), 0 calc(6px * var(--m-amp)) calc(12px * var(--m-amp)) -4px #000d, 0 0 calc(14px * var(--m-amp)) -2px color-mix(in srgb, var(--c, var(--accent)) 75%, transparent);
+    box-shadow: var(--bevel), 0 calc(6px * var(--m-amp)) calc(12px * var(--m-amp)) -4px #000d, 0 0 calc(18px * var(--m-amp)) 0 color-mix(in srgb, var(--c, var(--accent)) 70%, transparent);
   }
-  select:hover { translate: 0 calc(-2px * var(--m-amp)); box-shadow: var(--bevel-in), 0 calc(6px * var(--m-amp)) calc(12px * var(--m-amp)) -4px #000d, 0 0 calc(14px * var(--m-amp)) -2px var(--lcd-glow); }
+  select:is(:hover, .m-tilt) { translate: 0 calc(-2px * var(--m-amp)); box-shadow: var(--bevel-in), 0 calc(6px * var(--m-amp)) calc(12px * var(--m-amp)) -4px #000d, 0 0 calc(14px * var(--m-amp)) -2px var(--lcd-glow); }
   .knob:hover svg { translate: 0 calc(-2px * var(--m-amp)); filter: drop-shadow(0 calc(5px * var(--m-amp)) 3px #000a) drop-shadow(0 0 calc(6px * var(--m-amp)) color-mix(in srgb, var(--c, var(--accent)) 70%, transparent)); }
 }
-.m-tilt.m-tilt { transform: perspective(420px) rotateX(var(--m-rx, 0deg)) rotateY(var(--m-ry, 0deg)) translateZ(calc(5px * var(--m-amp))); }
+.m-tilt.m-tilt { transform: perspective(420px) rotateX(var(--m-rx, 0deg)) rotateY(var(--m-ry, 0deg)) translateZ(calc(8px * var(--m-amp))); }
 
 /* press: sinks and squashes while held, springs back with momentum when let go (and sparks: motion.burst) */
 .is-pressed { scale: var(--m-sx) var(--m-sy); translate: 0 calc(1px * var(--m-amp)); filter: brightness(1.3) drop-shadow(0 0 5px color-mix(in srgb, var(--c, var(--accent)) 80%, transparent));
