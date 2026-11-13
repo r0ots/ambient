@@ -60,6 +60,12 @@
         }
         this.lastI = i;
         store.set('auto.curve', encode(buf), 'user');
+        // S7.2: the pen leaves a glowing trail (and a few sparks) that fades behind it
+        const M = AMB.motion;
+        if (M && M.on()) {
+          const t = performance.now(); this.trail.push({ x: e.clientX - r.left, y: e.clientY - r.top, t });
+          if (t - (this.sparkT || 0) > 45) { this.sparkT = t; M.burst({ x: e.clientX, y: e.clientY }, { n: 3, speed: 200, life: 0.35, color: '#c8ff8a' }); }
+        }
       };
       this.canvas.addEventListener('pointerdown', (e) => { down = true; buf = decode(store.get('auto.curve')); this.lastI = null; this.canvas.setPointerCapture(e.pointerId); paint(e); if (!store.get('auto.on')) store.set('auto.on', true, 'user'); });
       this.canvas.addEventListener('pointermove', (e) => { if (down) paint(e); });
@@ -67,11 +73,14 @@
       this.canvas.addEventListener('pointerup', up); this.canvas.addEventListener('pointercancel', up);
       store.on((k) => { if (k.startsWith('auto.')) this.draw(); });
       window.addEventListener('resize', () => this.draw());
-      const loop = () => { if (pos !== this.lastPos) { this.draw(); this.lastPos = pos; } requestAnimationFrame(loop); };
+      const loop = () => { if (pos !== this.lastPos || this.trail.length || this.trace) { this.draw(); this.lastPos = pos; } requestAnimationFrame(loop); };
       requestAnimationFrame(loop);
       this.draw();
     },
+    trail: [], trace: null,
     shape(a) {
+      // S7.2: a shape button traces its curve: a bright head runs left to right with a glowing tail
+      const M = AMB.motion; if (M && M.on()) this.trace = { t0: performance.now(), d: M.ms('slow') * 1.6 };
       let pts;
       if (a === 'ramp') pts = Array.from({ length: N }, (_, i) => 0.1 + 0.8 * (i / (N - 1)));
       else if (a === 'fall') pts = Array.from({ length: N }, (_, i) => 0.9 - 0.8 * (i / (N - 1)));
@@ -98,6 +107,34 @@
       g.lineTo(W, H); g.lineTo(0, H); g.closePath();
       g.fillStyle = on ? 'rgba(159,211,111,0.12)' : 'rgba(159,211,111,0.05)'; g.fill();
       if (on && pos >= 0 && AMB.seq.playing) { g.fillStyle = '#ffffffaa'; g.fillRect(pos * W, 0, 1.5, H); }
+      this.drawGlow(g, W, H, pts);
+    },
+    // S7.2: the pen's trail (fades over --m-slow) and a shape being traced (the head runs along the curve)
+    drawGlow(g, W, H, pts) {
+      const M = AMB.motion, now = performance.now(), life = M ? M.ms('slow') : 0, a = M ? Math.min(2, M.amp()) : 0;
+      this.trail = this.trail.filter((p) => now - p.t < life);
+      if (!a) { this.trail.length = 0; this.trace = null; return; }
+      g.save(); g.lineCap = 'round'; g.shadowColor = '#c8ff8a';
+      for (let i = 1; i < this.trail.length; i++) {
+        const p = this.trail[i], q = this.trail[i - 1], k = 1 - (now - p.t) / life;
+        g.globalAlpha = k; g.strokeStyle = '#eaffd0'; g.lineWidth = 1 + 4 * k * a; g.shadowBlur = 12 * k * a;
+        g.beginPath(); g.moveTo(q.x, q.y); g.lineTo(p.x, p.y); g.stroke();
+      }
+      const tr = this.trace;
+      if (tr) {
+        const p = (now - tr.t0) / tr.d;
+        if (p >= 1) this.trace = null;
+        else {
+          const X = (i) => ((i + 0.5) / N) * W, Y = (v) => (1 - v) * (H - 8) + 4, head = p * (N - 1), tail = Math.max(0, head - N * 0.35);
+          const at = (x) => { const i = Math.min(N - 2, Math.floor(x)); return pts[i] + (pts[i + 1] - pts[i]) * (x - i); };
+          g.beginPath(); g.moveTo(X(tail), Y(at(tail)));
+          for (let i = Math.ceil(tail); i < head; i++) g.lineTo(X(i), Y(pts[i]));
+          g.lineTo(X(head), Y(at(head)));
+          g.globalAlpha = 1; g.strokeStyle = '#eaffd0'; g.lineWidth = 3 * a; g.shadowBlur = 14 * a; g.stroke();
+          g.fillStyle = '#ffffff'; g.beginPath(); g.arc(X(head), Y(at(head)), 3 + 2 * a, 0, Math.PI * 2); g.fill();
+        }
+      }
+      g.restore();
     },
   };
 

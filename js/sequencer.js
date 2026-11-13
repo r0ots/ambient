@@ -32,6 +32,14 @@
     get scale() { return T.SCALES[store.get('global.scale')]; }
     get root() { return T.NOTE_NAMES.indexOf(store.get('global.key')); }
     stepDur() { return 60 / store.get('global.tempo') / 4; }
+    // S7.2: the step the listener hears now (fractional; the scheduler runs up to `lookahead` ahead of the ear), -1 stopped.
+    // What lights on the tempo (Composer's grids, chips, piano roll) follows this, not the scheduler.
+    heard() {
+      const c = AMB.engine.ctx; if (!c || !this.playing) return -1;
+      return this.step + (c.currentTime - (c.outputLatency || c.baseLatency || 0) - this.nextTime) / this.stepDur();
+    }
+    // the css animation delay that puts an infinite --beat animation on the beat heard now (Composer: chips, slots)
+    beatPhase() { const h = this.heard(); return h < 0 ? '0s' : (-(((h - (this.origin || 0)) % 4 + 4) % 4) * this.stepDur()).toFixed(3) + 's'; }
 
     start() {
       const ctx = AMB.engine.ctx;

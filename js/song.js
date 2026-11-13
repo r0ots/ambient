@@ -22,6 +22,9 @@
   const BARS = [2, 4, 8, 16, 32, 64];
   // `loops`: the looper's layers recorded in this section (js/looper.js), played whenever the section plays
   const make = (name, bars, snap) => ({ name, bars, snap, loops: [] });
+  // S7.2: a section's chip keeps its key across re-renders (FLIP: the chips that stay glide, a new one springs out)
+  const keys = new WeakMap(); let nextKey = 1;
+  const keyOf = (sec) => { if (!keys.has(sec)) keys.set(sec, nextKey++); return keys.get(sec); };
 
   const song = {
     // idx = the selected section (heard, edited, playing); -1 = none (after a reload, a mode change, an empty song)
@@ -51,19 +54,20 @@
       const name = NAMES[n] || `Section ${n + 1}`;
       const snap = base ? { ...base.snap, ...EMPTY } : this.snap();
       const at = base ? this.idx + 1 : n;
-      this.sections.splice(at, 0, make(name, 8, snap));
+      this.sections.splice(at, 0, (this.born = make(name, 8, snap)));
       this.shiftPending(at, 1);
       this.save(); this.select(at, true);
     },
     dup(i = this.idx) {
       const s = this.sections[i]; if (!s) return;
       const name = /\d$/.test(s.name) ? s.name.replace(/\d+$/, (d) => Number(d) + 1) : `${s.name} 2`;
-      this.sections.splice(i + 1, 0, { ...make(name.slice(0, 24), s.bars, { ...s.snap }), loops: JSON.parse(JSON.stringify(s.loops || [])) });
+      this.sections.splice(i + 1, 0, (this.born = { ...make(name.slice(0, 24), s.bars, { ...s.snap }), loops: JSON.parse(JSON.stringify(s.loops || [])) }));
       this.shiftPending(i + 1, 1);
       this.save(); this.select(i + 1, true);
     },
     remove(i = this.idx) {
       if (!this.sections[i]) return;
+      if (AMB.motion && this.strip) AMB.motion.shatter(this.strip.querySelector(`[data-i="${i}"]`)); // S7.2: squashed, it bursts
       this.sections.splice(i, 1);
       if (this.pending === i) this.pending = null; else this.shiftPending(i, -1);
       if (i === this.idx) { // the heard section is gone: its neighbour is loaded
@@ -88,7 +92,7 @@
       if (!this.sections[i]) return;
       if (AMB.seq.playing && !now) {
         if (i === this.idx && this.pending == null) return this.render();
-        this.pending = i; this.render();
+        this.pending = i; this.render(); this.hop(i);
         AMB.ui.toast(`→ ${this.sections[i].name} à la prochaine mesure`);
         return;
       }
@@ -96,6 +100,12 @@
       if (this.playing) this.barInSection = 0;
       this.enter(i, !AMB.seq.playing);
       this.render();
+      if (!this.justBorn) this.hop(i);
+    },
+    // S7.2: the chip picked hops (the one queued for the next bar too)
+    hop(i) {
+      const M = AMB.motion, c = M && this.strip && this.strip.querySelector(`[data-i="${i}"]`);
+      if (c) M.fx(c, (a) => [{ translate: '0 0', rotate: '0deg' }, { translate: `0 ${-12 * a}px`, rotate: `${-3 * a}deg`, offset: 0.35 }, { translate: '0 0', rotate: '0deg' }], { dur: 'slow', ease: 'out' });
     },
     // keys 1–8, MIDI Program Change: go to a section (starts the song when it does not play)
     jump(i) {
@@ -259,10 +269,17 @@
         ? `${this.sections.length} section${this.sections.length > 1 ? 's' : ''} · ${total} mesures · ~${Math.floor(secs / 60)} min ${String(Math.round(secs % 60)).padStart(2, '0')}` : 'vide';
       const focused = this.panel.contains(document.activeElement) && document.activeElement.dataset ? document.activeElement.dataset.i : null;
       const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-      this.strip.innerHTML = this.sections.map((s, i) => `<button class="song-chip${i === this.idx ? ' sel' : ''}${i === this.pending ? ' next' : ''}" data-i="${i}" role="option" aria-selected="${i === this.idx}" title="${i < 8 ? `Touche ${i + 1} · ` : ''}${esc(s.name)}">
+      const M = AMB.motion, shown = M && this.panel.offsetParent; // (FLIP only where it is seen)
+      const fill = () => { this.strip.innerHTML = this.sections.map((s, i) => `<button class="song-chip${i === this.idx ? ' sel' : ''}${i === this.pending ? ' next' : ''}" data-i="${i}" data-k="${keyOf(s)}" role="option" aria-selected="${i === this.idx}" title="${i < 8 ? `Touche ${i + 1} · ` : ''}${esc(s.name)}">
           <b>${esc(s.name)}</b><small>${s.bars}</small><i class="song-prog"><i></i></i></button>`).join('')
         + `<button class="song-chip song-add" data-s="add" title="Nouvelle section : même son et mêmes accords, motifs vides">+ Section</button>`;
-      if (!this.sections.length) this.strip.insertAdjacentHTML('afterbegin', '<div class="song-empty">Une section = un son, ses motifs et ses accords. « + Section » part de ce que tu entends.</div>');
+      if (!this.sections.length) this.strip.insertAdjacentHTML('afterbegin', '<div class="song-empty">Une section = un son, ses motifs et ses accords. « + Section » part de ce que tu entends.</div>'); };
+      if (shown) M.flip(this.strip, fill, { key: (el) => el.dataset.k || el.dataset.s || el.className }); else fill();
+      if (this.playing) this.strip.style.setProperty('--beat-ph', AMB.seq.beatPhase()); // the playing chip pulses on the beat heard
+      // a new section springs out of « + Section » (sparks), the others already slid aside
+      const born = this.born && this.strip.querySelector(`[data-k="${keyOf(this.born)}"]`); this.born = null; this.justBorn = !!born;
+      if (born && shown && M.fx(born, (a) => [{ translate: `${-40 * a}px ${14 * a}px`, scale: `${1 - 0.5 * Math.min(1, a)}`, rotate: `${-14 * a}deg`, opacity: 0 }, { translate: '0 0', scale: '1', rotate: '0deg', opacity: 1 }], { dur: 'slow', ease: 'spring' }))
+        setTimeout(() => M.burst(born, { n: 18, spread: Math.PI * 1.4, speed: 340 }), M.ms('med') * 0.5);
       if (focused != null) { const f = this.strip.querySelector(`[data-i="${focused}"]`); if (f) f.focus(); }
       const s = this.sel();
       this.edit.hidden = !s;
@@ -319,6 +336,27 @@
     });
   }
   window.addEventListener('pagehide', () => song.save());
+  // S7.2: entering Composer, behind its panels (motion.swap), their pieces cascade in: section chips, loop layers, chord
+  // slots, motif tabs; then the grids' steps light up column by column (only what is in the window)
+  function composeIn() {
+    const M = AMB.motion; if (!M || !M.on()) return;
+    const q = (s) => [...document.querySelectorAll(s)];
+    M.stagger(q('.seqrow .song-chip, .seqrow .loop-chip'), { y: -16, delay: M.ms('med') });
+    M.stagger(q('.seqrow .chord-slot, .seqrow .slot-tab'), { y: -22, delay: M.ms('med') + M.ms(M.MS.stagger) * 2 });
+    const vh = innerHeight;
+    for (const row of q('.seqrow .pulse-grid')) {
+      const cells = [...row.querySelectorAll('.pulse-cell')], top = row.getBoundingClientRect().top;
+      if (top > vh || !cells.length) continue;
+      const n = cells.length / 4;
+      cells.forEach((c, i) => M.fx(c, (a) => [{ scale: 0.1, opacity: 0 }, { scale: 1 + 0.3 * a, opacity: 1, offset: 0.6 }, { scale: 1, opacity: 1 }],
+        { dur: 'med', ease: 'spring', delay: M.ms('slow') + (i % n) * M.ms(M.MS.stagger) * 0.5 }));
+    }
+  }
+  if (document.body && window.MutationObserver) {
+    let was = document.body.classList.contains('mode-compose');
+    new MutationObserver(() => { const now = document.body.classList.contains('mode-compose'); if (now && !was) composeIn(); was = now; })
+      .observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  }
 
   song.load();
   AMB.song = song;

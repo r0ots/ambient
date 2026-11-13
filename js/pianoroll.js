@@ -88,7 +88,7 @@
   function onStep(step, time, sd, chordDeg) {
     if (roll.recording && roll.metro && step % 4 === 0 && AMB.engine.ctx) click(time, step % 16 === 0);
     if (!store.get('seq.on') || !AMB.layers.seq) return;
-    if (store.get('seq.mode') === 'Arpège') { roll.playStep = -1; return arpStep(step, time, sd, chordDeg); }
+    if (store.get('seq.mode') === 'Arpège') { roll.playStep = -1; roll.mark(step, -1, null); return arpStep(step, time, sd, chordDeg); }
     const len = steps(), i = (step - (AMB.seq.origin || 0)) % len;
     // slot changes are quantised: the new motif starts at the next pattern boundary (like clip launching)
     if (i === 0 || latched == null) latched = slotAt(step);
@@ -108,7 +108,7 @@
       const hu = AMB.util.human();
       AMB.layers.seq.note(midi, Math.max(time, time + swing + hu.dt), vel * hu.dv, true, n.l * sd * 0.95);
     }
-    roll.playStep = i;
+    roll.playStep = i; roll.mark(step, i, slot);
   }
 
   // ---------- slow mutation (like the Phrase mode): notes drift by step, some vanish, some appear ----------
@@ -219,12 +219,46 @@
       this.bindMouse();
       store.on((k) => { if (k.startsWith('seq.') || k === 'global.key' || k === 'global.scale') this.draw(); });
       window.addEventListener('resize', () => this.draw());
+      // S7.2: the playhead and the notes that flash follow the step HEARD (seq.heard), not the scheduler; while an
+      // effect lives (a note placed, erased, played, a selection), the roll is drawn each frame, else only on changes
       const loop = () => {
-        if (this.playStep !== this.lastDrawn || this.playSlot !== this.lastSlot) { this.draw(); this.lastSlot = this.playSlot; }
+        const S = AMB.seq, h = S.playing ? S.heard() : -1, m = this.marks;
+        let v = -1, vs = null;
+        if (h >= 0) for (let k = m.length - 1; k >= 0; k--) if (m[k][0] <= h) { v = m[k][1]; vs = m[k][2]; break; }
+        if (v !== this.vStep || vs !== this.vSlot) {
+          if (v >= 0 && v !== this.vStep && vs === store.get('seq.slot')) this.flash(v);
+          this.vStep = v; this.vSlot = vs; this.draw();
+        } else if (this.fx.length) this.draw();
         requestAnimationFrame(loop);
       };
       requestAnimationFrame(loop);
       this.draw();
+    },
+    // ---- S7.2 motion on the canvas: effects drawn over the notes for a moment (M = AMB.motion: tokens, JUICE, off) ----
+    marks: [], vStep: -1, vSlot: null, fx: [], hover: null,
+    mark(step, i, slot) { this.marks.push([step, i, slot]); if (this.marks.length > 48) this.marks.shift(); },
+    // k: pop (placed), squash (erased), flash (plays), shine (selected); dur: a motion token; delay in ms
+    addFx(k, notes, dur = 'slow', delay = () => 0) {
+      const M = AMB.motion; if (!M || !M.on() || !this.canvas) return;
+      const t = performance.now(), d = M.ms(dur);
+      for (const n of notes) this.fx.push({ k, s: n.s, r: n.r, l: n.l || 1, t0: t + delay(n), d });
+      if (this.fx.length > 200) this.fx.splice(0, this.fx.length - 200);
+      if (k !== 'flash') this.draw();
+    },
+    // the screen point of a note (sparks)
+    notePt(n) {
+      const G = this.geom(), r = this.canvas.getBoundingClientRect();
+      return { x: r.left + G.labelW + (n.s + Math.min(n.l || 1, 4) / 2) * G.cw, y: r.top + (ROWS - 1 - n.r + 0.5) * G.rowH };
+    },
+    placed(n) { const M = AMB.motion; this.addFx('pop', [n]); if (M) M.burst(this.notePt(n), { n: 10, speed: 280, life: 0.4, color: '#ffb347' }); },
+    erased(ns) {
+      const M = AMB.motion; if (!ns.length) return;
+      this.addFx('squash', ns, 'med');
+      if (M) ns.slice(0, 6).forEach((n) => M.burst(this.notePt(n), { n: 6, spread: Math.PI * 2, speed: 200, life: 0.35, G: 1400, color: '#ff8a5c' }));
+    },
+    flash(v) {
+      const ns = this.notes().filter((n) => n.s === v);
+      if (ns.length) this.addFx('flash', ns, 'slow');
     },
     notes() { return parse(store.get(editKey())).slice(); },
     save(notes, source = 'user') { store.set(editKey(), encode(notes), source); },
@@ -245,13 +279,20 @@
     sel: new Set(), clip: null, box: null, cursor: 0,
     keyOf: (n) => `${n.s}.${n.r}`,
     selected() { return this.notes().filter((n) => this.sel.has(this.keyOf(n))); },
-    setSel(notes) { this.sel = new Set(notes.map(this.keyOf)); this.draw(); },
+    setSel(notes) {
+      const before = this.sel; this.sel = new Set(notes.map(this.keyOf));
+      // S7.2: notes that join the selection shimmer (a light sweeps across them, left to right)
+      const fresh = notes.filter((n) => !before.has(this.keyOf(n)));
+      if (fresh.length) { const s0 = Math.min(...fresh.map((n) => n.s)); this.addFx('shine', fresh, 'slow', (n) => (n.s - s0) * 12 * (AMB.motion ? AMB.motion.t() : 0)); }
+      this.draw();
+    },
     transformSel(fn) {
       const notes = this.notes(), out = [], moved = [];
       for (const n of notes) {
         if (!this.sel.has(this.keyOf(n))) { out.push(n); continue; }
         const m = fn({ ...n });
         if (m && m.r >= 0 && m.r < ROWS && m.s >= 0 && m.s < steps()) { out.push(m); moved.push(m); }
+        else if (!m) this.erased([n]); // S7.2: deleted (Suppr, ⌘X): squashed
       }
       // drop unselected notes that now collide with moved ones
       const keys = new Set(moved.map(this.keyOf));
@@ -307,6 +348,7 @@
           return;
         }
         if (e.shiftKey) { // toggle a whole column off (or nothing to remove: no-op)
+          this.erased(notes.filter((n) => c.s >= n.s && c.s < n.s + n.l));
           this.save(notes.filter((n) => !(c.s >= n.s && c.s < n.s + n.l)));
           return;
         }
@@ -325,12 +367,16 @@
         }
         if (this.sel.size) this.sel = new Set();
         const note = { s: c.s, r: c.r, l: 1, v: 7, p: 10 };
-        notes.push(note); this.save(notes);
+        notes.push(note); this.save(notes); this.placed(note);
         drag = { mode: 'new', s: c.s, r: c.r };
         try { this.canvas.setPointerCapture(e.pointerId); } catch (_) {}
         this.preview(c.r, c.s);
       });
       this.canvas.addEventListener('pointermove', (e) => {
+        if (!drag && !this.box && e.pointerType === 'mouse') { // S7.2: the cell under the mouse glows (a ghost note)
+          const c = this.cellAt(e), k = c ? c.s + '.' + c.r : null;
+          if (k !== (this.hover && this.hover.k)) { this.hover = c && { ...c, k }; this.draw(); }
+        }
         if (this.box) { const c = this.cellAt(e); if (c) { this.box.s1 = c.s; this.box.r1 = c.r; this.updateBox(); } return; }
         if (!drag) return;
         const c = this.cellAt(e); if (!c) return;
@@ -378,12 +424,14 @@
       });
       const end = () => {
         if (drag && drag.mode === 'move' && !drag.moved) { // simple click on a note: delete it
+          this.erased([drag.hit]);
           this.save(this.notes().filter((n) => !(n.s === drag.hit.s && n.r === drag.hit.r)));
         }
         drag = null;
         if (this.box) { this.box = null; this.draw(); }
       };
       this.canvas.addEventListener('pointerup', end);
+      this.canvas.addEventListener('pointerleave', () => { if (this.hover) { this.hover = null; this.draw(); } });
       this.canvas.addEventListener('pointercancel', end);
     },
     // audition the note being placed; stopped, through the same live path as A–L (engine.liveInput, past the stop fade)
@@ -429,7 +477,7 @@
     },
     renderTabs() {
       if (!this.tabs) return;
-      const playing = AMB.seq.playing && store.get('seq.on') ? this.playSlot : null;
+      const playing = AMB.seq.playing && store.get('seq.on') ? this.vSlot : null;
       for (const b of this.tabs) {
         const x = b.dataset.slot;
         b.classList.toggle('is-sel', store.get('seq.slot') === x);
@@ -474,7 +522,7 @@
       }
       // playhead
       // the playhead is only meaningful when the edited slot is the one playing
-      const ps = this.playSlot === store.get('seq.slot') ? this.playStep : -1;
+      const ps = this.vSlot === store.get('seq.slot') ? this.vStep : -1; // (the step heard, S7.2)
       if (seq.playing && store.get('seq.on') && ps >= 0 && ps < n) {
         g.fillStyle = 'rgba(255,179,71,0.12)';
         g.fillRect(G.labelW + ps * G.cw, 0, G.cw, G.h);
@@ -501,12 +549,50 @@
           if (w > 22) { g.fillStyle = '#1d1407'; g.font = '9px "IBM Plex Mono", monospace'; g.fillText(nt.p * 10 + '%', x + 3, y + (G.rowH - 4) / 2); }
         }
       }
+      this.drawFx(g, G);
       if (this.box) { // selection rectangle
         const b = this.box, sa = Math.min(b.s0, b.s1), sb = Math.max(b.s0, b.s1), ra = Math.min(b.r0, b.r1), rb = Math.max(b.r0, b.r1);
         g.strokeStyle = '#fff3dccc'; g.setLineDash([4, 3]); g.lineWidth = 1;
         g.strokeRect(G.labelW + sa * G.cw, (ROWS - 1 - rb) * G.rowH, (sb - sa + 1) * G.cw, (rb - ra + 1) * G.rowH); g.setLineDash([]);
       }
-      this.lastDrawn = this.playStep;
+    },
+    // S7.2: the effects over the notes, and the ghost note under the mouse
+    drawFx(g, G) {
+      const now = performance.now(), M = AMB.motion, a = M ? Math.min(2, M.amp()) : 0, rh = G.rowH - 4;
+      const box = (n) => [G.labelW + n.s * G.cw + 1, (ROWS - 1 - n.r) * G.rowH + 2, Math.max(4, Math.min(n.l, G.n - n.s) * G.cw - 2)];
+      if (this.hover && a > 0) {
+        const [x, y, w] = box({ s: this.hover.s, r: this.hover.r, l: 1 });
+        g.save(); g.shadowColor = '#ffb347'; g.shadowBlur = 10 * a; g.strokeStyle = 'rgba(255,212,140,.85)'; g.lineWidth = 1.5;
+        g.fillStyle = 'rgba(255,179,71,.18)'; roundRect(g, x, y, w, rh, 3); g.fill(); g.stroke(); g.restore();
+      }
+      if (!this.fx.length) return;
+      g.save();
+      this.fx = this.fx.filter((f) => {
+        const p = (now - f.t0) / f.d; if (p >= 1) return false; if (p < 0) return true;
+        const [x, y, w] = box(f), cx = x + w / 2, cy = y + rh / 2;
+        if (f.k === 'pop') { // springs out big, then settles; a ring flies off
+          const s = 1 + 0.7 * a * Math.pow(1 - p, 2) * Math.cos(p * 9);
+          g.globalAlpha = 1; g.fillStyle = '#fff3c4'; g.shadowColor = '#ffb347'; g.shadowBlur = 14 * a * (1 - p);
+          roundRect(g, cx - (w / 2) * s, cy - (rh / 2) * s, w * s, rh * s, 3); g.globalAlpha = 0.85 * (1 - p); g.fill();
+          const o = 3 + 14 * a * p; g.shadowBlur = 0; g.globalAlpha = 1 - p; g.strokeStyle = '#ffd08a'; g.lineWidth = 2 * (1 - p) + 0.5;
+          roundRect(g, x - o, y - o, w + 2 * o, rh + 2 * o, 4); g.stroke();
+        } else if (f.k === 'squash') { // flattens and widens, then gone
+          const sx = 1 + 0.6 * a * p, sy = Math.max(0.04, 1 - p * 1.1);
+          g.globalAlpha = 1 - p * p; g.fillStyle = '#ff8a5c'; g.shadowColor = '#ff5e7a'; g.shadowBlur = 8 * a;
+          roundRect(g, cx - (w / 2) * sx, y + rh - rh * sy + 2 * a * p, w * sx, rh * sy, 2); g.fill();
+        } else if (f.k === 'flash') { // the note that plays: a white flash that spills, then fades
+          const e = Math.pow(1 - p, 2);
+          g.globalAlpha = 0.9 * e; g.fillStyle = '#ffffff'; g.shadowColor = '#ffe0a8'; g.shadowBlur = 18 * a * e;
+          const o = 2 * a * e; roundRect(g, x - o, y - o, w + 2 * o, rh + 2 * o, 3); g.fill();
+        } else if (f.k === 'shine') { // a light sweeps across, the outline sparkles
+          const bx = x - 6 + (w + 12) * p;
+          g.globalAlpha = Math.sin(Math.PI * p); g.fillStyle = '#ffffff'; g.shadowColor = '#fff3dc'; g.shadowBlur = 8 * a;
+          g.fillRect(Math.max(x, bx - 2), y, Math.min(4, x + w - Math.max(x, bx - 2)), rh);
+          g.strokeStyle = '#fff3dc'; g.lineWidth = 1 + 1.5 * Math.sin(Math.PI * p); roundRect(g, x, y, w, rh, 3); g.stroke();
+        }
+        return true;
+      });
+      g.restore();
     },
     stopRecording() {
       this.recording = false;
