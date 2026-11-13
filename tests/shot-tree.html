@@ -1,6 +1,6 @@
 <!doctype html><html><head><!-- Dev captures (not in the suite): ?w=390&h=780 for phone width.
   Modes: #free, #bar (barre + LCD au début du Parcours : premier défi, sans jargon ; S5.6 : sans « ▶ Lancer le paysage »), #press (S5.6 : ▶ Lecture et deux potentiomètres enfoncés), #task-help (aide du défi sur le LCD),
-  #reponse (S4.2 : plante Mélodie auto en attente de réponse, « ↺ À toi »), #reponse-leaves (feuilles justes et fausse), #reponse-score (S5.3 : palier élevé, série et record sur le LCD, repère sur la plante Mélodie auto), #sel=<node>; #help-path / #help-free (aide du Parcours ; libre), #more (menu ⋯ en Parcours),
+  #reponse (S4.2 : plante Mélodie auto en attente de réponse, « ↺ À toi »), #reponse-leaves (feuilles justes et fausse), #reponse-score (S5.3 : palier élevé, série et record sur le LCD, repère sur la plante Mélodie auto), #reponse-call (S6.7 : la phrase de la machine, une pastille allumée comme un Simon), #juice-rate (S6.7 : « RATÉ » et BZZT!), #sel=<node>; #help-path / #help-free (aide du Parcours ; libre), #more (menu ⋯ en Parcours),
   #garden (Jardin visuel débutant : 3 couches), #garden-adv (tout l'arbre, secrets) — notes simulées sur le bus ;
   #composer (arbre, branche Composer en 3 nœuds), #handover (instrument remis : arbre complet, morceau enregistré) ;
   #song (panneau Morceau, mode libre, 3 sections, la 1re choisie : ses réglages et les éditeurs dessous ; S6.3), #song-empty (aucune section : ● Rec désactivé), #song-loops (S6.4 : rangée Boucles, 2 couches dont une muette, overdub en cours) ;
@@ -63,6 +63,7 @@ document.getElementById('f').addEventListener('load', () => {
       if (h.includes('open')) A.game.unlock('h.pad');
       else if (h.includes('tier')) A.bus.emit('resp:tier', { tier: 3, name: 'Syncopes', lvl: 9 });
       else if (h.includes('end')) { A.game.s.ended = true; G.fx('end', { say: '✦ L\'instrument est à toi', ms: 60000 }); } // S6.6 #juice-end: the handover (KA-BOOM!)
+      else if (h.includes('rate')) G.fx('rate', { say: '✗ RATÉ ! Réécoute…', ms: 60000 }); // S6.7 #juice-rate: a wrong Réponse (BZZT!), replayed next
       else A.contracts.finish('m.notes');
       setTimeout(() => freeze(C), 300);
     }, 1600);
@@ -157,7 +158,9 @@ document.getElementById('f').addEventListener('load', () => {
     const st = A.contracts.state(); st.active = ['p.premier']; st.prog['p.premier'] = { n: 0 }; A.garden.renderContracts();
     const score = h.includes('score'); // S5.3: a high tier (Combinaisons +3), the series and the record on the LCD, the tier mark on the plant
     if (score) { const r = P.st(A.game); r.lvl = 16; r.streak = 12; r.best = 17; A.garden.renderScore(); }
-    setInterval(() => { A.garden.lcd(score ? '↑ Palier : Combinaisons' : '↺ À toi', 2000); A.gardenVisual.grow = {}; }, 400); // plants shown grown (headless frames are sparse)
+    const call = h.includes('call'); // S6.7 #reponse-call: the machine's phrase, its 3rd note's pad lit like a Simon
+    if (call) { P.cur.from = 1e12; setInterval(() => { const b = doc.querySelectorAll('#pads .pad')[3]; if (b) b.classList.add('call'); }, 100); }
+    setInterval(() => { A.garden.lcd(score ? '↑ Palier : Combinaisons' : call ? '↺ Écoute…' : '↺ À TOI !', 2000); A.gardenVisual.grow = {}; }, 400); // plants shown grown (headless frames are sparse)
   } else if (h.includes('composer')) { // S3.5: the Composer branch in 3 nodes (Mélodie écrite, Rythme open; Morceau to open)
     ['h.pad2', 'h.key', 'h.scale', 'h.prog', 'c.seq', 'c.rythme'].forEach((i) => A.game.unlock(i));
     A.garden.showTree(true); setTimeout(() => { const G = A.garden, r = doc.querySelector('#treeDlg .tree-map').getBoundingClientRect();

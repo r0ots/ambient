@@ -355,6 +355,7 @@
         const ctx = AMB.engine && AMB.engine.ctx, c = P.cur, ms = ctx ? Math.max(0, (e.ans - ctx.currentTime) * 1000) : 0;
         const say = (e.again ? '↺ Encore : ' : '') + (e.tr ? '↺ Une quinte plus haut !' : e.chord ? (e.len > 1 ? '↺ À toi : les accords' : '↺ À toi : l\'accord') : '↺ À TOI !');
         clearTimeout(this._toiT); this.renderScore();
+        if (ms > 300) this.lcd(e.again ? '↺ Réécoute…' : '↺ Écoute…', ms); // S6.7: the phrase first (the pads light up with it)
         // S6.7: « À toi » stays as long as the answer is awaited (at least puzzles.START s), not 2.5 s
         const left = () => (P.cur && ctx ? Math.max(0, P.cur.until - ctx.currentTime) : P.START) * 1000;
         this._toiT = setTimeout(() => { if (P.cur === c && c) { this._toi = say; this.lcd(say, left()); } }, ms);
