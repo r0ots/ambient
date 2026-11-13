@@ -342,13 +342,24 @@
         else s.textContent = AMB.game.txt(it.hint) || (it.midi && this.reach({ need: it.need }) ? 'Au clavier MIDI : branche-en un (bouton MIDI de la barre).' : `Plus loin : ${it.need.filter((n) => !g.has(n)).map((n) => AMB.tree.byId[n].name).join(', ')}.`);
         p.append(b, s); body.append(p);
       }
+      // S7.3: a discovery found since the notebook was last seen is revealed in a glitch, once it is seen (the Arbre open)
+      const M = AMB.motion, seen = !box.classList.contains('min') && !!box.offsetParent;
+      if (!this.known) this.known = new Set(L.filter((x) => x.found).map((x) => x.id)); // (a loaded save reveals nothing)
+      if (seen) for (const it of L) if (it.found && !this.known.has(it.id)) {
+        this.known.add(it.id);
+        const el = body.querySelector(`.dc-item[data-id="${it.id}"]`);
+        if (el && M && M.pop(el, 'dc-reveal', { ms: M.ms('slow') * 2 })) M.burst(el.querySelector('b'), { n: 16, spread: Math.PI * 2, color: it.kind === 'combo' ? '#5ff0ff' : '#fff36b' });
+      }
     },
     build() {
       if (this.box || !document.body) return;
       const box = (this.box = document.createElement('section'));
       box.id = 'discoveries'; box.className = 'discoveries min'; box.hidden = true; box.setAttribute('aria-label', 'Découvertes');
       box.innerHTML = '<button type="button" class="dc-head" aria-controls="discoveriesBody"></button><div class="dc-body" id="discoveriesBody"></div>';
-      box.querySelector('.dc-head').addEventListener('click', () => { box.classList.toggle('min'); box.querySelector('.dc-head').classList.remove('fresh'); this.render(); });
+      box.querySelector('.dc-head').addEventListener('click', () => {
+        box.classList.toggle('min'); box.querySelector('.dc-head').classList.remove('fresh'); this.render();
+        if (!box.classList.contains('min') && AMB.motion) AMB.motion.stagger(box.querySelector('.dc-body').children, { y: 12, max: 12 }); // S7.3: unfolds in a cascade
+      });
       // inside the tree screen, above the legend (never floating over the app on mobile)
       const at = document.querySelector('#treeDlg .tree-legend');
       if (at) at.before(box); else document.body.append(box);
@@ -364,7 +375,7 @@
     AMB.bus.on('panic', () => D.stopAll());
     AMB.bus.on('act', (id) => { if (id === 'midiConnect' && AMB.game.path && !D.state().midi) { D.state().midi = true; AMB.game.save(); D.render(); } });
     AMB.bus.on('chord', (c) => c && D.onChord(c));
-    ['reset', 'mode'].forEach((e) => AMB.bus.on('game:' + e, () => { D.reset(); D.applyGifts(); D.render(); }));
+    ['reset', 'mode'].forEach((e) => AMB.bus.on('game:' + e, () => { D.reset(); D.known = null; D.applyGifts(); D.render(); }));
     ['unlock', 'ready'].forEach((e) => AMB.bus.on('game:' + e, () => D.render()));
   }
   store.on((k, v, src) => {

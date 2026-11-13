@@ -72,10 +72,65 @@
     showTree(on) {
       const d = $('#treeDlg'); if (!d) return;
       if (!on && this.seq) { this.seqFinish(); return; } // closing during the unlock sequence = finish it now
+      const was = d.hidden;
+      if (!on && !was) this.crtOff(d.querySelector('.tree-card')); // S7.3: the screen switches off like an old CRT
       d.hidden = !on;
       if (this.resetPointers) this.resetPointers(); // no finger left over from the last visit
       if (on) { this.select(null); this.renderTree(); this.fitTree(); if (AMB.discoveries) AMB.discoveries.render(); }
       if (this.hiscores) this.hiscores.render(); // S6.6 (the entry of the initials shows while the Arbre is open)
+      if (on && was) this.treeIn();
+    },
+    // ---- S7.3 motion of the Arbre (js/motion.js tokens; nothing waits for it, reduced motion / JUICE 0: nothing) ----
+    // opening: a neon curtain unrolls the screen, the nodes pop in level by level from the root, the links of what is
+    // already open trace themselves along (their glow sweeps them once)
+    treeIn() {
+      const M = AMB.motion, map = $('#treeDlg .tree-map'), card = $('#treeDlg .tree-card');
+      if (!M || !M.on() || !map || !card) return [];
+      M.pop(card, 'm-tree-in', { ms: M.ms('slow') + M.ms('med') + 60 });
+      const lay = this.treeLayout(), a = Math.min(1.5, M.amp()), st = M.ms(M.MS.stagger), d0 = M.ms('med'), out = [];
+      map.querySelectorAll('.tree-node').forEach((b) => {
+        const p = lay.pos[b.dataset.id]; if (!p) return;
+        out.push(b.animate([{ opacity: 0, scale: 1 - 0.7 * Math.min(1, a), translate: `0 ${14 * a}px` }, { opacity: 1, scale: 1, translate: '0 0' }],
+          { duration: M.ms('med'), delay: d0 + p.l * st, easing: M.EASE.spring, fill: 'backwards' }));
+      });
+      map.querySelectorAll('.tree-glow').forEach((g) => {
+        if (!AMB.game.has(g.dataset.to)) return;
+        const p = lay.pos[g.dataset.from] || { l: 0 };
+        out.push(g.animate([{ strokeDashoffset: 1, opacity: 0.9 }, { strokeDashoffset: 0, opacity: 0.9, offset: 0.6 }, { strokeDashoffset: 0, opacity: 0 }],
+          { duration: M.ms('slow') + M.ms('med'), delay: d0 + p.l * st, easing: 'linear' }));
+      });
+      return out;
+    },
+    // a screen that closes: a ghost of its frame collapses to a line, then a dot (under the windows: never over one;
+    // not while an ask runs, the LCD stays clear)
+    crtOff(card) {
+      const M = AMB.motion; if (!M || !M.on() || !card || (AMB.demands && AMB.demands.cur)) return null;
+      const r = card.getBoundingClientRect(); if (!r.width) return null;
+      const g = document.createElement('div'); g.className = 'm-crt-off'; g.setAttribute('aria-hidden', 'true');
+      Object.assign(g.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+      document.body.append(g);
+      const an = g.animate([{ scale: '1 1', opacity: 0.25, filter: 'brightness(1)' }, { scale: '1.02 .012', opacity: 1, filter: 'brightness(3)', offset: 0.45 },
+        { scale: '.01 .01', opacity: 0.9, filter: 'brightness(4)', offset: 0.85 }, { scale: '0 0', opacity: 0 }], { duration: M.ms('slow'), easing: M.EASE.in, fill: 'forwards' });
+      an.onfinish = an.oncancel = () => g.remove();
+      return an;
+    },
+    // a link lights up towards the node being opened: a spark runs along it (particles left behind, its branch colour)
+    sparkRun(path, ms) {
+      const M = AMB.motion; if (!M || !M.on() || !path || !path.getTotalLength) return;
+      const len = path.getTotalLength(), c = getComputedStyle(path).getPropertyValue('--c').trim() || null, t0 = performance.now();
+      const step = (now) => {
+        if (!path.isConnected || !this.seq) return;
+        const t = Math.min(1, (now - t0) / ms), f = 1 - Math.pow(1 - t, 3), pt = path.getPointAtLength(len * f), m = path.getScreenCTM();
+        if (m) M.burst({ x: m.a * pt.x + m.c * pt.y + m.e, y: m.b * pt.x + m.d * pt.y + m.f }, { n: 3, spread: Math.PI * 2, speed: 120, life: 0.4, G: 200, color: t > 0.5 ? '#fff3c4' : c });
+        if (t < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    },
+    // the node opened: it lights up in an explosion of its colour (and gold)
+    boom(el) {
+      const M = AMB.motion, led = el && el.querySelector('.led'); if (!M || !led) return 0;
+      const c = getComputedStyle(el).getPropertyValue('--c').trim() || null;
+      return M.burst(led, { n: 30, spread: Math.PI * 2, speed: 420, life: 0.75, G: 260, color: c }) + M.burst(led, { n: 14, spread: Math.PI * 2, speed: 260, life: 0.6, G: 200, color: '#fff3c4' });
     },
     // ---- the screen: header (nodes open, discoveries) + the map, built once and repainted ----
     renderTree() {
@@ -243,6 +298,7 @@
       const wait = g.path && !g.s.ended ? (g.s.ready || []).filter((r) => g.canOpen(r.id)).length : 0;
       const opTxt = (wait && ops.some((o) => o.d) ? [`Ouvre d'abord tes nœuds prêts (${wait})`] : []).concat(ops.filter((o) => !(wait && o.d)).map((o) => o.text));
       box.style.setProperty('--c', br.color);
+      const fresh = box.hidden || box.dataset.id !== id; // S7.3: a new card slides in (the same one repainted does not)
       box.dataset.id = id; box.className = `tree-info st-${st}`;
       box.innerHTML = `<p class="ti-h"><b>${n.name}</b> <small>${br.name} · ${STATE_TXT[st]}</small></p>`
         + `<p class="ti-d">${n.desc}</p>`
@@ -256,6 +312,9 @@
       const map = $('#treeDlg .tree-map'), el = map && map.querySelector(`.tree-node[data-id="${id}"]`);
       if (el && map) { const r = map.getBoundingClientRect(), e = el.getBoundingClientRect(); box.classList.toggle('right', e.left + e.width / 2 < r.left + r.width / 2); }
       box.hidden = false;
+      const M = AMB.motion;
+      if (fresh && M && M.on() && box.animate) box.animate([{ opacity: 0, translate: `${(box.classList.contains('right') ? 28 : -28) * Math.min(1.5, M.amp())}px 0`, scale: 0.94 }, { opacity: 1, translate: '0 0', scale: 1 }],
+        { duration: M.ms('med'), easing: M.EASE.spring });
     },
     // all map interaction, wired once from garden.build()
     wireTree() {
@@ -346,7 +405,7 @@
       }
       this.select(null);
       el.classList.remove('st-owned'); el.classList.add('is-buying'); // (painted as it was, until the impact)
-      document.querySelectorAll(`#treeDlg .tree-glow[data-to="${id}"]`).forEach((p) => { p.classList.remove('lit'); void p.getBoundingClientRect(); p.classList.add('lit'); });
+      document.querySelectorAll(`#treeDlg .tree-glow[data-to="${id}"]`).forEach((p) => { p.classList.remove('lit'); void p.getBoundingClientRect(); p.classList.add('lit'); this.sparkRun(p, AMB.motion ? AMB.motion.ms('slow') : SEQ.link); });
       // S4.5w: the impact (chime) falls on the strong beat the opening waits for (beat(), garden.js)
       const b = this.beatOf(id), ctx = AMB.engine && AMB.engine.ctx;
       const hit = b.at != null && ctx ? Math.max(SEQ.link, (b.at - ctx.currentTime) * 1000 - 60) : SEQ.link;
@@ -360,7 +419,7 @@
       this.paintTree();
       const el = document.querySelector(`#treeDlg .tree-node[data-id="${s.id}"]`);
       if (!el || this.reduced) return;
-      el.classList.remove('is-buying'); el.classList.add('is-born');
+      el.classList.remove('is-buying'); el.classList.add('is-born'); this.boom(el);
       for (const k of T.dependents(s.id)) {
         if (T.status(k) !== 'available') continue;
         const c = document.querySelector(`#treeDlg .tree-node[data-id="${k}"]`); if (c) c.classList.add('is-blink');

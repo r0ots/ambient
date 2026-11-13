@@ -484,7 +484,7 @@
       const lw = top.parentElement ? top.parentElement.clientWidth : 0;
       if (top.textContent !== txt || lw !== top._lw) {
         // S7.1: a new text is typed in (a cursor sweeps it, neon), a resize only re-fits it
-        if (top.textContent !== txt && top.textContent && AMB.motion) AMB.motion.pop(top, 'type');
+        if (top.textContent !== txt && top.textContent && AMB.motion) { if (on && m.stamp) AMB.motion.pop(top, 'm-stamp', { ms: AMB.motion.ms('slow') + 60 }); else AMB.motion.pop(top, 'type'); } // (S7.3: PARFAIT / BIEN / RATÉ stamp in)
         top.textContent = txt; top._lw = lw;
         // S5.7: a game message is never cut (« ENTRE LES TOU… »): too long for the screen, it gets smaller
         top.style.fontSize = '';
