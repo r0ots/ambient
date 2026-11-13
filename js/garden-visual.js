@@ -584,6 +584,7 @@
         if (!p.rare) { const lb = this.label(p, fs, this.slotW * 0.96); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = Math.min(1, 0.85 + 0.15 * hot) * Math.min(1, gy * 2); g.drawImage(lb, Math.round(p.x - lb.width / 2), Math.round(p.y + px * 1.5)); if (hot > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = hot; g.drawImage(lb, Math.round(p.x - lb.width / 2), Math.round(p.y + px * 1.5)); g.globalCompositeOperation = 'source-over'; } g.globalAlpha = 1; }
       }
       if (ans) this.drawAnswer(g, ans);
+      this.drawMark(g, fs);
       g.setTransform(1, 0, 0, 1, 0, 0);
       g.globalCompositeOperation = 'lighter';
       for (const p of all) {
@@ -639,6 +640,16 @@
         n++;
       }
       g.setTransform(1, 0, 0, 1, 0, 0);
+      return n;
+    },
+    // S5.3: the Réponse tier reached (puzzles.mark(): 0 = Phrases, one more per tier), as LED marks beside the Melody
+    // plant's name; the number is the game's, only these few lines draw it (a later skin draws its own)
+    drawMark(g, fs) {
+      const P = AMB.puzzles, n = Math.min(9, P && P.mark ? P.mark() : 0), p = n && this.plants.find((q) => q.id === 'bells');
+      if (!p) return 0;
+      const lp = Math.max(2, Math.round(fs * 0.3)), y = Math.round(p.y + this.px * 1.5 + fs * 1.15), x0 = Math.round(p.x - (n * lp * 1.6) / 2);
+      g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = rgb(p.col);
+      for (let i = 0; i < n; i++) g.fillRect(x0 + Math.round(i * lp * 1.6), y, lp, lp);
       return n;
     },
     stats() {
