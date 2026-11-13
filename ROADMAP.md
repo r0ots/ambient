@@ -363,3 +363,20 @@ Vague 5
 - Question à l'utilisateur : écouter le prototype sonore sombre (branche worktree-agent-afda84e5ef2575437) avant de décider de l'esthétique sombre / futuriste.
 - Reste ouvert : en Parcours, les étiquettes de l'Arbre sont petites à 390 px (k ≈ 0,45, zoom au doigt) ; le carnet au bureau gagnerait à être relu.
 
+
+## Saison 6 — arcade sombre des années 80, sections et looper
+
+Demande de l'utilisateur (après v1.20) : « go pour tout », il écoutera plus tard. Le neveu (33 ans, très bon musicien, clavier MIDI) adore le goofy années 80 : comics, arcade, Stranger Things. Synthèse retenue : fond sombre synthwave (Blade Runner, Stranger Things), juice de borne d'arcade. Le prototype sonore sombre est fusionné (v1.21) ; les paysages doux restent jusqu'à l'écoute de l'utilisateur. Règles inchangées : la visualisation est un reflet, jamais une commande ; tout dans l'instrument ; supprimer plutôt qu'empiler ; parcours type ≤ 45 min de jeu.
+
+Vague 1 (en parallèle)
+- [ ] S6.1 « Arpège 1983 » : 4e paysage sombre, arpège analogique qui tourne et basse ronde (Stranger Things), avec son WAV d'écoute
+- [ ] S6.2 Supprimer le geste « glisser sur l'écran » partout, mode libre compris (le visuel n'est pas une commande) ; les défis et demandes qui l'acceptaient passent par les commandes
+- [ ] S6.3 Sections de Morceau : chaque section a ses motifs (mélodie, pulsations, basse) et sa progression d'accords, dans l'instrument
+- [ ] S6.5 Ville néon : le Jardin devient une ville sombre sous la pluie qu'on rallume (les plantes deviennent des tours, enseignes, antennes) ; mêmes tables `LOOK` / `SCENE` / `COMBO_FX`, seul le dessin change ; écran cathodique (lignes de balayage, léger aberration)
+
+Vague 2 (en parallèle)
+- [ ] S6.4 Looper : enregistrer une boucle jouée (pastilles, clavier, MIDI) calée sur la mesure, la superposer, l'effacer ; par section du Morceau
+- [ ] S6.6 Juice d'arcade : onomatopées de comics sur les fêtes et combos (« BZZT! », « KA-BLAM! »), « INSERT COIN » au lancement du Parcours, tableau des meilleurs scores à 3 initiales, polices et couleurs néon ; mêmes recettes `garden.FX`, `JUICE` règle toujours tout
+
+Vague 3
+- [ ] S6.7 Revue regards neufs (enfant sur téléphone ; musicien de 33 ans au MIDI, fan d'arcade et de Stranger Things) puis corrections ; fin de la saison 6
