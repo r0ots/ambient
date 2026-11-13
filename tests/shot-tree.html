@@ -6,6 +6,7 @@
   #song (panneau Morceau, mode libre, 3 sections, ● Rec), #song-empty (aucune section : ● Rec désactivé) ;
   #roll (piano roll, mode libre : notes ♯ hors gamme, « ⤓ Garder » actif après des notes jouées) ;
   S4.6 : #ready (« ✦ Ouvrir : Pad » qui pulse, 2 prêts), #ready-card (la carte qui dit ce que le Pad apporte), #new (le Pad vient de s'ouvrir : panneau, halo, « Nouveau ») ;
+  S5.2 : #splash (notes jouées sur la Mélodie, une tenue ; une pastille allumée par la Mélodie auto) ;
   S4.5w : #grow (plante à mi-croissance), #sky=<degré> (ciel d'un accord), #dawn (fin : relecture, aube), #dawn-end (remis, WAV proposé). --><meta charset="utf-8"><style>body{margin:0}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body>
 <script>localStorage.removeItem('ambient.game.shot');</script>
 <iframe id="f" src="../index.html?gamekey=ambient.game.shot"></iframe>
@@ -78,6 +79,17 @@ document.getElementById('f').addEventListener('load', () => {
       const L = ['pad', 'bells', 'seq', 'bass', 'grains']; let i = 0;
       setInterval(() => A.visual.draw(), 40); // headless captures barely run requestAnimationFrame: draw on a timer
       setInterval(() => { const l = L[i++ % L.length]; if (GV.replay) GV.hit(l, 0.8); else A.bus.emit('note', { layer: l, midi: 60, time: 0, vel: 0.8 }); }, 220);
+    }, 1600);
+  } else if (h.includes('splash')) { // S5.2: notes played on the Melody (one held high, short ones), the machine lights a pad
+    const GV = A.gardenVisual; A.garden.showTree(false); A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none';
+    ['m.bells', 'h.key', 'm.grains', 'c.seq', 'c.rythme', 'e.texture'].forEach((i) => A.game.unlock(i));
+    setTimeout(() => {
+      A.garden.showTree(false); A.perform.setMode('listen'); GV.sig = null; GV.grow = {};
+      setInterval(() => A.visual.draw(), 40); // headless captures barely run requestAnimationFrame: draw on a timer
+      const T = A.theory, S = A.seq, dm = (d, o) => T.degreeToMidi(d, S.root, S.scale, o); let id = 900, k = 0;
+      A.bus.emit('live', { midi: dm(6, 5), time: GV.clock(), vel: 0.9, raw: 0.9, id: 1 }); // held all along
+      setInterval(() => { const n = ++id; A.bus.emit('live', { midi: dm([0, 2, 4][k++ % 3], 4), time: GV.clock(), vel: 0.85, raw: 0.8, id: n }); setTimeout(() => A.bus.emit('liveOff', { id: n, time: GV.clock() }), 150); }, 330);
+      setInterval(() => { A.bus.emit('note', { layer: 'bells', midi: dm(5, 4), time: 0, vel: 0.7 }); A.bus.emit('note', { layer: 'bass', midi: dm(0, 2), time: 0, vel: 0.8 }); }, 120);
     }, 1600);
   } else if (h.includes('garden')) {
     if (h.includes('garden-adv')) {

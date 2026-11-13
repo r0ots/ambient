@@ -159,6 +159,29 @@
     padPtr.delete(id); clearTimeout(p.t); lift('p' + id);
     if (![...padPtr.values()].some((q) => q.b === p.b)) p.b.classList.remove('on', 'chord');
   }
+  // S5.2: the pads light up briefly on the Mélodie auto's notes (in their own colour), so the player sees what the machine
+  // plays and can copy it. The pad of the same note, nearest in pitch (another octave = the pad of that degree).
+  // The player's notes and the Réponse phrase are 'live' notes: they light nothing here.
+  const AUTO_MS = 170, autoT = new Map();
+  function padForMidi(midi) {
+    const S = AMB.seq, T = AMB.theory; if (!S || !S.scale || !T) return -1;
+    let best = -1, bs = 1e9;
+    for (let i = 0; i < PADS.length; i++) {
+      const m = T.degreeToMidi(i, S.root, S.scale, 4), d = (((m - midi) % 12) + 12) % 12, sc = Math.min(d, 12 - d) * 100 + Math.abs(m - midi);
+      if (sc < bs) { bs = sc; best = i; }
+    }
+    return best;
+  }
+  function padAuto(n) {
+    if (!n || n.layer !== 'bells' || n.live) return;
+    const bar = document.getElementById('pads'); if (!bar || bar.hidden || document.hidden) return;
+    const b = bar.children[padForMidi(n.midi)]; if (!b) return;
+    const ctx = AMB.engine && AMB.engine.ctx, wait = ctx && n.time ? Math.max(0, (n.time - ctx.currentTime) * 1000) : 0;
+    setTimeout(() => {
+      b.classList.add('auto'); clearTimeout(autoT.get(b));
+      autoT.set(b, setTimeout(() => b.classList.remove('auto'), AUTO_MS));
+    }, wait);
+  }
   function padsInit() {
     const bar = document.getElementById('pads'); if (!bar) return;
     bar.innerHTML = PADS.map((k, i) => `<button type="button" class="pad" data-deg="${i}" style="--i:${i}" title="Touche ${k} · appui long : accord" aria-label="Note ${i + 1}"><span>${k}</span></button>`).join('');
@@ -166,6 +189,7 @@
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((n) => bar.addEventListener(n, (e) => padUp(e.pointerId)));
     bar.addEventListener('contextmenu', (e) => e.preventDefault());
     ['game:mode', 'game:unlock', 'game:reset'].forEach((n) => AMB.bus.on(n, padsRefresh));
+    AMB.bus.on('note', padAuto);
     padsRefresh();
   }
 
@@ -230,5 +254,5 @@
     }
   });
 
-  AMB.play = { PADS, padsRefresh, degreeForPitch, chordForNotes, onMidi, panic, get held() { return held.size + sustained.size; } };
+  AMB.play = { PADS, padsRefresh, padForMidi, degreeForPitch, chordForNotes, onMidi, panic, get held() { return held.size + sustained.size; } };
 })();

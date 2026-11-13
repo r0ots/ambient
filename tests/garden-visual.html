@@ -221,6 +221,77 @@ window.addEventListener('load', async () => {
       GV.reduced = false; GV.now = real; GV.lastT = null; GV.kicks = {};
       defaults(); }
 
+    // --- S5.2 « Chaque note se voit » (fake audio clock): the player's notes splash from their plant, the machine's smaller
+    { const realClock = GV.clock, realNow = GV.now; let T = 100, fake = performance.now(); GV.clock = () => T; GV.now = () => fake;
+      const step = (n = 1, ms = 16) => { for (let i = 0; i < n; i++) { T += ms / 1000; fake += ms; frame(); } };
+      const reset = () => { GV.waves.length = 0; GV.parts.length = 0; GV.squash = {}; GV.zap = {}; GV.shake = null; };
+      G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.rythme', 'e.texture']; GV.grow = {}; GV.sig = null; step(3); reset();
+      const P = (id) => GV.plants.find((p) => p.id === id);
+      ok(typeof GV.JUICE === 'number' && GV.SPLASH.player.parts > GV.SPLASH.machine.parts * 3 && GV.SPLASH.player.ring > GV.SPLASH.machine.ring * 2, 'une seule constante JUICE (' + GV.JUICE + ') ; table SPLASH : la machine plus discrète que le joueur');
+      // the trigger alone (pure, no drawing)
+      const sp = GV.splash;
+      ok(sp('live', { midi: 72, id: 3, vel: 0.85 }).plant === 'bells' && sp('live', { midi: 72 }, true).plant === 'seq' && sp('chord', { forced: true, midis: [48, 52, 55] }).plant === 'pad' && !sp('chord', { forced: false })
+        && sp('note', { layer: 'bass', midi: 40 }).who === 'machine' && !sp('note', { layer: 'bells', live: true }) && !sp('note', { layer: 'drone' }) && sp('perc', { track: 1 }).plant === 'perc'
+        && sp('live', { midi: 84 }).pitch > sp('live', { midi: 48 }).pitch && sp('live', { midi: 60, raw: 1 }).shake > 0 && !sp('live', { midi: 60, raw: 0.4 }).shake,
+        'déclenchement séparé du dessin : note jouée → Mélodie (Mélodie écrite pendant le Rec live), accord forcé → Pad, machine → sa plante, hauteur → position, forte vélocité → secousse');
+      // a played note: a wave on the Melody plant, particles, flash, squash
+      const lum = (x, y, r = 6) => { const d = cv.getContext('2d').getImageData(Math.round(x - r), Math.round(y - r), 2 * r, 2 * r).data; let t = 0; for (let i = 0; i < d.length; i += 4) t += d[i] + d[i + 1] + d[i + 2]; return t / (d.length / 4); };
+      step(2); const o = GV.origin(P('bells'), sp('live', { midi: 76 }).pitch), dark = lum(o.x, o.y);
+      AMB.bus.emit('live', { midi: 76, time: T, vel: 0.85, raw: null, id: 1 }); step(1);
+      const w1 = GV.waves[0];
+      ok(GV.waves.length === 1 && w1.plant === 'bells' && w1.who === 'player' && w1.fired && GV.parts.length >= 10 && GV.zap.bells > 0.5 && GV.squash.bells, 'note jouée : une onde sur la plante Mélodie (' + GV.parts.length + ' particules, éclat ' + GV.zap.bells.toFixed(2) + ', écrasement)');
+      ok(lum(o.x, o.y) > dark + 20, 'l\'onde se voit à l\'écran, à la hauteur de la note (luminosité ' + dark.toFixed(0) + ' → ' + lum(o.x, o.y).toFixed(0) + ')');
+      { let mx = 0; for (let i = 0; i < 8; i++) { step(); mx = Math.max(mx, Math.abs(P('bells').bounce)); } ok(mx > 0.05 && !GV.kicks.bells, 'la plante rebondit (squash & stretch ' + mx.toFixed(2) + '), sans toucher la scène'); }
+      const pPlayer = GV.parts.length; reset();
+      // a machine note: the same, much smaller
+      AMB.bus.emit('note', { layer: 'bells', midi: 76, time: T, vel: 0.85 }); step(1);
+      const wm = GV.waves[0], pMachine = GV.parts.length - 1; // (the classic leaf of hit() aside)
+      ok(wm && wm.who === 'machine' && wm.plant === 'bells' && pMachine * 3 <= pPlayer && GV.zap.bells < 0.4 && GV.squash.bells.amp < 0.1, 'note de la machine : une onde plus faible (' + pMachine + ' particules contre ' + pPlayer + ', éclat ' + GV.zap.bells.toFixed(2) + ')');
+      step(40); ok(!GV.waves.length, 'note brève de la machine : l\'onde finit seule (< 0,7 s)'); reset();
+      AMB.bus.emit('note', { layer: 'bass', midi: 40, time: T + 0.5, vel: 0.8 }); step(1); ok(GV.waves.length === 1 && !GV.waves[0].fired, 'une note à venir attend son heure audio'); step(32); ok(GV.waves[0] && GV.waves[0].fired && GV.squash.bass, 'puis éclate sur la Basse'); reset();
+      // held: lit as long as it is held, then fades
+      AMB.bus.emit('live', { midi: 67, time: T, vel: 0.85, raw: 0.6, id: 7 }); step(90); // 1.44 s, twice its life
+      const eh = GV.waveEnv(GV.waves[0], T);
+      ok(GV.waves.length === 1 && eh && eh.a >= 0.5 && eh.r === 1, 'note tenue : l\'onde reste allumée tant qu\'elle est tenue (1,4 s, éclat ' + eh.a.toFixed(2) + ')');
+      AMB.bus.emit('liveOff', { id: 7, midi: 67, time: T }); step(10); const fading = GV.waves.length && GV.waveEnv(GV.waves[0], T).a; step(20);
+      ok(fading > 0 && fading < 0.5 && !GV.waves.length, 'relâchée : elle s\'éteint en ~0,35 s'); reset();
+      // forced chord: the Pad, a shake of the scene; per plant at most 3 waves, the player's never pushed out by the machine
+      AMB.bus.emit('chord', { time: T, deg: 3, midis: [53, 57, 60], forced: true }); step(2);
+      ok(GV.waves.some((w) => w.plant === 'pad' && w.who === 'chord') && GV.shake && (GV.ox || GV.oy), 'accord forcé : onde sur le Pad et secousse de la scène (' + GV.ox + ', ' + GV.oy + ' px)');
+      step(30); ok(!GV.shake && !GV.ox && !GV.oy, 'la secousse est brève'); reset();
+      for (let i = 0; i < 5; i++) AMB.bus.emit('live', { midi: 60 + i, time: T, vel: 0.8, id: 20 + i });
+      AMB.bus.emit('note', { layer: 'bells', midi: 72, time: T, vel: 0.8 });
+      ok(GV.waves.length === GV.WAVES_PER_PLANT && GV.waves.every((w) => w.who === 'player'), 'au plus ' + GV.WAVES_PER_PLANT + ' ondes par plante ; une note de la machine ne chasse pas celles du joueur');
+      AMB.bus.emit('panic'); step(30); ok(!GV.waves.length, 'panique (■) : les notes tenues s\'éteignent'); reset();
+      for (let i = 0; i < 60; i++) { AMB.bus.emit('chord', { time: T, deg: i % 7, midis: [60], forced: true }); step(1); }
+      ok(GV.parts.length <= GV.PARTS_MAX, 'plafond de particules (' + GV.parts.length + ' ≤ ' + GV.PARTS_MAX + ')'); reset(); step(60);
+      // reduced motion: a fixed, brief glow; no wave, no particle, no squash, no shake
+      GV.reduced = true; const p0r = GV.parts.length;
+      AMB.bus.emit('live', { midi: 76, time: T, vel: 1, raw: 1, id: 30 }); AMB.bus.emit('note', { layer: 'bass', midi: 40, time: T, vel: 1 }); AMB.bus.emit('chord', { time: T, deg: 1, midis: [60], forced: true }); step(1);
+      const e1 = GV.waveEnv(GV.waves.find((w) => w.plant === 'bass'), T); step(10); const e2 = GV.waveEnv(GV.waves.find((w) => w.plant === 'bass'), T);
+      ok(GV.parts.length === p0r && !Object.keys(GV.squash).length && !GV.shake && !GV.ox && e1 && e2 && e1.a === 1 && e2.a === 1 && e1.r === 0, 'mouvement réduit : une lueur fixe (même éclat, sans onde), ni particules, ni rebond, ni secousse');
+      step(15); ok(!GV.waves.some((w) => w.plant === 'bass') && GV.waves.some((w) => w.held === 30), 'mouvement réduit : brève (0,3 s), la note tenue reste allumée');
+      AMB.bus.emit('liveOff', { id: 30, time: T }); step(12); ok(!GV.waves.some((w) => w.held === 30), 'mouvement réduit : relâchée, elle s\'éteint'); GV.reduced = false; reset();
+      // free mode: no garden, nothing kept
+      G.setMode('free'); frame(); AMB.bus.emit('live', { midi: 60, time: T, id: 40 }); AMB.bus.emit('note', { layer: 'bells', midi: 60, time: T });
+      ok(!GV.active && !GV.waves.length, 'mode libre : pas de Jardin, aucune onde gardée'); G.setMode('path'); V.mode = 'Jardin'; frame();
+      GV.clock = realClock; GV.now = realNow; GV.lastT = null; reset(); }
+
+    // --- S5.2 cost: the player plays 8 notes a second (held 0.3 s), a forced chord a second, the machine plays along; real rAF
+    { G.s.secrets = { found: { jazz: 1, tons: 1 } }; GV.sig = null; frame(); GV.times.length = 0;
+      const t0 = performance.now(); let k = 0, m = 0, c = 0; const offs = [];
+      await new Promise((res) => { const tick = () => {
+        const el = performance.now() - t0, now = GV.clock();
+        while (k * 125 <= el) { const id = 1000 + k; AMB.bus.emit('live', { midi: 60 + (k * 5) % 24, time: now, vel: 0.85, raw: (k % 4) / 4 + 0.2, id }); offs.push([el + 300, id]); k++; }
+        while (offs.length && offs[0][0] <= el) AMB.bus.emit('liveOff', { id: offs.shift()[1], time: now });
+        while (m * 250 <= el) { AMB.bus.emit('note', { layer: ['bells', 'bass', 'seq'][m % 3], midi: 55 + m % 12, time: now, vel: 0.7 }); AMB.bus.emit('perc', { track: m % 3, time: now, vel: 0.8 }); m++; }
+        while (c * 1000 <= el) { AMB.bus.emit('chord', { time: now, deg: c % 7, midis: [52, 55, 59], forced: true }); c++; }
+        frame(); if (el < 2500) requestAnimationFrame(tick); else res(); }; requestAnimationFrame(tick); });
+      const s = GV.stats();
+      log('PERF S5.2 1280×800 (8 notes jouées / s, accord forcé / s, machine 12 notes / s, JUICE ' + GV.JUICE + ') : moyenne ' + s.avg.toFixed(2) + ' ms, p95 ' + s.p95.toFixed(2) + ' ms, max ' + s.max.toFixed(2) + ' ms (' + s.frames + ' images, ' + k + ' notes jouées, ' + GV.parts.length + ' particules à la fin)');
+      ok(k >= 18 && s.avg < 2, 'coût par image en jouant 8 notes / s : moyenne ' + s.avg.toFixed(2) + ' ms (cible < 2 ms)');
+      AMB.bus.emit('panic'); GV.waves.length = 0; GV.parts.length = 0; }
+
     // --- cost per frame at 1280×800 (advanced garden, notes every frame), real rAF
     G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.rythme', 'e.texture'];
     G.s.secrets = { found: { jazz: 1, tons: 1, dim: 1, lent: 1 } };

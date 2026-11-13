@@ -16,6 +16,11 @@
 // night -> dawn, each plant lights up when its layer plays. Reduced motion: no growth, no pulse (the sky still follows).
 // S4.6: each plant shows its layer's settings (one table, LOOK below: size, light, shape, halo, sway, pace, bloom) and
 // bounces when one of them is touched.
+// S5.2 « Chaque note se voit »: each note splashes from the plant that plays it (trigger: splash(), drawing: drawSplash,
+// fire; one knob, JUICE): the player's (A–L, pads, MIDI; a forced chord on the Pad) loud and goofy — a ring of LEDs, a glow
+// where the pitch sits on the stem (lit while held), particles, a flash, squash & stretch, a shake on chords and loud
+// MIDI notes; the machine's (Mélodie auto, Mélodie écrite, Basse, Pulsations) the same, smaller. Reduced motion: a
+// fixed, brief glow only. Still a reflection: nothing on the scene can be touched.
 // Perf: LED sprites pre-rendered in offscreen canvases (cache by species / size / pixel size), cached
 // background and labels, real dt, nothing drawn while the tab is hidden or the canvas off screen, reduced motion =
 // no sway nor particles. stats() gives the cost per frame (ms).
@@ -98,6 +103,39 @@
     if (LOOK[sec]) return [sec];
     if (ALL_KEYS.has(key) || sec === 'fx') return Object.keys(LOOK);
     return [];
+  }
+
+  // ---- S5.2 « Chaque note se voit »: the TRIGGER (which plant, who plays, how strong), apart from the drawing (a later
+  // skin reads the same splashes and draws them its way: drawSplash only). The garden stays a reflection: nothing on the
+  // scene is touchable. JUICE = the one knob for how much a note sets off (0 = calm, 1 = goofy default, 2 = way too much).
+  const JUICE = 1;
+  // per who: ring (wave brightness), parts (particles at vel 1), flash (plant lit), squash (squash & stretch), life (s)
+  const SPLASH = {
+    player: { ring: 1, parts: 24, flash: 1, squash: 0.28, life: 0.8 },
+    chord: { ring: 1, parts: 36, flash: 1, squash: 0.36, life: 1 },
+    machine: { ring: 0.45, parts: 4, flash: 0.35, squash: 0.08, life: 0.5 },
+  };
+  const WAVES_PER_PLANT = 3, PARTS_MAX = 260, LOUD = 0.85, HELD_MAX = 30; // s: a release that never comes
+  const MACHINE = new Set(['bells', 'seq', 'bass']); // the machine's melodies and bass (+ the rhythm, 'perc')
+  const pitchK = (m) => Math.max(0, Math.min(1, ((m == null ? 60 : +m) - 36) / 60)); // 0 = low (C2) .. 1 = high (C7)
+  // bus event → splash {plant, who, vel 0..1, pitch 0..1, held (live id | 'chord' | null), shake 0..1, time}, or null. Pure.
+  // live = a note the player plays (A–L, pads, MIDI; on the written melody's plant while the piano roll records);
+  // a forced chord = the Pad; the machine's notes ('note' not live: Réponse phrases and the player's own are live) and hits.
+  function splash(ev, d, recording) {
+    if (!d) return null;
+    const t = d.time || 0;
+    if (ev === 'live') {
+      const vel = d.raw != null ? d.raw : d.vel == null ? 0.85 : d.vel;
+      return { plant: recording ? 'seq' : 'bells', who: 'player', vel, pitch: pitchK(d.midi), held: d.id == null ? null : d.id, shake: d.raw != null && d.raw >= LOUD ? 0.6 : 0, time: t };
+    }
+    if (ev === 'chord') {
+      if (!d.forced) return null;
+      const ms = d.midis || [], m = ms.length ? ms.reduce((s, v) => s + v, 0) / ms.length : 60;
+      return { plant: 'pad', who: 'chord', vel: 0.9, pitch: pitchK(m), held: 'chord', shake: 1, time: t };
+    }
+    if (ev === 'note' && !d.live && MACHINE.has(d.layer)) return { plant: d.layer, who: 'machine', vel: d.vel == null ? 0.7 : d.vel, pitch: pitchK(d.midi), held: null, shake: 0, time: t };
+    if (ev === 'perc') return { plant: 'perc', who: 'machine', vel: d.vel == null ? 0.7 : d.vel, pitch: 0.15 + 0.2 * ((d.track | 0) % 4), held: null, shake: 0, time: t };
+    return null;
   }
 
   // ---- tiny deterministic helpers (never Math.random: positions and shapes depend only on the state) ----
@@ -253,6 +291,7 @@
     skyKey: null, skyPrevKey: null, skyT: 0, skyQ: [], skies: new Map(), // S4.5w sky
     replay: null, lit: {}, // S4.5w finale
     LOOK, LOOK_ALL, ASPECTS, look, concerns, aim: null, cur: {}, kicks: {}, swPh: {}, lookDirty: true, // S4.6 settings → look
+    JUICE, SPLASH, WAVES_PER_PLANT, PARTS_MAX, splash, waves: [], squash: {}, zap: {}, shake: null, ox: 0, oy: 0, // S5.2 notes seen
     sprites: new Map(), glows: new Map(), labels: new Map(),
     plants: [], rares: [], parts: [], pending: [],
     energy: {}, // plant id -> 0..1 pulse
@@ -506,11 +545,82 @@
       const p = this.plants.find((q) => q.id === layer);
       if (!p) return false;
       this.energy[layer] = Math.min(1, (this.energy[layer] || 0) * 0.5 + 0.5 + vel * 0.5);
-      if (!this.reduced && this.parts.length < 120) {
+      if (!this.reduced && this.parts.length < PARTS_MAX) {
         const hC = this.heightCells(p), px = this.px, r = this.rng || (this.rng = mulberry(99));
         this.parts.push({ x: p.x + (r() - 0.5) * 8 * px, y: p.y - hC * px * (p.sz || 1) * (0.6 + r() * 0.4), vx: (r() - 0.5) * 12 * px, vy: -(8 + r() * 10) * px, life: 1, col: r() < 0.3 ? [255, 233, 168] : p.col, s: r() < 0.5 ? 1 : 2 });
       }
       return true;
+    },
+
+    // ---- S5.2 splashes: queued with their audio time (a scheduled note shows when it sounds); at most WAVES_PER_PLANT
+    // per plant, a machine note never pushes out the player's ----
+    onSplash(ev, d) {
+      if (!this.running() || this.replay) return;
+      const P = AMB.pianoRoll, s = splash(ev, d, !!(P && P.roll && P.roll.recording));
+      if (!s || !this.plants.some((p) => p.id === s.plant)) return;
+      const mine = this.waves.filter((w) => w.plant === s.plant);
+      if (mine.length >= WAVES_PER_PLANT) {
+        const old = mine.find((w) => w.who === 'machine') || (s.who === 'machine' ? null : mine[0]);
+        if (!old) return;
+        this.waves.splice(this.waves.indexOf(old), 1);
+      }
+      this.waves.push({ ...s, t0: s.time, off: null, fired: false });
+    },
+    // a held note let go (liveOff id), or every note (panic: id null)
+    release(id, time) { const t = time == null ? this.clock() : time; for (const w of this.waves) if (w.off == null && w.held != null && (id == null || w.held === id)) w.off = t; },
+    // brightness a (0..1) and ring radius r (0..1) of a splash now; null = over. A held note stays lit until released.
+    waveEnv(w, now) {
+      const S = SPLASH[w.who], age = now - w.t0, held = w.held != null;
+      if (held && w.off == null && ((w.held === 'chord' && age > 0.05 && !(AMB.seq && AMB.seq.chordHold)) || age > HELD_MAX)) w.off = now;
+      if (this.reduced) { // a fixed, brief glow, no wave
+        const end = held ? (w.off == null ? Infinity : Math.max(w.off, w.t0 + 0.15)) : w.t0 + 0.3;
+        return now < end ? { a: 1, r: 0 } : null;
+      }
+      const q = Math.min(1, Math.max(0, age) / S.life), r = 1 - (1 - q) ** 3;
+      let a = held ? (q < 1 ? 1 - 0.45 * q : 0.55) : 1 - q;
+      if (held && w.off != null) a *= 1 - Math.max(0, now - Math.max(w.off, w.t0)) / 0.35;
+      return a > 0.01 ? { a, r } : null;
+    },
+    // where a note sits on its plant: low notes near the root, high ones near the top (it bends with the plant)
+    origin(p, pitch) {
+      const h = this.heightCells(p) * this.px * (p.sz || 1) * (p.gy == null ? 1 : p.gy), y = p.y - h * (0.2 + 0.75 * pitch);
+      return { x: p.x + (p.sway || 0) * (p.y - y), y };
+    },
+    // its colour: the plant's, lighter for high notes (5 steps, so the glows stay cached)
+    tint(col, pitch) { const k = Math.round(pitch * 4) / 4; return col.map((v) => Math.round(v + (255 - v) * 0.55 * k)); },
+    // the moment it sounds: particles fly out, the plant flashes and squashes, a chord or a loud note shakes the scene
+    fire(w, p) {
+      w.fired = true;
+      if (this.reduced) return;
+      const S = SPLASH[w.who], v = 0.4 + 0.6 * w.vel, o = this.origin(p, w.pitch), px = this.px, r = this.rng || (this.rng = mulberry(99));
+      const col = this.tint(p.col, w.pitch), n = Math.round(S.parts * JUICE * v);
+      for (let k = 0; k < n; k++) {
+        const an = -Math.PI / 2 + (r() - 0.5) * (w.who === 'chord' ? 4.2 : 2.8), sp = (9 + r() * 24) * px * (0.6 + 0.5 * v) * (0.7 + 0.3 * JUICE);
+        const c = r(), big = w.who !== 'machine' ? (r() < 0.35 ? 3 : 2) : 1;
+        this.parts.push({ x: o.x, y: o.y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, life: 1, decay: 1 + r() * 0.7, g: 24, col: c < 0.3 ? [255, 240, 200] : c < 0.65 ? col : p.col, s: big });
+      }
+      if (this.parts.length > PARTS_MAX) this.parts.splice(0, this.parts.length - PARTS_MAX);
+      this.squash[p.id] = { t0: this.t || 0, amp: S.squash * JUICE * v };
+      this.zap[p.id] = Math.max(this.zap[p.id] || 0, S.flash * v);
+      if (w.shake) this.shake = { t0: this.t || 0, amp: Math.max(this.shake ? this.shake.amp * 0.5 : 0, w.shake * JUICE) };
+    },
+    // drawn in 'lighter' mode: a glow where the note sits (lit as long as it is held) and a ring of LEDs that spreads
+    drawSplash(g, now) {
+      const px = this.px;
+      for (let i = this.waves.length - 1; i >= 0; i--) {
+        const w = this.waves[i]; if (w.t0 > now + 0.02) continue;
+        const p = this.plants.find((q) => q.id === w.plant), e = p && this.waveEnv(w, now);
+        if (!e) { this.waves.splice(i, 1); continue; }
+        if (!w.fired) this.fire(w, p);
+        const S = SPLASH[w.who], o = this.origin(p, w.pitch), A = S.ring * (0.4 + 0.6 * w.vel) * e.a, col = w.col || (w.col = this.tint(p.col, w.pitch));
+        const Rg = Math.max(12, Math.round(px * (w.who === 'machine' ? 6 : 12))), gl = this.glow(col, Rg);
+        g.globalAlpha = Math.min(1, this.reduced ? 0.8 * S.ring : A); g.drawImage(gl, o.x - Rg, o.y - Rg);
+        if (this.reduced) continue;
+        const nd = w.who === 'machine' ? 10 : 20, R = px * (2 + (w.who === 'machine' ? 8 : 22) * (0.5 + 0.5 * w.vel) * (0.6 + 0.4 * JUICE) * e.r), sz = Math.max(1, px - 1);
+        g.fillStyle = w.fill || (w.fill = rgb(col)); g.globalAlpha = Math.min(1, A);
+        for (let k = 0; k < nd; k++) { const an = (k / nd) * 6.283 + w.t0 * 3; g.fillRect(Math.round((o.x + Math.cos(an) * R) / px) * px, Math.round((o.y + Math.sin(an) * R * 0.8) / px) * px, sz, sz); }
+      }
+      g.globalAlpha = 1;
     },
 
     // ---- one frame (called by AMB.visual.draw while the mode is « Jardin ») ----
@@ -532,7 +642,12 @@
         if (e.layer === 'chord') this.setSky(this.chordKey(e.deg)); else if (this.hit(e.layer, e.vel == null ? 0.7 : e.vel)) this.lit[e.layer] = 1;
       }
 
+      // S5.2: the whole scene shakes a little on a forced chord or a loud note (offset ox, oy on every transform)
+      let ox = 0, oy = 0; const sh = this.shake;
+      if (sh) { const age = this.t - sh.t0; if (age > 0.4 || this.reduced) this.shake = null; else { const A = sh.amp * this.px * 2.5 * Math.exp(-age * 11); ox = Math.round(A * Math.sin(age * 95)); oy = Math.round(A * 0.7 * Math.cos(age * 71)); } }
+      this.ox = ox; this.oy = oy;
       g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-over"; g.globalAlpha = 1; g.imageSmoothingEnabled = false;
+      if (ox || oy) { g.fillStyle = '#0b0a08'; g.fillRect(0, 0, W, H); g.setTransform(1, 0, 0, 1, ox, oy); }
       // sky: the previous chord's, the current one fading in over it, the dawn (finale), the stars; then the ground
       const gd = this.ground, bg = this.background(W, H, gd), sf = Math.min(1, ((this.t || 0) - this.skyT) / SKY_FADE), dawn = this.dawnLevel(now);
       if (sf < 1) g.drawImage(this.sky(this.skyPrevKey || 'night', W, gd), 0, 0);
@@ -555,7 +670,9 @@
         const s = this.sprite(p, px), e = this.energy[p.id] || 0, gy = (sy[p.id] = p.rare ? 1 : this.growth(p.id, now));
         const a = p.look, kk = this.kicks[p.id], since = kk ? this.t - kk.t0 : 9, hot = (p.hot = kk ? Math.max(0, 1 - (this.t - kk.last) / 0.6) : 0);
         if (kk && since > 0.9 && !hot) delete this.kicks[p.id];
-        const spring = red || !kk ? 0 : Math.exp(-since * 6), bounce = (p.bounce = 0.14 * spring * Math.cos(since * 20));
+        const sq = this.squash[p.id], sqA = sq ? this.t - sq.t0 : 9; if (sq && (sqA > 0.9 || red)) delete this.squash[p.id];
+        const squash = red || !sq ? 0 : -sq.amp * Math.exp(-sqA * 7) * Math.cos(sqA * 22); // S5.2: a note squashes it, then it stretches back
+        const spring = red || !kk ? 0 : Math.exp(-since * 6), bounce = (p.bounce = 0.14 * spring * Math.cos(since * 20) + squash);
         const sz = a ? this.sizeK(p.id, a.size) : 1;
         let sway = 0;
         if (!red) {
@@ -570,21 +687,22 @@
         p.sway = sway; p.k = k; p.gy = gy; // the Réponse leaves follow the plant (drawAnswer)
         if (a && a.halo > 0.03 && gy > 0.01) { // S4.6 halo (Espace): a soft aura, radius in 8 cached steps
           const Rg = Math.round(px * (8 + 18 * Math.round(a.halo * 7) / 7)), gl = this.glow(p.col, Rg);
-          g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, (0.12 + 0.6 * a.halo) * (R ? 0.3 + 0.7 * Math.min(1, this.lit[p.id] || 0) : 1));
+          g.setTransform(1, 0, 0, 1, ox, oy); g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, (0.12 + 0.6 * a.halo) * (R ? 0.3 + 0.7 * Math.min(1, this.lit[p.id] || 0) : 1));
           g.drawImage(gl, p.x - Rg, p.y - this.heightCells(p) * px * p.sz * gy * 0.6 - Rg);
           g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
         }
         if (R && !p.rare) g.globalAlpha = 0.3 + 0.7 * Math.min(1, this.lit[p.id] || 0); // finale: dark until its layer plays
         if (gy > 0.01) {
-          g.setTransform(kx, 0, -sway * ky * gy, ky * gy, p.x, p.y); g.drawImage(s.cv, -s.w / 2, -s.h); // shear from the base: the plant bends, the root stays put; it grows from there
-          if (hot > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.5 * hot; g.drawImage(s.cv, -s.w / 2, -s.h); g.globalCompositeOperation = 'source-over'; } // S4.6: lit while touched
+          g.setTransform(kx, 0, -sway * ky * gy, ky * gy, p.x + ox, p.y + oy); g.drawImage(s.cv, -s.w / 2, -s.h); // shear from the base: the plant bends, the root stays put; it grows from there
+          const lit = Math.max(0.5 * hot, 0.75 * (this.zap[p.id] || 0)); // S4.6: lit while touched; S5.2: a flash on each note
+          if (lit > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, lit); g.drawImage(s.cv, -s.w / 2, -s.h); g.globalCompositeOperation = 'source-over'; }
           if (hot > 0.02) this.energy[p.id] = Math.max(this.energy[p.id] || 0, 0.55 * hot);
         }
         g.globalAlpha = 1;
-        if (!p.rare) { const lb = this.label(p, fs, this.slotW * 0.96); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = Math.min(1, 0.85 + 0.15 * hot) * Math.min(1, gy * 2); g.drawImage(lb, Math.round(p.x - lb.width / 2), Math.round(p.y + px * 1.5)); if (hot > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = hot; g.drawImage(lb, Math.round(p.x - lb.width / 2), Math.round(p.y + px * 1.5)); g.globalCompositeOperation = 'source-over'; } g.globalAlpha = 1; }
+        if (!p.rare) { const lb = this.label(p, fs, this.slotW * 0.96); g.setTransform(1, 0, 0, 1, ox, oy); g.globalAlpha = Math.min(1, 0.85 + 0.15 * hot) * Math.min(1, gy * 2); g.drawImage(lb, Math.round(p.x - lb.width / 2), Math.round(p.y + px * 1.5)); if (hot > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = hot; g.drawImage(lb, Math.round(p.x - lb.width / 2), Math.round(p.y + px * 1.5)); g.globalCompositeOperation = 'source-over'; } g.globalAlpha = 1; }
       }
       if (ans) this.drawAnswer(g, ans);
-      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.setTransform(1, 0, 0, 1, ox, oy);
       g.globalCompositeOperation = 'lighter';
       for (const p of all) {
         let e = this.energy[p.id] || 0;
@@ -595,14 +713,16 @@
         g.drawImage(gl, p.x - Rg, p.y - hC * px * (p.rare ? 0.6 : 0.85) - Rg);
       }
       g.globalAlpha = 1;
+      this.drawSplash(g, now);
       for (let i = this.parts.length - 1; i >= 0; i--) {
         const q = this.parts[i];
-        q.life -= dt * 0.8; q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= 0.98; q.vy += 2 * px * dt;
+        q.life -= dt * (q.decay || 0.8); q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= 0.98; q.vy += (q.g || 2) * px * dt;
         if (q.life <= 0) { this.parts.splice(i, 1); continue; }
         g.fillStyle = rgb(q.col, 1, q.life * 0.9);
         g.fillRect(Math.round(q.x / px) * px, Math.round(q.y / px) * px, px * q.s - 1, px * q.s - 1);
       }
-      g.globalCompositeOperation = 'source-over'; g.imageSmoothingEnabled = true; // nearest-neighbour above: crisp LEDs, cheaper shear
+      g.globalCompositeOperation = 'source-over'; g.imageSmoothingEnabled = true; g.setTransform(1, 0, 0, 1, 0, 0); // nearest-neighbour above: crisp LEDs, cheaper shear
+      for (const id in this.zap) this.zap[id] = Math.max(0, this.zap[id] - dt * 3.5);
       for (const id in this.energy) this.energy[id] = Math.max(0, this.energy[id] - dt * (red ? 1.2 : 1.6));
       for (const id in this.lit) this.lit[id] = Math.max(0, this.lit[id] - dt * 0.35);
       if (!all.length) { g.font = `${fs * 1.3}px VT323, monospace`; g.fillStyle = '#b38a4f'; g.textAlign = 'center'; g.fillText('Ouvre une couche pour planter ton jardin', W / 2, H * 0.5); g.textAlign = 'start'; }
@@ -628,7 +748,7 @@
       const px = this.px, lp = Math.max(px, Math.round(4 * (this.dpr || 1))), gap = lp >= 4 ? 1 : 0, k = p.k || 1;
       const h = this.heightCells(p) * px * gy * (p.sz || 1), room = Math.max(h, p.y - (this.H || 0) * (this.ceil || 0) - 3 * lp);
       const y0 = Math.max(h * 0.2, 2 * lp), top = Math.min(room, Math.max(h * 0.88, y0 + (v.len - 1) * 2.4 * lp));
-      g.setTransform(k, 0, -(p.sway || 0) * k * gy, k, p.x, p.y); // bends with the plant
+      g.setTransform(k, 0, -(p.sway || 0) * k * gy, k, p.x + (this.ox || 0), p.y + (this.oy || 0)); // bends with the plant
       if (top > h * 0.9) { g.fillStyle = rgb(p.col, 0.7, 0.6); g.fillRect(-Math.floor(lp / 4), -Math.round(top), Math.max(1, Math.round(lp / 2)), Math.round(top - h * 0.85)); }
       let n = 0;
       for (let i = 0; i < v.len; i++) {
@@ -656,11 +776,14 @@
       }
     },
     listen(bus) {
-      bus.on('note', (n) => n && this.onEvent(n.layer, n.time, n.vel));
+      bus.on('note', (n) => { if (n) { this.onEvent(n.layer, n.time, n.vel); this.onSplash('note', n); } });
       bus.on('grain', (n) => n && this.onEvent('grains', n.time, n.vel));
-      bus.on('perc', (n) => n && this.onEvent('perc', n.time, n.vel));
+      bus.on('perc', (n) => { if (n) { this.onEvent('perc', n.time, n.vel); this.onSplash('perc', n); } });
+      bus.on('live', (n) => this.onSplash('live', n)); // S5.2: the player's notes, held until 'liveOff'
+      bus.on('liveOff', (n) => n && this.release(n.id, n.time));
+      bus.on('panic', () => this.release(null));
       bus.on('chord', (c) => {
-        if (!c) return; this.onEvent('drone', c.time, 0.6); this.onEvent('pad', c.time, 0.3);
+        if (!c) return; this.onEvent('drone', c.time, 0.6); this.onEvent('pad', c.time, 0.3); this.onSplash('chord', c);
         if (this.running() && !this.replay) { this.skyQ.push({ time: c.time || 0, key: this.chordKey(c.deg) }); if (this.skyQ.length > 8) this.skyQ.shift(); }
       });
       bus.on('game:puzzle', (e) => { if (e && e.peg && e.peg.state === 'ok') this.onEvent('bells', 0, 0.9); }); // a right note: a spark
@@ -671,10 +794,10 @@
   try {
     const mq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
     gv.reduced = !!(mq && mq.matches);
-    if (mq && mq.addEventListener) mq.addEventListener('change', () => { gv.reduced = mq.matches; gv.parts.length = 0; });
+    if (mq && mq.addEventListener) mq.addEventListener('change', () => { gv.reduced = mq.matches; gv.parts.length = 0; gv.squash = {}; gv.shake = null; });
   } catch (e) {}
   if (typeof document !== 'undefined') {
-    document.addEventListener('visibilitychange', () => { if (document.hidden) { gv.pending.length = 0; gv.skyQ.length = 0; gv.lastT = null; } });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) { gv.pending.length = 0; gv.skyQ.length = 0; gv.waves.length = 0; gv.lastT = null; } });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => gv.labels.clear());
   }
   AMB.gardenVisual = gv;
