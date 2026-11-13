@@ -26,20 +26,21 @@
 
   // Render a span of music into the event arrays, reading parameters through `get`
   // (live store for loop export, a section snapshot for song export).
-  function renderSpan(get, s0, span, out, loops = []) {
+  // fit (S6.7): a song section's bars, the progression fits in it as the sequencer plays it
+  function renderSpan(get, s0, span, out, loops = [], fit = 0) {
     const PR = AMB.pianoRoll, PU = AMB.pulses, BS = AMB.bassSeq;
     const root = T.NOTE_NAMES.indexOf(get('global.key')), scale = T.SCALES[get('global.scale')] || T.SCALES['Lydien'];
     const barLen = get('pad.length');
     // progression (same rules as the sequencer)
-    const FIXED = { 'Plane (I)': [0], 'Pendule I–IV': [0, 3], 'I–V–vi–IV': [0, 4, 5, 3], 'i–VI–III–VII': [0, 5, 2, 6], 'Montée I–ii–iii–IV': [0, 1, 2, 3] };
     let prog = [], durs = [];
     if (get('pad.prog') === 'Perso') {
       for (const tok of String(get('pad.custom')).split(/[\s,;]+/)) {
         const [d, bb] = tok.split(':').map((x) => parseInt(x, 10));
         if (d >= 1 && d <= 14) { prog.push(d - 1); durs.push(bb >= 1 && bb <= 16 ? bb : barLen); }
       }
-    } else if (FIXED[get('pad.prog')]) { prog = FIXED[get('pad.prog')]; durs = prog.map(() => barLen); }
+    } else if (T.progDegrees(get('pad.prog'), scale)) { prog = T.progDegrees(get('pad.prog'), scale); durs = prog.map(() => barLen); }
     if (!prog.length) { prog = [AMB.seq.chordDeg || 0]; durs = [barLen]; }
+    if (fit) durs = T.fitBars(durs, fit);
     const progBars = durs.reduce((x, y) => x + y, 0);
     const chordAt = (rel) => { let b = Math.floor(rel / 16) % progBars; for (let i = 0; i < prog.length; i++) { if (b < durs[i]) return prog[i]; b -= durs[i]; } return prog[0]; };
     const dm = (deg, oct) => T.degreeToMidi(deg, root, scale, oct);
@@ -108,7 +109,7 @@
     if (useSong) {
       for (const sec of song.sections) {
         const get = song.getter(sec); // the section's own sound, motifs and progression
-        renderSpan(get, totalSteps, sec.bars * 16, out, sec.loops || []);
+        renderSpan(get, totalSteps, sec.bars * 16, out, sec.loops || [], sec.bars);
         totalSteps += sec.bars * 16;
       }
       bars = totalSteps / 16;

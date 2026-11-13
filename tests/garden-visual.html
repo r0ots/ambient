@@ -21,10 +21,10 @@ window.addEventListener('load', async () => {
     V.c = cv; V.g = cv.getContext('2d'); V.dpr = 1;
     const frame = () => V.draw(), REAL = AMB.store;
 
-    // --- mode policy: Parcours only, default there; free mode untouched
-    ok(V.mode === 'Orbes' && !V.MODES.includes('Jardin'), 'mode non choisi = libre : Orbes, Jardin absent de la liste classique');
+    // --- mode policy (S6.7): the city (mode id « Jardin ») is the default in both modes, each mode keeps its own choice
+    ok(V.mode === 'Jardin' && !V.MODES.includes('Jardin'), 'mode non choisi = libre : la Ville par défaut, liste classique intacte (Orbes, Horizon, Spectre)');
     const seen = new Set(); for (let i = 0; i < 6; i++) seen.add(V.cycleMode());
-    ok(!seen.has('Jardin') && localStorage.getItem('ambient.vizMode.path') === null, 'libre : le cycle ne propose jamais Jardin (' + [...seen].join(', ') + ')');
+    ok(['Jardin', 'Orbes', 'Horizon', 'Spectre'].every((m) => seen.has(m)) && localStorage.getItem('ambient.vizMode.path') === null, 'libre : la Ville et les visuels classiques dans le cycle (' + [...seen].join(', ') + ')');
     while (V.mode !== 'Horizon') V.cycleMode();
     G.setMode('path');
     ok(V.mode === 'Jardin', 'Parcours : Jardin par défaut');
@@ -32,8 +32,15 @@ window.addEventListener('load', async () => {
     ok(L.join() === 'Orbes,Horizon,Spectre,Jardin' && localStorage.getItem('ambient.vizMode') === 'Horizon', 'Parcours : Jardin dans le cycle, préférence à part (le choix du libre reste Horizon)');
     G.setMode('free');
     ok(V.mode === 'Horizon', 'retour au libre : son visuel d\'avant (Horizon)');
-    V.mode = 'Jardin'; frame();
-    ok(V.mode === 'Horizon' && !GV.active, 'libre : un Jardin forcé retombe sur le choix du libre, rien n\'est dessiné');
+    frame(); ok(!GV.active, 'libre sur Horizon : la ville ne dessine rien');
+    // free mode in the city: a reflection of every layer, no game mechanics (S6.7)
+    { const s0 = { nodes: G.s.nodes, ended: G.s.ended, secrets: G.s.secrets }; G.s.nodes = ['racine']; G.s.ended = true; G.s.secrets = { found: { tons: 1 } };
+      V.mode = 'Jardin'; frame(); GV.refresh(cv.width, cv.height, true);
+      const P0 = AMB.puzzles; AMB.puzzles = { view: () => ({ phase: 'listen' }), mark: () => 5 };
+      ok(GV.active && GV.free && GV.plants.length === GV.LAYERS.length && GV.plants.every((p) => p.level === 1) && !GV.rares.length && GV.dawnLevel(0) === 0 && GV.answer(0) === null && GV.drawMark(V.g, 12) === 0 && GV.cheer('tier') === false,
+        'libre en Ville : toutes les couches (' + GV.plants.length + '), pleine hauteur ; ni découverte, ni aube de fin, ni Réponse, ni palier, ni fête');
+      AMB.puzzles = P0; Object.assign(G.s, s0); }
+    try { localStorage.setItem('ambient.vizMode', 'Horizon'); } catch (e) {}
     G.setMode('path'); ok(V.mode === 'Jardin', 'Parcours : le Jardin revient');
 
     // --- state read-only, deterministic positions

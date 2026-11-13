@@ -81,6 +81,53 @@
     return NOTE_NAMES[((root % 12) + 12) % 12] + tri + sev + sus + e;
   }
 
+  // S6.7: triad quality on a 0-based scale degree: 'M', 'm', 'dim', 'aug' ('' when the scale stacks no real third)
+  function triad(deg, scale) {
+    const m = chordDegrees(deg, 3, scale).map((d) => degreeToMidi(d, 0, scale, 4));
+    const t = m[1] - m[0], f = m[2] - m[0];
+    return t === 4 && f === 7 ? 'M' : t === 3 && f === 7 ? 'm' : t === 3 && f === 6 ? 'dim' : t === 4 && f === 8 ? 'aug' : '';
+  }
+  const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+  // degree as a musician writes it in this scale: VI, vi, vii°, III+
+  function roman(deg, scale) {
+    const n = scale.length, d = ((deg % n) + n) % n, q = triad(d, scale), r = ROMAN[d] || String(d + 1);
+    return q === 'm' ? r.toLowerCase() : q === 'dim' ? r.toLowerCase() + '°' : q === 'aug' ? r + '+' : r;
+  }
+  // triad name on a degree in key/scale: "Am", "F", "B°"
+  function triadName(deg, root, scale) {
+    const n = scale.length, m = degreeToMidi(deg, root, scale, 4), q = triad(((deg % n) + n) % n, scale);
+    return NOTE_NAMES[m % 12] + (q === 'm' ? 'm' : q === 'dim' ? '°' : q === 'aug' ? '+' : '');
+  }
+  // Fixed progressions (pad.prog values, kept for presets, songs and links) → 0-based degrees in this scale.
+  // (7-note scales; others keep the plain degrees) Their chords follow the scale: a minor tonic plays the minor shapes, a diminished chord is swapped for the closest
+  // diatonic one (third below, else a step above), so no unexpected ♭5 in a preset. Null = random walk / Perso.
+  const PROGS = {
+    'Plane (I)': { name: 'Plane', base: [0], degs: () => [0] },
+    'Pendule I–IV': { name: 'Pendule', base: [0, 3], degs: () => [0, 3] },
+    'I–V–vi–IV': { name: 'Pop', base: [0, 4, 5, 3], degs: () => [0, 4, 5, 3] },
+    // the minor axis; on a major tonic, the same chords from the relative minor (vi–IV–I–V)
+    'i–VI–III–VII': { name: 'Épique', base: [0, 5, 2, 6], degs: (minor) => (minor ? [0, 5, 2, 6] : [5, 3, 0, 4]) },
+    // four chords rising by step from the tonic, skipping a diminished one
+    'Montée I–ii–iii–IV': { name: 'Montée', base: [0, 1, 2, 3], degs: (minor, sc) => [0, 1, 2, 3, 4, 5, 6].filter((d) => triad(d, sc) !== 'dim').slice(0, 4) },
+  };
+  function progDegrees(name, scale) {
+    const p = PROGS[name]; if (!p) return null;
+    if (scale.length !== 7) return p.base.slice(); // pentatonic, whole-tone…: stacked degrees, no real thirds
+    const degs = p.degs(triad(0, scale) === 'm', scale);
+    return degs.map((d, i) => {
+      if (triad(d, scale) !== 'dim') return d;
+      const nb = [degs[(i + degs.length - 1) % degs.length], degs[(i + 1) % degs.length]];
+      for (const c of [d - 2, d + 1, d + 2, d - 1]) { const x = (c + 7) % 7; if (triad(x, scale) !== 'dim' && !nb.includes(x)) return x; }
+      return 0;
+    });
+  }
+  // S6.7: chord lengths (bars) that fit in a section of `bars`: halved together until the whole progression is heard
+  function fitBars(durs, bars) {
+    let out = durs.slice();
+    while (bars > 0 && out.reduce((a, b) => a + b, 0) > bars && out.some((b) => b > 1)) out = out.map((b) => Math.max(1, Math.ceil(b / 2)));
+    return out;
+  }
+
   const rand = (a, b) => a + Math.random() * (b - a);
   const randInt = (a, b) => Math.floor(rand(a, b + 1));
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -91,6 +138,7 @@
     A4: 440,
     NOTE_NAMES, SCALES, mtof, degreeToMidi, chordDegrees, chordName,
     CHORD_MOVES, CHORD_WEIGHTS, weightedPick,
+    triad, roman, triadName, PROGS, progDegrees, fitBars,
   };
   // "human" feel for sequenced parts: small timing drift (up to ±25 ms) and velocity spread
   const human = () => { const h = AMB.store ? AMB.store.get('global.humanize') || 0 : 0; return { dt: (Math.random() - 0.5) * 0.05 * h, dv: 1 - Math.random() * 0.35 * h }; };

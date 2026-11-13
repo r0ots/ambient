@@ -353,7 +353,8 @@
     bind('#bigPlay', 'click', play);
     bind('#share', 'click', sharePatch);
     const vm = $('#vizMode');
-    if (vm) { vm.textContent = AMB.visual.mode; vm.addEventListener('click', () => { vm.textContent = AMB.visual.cycleMode(); }); }
+    const vizLabel = (m) => (m === 'Jardin' ? 'Ville' : m); // the city keeps its mode id (stored choices)
+    if (vm) { vm.textContent = vizLabel(AMB.visual.mode); vm.addEventListener('click', () => { vm.textContent = vizLabel(AMB.visual.cycleMode()); }); }
     bind('#listen', 'click', toggleListen);
     bind('#help', 'click', () => showHelp(true));
     const more = $('.more');
@@ -376,7 +377,8 @@
 
     // kiosk-style URL options: ?viz=Horizon&listen=1&autoplay=1&mood=Nocturne
     const q = new URLSearchParams(location.search);
-    if (q.get('viz') && AMB.visual.MODES.includes(q.get('viz'))) { AMB.visual.mode = q.get('viz'); if (vm) vm.textContent = AMB.visual.mode; }
+    const vz = q.get('viz') === 'Ville' && AMB.gardenVisual ? 'Jardin' : q.get('viz'); // S6.7: the city (its mode id) too
+    if (vz && (AMB.visual.MODES.includes(vz) || vz === 'Jardin')) { AMB.visual.mode = vz; if (vm) vm.textContent = vizLabel(vz); }
     if (q.get('mood')) { const m = $('#mood'); if (m) m.value = q.get('mood'); randomize(); }
     if (q.get('view')) setView(q.get('view') === 'simple');
     if (q.get('mode')) setMode(q.get('mode'));

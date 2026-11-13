@@ -419,6 +419,12 @@ footer { color: #6e6757; font-family: var(--f-num); letter-spacing: .08em; text-
 .chord-slot em { font-style: normal; font-size: 10px; color: var(--muted); font-family: var(--f-num); }
 .chords-auto .chord-slots, .chords-auto .chord-palette, .chords-auto .chord-durs { opacity: .45; }
 .chord-modes, .chord-durs { margin: 0 0 8px; }
+/* S6.7: a progression button = its name small, its chords in the key; a slot past the section's end is dimmed */
+.chord-mode small { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-right: 4px; }
+.btn.chord-mode.on small { color: inherit; }
+.chord-slot.unheard { opacity: .4; }
+.chord-slot b { white-space: nowrap; }
+@media (max-width: 760px) { .chord-slot b { font-size: 18px; } }
 
 /* ---------- Jardin sonore : parcours ---------- */
 body.game .is-locked { display: none !important; }
