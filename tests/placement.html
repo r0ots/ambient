@@ -1,6 +1,6 @@
 <!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
-<!-- S5.4 placement (js/puzzles.js PLACE): a virtuoso player answering the Réponse right and in rhythm reaches Syncopes, then
-     Accords: « ⚡ Musicien détecté », then Virtuose, whole sets of nodes « prêt » in the existing queue, the party fx('placement');
+<!-- S5.4 placement (js/puzzles.js PLACE): a virtuoso player answering the Réponse right and in rhythm reaches Syncopes, then Quinte:
+     « ⚡ Musicien détecté », then Virtuose, whole sets of nodes « prêt » in the existing queue, the party fx('placement');
      the queue stays the player's action (nothing opens by itself); the son (3 slow notes) never triggers it; an older save
      loads. Simulated audio clock and steps, a stub Melody voice (as tests/game.html). -->
 <script src="lib.js"></script>
@@ -43,10 +43,10 @@ f.addEventListener('load', async () => {
       `grosse fête fx('placement') et la file sur le LCD : « ${box.querySelector('.lcd-task-txt').textContent} · ${box.querySelector('.lcd-task-n').textContent} »`);
     ok(!g.s.active.length && st.place === 0, 'pas de défi tant que la file attend ; placement sauvegardé');
 
-    // 2. higher: Accords ×2 = Virtuose (composition), at any time
+    // 2. higher: Quinte ×2 = Virtuose (composition, classic effects), at any time
     k = 0; while (places.length < 2 && k++ < 10) { r = phrase(virtuoso); if (!r || !r.ok) break; }
-    ok(places.join() === 'musicien,virtuose' && P.level(st.lvl - 1).id === 'accords' && P.PLACE[1].nodes.every((id) => g.isReady(id)),
-      `palier Accords ×2 : « Virtuose détecté », la composition prête aussi (${P.PLACE[1].nodes.join(', ')})`);
+    ok(places.join() === 'musicien,virtuose' && P.level(st.lvl - 1).id === 'quinte' && P.PLACE[1].nodes.every((id) => g.isReady(id)),
+      `palier Quinte ×2 : « Virtuose détecté », composition et effets prêts aussi (${P.PLACE[1].nodes.join(', ')})`);
     k = 0; while (k++ < 6) phrase(virtuoso);
     ok(places.length === 2, 'un placement ne revient pas');
 

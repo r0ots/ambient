@@ -47,9 +47,11 @@
   // next node instead). Never by chance: Syncopes are 5–6 timed notes with off-beats, reached after ≥ 8 right answers
   // climbing (a miss = one level down); the son's 3 slow notes stay at Phrases.
   const RUN = 2;
-  const PLACE = [
-    { id: 'musicien', name: 'Musicien', tier: 2, nodes: ['h.pad', 'h.drone', 'h.pad2', 'h.key', 'h.scale', 'h.prog', 'm.tempo', 'm.phrase', 'c.seq'] },
-    { id: 'virtuose', name: 'Virtuose', tier: 4, nodes: ['c.rythme', 'c.song'] },
+  const PLACE = [ // what a musician already masters: harmony, melody and time, his studio tools; then composition and classic effects.
+    // Left to discover by playing: the instrument's own sound (Grands réglages, Paysages, Écran, Texture, Halo, Usure, Grains).
+    // Musicien: Syncopes (5–6 timed notes, off-beats) ×2; Virtuose: Quinte (answered a fifth higher) ×2.
+    { id: 'musicien', name: 'Musicien', tier: 2, nodes: ['h.pad', 'h.drone', 'h.pad2', 'h.key', 'h.scale', 'h.prog', 'm.tempo', 'm.phrase', 'c.seq', 't.journal', 't.rec', 't.share'] },
+    { id: 'virtuose', name: 'Virtuose', tier: 3, nodes: ['c.rythme', 'c.song', 'm.evolve', 'm.lfo', 'm.scenes', 'e.reverb', 'e.salle', 'e.echo', 'e.tape'] },
   ];
   // the highest place earned by the last answers (tiers of the right ones, -1 = a miss), or -1
   const placeOf = (pt) => {
