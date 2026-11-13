@@ -69,7 +69,7 @@
   const mod = (d, n) => ((d % n) + n) % n;
 
   const D = {
-    FREE, byId, GAP, RETRY, LEAD, MISSES,
+    FREE, byId, GAP, RETRY, LEAD, MISSES, STALL, IDLE,
     cur: null, // the ask in progress: { id, gate (challenge id), d, text, hint, how, T (step of the 1), tT, sd, until, got [], onset }
     wait: 2, // bar lines to let pass before the next ask
     ignored: 0, // asks left alone in a row (the next ones come more rarely)

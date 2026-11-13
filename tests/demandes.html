@@ -99,6 +99,32 @@ f.addEventListener('load', async () => {
     own(['m.bells', 'h.pad']); fresh(); D.fresh = 'h.pad'; const pi = D.pick(G);
     ok(pi && /^Nouveau/.test(pi.text) && pi.d.need.includes('h.pad'), 'juste après une ouverture, la demande présente la nouveauté : « ' + (pi && pi.text) + ' »');
 
+    // --- S6.7 ONE table of windows (puzzles.TOL), absolute: tight at the MIDI keyboard, a child's at the fingers
+    own(['m.bells', 'h.pad']); st.combo = 0; res = [];
+    Pz.midi = false; judge('accord', 0.2, chordIn(2)); const f1 = res.pop();
+    Pz.midi = true; judge('accord', 0.04, chordIn(2)); const m1 = res.pop(); judge('accord', 0.1, chordIn(2)); const m2 = res.pop(); judge('accord', 0.3, chordIn(2)); const m3 = res.pop();
+    ok(f1.grade === 'parfait' && m1.grade === 'parfait' && m2.grade === 'bien' && m3.grade === 'rate',
+      `au doigt +200 ms : PARFAIT ; au clavier MIDI +40 ms PARFAIT, +100 ms ${m2.grade.toUpperCase()}, +300 ms ${m3.grade.toUpperCase()} (fenêtres ${JSON.stringify(Pz.TOL)})`);
+    const notesAt = (dt, raw) => { launch('notes'); const t = D.cur.tT; [0, 1, 2].forEach((i) => D.input('note', [{ midi: 60, raw, played: t + i * BEAT + dt }], t + i * BEAT + dt)); return res.pop(); };
+    Pz.midi = false; const n1 = notesAt(0.1, 0.8), n2 = notesAt(0.1, null), n3 = notesAt(0.04, 0.8);
+    ok(n1.grade === 'bien' && n2.grade === 'parfait' && n3.grade === 'parfait', '3 notes à +100 ms : BIEN au clavier MIDI (sa vélocité), PARFAIT aux pastilles ; à +40 ms au MIDI : PARFAIT');
+    Pz.midi = true; launch('accord'); ok(Math.abs(D.tolOf() - Pz.TOL.midi.parfait) < 1e-9, '« MAINTENANT ! » s\'allume sur la fenêtre PARFAIT de la main (MIDI : 60 ms)'); D.cancel(); Pz.midi = false;
+
+    // --- S6.7 never stuck on « ♪ bientôt »: the LCD out of view, a challenge whose controls are not there, an ask left alone
+    const gateOn = (id) => { G.s.contracts = ['k.xy', 'm.notes']; G.s.active = [id]; G.s.prog = { [id]: { n: 0 } }; };
+    own(['m.bells', 'h.pad']); gateOn('k.couleur'); fresh(); const seen0 = D.seen; D.seen = () => false;
+    let nb = 0; while (!D.cur && nb < 30) { bar(); nb++; }
+    D.seen = seen0;
+    ok(D.cur && D.cur.gate === 'k.couleur' && nb > 4 && nb <= D.STALL + 1, `écran (LCD) hors de vue : la demande attend, puis vient quand même après ${nb} mesures (≤ ${D.STALL + 1})`);
+    D.cancel();
+    own(['m.bells', 'h.pad']); gateOn('k.timbre'); fresh(); nb = 0; while (G.s.active[0] === 'k.timbre' && !D.cur && nb < 30) { bar(); nb++; }
+    ok(G.s.active[0] !== 'k.timbre' && G.s.skipped.includes('k.timbre') && nb === D.STALL + 1, `défi demandé dont la commande n'est pas là (Timbre du drone) : remplacé (remis en fin de file) après ${nb} mesures, au suivant : ${G.s.active[0] || '—'}`);
+    D.cancel();
+    own(['m.bells', 'h.pad']); G.s.skipped = []; gateOn('k.couleur'); D.st(G).idle = {}; let ign = 0;
+    while (ign < 6 && !G.s.skipped.includes('k.couleur')) { fresh(); bar(); if (!(D.cur && D.cur.gate === 'k.couleur')) break; now = D.cur.end + 0.01; D.check(); ign++; }
+    ok(G.s.skipped.includes('k.couleur') && ign === D.IDLE, `demande laissée ${ign} fois sans geste : remplacée (elle reviendra), actif : ${G.s.active[0] || '—'}`);
+    G.s.skipped = [];
+
     // --- free mode: nothing
     G.setMode('free'); fresh(); fxs.length = 0;
     for (let i = 0; i < 4; i++) bar();
