@@ -550,7 +550,8 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .tree-legend em { font-style: normal; }
 .tree-legend .lg-short { display: none; }
 .tree-legend i { display: inline-block; flex: none; width: 11px; height: 11px; border-radius: 50%; background: #121110; box-shadow: 0 0 0 1px #4a4844; }
-.tree-legend i.st-owned { background: #8fe3a0; box-shadow: 0 0 6px #8fe3a0; }
+/* S5.7: an open node wears its branch's colour: the dot shows the five */
+.tree-legend i.st-owned { background: conic-gradient(#e8d9b0 0 20%, #b58cff 0 40%, #7fd6ff 0 60%, #8fe3a0 0 80%, #ffb36b 0); box-shadow: 0 0 6px #fff3c466; }
 .tree-legend i.st-available { background: var(--lcd-fg); box-shadow: 0 0 6px var(--lcd-fg); }
 .tree-legend i.st-ready { background: #fff3c4; box-shadow: 0 0 0 2px var(--lcd-fg), 0 0 8px var(--lcd-fg); }
 .tree-legend > .tree-tip { flex-basis: 100%; font-size: 11px; white-space: normal; display: block; }
@@ -672,3 +673,13 @@ body.game .is-released { animation: press-out .42s cubic-bezier(.3, 1.6, .5, 1) 
   body.game .is-released { animation: press-glow .42s ease-out !important; }
   @keyframes press-glow { 0% { filter: brightness(1.6) drop-shadow(0 0 9px var(--lcd-fg, #ffb347)); } 100% { filter: none; } }
 }
+
+/* S5.7 (revues regard neuf) — Parcours seulement, le mode libre ne change pas */
+/* the glide stays, its permanent help lines go: the first move is a note on the pads */
+body.game #xyTip, body.game .stage .hint { display: none !important; }
+/* a touch screen: no MIDI button (it said « Nouveau », then « Accès MIDI refusé ») */
+body.game.touch #midi { display: none !important; }
+/* ↷ : 44 px under a finger, without growing the LCD (negative margins inside its padding) */
+@media (pointer: coarse) { body.game .lcd-skip { min-width: 44px; min-height: 44px; margin: -14px -10px -4px -6px; } }
+/* phones: the pads stay in sight when the bar above grows with the path (they stick to the bottom of the window) */
+@media (max-width: 560px) { body.game .pads { position: sticky; bottom: 0; z-index: 4; margin: -6px -6px 14px; padding: 6px; background: var(--bg, #0d0c0b); border-radius: 10px 10px 0 0; } }

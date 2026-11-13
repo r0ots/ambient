@@ -79,7 +79,7 @@
     // what opens a node: its challenge, or a discovery (S4.3, S5.10) — « ◇ Joue 6 notes », « ↺ Réponse « Premier reflet » (3 notes) », « ✦ Découverte : ??? »
     openers(id) {
       const K = AMB.contracts, S = AMB.discoveries, d = K && K.forNode(id), out = [];
-      if (d) out.push({ kind: d.kind === 'reponse' ? 'reponse' : 'défi', d, text: d.kind === 'reponse' ? `↺ Réponse « ${d.title} » (${AMB.puzzles.need(d)} notes)` : d.kind === 'demande' ? `♪ Demande : ${d.title}` : `◇ ${d.title}` });
+      if (d) out.push({ kind: d.kind === 'reponse' ? 'reponse' : 'défi', d, text: d.kind === 'reponse' ? `↺ Réponse « ${d.title} » (${AMB.puzzles.need(d)} notes)` : AMB.game.txt(d.kind === 'demande' ? `♪ Demande : ${d.title}` : `◇ ${d.title}`) });
       if (S) for (const [sid, nid] of Object.entries(S.OPENS)) if (nid === id) out.push({ kind: 'secret', text: `✦ Découverte : ${S.has(sid) ? S.byId[sid].name : '???'}` });
       return out;
     },

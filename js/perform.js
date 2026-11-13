@@ -74,12 +74,13 @@
     };
     canvas.addEventListener('pointerdown', (e) => {
       if (!AMB.seq.playing) {
-        // S4.5w: in the path, the first glide also starts the sound (the first challenge is « Glisse sur l'écran »)
+        // S4.5w: in the path, the first glide also starts the sound (S5.7: the glide stays, no longer a challenge)
         if (!(AMB.game && AMB.game.path) || !AMB.ui || starting) return;
         starting = true;
         Promise.resolve(AMB.ui.play()).finally(() => { starting = false; });
       }
       down = true; try { canvas.setPointerCapture(e.pointerId); } catch (err) {} applyXY(e);
+      if (AMB.game && AMB.game.path && AMB.bus) AMB.bus.emit('act', 'xy'); // S5.7: one glide = one action (per stroke, not per move)
     });
     canvas.addEventListener('pointermove', (e) => { if (down) applyXY(e); });
     const up = () => { down = false; };

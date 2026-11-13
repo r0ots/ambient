@@ -93,6 +93,11 @@
       if (!r || !this.canOpen(r.id)) return false;
       return this.unlock(r.id, r.by);
     },
+    // S5.7: a touch screen (no keys, no MIDI): the texts of the path drop their keyboard parts. A text may hold
+    // « {keyboard words|touch words} »; txt() keeps one side. `touchOverride` = tests.
+    touchOverride: null,
+    touch() { return this.touchOverride != null ? this.touchOverride : !!(window.matchMedia && matchMedia('(pointer: coarse)').matches); },
+    txt(s) { if (s == null) return s; const t = this.touch(); return String(s).replace(/\{([^|{}]*)\|([^{}]*)\}/g, (m, a, b) => (t ? b : a)); },
     // a challenge done (once)
     complete(id) {
       if (this.s.contracts.includes(id)) return false;

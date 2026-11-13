@@ -12,12 +12,13 @@
     if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
     const tag = e.target.tagName;
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
-    if (!AMB.engine.ctx) return; // notes sound when stopped too, once audio has been started once
     let i;
-    // in the path, playing notes needs the Melody, forcing chords needs the Pad
-    const g = AMB.game, can = (id) => !g || g.isUnlocked(id);
-    if ((MELODY_LOW.includes(e.code) || MELODY_HIGH.includes(e.code)) && !can('m.bells')) return;
+    // in the path, notes play from the Graine (S5.7: the first challenge is a note), forcing chords needs the Pad
+    const g = AMB.game, can = (id) => !g || g.isUnlocked(id), note = MELODY_LOW.includes(e.code) || MELODY_HIGH.includes(e.code);
     if (CHORDS.includes(e.code) && !can('h.pad')) return;
+    // notes sound when stopped too, once audio has been started once (in the path, a note key starts it: S5.7)
+    if (!AMB.engine.ctx && !(note && g && g.path && wakeAudio(true))) return;
+    if (note) firstNote();
     if ((i = MELODY_LOW.indexOf(e.code)) >= 0) press('k' + e.code, AMB.seq.playDegree(i, e.shiftKey ? 0.5 : 0.85, true, e.timeStamp));
     else if ((i = MELODY_HIGH.indexOf(e.code)) >= 0) press('k' + e.code, AMB.seq.playDegree(i + 7, e.shiftKey ? 0.5 : 0.85, true, e.timeStamp));
     else if ((i = CHORDS.indexOf(e.code)) >= 0) AMB.seq.forceChord(i);
@@ -72,19 +73,21 @@
   const LOW = 48, CHORD_MS = 40;
   const lowDown = new Set(); // low keys held now
   let lowNew = [], lowTimer = null, chordHeld = false;
-  // the chord a set of notes spells in the current key: root and quality (any inversion) → scale degree 0..n-1;
-  // notes outside every chord of the key → the degree whose chord shares the most, then the bass note's nearest degree
+  // the chord a set of notes spells in the current key: root and quality (any inversion) → scale degree 0..n-1.
+  // S5.7: the diatonic chord that holds ALL the notes wins — its triad first, then its seventh chord (Amaj7 with C# in the
+  // bass is I, not iii); otherwise the degree whose chord shares the most, then the bass note's nearest degree
   function chordForNotes(midis) {
     const sc = AMB.seq.scale, root = AMB.seq.root, n = sc.length;
     const pc = (m) => (((m - root) % 12) + 12) % 12;
     const pcs = [...new Set(midis.map(pc))], bass = pc(Math.min(...midis));
     let best = null, bs = -99;
     for (let d = 0; d < n; d++) {
-      const tones = [0, 2, 4].map((i) => sc[(d + i) % n]);
+      const tones = [0, 2, 4].map((i) => sc[(d + i) % n]), seventh = tones.concat(sc[(d + 6) % n]);
       const hit = pcs.filter((p) => tones.includes(p)).length;
       if (!hit) continue;
+      const all = pcs.every((p) => tones.includes(p)) ? 20 : pcs.every((p) => seventh.includes(p)) ? 10 : 0;
       // every note in the chord counts, a foreign note costs, the root present and in the bass break the ties
-      const score = hit * 2 - (pcs.length - hit) * 1.5 + (pcs.includes(tones[0]) ? 1 : 0) + (bass === tones[0] ? 0.5 : 0);
+      const score = all + hit * 2 - (pcs.length - hit) * 1.5 + (pcs.includes(tones[0]) ? 1 : 0) + (bass === tones[0] ? 0.5 : 0);
       if (score > bs) { bs = score; best = d; }
     }
     return best != null ? best : degreeForPitch(Math.min(...midis));
@@ -124,12 +127,18 @@
 
   // ---------- touch pads: the 9 notes of A–L under the screen (a phone has no keys) ----------
   // Same path as the keys (playDegree, held until the finger lifts: notes, Rec live, contracts); a long press forces the chord of that degree.
-  // Path only, once the Melody is owned (free mode is unchanged). The first touch starts the audio (a user gesture) and the note sounds.
+  // Path only, from the Graine (S5.7; free mode is unchanged). The first touch starts the audio (a user gesture) and the note sounds.
   const PADS = ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'], PAD_LONG_MS = 450;
   const padPtr = new Map(); // pointerId → { b: pad button, t: long-press timer }
-  function padsWanted() {
+  function padsWanted() { // S5.7: from the Graine (its challenge is « Joue une note »)
     const g = AMB.game;
-    return !!(g && g.path && g.isUnlocked('m.bells'));
+    return !!(g && g.path);
+  }
+  // S5.7: in the path, before the Mélodie auto is open, the first note also starts the playback (the drone comes in), as
+  // the first glide does; free mode unchanged
+  function firstNote() {
+    const g = AMB.game;
+    if (g && g.path && !g.has('m.bells') && AMB.seq && !AMB.seq.playing && AMB.ui && AMB.ui.play) Promise.resolve(AMB.ui.play()).catch(() => {});
   }
   function padsRefresh() {
     const bar = document.getElementById('pads'); if (!bar) return;
@@ -141,7 +150,8 @@
     const b = e.target.closest && e.target.closest('.pad'); if (!b || !AMB.seq || padPtr.has(e.pointerId)) return;
     const g = AMB.game, can = (id) => !g || g.isUnlocked(id);
     e.preventDefault();
-    if (!can('m.bells') || !wakeAudio(true)) return;
+    if (!wakeAudio(true)) return;
+    firstNote();
     const deg = +b.dataset.deg, key = 'p' + e.pointerId;
     try { b.setPointerCapture(e.pointerId); } catch (err) {}
     b.classList.add('on');
@@ -201,12 +211,12 @@
       if (lowDown.delete(d1)) letChordGo();
       lift('m' + d1, false, msg.timeStamp);
     } else if (type === 0x90) {
-      // in the path, like the computer keyboard: notes need the Melody, low notes (chords) the Pad.
+      // in the path, like the computer keyboard: notes from the Graine (S5.7), low notes (chords) the Pad.
       // Notes sound while stopped too (like A–L), chords need the playback.
       const g = AMB.game, can = (id) => !g || g.isUnlocked(id);
       // the heard velocity is remapped to 0.25–1 (soft notes stay audible); the raw one (0..1) rides along on 'live'
       if (d1 < LOW) { if (can('h.pad') && AMB.seq.playing) lowOn(d1); }
-      else if (can('m.bells') && wakeAudio()) press('m' + d1, AMB.seq.playMidi(d1, 0.25 + (d2 / 127) * 0.75, d2 / 127, true, msg.timeStamp));
+      else if (wakeAudio()) { firstNote(); press('m' + d1, AMB.seq.playMidi(d1, 0.25 + (d2 / 127) * 0.75, d2 / 127, true, msg.timeStamp)); }
     } else if (type === 0xb0) {
       const v = d2 / 127;
       if (d1 === 64) { setPedal(d2 >= 64, msg.timeStamp); return letChordGo(); } // sustain pedal (holds notes and the forced chord)

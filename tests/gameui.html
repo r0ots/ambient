@@ -79,7 +79,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
     // the queue: two nodes ready, the button says how many; they open one after the other
     A.contracts.finish('h.son'); A.game.ready('e.reverb', 'm.monte'); await wait(20);
     ok(ltx.textContent==='✦ Ouvrir : Accords riches' && lt.querySelector('.lcd-task-n').textContent==='2 prêts' && !A.contracts.state().active.length, 'file : « ✦ Ouvrir : Accords riches » · « 2 prêts »');
-    ltx.click(); await wait(20); ok(/encore 1 à ouvrir/.test(odlg.querySelector('.open-more').textContent), 'la carte dit qu\'un autre attend');
+    ltx.click(); await wait(20); ok(/^Ensuite : [^,]+\.$/.test(odlg.querySelector('.open-more').textContent) && odlg.querySelector('.open-all').hidden, 'la carte dit lequel attend ensuite (« '+odlg.querySelector('.open-more').textContent+' »), pas de « Tout ouvrir » pour 2');
     A.garden.showTree(true); await wait(20); A.garden.reduced=true; odlg.querySelector('.open-go').click();
     ok(A.game.has('h.pad2') && tn('h.pad2').classList.contains('st-owned') && !tn('h.pad2').classList.contains('is-born') && !d.querySelector('#treeDlg .tree-glow.lit') && !d.getElementById('treeDlg').hidden, 'mouvement réduit : état final tout de suite, sans animation');
     await wait(800); ok(d.getElementById('treeDlg').hidden && !A.garden.seq, 'mouvement réduit : puis fermeture'); A.garden.reduced=false;
@@ -111,22 +111,23 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
   A.game.reset(); await wait(20); const n0=A.game.s.nodes.length;
   A.seq.playing=true; A.store.set('drone.vol',0.3,'user'); A.store.set('drone.motion',0.7,'user'); A.seq.playing=false;
   ok(A.game.s.nodes.length===n0 && !('found' in A.game.s) && !A.garden.notebook && !A.garden.ACTS, 'toucher un réglage n\'ouvre rien (découvertes supprimées)');
-  ok(!A.tree.byId['c.midi'] && locked('.stage .hint') && locked('#midi'), 'avant la Mélodie : ligne « touches A–L » et bouton MIDI cachés, pas de nœud MIDI');
+  ok(!A.tree.byId['c.midi'] && !locked('#midi') && /Clavier MIDI/.test(A.tree.grantsText('racine')), 'S5.7 : le MIDI dès la Graine (sa note est le premier défi), pas de nœud MIDI');
   A.game.unlock('m.bells'); await wait(20);
-  ok(!locked('.stage .hint') && !locked('#midi') && locked('#exportMidi') && /Clavier MIDI/.test(A.tree.grantsText('m.bells')) && /\.mid/.test(A.tree.grantsText('c.seq')), 'Mélodie ouverte : touches et MIDI ouverts ; l\'export .mid vient avec la Mélodie écrite');
+  ok(!locked('#midi') && locked('#exportMidi') && /\.mid/.test(A.tree.grantsText('c.seq')), 'Mélodie ouverte : le MIDI reste ; l\'export .mid vient avec la Mélodie écrite');
   // --- the challenge on the LCD (v1.06): one at a time on the 2nd line, ↷ = next, a tap = how to do it
   // S4.3: the first one is « glisse sur l'écran », which works from the Graine (the 5 macro knobs stay locked); no jargon yet
   A.game.reset(); A.perform.setMode('listen'); A.lcdMsg=null; await wait(400);
-  ok(!d.getElementById('contracts') && shown('#lcdTask') && lline.hidden && /Glisse sur l'écran/.test(task.textContent) && /0\/4/.test(task.querySelector('.lcd-task-n').textContent) && !/✧/.test(task.textContent), 'premier défi sur la 2e ligne du LCD, sans ✧ : '+task.textContent);
+  ok(!d.getElementById('contracts') && shown('#lcdTask') && lline.hidden && /Joue une note/.test(task.textContent) && /·/.test(task.querySelector('.lcd-task-n').textContent) && !/✧/.test(task.textContent), 'premier défi sur la 2e ligne du LCD, sans ✧ : '+task.textContent);
   ok(d.body.classList.contains('jargon-off') && d.getElementById('lcdTop').textContent==='AMBIENT' && w.getComputedStyle(d.getElementById('hudInfo')).visibility==='hidden' && w.getComputedStyle(d.getElementById('chordName')).visibility==='hidden', 'début : ni nom de paysage, ni tonalité, gamme, tempo ou accord à l\'écran (« '+d.getElementById('lcdTop').textContent+' »)');
-  ok(!locked('#xyTip'), 'l\'invitation à glisser sur l\'écran est là dès la Graine');
+  ok(!locked('#xyTip') && w.getComputedStyle(d.getElementById('xyTip')).display==='none', 'S5.7 : glisser marche dès la Graine, mais sa bulle d\'aide n\'est plus affichée en Parcours');
   A.seq.playing=true; const tone0=A.store.get('drone.tone'), mac0=A.store.get('macro.light');
-  for (const x of [0.1,0.9,0.2,0.8]) { A.contracts.state().prog['k.xy'].t_xy=0; A.perform.setMacro('macro.light', x); A.perform.setMacro('macro.density', 0.5); }
-  ok(A.store.get('drone.tone')!==tone0 && A.store.get('macro.light')===mac0 && locked('.macros [data-key="macro.light"]') && A.game.isReady('m.bells'), 'glisser sur l\'écran dès la Graine : la couleur du drone suit, les grands réglages restent fermés ; 4 glissés → Mélodie prête');
+  for (const x of [0.1,0.9,0.2,0.8]) { A.perform.setMacro('macro.light', x); A.perform.setMacro('macro.density', 0.5); }
+  ok(A.store.get('drone.tone')!==tone0 && A.store.get('macro.light')===mac0 && locked('.macros [data-key="macro.light"]') && !A.game.isReady('m.bells'), 'glisser sur l\'écran dès la Graine : la couleur du drone suit, les grands réglages restent fermés ; ce n\'est plus un défi');
+  A.bus.emit('live',{midi:62,time:0,vel:0.8,raw:null}); ok(A.game.isReady('m.bells'), 'S5.7 : une note jouée → Mélodie prête');
   A.garden.openNode('m.bells'); await settle(300); A.garden.showTree(false); A.perform.setMode('listen'); await wait(30);
   ok(/0\/6/.test(task.querySelector('.lcd-task-n').textContent) && /6 notes/.test(task.textContent), 'défi suivant : '+task.textContent);
   task.querySelector('.lcd-task-txt').click(); await wait(20);
-  ok(task.classList.contains('help') && task.querySelector('.lcd-task-txt').textContent===A.contracts.byId['m.notes'].hint, 'toucher le défi : son aide s\'affiche sur le LCD');
+  ok(task.classList.contains('help') && task.querySelector('.lcd-task-txt').textContent===A.game.txt(A.contracts.byId['m.notes'].hint), 'toucher le défi : son aide s\'affiche sur le LCD');
   task.querySelector('.lcd-task-txt').click(); await wait(20); ok(!task.classList.contains('help') && /◇/.test(task.textContent), 'toucher encore : retour au défi');
   const first=task.dataset.id; task.querySelector('.lcd-skip').click(); await wait(20);
   ok(task.dataset.id && task.dataset.id!==first && A.game.s.skipped.includes(first), '↷ : le défi suivant ('+first+' → '+task.dataset.id+')');

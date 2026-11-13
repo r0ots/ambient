@@ -136,6 +136,8 @@
 
     // at each step of the sequencer: an answer window that ran out closes; on a bar line, maybe a new phrase
     onStep(step, time, sd) {
+      const songRec = !!(AMB.rec && AMB.rec.songRecording && AMB.rec.songRecording()); // S5.7: ● Rec of the song: nothing on the take
+      if (songRec && this.cur) this.cancel();
       if (this.cur && this.now() >= this.cur.until) this.close();
       const S = AMB.seq;
       if (this.cur || (step - ((S && S.origin) || 0)) % 16 !== 0) return false;
@@ -146,6 +148,7 @@
       if (this.wait > 0) { this.wait--; return false; }
       if (!gate && !store.get('bells.on')) return false; // the mastery loop needs the Melody heard
       if (AMB.pianoRoll && AMB.pianoRoll.roll && AMB.pianoRoll.roll.recording) return false; // Rec live: the notes are the roll's
+      if (songRec) return false;
       return this.launch(time, sd, gate);
     },
     // the marked phrase (or chords), on the grid of the bar starting at `time`, on the Melody voice

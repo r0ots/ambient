@@ -14,7 +14,7 @@
       AMB.game.setMode(mode);
       this.welcome(false);
       this.renderSwitch();
-      AMB.ui.toast(mode === 'path' ? '🌱 Parcours : une seule note pour commencer. Glisse sur l\'écran pour l\'entendre.' : '◎ Mode libre : tout est ouvert');
+      AMB.ui.toast(mode === 'path' ? AMB.game.txt('🌱 Parcours : une seule note pour commencer. {Touche une pastille, une touche de A à L ou ton clavier MIDI.|Touche une pastille de couleur.}') : '◎ Mode libre : tout est ouvert');
     },
     renderSwitch() {
       const b = $('#gameMode'); if (!b) return;
@@ -40,7 +40,8 @@
         if (box.dataset.id !== 'demand') box.classList.remove('help');
         box.dataset.id = 'demand';
         const t = box.querySelector('.lcd-task-txt'), help = box.classList.contains('help');
-        t.textContent = help ? dm.hint : `♪ ${dm.text}`; t.title = help ? 'Toucher : revenir à la demande' : `${dm.hint}\n(Toucher : comment faire)`;
+        const T = (x) => g.txt(x);
+        t.textContent = help ? T(dm.hint) : `♪ ${T(dm.text)}`; t.title = help ? 'Toucher : revenir à la demande' : `${T(dm.hint)}\n(Toucher : comment faire)`;
         box.querySelector('.lcd-task-n').textContent = dm.n;
         return;
       }
@@ -61,8 +62,8 @@
       box.dataset.id = id;
       const n = K.progress(id), resp = d.kind === 'reponse', ask = d.kind === 'demande', help = box.classList.contains('help') && d.hint;
       const txt = box.querySelector('.lcd-task-txt');
-      txt.textContent = help ? d.hint : resp ? `↺ Réponse : ${d.title}` : `◇ ${d.title}`;
-      txt.title = help ? 'Toucher : revenir au défi' : `${d.hint}\n(Toucher : comment faire)`;
+      txt.textContent = g.txt(help ? d.hint : resp ? `↺ Réponse : ${d.title}` : `◇ ${d.title}`);
+      txt.title = help ? 'Toucher : revenir au défi' : `${g.txt(d.hint)}\n(Toucher : comment faire)`;
       // S5.5 a challenge asked in the music: it comes with the playback
       box.querySelector('.lcd-task-n').textContent = resp ? `${AMB.puzzles.need(d)} ♪` : ask ? (AMB.seq && AMB.seq.playing ? '♪ bientôt' : '▶ lecture') : d.goal > 1 ? `${n}/${d.goal}` : n ? '✓' : '·';
       if (flashId === id) { box.classList.remove('bump'); void box.offsetWidth; box.classList.add('bump'); }
@@ -98,7 +99,7 @@
         if (t.matches('.sc-slot')) return emit(e.shiftKey ? 'sceneStore' : 'sceneRecall');
         for (const [sel, id] of this.CLICKS) if (t.matches(sel)) return emit(id);
       }, true);
-      AMB.store.on((k, v, src) => { if (src === 'xy' && AMB.game.path) emit('xy'); });
+      // (S5.7: a glide on the screen is one 'xy' action per stroke, emitted by perform.js)
     },
     // ---- game feedback (G6.2): a chime tuned to the key, LCD messages ----
     // kind: 'unlock' (rising arpeggio), 'solve' (two chords), 'small' (one soft note); straight to the speakers
@@ -164,7 +165,7 @@
     // fades in from there, its plant grows (garden-visual.js). Stopped: right away.
     beat(id) {
       const ctx = AMB.engine && AMB.engine.ctx, run = ctx && ctx.state === 'running';
-      const at = run ? this.strongBeat(0.45) : null, now = run ? ctx.currentTime : 0;
+      const at = run ? (this.batch ? this.strongBeat(0.08, undefined, undefined, this.batch) : this.strongBeat(0.45)) : null, now = run ? ctx.currentTime : 0;
       const ls = this.layersOf(id);
       this.lastBeat = { id, at, deg: ls.length ? this.LAYER_DEG[ls[0]] || 0 : 0 };
       this.beats[id] = this.lastBeat; // several openings at once (a discovery during a map sequence) keep their own beat
@@ -192,8 +193,12 @@
       dlg.dataset.id = id;
       dlg.querySelector('.modal-card').style.setProperty('--c', AMB.tree.BRANCHES[n.branch].color);
       dlg.querySelector('.open-name').textContent = n.name;
-      dlg.querySelector('.open-why').textContent = n.why;
-      dlg.querySelector('.open-more').textContent = more > 0 ? `Ensuite, encore ${more} à ouvrir.` : '';
+      dlg.querySelector('.open-why').textContent = g.txt(n.why);
+      // S5.7: a long queue (a placement: up to 21) — its next names, and « ✦ Tout ouvrir (n) » past OPEN_ALL
+      const next = (g.s.ready || []).map((r) => r.id).filter((x) => x !== id).map((x) => AMB.tree.byId[x]).filter(Boolean).map((x) => x.name);
+      dlg.querySelector('.open-more').textContent = more > 0 ? `Ensuite : ${next.slice(0, 3).join(', ')}${more > 3 ? ` et ${more - 3} autre${more > 4 ? 's' : ''}` : ''}.` : '';
+      const all = dlg.querySelector('.open-all');
+      if (all) { all.hidden = more + 1 <= this.OPEN_ALL; all.textContent = `✦ Tout ouvrir (${more + 1})`; }
       dlg.hidden = false;
       const go = dlg.querySelector('.open-go'); if (go) go.focus({ preventScroll: true });
       return true;
@@ -205,8 +210,28 @@
       T.hold(); // what it opens waits for the end of the map's sequence (seqFinish), or comes in now
       const ok = g.open(id);
       if (ok && this.seq && this.seq.id === id) this.seq.held = true;
-      else { T.release(); if (ok) this.reveal(id); }
+      else { T.release(); if (ok && !this.batch) this.reveal(id); }
       return ok;
+    },
+    // S5.7 « ✦ Tout ouvrir (n) » (the card, when more than OPEN_ALL wait): every node of the queue opens in turn, one per
+    // beat (one per eighth past 8 nodes), each with its own juice on its beat; no map, no scrolling between two (the LCD
+    // stays in sight). Stopped: one every 0.3 s. Returns how many will open.
+    OPEN_ALL: 3,
+    batch: 0, // the grid unit (16ths) of the openings in progress, 0 = none
+    openAll() {
+      const g = AMB.game, n = (g.s.ready || []).length; this.ask(null);
+      if (!g.path || !n || this.batch) return 0;
+      const unit = n > 8 ? 2 : 4;
+      this.batch = unit;
+      const next = () => {
+        const r = g.path && g.nextReady();
+        if (!r || !this.batch) { this.batch = 0; this.renderContracts(); return; }
+        this.openNode(r.id);
+        const S = AMB.seq, ms = S && S.playing ? S.stepDur() * unit * 1000 : 300;
+        this._allT = setTimeout(next, ms);
+      };
+      next();
+      return n;
     },
     // ---- the instrument handed over (G6.3, S3.7) ----
     complete() { const T = AMB.tree; return T.NODES.every((n) => AMB.game.has(n.id)); },
@@ -317,7 +342,7 @@
     renderScore(bump) {
       const el = $('#lcdScore'), P = AMB.puzzles; if (!el || !P) return;
       const v = AMB.game.path && !this.handedOver() ? P.score() : null;
-      el.hidden = !v; if (!v) return;
+      el.hidden = !v || !v.best; if (el.hidden) return; // S5.7: not before a first series (« RECORD 0 » said nothing)
       el.textContent = `↺ ${v.name.toUpperCase()} · SÉRIE ${v.streak} · RECORD ${v.best}`;
       el.title = `Réponse : palier ${v.name}, ${v.streak} réussie${v.streak > 1 ? 's' : ''} d'affilée, record ${v.best}`;
       if (bump) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
@@ -394,8 +419,11 @@
       if (R.splash && GV) { GV.cheer(R.splash, at, o.plant); did.push('splash'); }
       if (!red) for (const k of ['confetti', 'shake', 'lcd', 'bounce', 'hop', 'punch', 'pop', 'kick']) if (R[k]) did.push(k);
       const beatMs = AMB.seq && AMB.seq.playing ? AMB.seq.stepDur() * 4000 : 380;
+      let waits = 0;
       const fire = () => {
         if (!AMB.game.path) return;
+        // S5.7: never over a window (Arbre, carnet, carte) — the party comes on the instrument once it closes, 6 s at most
+        if (this.modalUp()) { if (++waits < 40) setTimeout(fire, 150); return; }
         const stage = $('.stage');
         if (R.flash) this.fxFlash(stage, red ? 0.22 : Math.min(1, R.flash * J), red);
         if (red) return;
@@ -415,6 +443,7 @@
       if (delay > 0) setTimeout(fire, delay); else fire();
       return (this.fxLast = { kind, at, delay, did });
     },
+    modalUp() { return [...document.querySelectorAll('.modal')].some((m) => !m.hidden); },
     fxClass(el, cls, ms) {
       if (!el) return;
       el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
@@ -501,7 +530,7 @@
           // « Ouvert : » agrees with every node name (Phrases, Grands réglages…)
           const b = this.beat(d.id);
           this.fx('open', { say: `✦ Ouvert : ${n.name}`, at: b.at, deg: b.deg, plant: this.layersOf(d.id)[0] });
-          if (d.by) this.unlockSeq(d.id);
+          if (d.by && !this.batch) this.unlockSeq(d.id); // (« Tout ouvrir »: no map between two openings)
         });
         // S5.9: the other moments of the bus (a challenge or a Réponse won, a node ready, the Réponse's series, record and
         // tier) go through the juice table; a discovery (discoveries.js), the end and a first touch call fx() themselves
@@ -521,6 +550,9 @@
         document.querySelectorAll('.modal').forEach((m) => mo.observe(m, { attributes: true, attributeFilter: ['hidden'] }));
       }
       this.pressFeedback();
+      // S5.7: a touch screen in the path: no MIDI button, no keyboard words (css body.game.touch, game.txt)
+      const touch = () => document.body.classList.toggle('touch', AMB.game.touch());
+      touch(); if (window.matchMedia) { const q = matchMedia('(pointer: coarse)'); if (q.addEventListener) q.addEventListener('change', touch); }
       const task = $('#lcdTask');
       if (task) {
         task.querySelector('.lcd-skip').addEventListener('click', () => {
@@ -550,6 +582,7 @@
         od.addEventListener('click', (e) => {
           if (e.target === od || e.target.closest('[data-close]')) this.ask(null);
           else if (e.target.closest('.open-go')) this.openNode(od.dataset.id);
+          else if (e.target.closest('.open-all')) this.openAll();
         });
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !od.hidden) this.ask(null); });
       }

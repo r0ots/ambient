@@ -76,7 +76,7 @@
       'Joue 4 notes d\'un arpège diminué : 3 demi-tons à chaque pas (en montant ou en descendant).', { gift: GIFT.aube },
       { live: (m, D) => !!D.tail(4) && (D.ivs(4).every((i) => i === 3) || D.ivs(4).every((i) => i === -3)) }, 'm.bells'),
     G('jazz', 'Deux, cinq, un', 'Trois accords qui se tiennent par la main et retombent sur leurs pieds.',
-      'Force trois accords à la suite : II, V puis I (touches X, B puis Z).', {},
+      'Force trois accords à la suite : II, V puis I ({touches X, B puis Z|appui long sur les pastilles 2, 5 puis 1}).', {},
       { chord: (c, D) => D.chordsEnd([1, 4, 0]) }, 'h.pad'),
     G('lent', 'Lenteur céleste', 'Plus lent qu\'une marée, plus clair qu\'un matin, sans aucune pulsation.',
       'Tempo à 36 bpm ou moins, Halo à 95 % ou plus, Rythme en Flottant, tout en même temps.', {},
@@ -87,14 +87,14 @@
     G('silence', 'Mesure de silence', 'Écouter, c\'est aussi savoir tout éteindre, puis tout rallumer.',
       'Coupe toutes les couches pendant une mesure entière (la lecture continue), puis rallume-en une.', {},
       { param: (k, v, D) => D.silenceDone(k) }, 'm.bells'),
-    G('velo', 'Funambule', 'Du plus fort au presque rien, puis encore tout en haut. Il faut des touches qui sentent la main.',
-      'Au clavier MIDI : une note très forte, une note très douce, puis une très forte, à la suite.', {},
+    G('velo', 'Funambule', 'Fort, presque rien, puis fort encore. Il faut des touches qui sentent la force de la main.',
+      'Au clavier MIDI : une note frappée très fort, une effleurée très doucement, puis une très fort, à la suite (la hauteur ne compte pas).', {},
       { live: (m, D) => !!D.tail(3) && D.w[D.w.length - 3].raw >= 0.9 && D.w[D.w.length - 2].raw <= 0.35 && m.raw >= 0.9 }, 'm.bells', true), // raw MIDI velocity (null from the computer keyboard)
-    G('chroma', 'Entre les touches', 'Il y a des notes entre les notes, et elles se laissent descendre ou monter.',
-      'Au clavier MIDI : 6 notes de suite, une par demi-ton, en montant ou en descendant.', {},
+    G('chroma', 'Entre les touches', 'Six marches, toutes les plus petites possibles, sans en sauter une seule : les noires comptent aussi.',
+      'Au clavier MIDI : 6 notes de suite, chacune la touche voisine (blanches et noires), en montant ou en descendant. La molette de hauteur ne compte pas.', {},
       { live: (m, D) => !!D.tail(6) && (D.ivs(6).every((i) => i === 1) || D.ivs(6).every((i) => i === -1)) && D.out(6) >= 2 }, 'm.bells', true),
-    G('cinq', 'Petite phrase', 'Une main qui se promène sans se presser.',
-      'Joue 5 notes de suite au clavier (A à L), sans t\'arrêter plus de 2 secondes.', {},
+    G('cinq', 'Petite phrase', 'Autant de notes que de doigts, d\'une seule respiration.',
+      'Joue 5 notes d\'affilée, jamais plus de 2 secondes de silence entre deux.', {},
       { live: (m, D) => !!D.tail(5) && D.gapsOk(5, 2) }, 'm.bells'),
   ];
   const ALL = COMBOS.concat(GESTES);
@@ -339,7 +339,7 @@
         const b = document.createElement('b'), s = document.createElement('span');
         b.textContent = it.found ? `✦ ${it.name}` : '???';
         if (it.found) s.textContent = [it.effect, it.reward].filter(Boolean).join(' → ') || 'trouvée';
-        else s.textContent = it.hint || (it.midi && this.reach({ need: it.need }) ? 'Au clavier MIDI : branche-en un (bouton MIDI de la barre).' : `Plus loin : ${it.need.filter((n) => !g.has(n)).map((n) => AMB.tree.byId[n].name).join(', ')}.`);
+        else s.textContent = AMB.game.txt(it.hint) || (it.midi && this.reach({ need: it.need }) ? 'Au clavier MIDI : branche-en un (bouton MIDI de la barre).' : `Plus loin : ${it.need.filter((n) => !g.has(n)).map((n) => AMB.tree.byId[n].name).join(', ')}.`);
         p.append(b, s); body.append(p);
       }
     },

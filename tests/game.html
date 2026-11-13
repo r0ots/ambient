@@ -60,11 +60,13 @@ window.addEventListener('load', async ()=>{
     ok(!Pz.openPuzzle && !Pz.echoPlay && !Pz.start && !Pz.attempt, 'S4.2 : plus de carte Écho (ni lancer, ni rejouer, ni essai sur carte)'); }
   // --- the queue (one at a time, in the order of the table)
   g.reset(); g.setMode('path'); K.refill(); ev.length=0;
-  ok(g.s.active.join()==='k.xy', 'S4.3 : le premier défi = glisser sur l\'écran ('+g.s.active.join()+')');
-  for(let i=0;i<4;i++){ g.s.prog['k.xy'].t_xy=0; AMB.bus.emit('act','xy'); }
-  ok(!g.has('m.bells') && g.isReady('m.bells') && T.status('m.bells')==='ready' && g.s.contracts.includes('k.xy') && ev.includes('ready:k.xy') && !ev.includes('unlock:k.xy') && !g.s.active.length, 'S4.6 : 4 glissés → défi réussi, la Mélodie est prête mais pas ouverte ; aucun défi tant qu\'elle attend');
+  ok(g.s.active.join()==='k.note', 'S5.7 : le premier défi = jouer une note ('+g.s.active.join()+')');
+  for(let i=0;i<4;i++) AMB.bus.emit('act','xy');
+  ok(!g.isReady('m.bells') && !K.DEFS.some((d)=>d.on.act && /xy/.test(String(d.on.act))), 'S5.7 : glisser sur l\'écran n\'est plus un défi (4 glissés ne comptent pas)');
+  AMB.bus.emit('live',{midi:60,time:0,vel:0.8,raw:null});
+  ok(!g.has('m.bells') && g.isReady('m.bells') && T.status('m.bells')==='ready' && g.s.contracts.includes('k.note') && ev.includes('ready:k.note') && !ev.includes('unlock:k.note') && !g.s.active.length, 'S4.6 : une note → défi réussi, la Mélodie est prête mais pas ouverte ; aucun défi tant qu\'elle attend');
   ok(JSON.parse(localStorage.getItem('ambient.game.test')).ready[0].id==='m.bells', 'S4.6 : le nœud prêt est sauvegardé');
-  ok(g.open() && g.has('m.bells') && !g.isReady('m.bells') && ev.includes('unlock:k.xy') && g.s.active.join()==='m.notes', 'S4.6 : le joueur l\'ouvre → Mélodie ouverte (par son défi), puis le défi suivant : '+g.s.active.join());
+  ok(g.open() && g.has('m.bells') && !g.isReady('m.bells') && ev.includes('unlock:k.note') && g.s.active.join()==='m.notes', 'S4.6 : le joueur l\'ouvre → Mélodie ouverte (par son défi), puis le défi suivant : '+g.s.active.join());
   K.skip('m.notes'); ok(g.s.active.join()==='k.couleur' && g.s.skipped.includes('m.notes'), 'passer → le suivant');
   AMB.seq.playing=true;
   // S5.5: an interface challenge is asked in the music (js/demands.js, own page tests/demandes.html): the gesture on the 1
@@ -112,12 +114,13 @@ window.addEventListener('load', async ()=>{
     ok(K.progress('m.notes')===3, 'Réponse en attente : les notes comptent encore pour « Joue 6 notes » ('+K.progress('m.notes')+')');
     Pz.cancel();
     force('m.phrase'); AMB.store.set('bells.mode','Aléatoire','user'); ask(); tNow=D.cur.tT; AMB.store.set('bells.mode','Aléatoire','user'); ok(!g.s.contracts.includes('m.phrase') && D.cur,'Phrases : un autre mode ne compte pas'); AMB.store.set('bells.mode','Phrase','user'); ok(g.s.contracts.includes('m.phrase'),'Phrase sur le 1 → réussi'); g.open();
-    ok((()=>{ g.s.active=[]; g.s.skipped=[]; g.s.contracts=[]; K.refill(); return g.s.active.join(); })()==='c.morceau', 'Morceau ouvert : « Enregistre ton morceau » passe avant les autres'); }
+    ok((()=>{ g.s.active=[]; g.s.skipped=[]; g.s.contracts=[]; K.refill(); return g.s.active.join(); })()!=='c.morceau', 'S5.7 : Morceau ouvert, d\'autres nœuds fermés : pas encore « Enregistre ton morceau »');
+    ok((()=>{ const n0=g.s.nodes.slice(); g.s.nodes=T.NODES.map(n=>n.id); g.s.active=[]; g.s.skipped=[]; g.s.contracts=[]; K.refill(); const a=g.s.active.join(); g.s.nodes=n0; return a; })()==='c.morceau', 'S5.7 : tout l\'arbre ouvert → « Enregistre ton morceau », le dernier'); }
   AMB.seq.playing=false; g.setMode('free'); AMB.store.set('drone.tone',0.1,'user'); ok(true,'libre : pas de suivi');
   g.reset();
   // --- S4.6 the queue of nodes ready to open: in order, the player opens them, prerequisites first, no challenge meanwhile
   g.reset(); g.setMode('path'); K.refill(); ev.length=0;
-  ok(g.ready('m.bells','k.xy') && g.ready('h.scale') && g.ready('h.pad') && !g.ready('h.pad','m.notes') && g.readyIds().join()==='m.bells,h.scale,h.pad' && !g.s.active.length, 'file : 3 nœuds prêts, dans l\'ordre, sans doublon, aucun défi proposé');
+  ok(g.ready('m.bells','k.note') && g.ready('h.scale') && g.ready('h.pad') && !g.ready('h.pad','m.notes') && g.readyIds().join()==='m.bells,h.scale,h.pad' && !g.s.active.length, 'file : 3 nœuds prêts, dans l\'ordre, sans doublon, aucun défi proposé');
   ok(!g.canOpen('h.scale') && !g.open('h.scale') && g.nextReady().id==='m.bells' && !g.open('t.son'), 'un nœud prêt ne s\'ouvre pas avant ses prérequis (Gammes attend Tonalité) ; un nœud non prêt ne s\'ouvre pas');
   ok(g.open() && g.has('m.bells') && g.nextReady().id==='h.pad' && !g.s.active.length, 'ouvrir le premier : le suivant ouvrable attend (Pad), toujours aucun défi');
   ok(g.open() && g.readyIds().join()==='h.scale' && !g.nextReady() && !g.s.active.length, 'Pad ouvert : reste Gammes, pas encore ouvrable');

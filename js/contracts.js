@@ -29,18 +29,20 @@
   // and its place in time: how 'hit' (on the 1) | 'by' (before the end of the bar); param (key, 'macro.*'), v (test of the
   // value), src (sources that count, 'user' by default), act (a bus action).
   const Dm = (id, need, title, ask, hint) => ({ id, kind: 'demande', need, title, goal: 1, on: {}, ask, hint });
-  const ON1 = 'Pendant la lecture, l\'écran te le demandera avec un compte à rebours (4, 3, 2, 1) : fais-le pile sur le 1. ';
+  const ON1 = 'Pendant la lecture, l\'écran te le demandera avec un compte à rebours (3, 2, 1) : fais-le pile quand il dit MAINTENANT. ';
   const BY = 'Pendant la lecture, l\'écran te le demandera avec un compte à rebours : fais-le avant la fin de la mesure. ';
   const DEFS = [
     // Tronc
-    C('k.xy', ['racine'], 'Glisse sur l\'écran : 4 glissés', 4, {
-      act(st, id) { if (id === 'xy' && gesture(st, 'xy', 700)) st.n = (st.n || 0) + 1; },
-    }, 'Glisse le doigt ou la souris sur l\'écran (le son démarre) : à gauche plus sombre, à droite plus clair. Lève-le entre chaque glissé.'),
-    Dm('k.couleur', ['racine'], 'Tourne la lumière du drone sur le 1', { how: 'hit', param: 'drone.tone', src: ['user', 'xy'] },
+    // S5.7: the first challenge is a note (a pad, a key or a MIDI keyboard: they all play from the Graine); gliding on
+    // the screen is still there, but no longer a challenge
+    C('k.note', ['racine'], 'Joue une note{ (pastille, touche A à L ou MIDI)| : touche une pastille}', 1, {
+      note(st) { st.n = 1; },
+    }, '{Touche une pastille sous l\'écran, une touche de A à L ou ton clavier MIDI : le son démarre.|Touche une pastille de couleur sous l\'écran : le son démarre.}'),
+    Dm('k.couleur', ['racine'], 'Tourne la lumière du drone sur MAINTENANT', { how: 'hit', param: 'drone.tone', src: ['user', 'xy'] },
       ON1 + 'Sculpter > Drone > Lumière, ou glisse sur l\'écran : le son s\'ouvre et se ferme.'),
-    Dm('k.timbre', ['t.son'], 'Change le timbre du drone sur le 1', { how: 'hit', param: 'drone.wave' },
+    Dm('k.timbre', ['t.son'], 'Change le timbre du drone sur MAINTENANT', { how: 'hit', param: 'drone.wave' },
       ON1 + 'Sculpter > Drone > Timbre : choisis-en un autre.'),
-    Dm('k.moments', ['t.journal'], 'Garde ce moment (♥) sur le 1', { how: 'hit', act: 'keep' },
+    Dm('k.moments', ['t.journal'], 'Garde ce moment (♥) sur MAINTENANT', { how: 'hit', act: 'keep' },
       ON1 + 'Sculpter > Journal : ♥ garde le son de l\'instant ; plus tard, un clic sur un moment passé le fait revenir.'),
     C('k.enreg', ['t.rec'], 'Enregistre au moins 30 secondes', 1, {
       rec(st, secs) { if (secs >= 30) st.n = 1; }, // real duration of the finished recording
@@ -49,14 +51,14 @@
       BY + 'Écouter : Lumière, Densité, Espace, Nostalgie ou Nature (ou glisse sur l\'écran).'),
 
     // Harmonie
-    C('h.forcer', ['h.pad'], 'Force 3 accords (Z à M, ou appui long sur une pastille)', 3, {
+    C('h.forcer', ['h.pad'], 'Force 3 accords ({Z à M, ou appui long sur une pastille|appui long sur une pastille})', 3, {
       act(st, id) { if (id === 'chord' && gesture(st, 'chord', 600)) st.n = (st.n || 0) + 1; },
-    }, 'Pendant la lecture, les touches Z, X, C, V, B, N, M jouent les accords I à VII ; au doigt, un appui long sur une pastille force l\'accord de son degré (au clavier MIDI : les notes graves).'),
-    Dm('h.son', ['h.pad'], 'Change le timbre du Pad sur le 1', { how: 'hit', param: 'pad.wave' },
+    }, '{Pendant la lecture, les touches Z, X, C, V, B, N, M jouent les accords I à VII ; au doigt, un appui long sur une pastille force l\'accord de son degré (au clavier MIDI : les notes graves).|Pendant la lecture, garde le doigt appuyé sur une pastille : elle joue tout un accord.}'),
+    Dm('h.son', ['h.pad'], 'Change le timbre du Pad sur MAINTENANT', { how: 'hit', param: 'pad.wave' },
       ON1 + 'Sculpter > Pad > Timbre : choisis-en un autre.'),
-    Dm('h.suivre', ['h.drone'], 'Fais suivre les accords au drone sur le 1', { how: 'hit', param: 'drone.follow', v: (v) => !!v },
+    Dm('h.suivre', ['h.drone'], 'Fais suivre les accords au drone sur MAINTENANT', { how: 'hit', param: 'drone.follow', v: (v) => !!v },
       ON1 + 'Sculpter > Drone > Suit accords : écoute ensuite le drone changer de note avec les accords.'),
-    Dm('h.tonalite', ['h.key'], 'Module : change de tonalité sur le 1', { how: 'hit', param: 'global.key' },
+    Dm('h.tonalite', ['h.key'], 'Module : change de tonalité sur MAINTENANT', { how: 'hit', param: 'global.key' },
       ON1 + 'Sculpter > Global > Tonalité : tout le paysage monte ou descend.'),
 
     // Effets
@@ -70,16 +72,16 @@
       BY + 'Sculpter > Effets > Taille au-dessus de 80.'),
     C('e.echo', ['e.echo', 'm.bells'], 'Joue 4 notes dans l\'écho', 4, {
       note(st) { if (store.get('fx.echo') >= 0.4) st.n = (st.n || 0) + 1; },
-    }, 'Monte l\'Écho au-dessus de 40 (Sculpter > Effets), puis joue des notes (pastilles ou A à L) et écoute-les se répéter.'),
+    }, 'Monte l\'Écho au-dessus de 40 (Sculpter > Effets), puis joue des notes (pastilles{ ou A à L|}) et écoute-les se répéter.'),
 
     // Mouvement
-    C('m.notes', ['m.bells'], 'Joue 6 notes (pastilles ou clavier A à L)', 6, {
+    C('m.notes', ['m.bells'], 'Joue 6 notes (pastilles{ ou clavier A à L|})', 6, {
       note(st) { st.n = (st.n || 0) + 1; },
-    }, 'Les pastilles sous l\'écran ou les touches A à L jouent la gamme (Q à P une octave au-dessus), ou ton clavier MIDI.'),
+    }, '{Les pastilles sous l\'écran ou les touches A à L jouent la gamme (Q à P une octave au-dessus), ou ton clavier MIDI.|Les pastilles de couleur sous l\'écran jouent la gamme : touche-les une par une.}'),
     C('m.monte', ['m.bells'], 'Joue 4 notes qui montent', 4, run((p, n) => n.midi > p.midi),
-      'Quatre notes de suite, chacune plus aiguë que la précédente : de gauche à droite sur les pastilles (ou A, S, D, F).'),
+      'Quatre notes de suite, chacune plus aiguë que la précédente : des pastilles violettes (les plus graves) vers les orange (les plus aiguës){, ou A, S, D, F|}.'),
     C('m.descend', ['m.bells'], 'Joue 4 notes qui descendent', 4, run((p, n) => n.midi < p.midi),
-      'Quatre notes de suite, chacune plus grave que la précédente : de droite à gauche sur les pastilles (ou L, K, J, H).'),
+      'Quatre notes de suite, chacune plus grave que la précédente : des pastilles orange (les plus aiguës) vers les violettes (les plus graves){, ou L, K, J, H|}.'),
     C('m.pas', ['m.bells'], 'Marche : 4 notes régulières, comme des pas', 4, {
       note(st, n) { // each gap 0.25–1.5 s and within a quarter of the previous one: a steady walk
         const g = st.p ? n.time - st.p.time : null, fine = g != null && g >= 0.25 && g <= 1.5;
@@ -89,17 +91,17 @@
     }, 'Quatre notes à intervalles égaux, comme des pas tranquilles (ni trop vite ni trop lent) : c\'est un tempo.'),
     Dm('m.ralenti', ['m.tempo'], 'Ralentis sous 60 bpm avant la fin de la mesure', { how: 'by', param: 'global.tempo', v: (v) => v < 60 },
       BY + 'Sculpter > Global > Tempo sous 60 : tout le paysage ralentit.'),
-    Dm('m.phrase', ['m.phrase'], 'Passe la Mélodie auto en Phrase sur le 1', { how: 'hit', param: 'bells.mode', v: (v) => v === 'Phrase' },
+    Dm('m.phrase', ['m.phrase'], 'Passe la Mélodie auto en Phrase sur MAINTENANT', { how: 'hit', param: 'bells.mode', v: (v) => v === 'Phrase' },
       ON1 + 'Sculpter > Mélodie auto > Jeu : Phrase. Le motif se répète et varie un peu à chaque tour.'),
-    Dm('m.nuage', ['m.grains'], 'Épaissis les grains (Densité au-dessus de 60) avant la fin de la mesure', { how: 'by', param: 'grains.density', v: (v) => v >= 0.6 },
-      BY + 'Sculpter > Grains > Densité au-dessus de 60.'),
-    Dm('m.figer', ['m.grains2'], 'Fige le son sur le 1 (❄ ou Entrée)', { how: 'hit', act: 'freeze' },
-      ON1 + '❄ Figer (ou Entrée) capture les 4 dernières secondes : les grains les rejouent.'),
+    Dm('m.nuage', ['m.grains'], 'Épaissis les grains (Densité au-dessus de 60) avant la fin de la mesure', { how: 'by', param: 'grains.density', src: ['user', 'macro', 'xy'], v: (v) => v >= 0.6 },
+      BY + 'Sculpter > Grains > Densité au-dessus de 60 (ou Densité dans Écouter{, ou la molette de modulation MIDI|}).'),
+    Dm('m.figer', ['m.grains2'], 'Fige le son sur MAINTENANT (❄{ ou Entrée|})', { how: 'hit', act: 'freeze' },
+      ON1 + '❄ Figer{ (ou Entrée)|} capture les 4 dernières secondes : les grains les rejouent.'),
 
     // Composer (S3.5: played, not drawn — the notes, the groove and the song come from playing them)
     C('c.reclive', ['c.seq'], 'Enregistre 6 notes en Rec live', 6, {
       note(st) { const r = AMB.pianoRoll && AMB.pianoRoll.roll; if (r && r.recording) st.n = (st.n || 0) + 1; },
-    }, 'Composer > Mélodie écrite > ● Rec live, puis joue sur les pastilles, au clavier (A à L) ou au clavier MIDI : tes notes s\'écrivent dans le piano roll.'),
+    }, 'Composer > Mélodie écrite > ● Rec live, puis joue sur les pastilles{, au clavier (A à L) ou au clavier MIDI|} : tes notes s\'écrivent dans le piano roll.'),
     C('c.groove', ['c.rythme'], 'Change ta ligne de basse, puis fais tourner le groove 4 mesures', 4, {
       param(st, k, v, src) { if (k === 'bass.pattern' && src === 'user') st.on = 1; },
       bass(st) { // one count per bar where the bass plays, once the player has made the line his own
@@ -108,7 +110,7 @@
         if (bar !== st.bar) { st.bar = bar; st.n = (st.n || 0) + 1; }
       },
     }, 'Composer > Basse : allume ou éteins des pas de la grille, puis laisse jouer 4 mesures avec les pulsations.'),
-    // the path's last challenge: proposed first as soon as Morceau is owned (`first`); it opens no node, it ends the path
+    // the path's last challenge (`first`): proposed once the whole tree is open (S5.7); it opens no node, it ends the path
     C('c.morceau', ['c.song'], 'Enregistre ton morceau', 1, {
       act(st, id) { if (id === 'songRec') st.n = 1; },
     }, 'Composer > Morceau : + Section pour garder le paysage du moment (fais-en au moins deux), puis ● Rec : le morceau joue du début à la fin et s\'enregistre.'),
@@ -125,7 +127,7 @@
   // their own nodes too (js/discoveries.js OPENS). A node waits for its prerequisites and for what its challenge plays with
   // (`need`); that graph has no cycle (tests/game.html), so no order of play can block the path (tests/balance.html).
   const OPENS = {
-    'm.bells': 'k.xy', 'h.pad': 'm.notes', 't.son': 'k.couleur', 'e.reverb': 'm.monte', 't.viz': 'm.descend',
+    'm.bells': 'k.note', 'h.pad': 'm.notes', 't.son': 'k.couleur', 'e.reverb': 'm.monte', 't.viz': 'm.descend',
     'h.drone': 'h.forcer', 't.macros': 'p.premier', 'm.tempo': 'm.pas', 'm.phrase': 'p.suite', 'h.key': 'h.suivre',
     'h.pad2': 'h.son', 't.journal': 'k.timbre', 'e.echo': 'e.resonne', 'e.salle': 'm.respire', 'e.texture': 'e.noyer',
     't.rec': 'k.moments', 't.dice': 'k.macros', 'h.scale': 'h.tonalite', 'm.evolve': 'm.ralenti', 'm.grains': 'm.phrase',
@@ -142,17 +144,17 @@
   for (const d of DEFS) if (d.kind === 'reponse') {
     d.d = Math.max(0, Math.min(1, (depth(d.node) - 3) / 3));
     const n = 3 + Math.round(d.d * 3); // AMB.puzzles.respLen
-    d.hint = `Pendant la lecture, la plante Mélodie auto s'allume et l'écran dit « ↺ À toi » : rejoue la phrase juste après (pastilles, A à L ou MIDI). ${n} notes justes ouvrent le nœud.`;
+    d.hint = `Pendant la lecture, la plante Mélodie auto s'allume et l'écran dit « ↺ À toi » : rejoue la phrase juste après (pastilles{, A à L ou MIDI|}). ${n} notes justes ouvrent le nœud.`;
   }
 
   const contracts = {
     DEFS, byId, OPENS, ORDER,
     state(g = AMB.game) { g.s.active = g.s.active || []; g.s.prog = g.s.prog || {}; g.s.skipped = g.s.skipped || []; return g.s; },
     // proposed only when its node can be opened now (prerequisites owned) and what it plays with is there;
-    // the last one (no node): once, when Morceau is owned
+    // the last one (no node): once, S5.7 only when every node is open (it ends the path: never a plain challenge after it)
     eligible(d, g = AMB.game) {
       if (!d.need.every((n) => g.has(n))) return false;
-      return d.node ? AMB.tree.status(d.node, g) === 'available' : !g.s.contracts.includes(d.id);
+      return d.node ? AMB.tree.status(d.node, g) === 'available' : !g.s.contracts.includes(d.id) && AMB.tree.NODES.every((n) => g.has(n.id));
     },
     // the challenge that opens a node (tree card)
     forNode(nodeId) { return byId[OPENS[nodeId]] || null; },

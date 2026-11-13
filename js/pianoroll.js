@@ -138,7 +138,7 @@
     let best = { r: 0, a: 0 }, bd = 99;
     for (const o of [0, -12, 12]) for (let r = 0; r < ROWS; r++) {
       const d = midi + o - T.degreeToMidi(r + (chordDeg || 0), seq.root, seq.scale, base);
-      if (d >= 0 && d < bd) { bd = d; best = { r, a: d }; }
+      if (d >= 0 && d < bd) { bd = d; best = o ? { r, a: d, o } : { r, a: d }; }
     }
     if (best.a > 3) best.a = 0; // (only below the bottom row: nothing fits)
     return best;
@@ -154,6 +154,8 @@
     // step of the event relative to the scheduler position, rounded to the nearest 16th
     const s = ((Math.round((at - seq.nextTime) / sd) + seq.step) % len + len) % len;
     const c = cellFor(ev.midi);
+    // S5.7: the roll holds 15 rows (2 octaves): a note above or below is written an octave closer — said once per take
+    if (c.o && !roll.toldFold && AMB.ui) { roll.toldFold = true; AMB.ui.toast(`Note ${c.o < 0 ? 'trop aiguë' : 'trop grave'} pour le piano roll (2 octaves) : écrite une octave plus ${c.o < 0 ? 'bas' : 'haut'}. Octave du motif ${c.o < 0 ? '+1' : '−1'} pour la garder.`); }
     const notes = roll.notes().filter((n) => !(n.s === s && n.r === c.r));
     notes.push(cellNote(s, c, 1, velOf(ev)));
     roll.save(notes);
@@ -479,7 +481,7 @@
         btn.classList.toggle('rec', this.recording);
         btn.textContent = this.recording ? '■ Stop rec' : '● Rec live';
         if (this.recording) {
-          this.recCount = 0;
+          this.recCount = 0; this.toldFold = false;
           if (!store.get('seq.on')) store.set('seq.on', true, 'user');
           if (store.get('seq.mode') !== 'Piano roll') store.set('seq.mode', 'Piano roll', 'user');
           if (!AMB.seq.playing) AMB.ui.play();

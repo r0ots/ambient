@@ -1,7 +1,7 @@
 // « Demandes en direct » (S5.5, after Fuser): while the instrument plays in the path, the landscape now and then ASKS for
-// a musical move, judged on the time: « Fais entrer la basse sur le 1 », « Force l'accord IV sur le 1 », « Joue 3 notes
+// a musical move, judged on the time: « Fais entrer la basse sur MAINTENANT », « Force l'accord IV sur MAINTENANT », « Joue 3 notes
 // dans le temps », « Monte la Lumière avant la fin de la mesure »… One at a time, on the LCD's 2nd line, with a countdown
-// in musical time (« dans 2 mesures », then the beats 4, 3, 2, 1, then « MAINTENANT »). Judged on the placement:
+// in musical time (« dans 2 mesures », then 3, 2, 1, then « MAINTENANT ! », S5.7). Judged on the placement:
 // PARFAIT (within the Réponse's tolerance), BIEN (within a beat), RATÉ (within two beats, or a hold let go too soon);
 // further away a gesture is not judged. Successes in a row = a combo ×n. Missed or ignored: nothing is lost, the music
 // goes on. Only on controls already open. Two sources, one judge:
@@ -33,31 +33,31 @@
   // by the player); ok() = it makes sense now (the bass to bring in is off…). ----
   const F = (id, need, title, ask, hint, intro) => ({ id, need, title, ask, hint, intro });
   const FREE = [
-    F('accord', ['h.pad'], 'Force un accord sur le 1', { how: 'hit', chord: 'any' },
-      'Une touche de Z à M, ou un appui long sur une pastille, pile sur le 1.', 'Nouveau : essaie le Pad, force un accord sur le 1'),
-    F('iv', ['h.pad'], 'Force l\'accord IV sur le 1', { how: 'hit', chord: 3 },
-      'L\'accord IV : la touche V, ou un appui long sur la 4e pastille, pile sur le 1.'),
+    F('accord', ['h.pad'], 'Force un accord sur MAINTENANT', { how: 'hit', chord: 'any' },
+      '{Une touche de Z à M, ou un appui long sur une pastille|Garde le doigt sur une pastille}, pile quand l\'écran dit MAINTENANT.', 'Nouveau : essaie le Pad, force un accord sur MAINTENANT'),
+    F('iv', ['h.pad', 'h.key'], 'Force l\'accord IV sur MAINTENANT', { how: 'hit', chord: 3 }, // (S5.7: once the key and the chords' names are shown)
+      'L\'accord IV : {la touche V, ou un appui long sur la 4e pastille|garde le doigt sur la 4e pastille}, pile quand l\'écran dit MAINTENANT.'),
     F('notes', ['m.bells'], 'Joue 3 notes dans le temps', { how: 'notes', n: 3 },
-      'À partir du 1, trois notes sur les temps (pastilles, A à L ou MIDI), comme on tape du pied.', 'Nouveau : joue 3 notes dans le temps'),
-    F('melodie', ['m.bells'], 'Fais revenir la Mélodie auto sur le 1', { how: 'hit', param: 'bells.on', v: (v) => !!v, ok: () => !store.get('bells.on') },
-      'Sculpter > Mélodie auto > On, pile sur le 1.'),
-    F('seul', ['h.pad'], 'Coupe tout sauf le drone sur le 1, pendant 2 mesures', {
+      'À partir de MAINTENANT, trois notes sur les temps (pastilles{, A à L ou MIDI|}), comme on tape du pied.', 'Nouveau : joue 3 notes dans le temps'),
+    F('melodie', ['m.bells'], 'Fais revenir la Mélodie auto sur MAINTENANT', { how: 'hit', param: 'bells.on', v: (v) => !!v, ok: () => !store.get('bells.on') },
+      'Sculpter > Mélodie auto > On, pile sur MAINTENANT.'),
+    F('seul', ['h.pad'], 'Coupe tout sauf le drone sur MAINTENANT, pendant 2 mesures', {
       how: 'hold', param: '*.on', bars: 2, hold: () => on('drone') && !LAYERS.some(on), ok: () => on('drone') && LAYERS.some(on),
-    }, 'Éteins les autres couches (On) pour que le drone chante seul à partir du 1, puis laisse-le 2 mesures.'),
+    }, 'Éteins les autres couches (On) pour que le drone chante seul à partir de MAINTENANT, puis laisse-le 2 mesures.'),
     F('lumiere', ['t.macros'], 'Monte la Lumière avant la fin de la mesure', { how: 'by', param: 'macro.light', src: ['user', 'sync'], v: (v) => v >= 0.75, ok: () => store.get('macro.light') < 0.6 },
       'Écouter > Lumière vers la droite (ou glisse à droite sur l\'écran), au-dessus de 75.'),
     F('montee', ['t.macros'], 'Fais une montée : Densité au max en 2 mesures', { how: 'by', bars: 2, param: 'macro.density', src: ['user', 'sync'], v: (v) => v >= 0.95, ok: () => store.get('macro.density') < 0.7 },
       'Écouter > Densité tout en haut (ou glisse vers le haut de l\'écran) avant la fin de la 2e mesure.', 'Nouveau : fais une montée, Densité au max en 2 mesures'),
-    F('tonalite', ['h.key'], 'Change de tonalité sur le 1', { how: 'hit', param: 'global.key' },
-      'Sculpter > Global > Tonalité, pile sur le 1 : tout le paysage bascule.', 'Nouveau : change de tonalité sur le 1'),
-    F('grains', ['m.grains'], 'Fais entrer les grains sur le 1', { how: 'hit', param: 'grains.on', v: (v) => !!v, ok: () => !store.get('grains.on') },
-      'Sculpter > Grains > On, pile sur le 1.', 'Nouveau : fais entrer les grains sur le 1'),
-    F('texture', ['e.texture'], 'Fais entrer la texture sur le 1', { how: 'hit', param: 'texture.on', v: (v) => !!v, ok: () => !store.get('texture.on') },
-      'Sculpter > Texture > On, pile sur le 1.', 'Nouveau : fais entrer la texture sur le 1'),
-    F('basse', ['c.rythme'], 'Fais entrer la basse sur le 1', { how: 'hit', param: 'bass.on', v: (v) => !!v, ok: () => !store.get('bass.on') },
-      'Composer > Basse > On, pile sur le 1.', 'Nouveau : fais entrer la basse sur le 1'),
-    F('fige', ['m.grains2'], 'Fige le son sur le 1', { how: 'hit', act: 'freeze' },
-      '❄ Figer (ou Entrée), pile sur le 1.', 'Nouveau : fige le son sur le 1'),
+    F('tonalite', ['h.key'], 'Change de tonalité sur MAINTENANT', { how: 'hit', param: 'global.key' },
+      'Sculpter > Global > Tonalité, pile sur MAINTENANT : tout le paysage bascule.', 'Nouveau : change de tonalité sur MAINTENANT'),
+    F('grains', ['m.grains'], 'Fais entrer les grains sur MAINTENANT', { how: 'hit', param: 'grains.on', v: (v) => !!v, ok: () => !store.get('grains.on') },
+      'Sculpter > Grains > On, pile sur MAINTENANT.', 'Nouveau : fais entrer les grains sur MAINTENANT'),
+    F('texture', ['e.texture'], 'Fais entrer la texture sur MAINTENANT', { how: 'hit', param: 'texture.on', v: (v) => !!v, ok: () => !store.get('texture.on') },
+      'Sculpter > Texture > On, pile sur MAINTENANT.', 'Nouveau : fais entrer la texture sur MAINTENANT'),
+    F('basse', ['c.rythme'], 'Fais entrer la basse sur MAINTENANT', { how: 'hit', param: 'bass.on', v: (v) => !!v, ok: () => !store.get('bass.on') },
+      'Composer > Basse > On, pile sur MAINTENANT.', 'Nouveau : fais entrer la basse sur MAINTENANT'),
+    F('fige', ['m.grains2'], 'Fige le son sur MAINTENANT', { how: 'hit', act: 'freeze' },
+      '❄ Figer{ (ou Entrée)|}, pile sur MAINTENANT.', 'Nouveau : fige le son sur MAINTENANT'),
   ];
   const byId = Object.fromEntries(FREE.map((f) => [f.id, f]));
   const keyIs = (p, k) => p === k || (p.endsWith('*') && k.startsWith(p.slice(0, -1))) || (p.startsWith('*') && k.endsWith(p.slice(1)));
@@ -77,7 +77,14 @@
     // path only, playing, nothing else in the way (a Réponse, a node waiting to be opened, the Rec live)
     can(g = AMB.game) {
       const P = AMB.puzzles, R = AMB.pianoRoll && AMB.pianoRoll.roll;
-      return !!g && g.counts() && !!(AMB.seq && AMB.seq.playing) && !(P && P.busy()) && !g.nextReady() && !(R && R.recording);
+      return !!g && g.counts() && !!(AMB.seq && AMB.seq.playing) && !(P && P.busy()) && !g.nextReady() && !(R && R.recording)
+        && !(AMB.rec && AMB.rec.songRecording()) && this.seen();
+    },
+    // S5.7: an ask is only launched where it can be seen: the LCD in the window (an opening scrolls to what it opened)
+    seen() {
+      const el = typeof document !== 'undefined' && document.getElementById('lcd'); if (!el || this.always) return true;
+      const r = el.getBoundingClientRect(), h = window.innerHeight || document.documentElement.clientHeight;
+      return r.height > 0 && r.bottom > 8 && r.top < h - 8;
     },
     // an ask fits now: its nodes are owned, the control it names is open, and it makes sense (ok)
     reach(d, g = AMB.game) {
@@ -106,6 +113,7 @@
     // at each step of the sequencer (after the Réponse): the ask in progress follows the grid; on a bar line, maybe a new one
     onStep(step, time, sd) {
       const c = this.cur, S = AMB.seq, o = (S && S.origin) || 0;
+      if (c && AMB.rec && AMB.rec.songRecording()) { this.cancel(); return false; } // S5.7: ● Rec of the song: nothing on the take
       if (c) {
         if (step <= c.T) { c.tT = time + (c.T - step) * sd; c.sd = sd; } // the 1 on the audio clock (the tempo may change)
         this.check();
@@ -186,7 +194,7 @@
     tolOf() { return AMB.puzzles ? AMB.puzzles.tol(this.cur.sd) : 0.1; },
     // far too early: not judged, a word on the LCD (once per ask)
     early() {
-      const c = this.cur; if (!c.told && AMB.garden) { c.told = true; AMB.garden.lcd(c.how === 'by' ? '♪ Pas encore…' : '♪ Pas encore : sur le 1 !', 1500); }
+      const c = this.cur; if (!c.told && AMB.garden) { c.told = true; AMB.garden.lcd(c.how === 'by' ? '♪ Pas encore…' : '♪ Pas encore : attends MAINTENANT !', 1500); }
       return null;
     },
     // judged (grade 'parfait' | 'bien' | 'rate') or ignored (null). A challenge won makes its node ready. Returns the result.
@@ -228,7 +236,11 @@
       this.render();
     },
     // what the LCD shows (garden.renderContracts): the ask and its countdown in musical time
-    view(now = this.now()) {
+    // S5.7: the countdown follows what is heard (the output latency later), « MAINTENANT ! » from the start of the PARFAIT
+    // window: « 3 », « 2 », « 1 », « MAINTENANT ! » (the asks say « sur MAINTENANT », never « sur le 1 », which a child
+    // read as the « 1 » of the countdown, one beat early)
+    heard() { const x = AMB.engine && AMB.engine.ctx; return this.now() - (x ? x.outputLatency || x.baseLatency || 0 : 0); },
+    view(now = this.heard()) {
       const c = this.cur; if (!c) return null;
       const bar = 16 * c.sd, beat = 4 * c.sd, tol = this.tolOf();
       let n, hot = false;
@@ -238,7 +250,7 @@
         const goal = c.how === 'by' ? c.tT - c.span * c.sd : c.tT, r = goal - Math.max(now, c.at0); // 'by': the countdown runs to its bar (from the bar line it was asked on, scheduled a little ahead)
         if (c.how === 'by' && r <= 0) { n = `${Math.max(1, Math.ceil((c.tT - now) / beat - 1e-3))}…`; hot = true; } // the beats left in its bar(s)
         else if (r > bar) { const m = Math.ceil(r / bar - 1e-3); n = `dans ${m} mesure${m > 1 ? 's' : ''}`; }
-        else if (r > tol) n = String(Math.ceil(r / beat - 1e-3));
+        else if (r > tol) { const k = Math.ceil((r - tol) / beat - 1e-3); n = k > 3 ? 'prêt ?' : String(k); }
         else { n = 'MAINTENANT !'; hot = true; }
       }
       return { text: c.text, n, hint: c.hint, hot, gate: c.gate };

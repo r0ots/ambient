@@ -17,7 +17,7 @@
   const N = (id, branch, name, req, params, ui, desc) => ({ id, branch, name, req, params, ui, desc });
   const NODES = [
     // Tronc — the starting point and the tools to keep / share a sound
-    N('racine', 'tronc', 'Graine', [], ['drone.on', 'drone.vol', 'drone.tone', 'global.volume'], ['play', 'mode-sculpt', 'xy'], 'Une note tenue et sa lumière ; la glisser sur l\'écran. Tout part de là.'),
+    N('racine', 'tronc', 'Graine', [], ['drone.on', 'drone.vol', 'drone.tone', 'global.volume'], ['play', 'mode-sculpt', 'xy', 'keys', 'midi'], 'Une note tenue et sa lumière ; tes premières notes (pastilles, A–L, MIDI). Tout part de là.'),
     N('t.son', 'tronc', 'Timbre du drone', ['racine'], ['drone.wave', 'drone.motion'], [], 'Choisir le son du drone et le faire respirer.'),
     N('t.viz', 'tronc', 'Écran', ['racine'], [], ['viz', 'listen'], 'Changer de visuel, passer en plein écran.'),
     N('t.journal', 'tronc', 'Journal', ['t.son'], [], ['journal', 'save'], 'Revenir à un moment passé, garder un paysage.'),
@@ -44,7 +44,7 @@
     N('e.lofi', 'espace', 'Usure', ['e.tape'], ['fx.lofi'], [], 'Un son abîmé, filtré, granuleux.'),
 
     // Mouvement — melody, time, drift, grains, slow movements, scenes
-    N('m.bells', 'mouvement', 'Mélodie auto', ['racine'], ['bells.on', 'bells.vol', 'bells.wave', 'bells.density', 'bells.tone', 'bells.decay', 'bells.range'], ['keys', 'midi'], 'Des notes qui improvisent sur les accords ; les jouer toi-même au clavier (A–L) ou au clavier MIDI.'),
+    N('m.bells', 'mouvement', 'Mélodie auto', ['racine'], ['bells.on', 'bells.vol', 'bells.wave', 'bells.density', 'bells.tone', 'bells.decay', 'bells.range'], [], 'Des notes qui improvisent sur les accords, au-dessus du drone.'),
     N('m.tempo', 'mouvement', 'Tempo', ['m.bells'], ['global.tempo', 'global.time'], [], 'Vitesse, et temps pulsé ou flottant.'),
     N('m.phrase', 'mouvement', 'Phrases', ['m.bells'], ['bells.mode', 'bells.phraseLen', 'bells.mutate'], [], 'Un motif qui se répète et varie lentement.'),
     N('m.evolve', 'mouvement', 'Dérive', ['m.tempo'], ['global.evolve'], [], 'Tes réglages dérivent tout seuls autour de leur valeur.'),
@@ -84,7 +84,7 @@
     'e.halo': 'Une lueur aiguë qui scintille autour du son, comme des étoiles dans la salle.',
     'e.tape': 'Le son tremble un peu, comme sur une vieille cassette : plus chaud, plus rêveur.',
     'e.lofi': 'Le son devient abîmé et granuleux, comme un vieux disque ou une radio lointaine.',
-    'm.bells': 'Une couche qui joue des notes toute seule, au-dessus du drone. Et toi aussi tu peux jouer : les pastilles sous l\'écran ou les touches A à L.',
+    'm.bells': 'Une couche qui joue des notes toute seule, au-dessus du drone, dans la même gamme que tes pastilles. Elle te proposera aussi des petites phrases à rejouer.',
     'm.tempo': 'Tu choisis la vitesse de la musique, et si elle bat comme un cœur (Pulsé) ou si elle flotte (Flottant).',
     'm.phrase': 'La Mélodie auto peut répéter une petite phrase, qui change un peu à chaque tour, comme une chanson.',
     'm.evolve': 'Tes réglages bougent tout seuls, un tout petit peu, autour de là où tu les as mis : le son vit sans toi.',

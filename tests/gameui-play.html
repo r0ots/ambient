@@ -7,7 +7,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
   // --- S4.4 touch pads: under the screen once the Melody is owned, play like A–L (held, multitouch), long press = chord
   { A.game.reset(); A.perform.setMode('listen'); await wait(30);
     const bar=d.getElementById('pads'), pads=[...bar.querySelectorAll('.pad')], PE=(t,id)=>new w.PointerEvent(t,{bubbles:true,pointerId:id,pointerType:'touch'});
-    ok(bar.hidden && !shown('#pads'), 'pastilles : cachées avant la Mélodie auto');
+    ok(!bar.hidden && shown('#pads'), 'S5.7 : pastilles dès la Graine (le premier défi est une note)');
     A.game.unlock('m.bells'); await settle(300); A.garden.showTree(false); A.perform.setMode('listen'); await wait(30);
     const stage=d.querySelector('.stage').getBoundingClientRect(), br=bar.getBoundingClientRect();
     ok(!bar.hidden && pads.length===9 && A.play.PADS.length===9 && br.top>=stage.bottom-1 , 'pastilles : 9, sous l\'écran, dès la Mélodie auto');
@@ -122,12 +122,17 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
     ok(starts.length>=4 && Math.min(...starts)-b.at>-1e-6 && Math.min(...starts)-b.at<0.05, 'carillon sur le temps fort (écart '+((Math.min(...starts)-b.at)*1000).toFixed(1)+' ms) '+JSON.stringify([starts.map(x=>+(x-b.at).toFixed(3)),A.garden.lastBeat.id]));
     const GV=A.gardenVisual; ok(!GV.grow.pad || GV.grow.pad.start>=b.at-1e-6, 'la plante du Pad pousse depuis le temps fort, après la carte');
     ctx.createOscillator=co; A.garden.chime=ch0; A.garden.showTree(false); A.ui.stop(); }
-  // --- S4.5w: the first challenge « Glisse sur l'écran » — the first glide also starts the sound
+  // --- S5.7: the first challenge « Joue une note » — the pads are there from the Graine, the first note starts the sound;
+  // the glide still starts it too, but no longer counts
   { await wait(300); A.game.reset(); A.perform.setMode('listen'); await wait(50);
-    const v=d.getElementById('viz'), r=v.getBoundingClientRect(), PE=(t)=>new w.PointerEvent(t,{bubbles:true,pointerId:11,clientX:r.left+r.width*0.3,clientY:r.top+r.height*0.5});
-    ok(!A.seq.playing && A.game.s.active[0]==='k.xy' && !/Lance la lecture/.test(A.contracts.byId['k.xy'].hint), 'premier défi : Glisse sur l\'écran, lecture arrêtée, l\'aide ne demande plus de lancer la lecture');
+    const pads=d.getElementById('pads'), v=d.getElementById('viz'), r=v.getBoundingClientRect(), PE=(t)=>new w.PointerEvent(t,{bubbles:true,pointerId:11,clientX:r.left+r.width*0.3,clientY:r.top+r.height*0.5});
+    ok(!A.seq.playing && A.game.s.active[0]==='k.note' && !pads.hidden && !A.game.has('m.bells') && w.getComputedStyle(d.getElementById('xyTip')).display==='none' && w.getComputedStyle(d.querySelector('.stage .hint')).display==='none', 'S5.7 : premier défi « Joue une note », pastilles dès la Graine, plus d\'aide « Glisse sur l\'écran » sur le visuel');
     v.dispatchEvent(PE('pointerdown')); await wait(400); v.dispatchEvent(PE('pointerup'));
-    ok(A.seq.playing && ((A.game.s.prog['k.xy']||{}).n||0)>=1, 'premier glissé : le son démarre et le glissé compte ('+((A.game.s.prog['k.xy']||{}).n||0)+'/4)');
+    ok(A.seq.playing && !A.game.isReady('m.bells'), 'le glissé reste : il lance le son, mais n\'est plus un défi');
+    A.ui.stop(); await wait(150);
+    const pb=pads.children[2], pr=pb.getBoundingClientRect(), PP=(t)=>new w.PointerEvent(t,{bubbles:true,pointerId:12,clientX:pr.left+5,clientY:pr.top+5});
+    pb.dispatchEvent(PP('pointerdown')); await wait(300); pb.dispatchEvent(PP('pointerup')); await wait(100);
+    ok(A.seq.playing && A.game.isReady('m.bells') && A.game.s.contracts.includes('k.note'), 'une pastille à la Graine : la note sonne, le son démarre, la Mélodie auto est prête');
     A.ui.stop(); A.game.reset(); }
   // --- sound locking (G1.5)
   const St=A.store, g=A.game;

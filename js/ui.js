@@ -481,7 +481,14 @@
       const G = AMB.game, plain = !!(G && G.path && !G.has('h.key'));
       document.body.classList.toggle('jargon-off', plain);
       top.classList.toggle('lcd-flash', !!on);
-      top.textContent = on ? m.text.toUpperCase().slice(0, 28) : (plain ? 'AMBIENT' : patch.toUpperCase().slice(0, 24)) + (rec ? '  ● REC' : '');
+      const txt = on ? m.text.toUpperCase().slice(0, 48) : (plain ? 'AMBIENT' : patch.toUpperCase().slice(0, 24)) + (rec ? '  ● REC' : '');
+      if (top.textContent !== txt) {
+        top.textContent = txt;
+        // S5.7: a game message is never cut (« ENTRE LES TOU… »): too long for the screen, it gets smaller
+        top.style.fontSize = '';
+        const lcdEl = top.parentElement, room = lcdEl ? lcdEl.clientWidth - 24 : 0;
+        if (on && room > 0 && top.scrollWidth > room) top.style.fontSize = Math.max(11, Math.floor(parseFloat(getComputedStyle(top).fontSize) * room / top.scrollWidth)) + 'px';
+      }
       const bar = String(Math.floor(AMB.seq.step / 16) + 1).padStart(3, '0');
       line.textContent = plain ? (started ? `▶ M${bar}` : '■ STOP') : `${started ? '▶' : '■'} ${store.get('global.key')} ${abbr(store.get('global.scale'))} · ${String(Math.round(store.get('global.tempo'))).padStart(3, '0')} BPM` +
         (started ? ` · ${name.textContent} · M${bar}` : ' · STOP');
