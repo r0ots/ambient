@@ -154,7 +154,7 @@ f.addEventListener('load', async ()=>{
   // 390 px: the contract stays in the LCD, nothing floats over the macros
   { f.style.width='390px'; f.style.height='844px'; await wait(250); A.perform.setMode('listen'); A.game.unlock('t.son'); A.game.unlock('t.macros'); await wait(100);
     const R=(e)=>e.getBoundingClientRect(), mac=d.getElementById('macros'), lr=R(d.getElementById('lcd')), de=d.documentElement;
-    const over=[...d.querySelectorAll('body *')].filter(e=>{ const cs=w.getComputedStyle(e); return (cs.position==='fixed') && e.getClientRects().length && !e.hidden && cs.display!=='none' && cs.visibility!=='hidden' && e.id!=='toast'; }).filter(e=>{ const a=R(e), m=R(mac); return a.width && a.height && a.left<m.right && a.right>m.left && a.top<m.bottom && a.bottom>m.top; });
+    const over=[...d.querySelectorAll('body *')].filter(e=>{ const cs=w.getComputedStyle(e); return (cs.position==='fixed') && e.getClientRects().length && !e.hidden && cs.display!=='none' && cs.visibility!=='hidden' && cs.pointerEvents!=='none' && e.id!=='toast'; }).filter(e=>{ const a=R(e), m=R(mac); return a.width && a.height && a.left<m.right && a.right>m.left && a.top<m.bottom && a.bottom>m.top; });
     ok(shown('#macros') && lr.right<=de.clientWidth+1 && task.getBoundingClientRect().bottom<=lr.bottom+1 && !over.length, '390 px : contrat dans le LCD, rien ne recouvre les macros '+over.map(e=>e.id||e.className).join());
     f.style.width='1300px'; f.style.height='900px'; await wait(200); }
   // --- the instrument handed over (G6.3, S3.7): on the instrument, no dialog; the sound stays, the game interface goes

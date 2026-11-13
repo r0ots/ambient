@@ -1,0 +1,113 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
+<!-- S5.9 juice central (garden.js FX): every moment of the table plays its recipe; the bus events map to their moment;
+     same-tick moments merge (the biggest plays); effects land on the next beat; the overlay never takes a click; reduced
+     motion = a soft flash only; cost of the biggest moment < 2 ms per frame; nothing in free mode. -->
+<script src="lib.js"></script>
+<script>localStorage.removeItem('ambient.game.juice');</script>
+<iframe id="f" src="../index.html?gamekey=ambient.game.juice" style="width:1280px;height:800px;border:0"></iframe>
+<script>
+const f = document.getElementById('f');
+f.addEventListener('load', async () => {
+  try {
+    const w = f.contentWindow, d = f.contentDocument, A = w.AMB, G = A.garden, GV = A.gardenVisual;
+    w.addEventListener('error', e => log('ERROR ' + e.message + ' @' + e.filename + ':' + e.lineno));
+    A.game.setMode('path'); G.welcome(false); A.game.unlock('m.bells'); await wait(300); G.showTree(false); A.perform.setMode('listen'); A.visual.gardenSync();
+    const tick = () => new Promise((r) => setTimeout(r, 0));
+    const chimes = []; const ch0 = G.chime; G.chime = function (k, o) { chimes.push({ k, at: o && o.at }); return ch0.apply(this, arguments); };
+    const plays = []; const fp0 = G.fxPlay; G.fxPlay = function (k, o) { const r = fp0.apply(this, arguments); plays.push(r); return r; };
+    const has = (sel, cls) => { const e = d.querySelector(sel); return !!e && e.classList.contains(cls); };
+    const C = G.confetti, flying = () => C.bins ? C.bins.reduce((s, b) => s + b.length, 0) : 0;
+
+    // --- 1. each recipe of the table plays all its ingredients (stopped: right away)
+    const kinds = Object.keys(G.FX), bad = [];
+    ok(['first', 'ready', 'defi', 'open', 'secret', 'streak', 'record', 'tier', 'end', 'discovery'].every((k) => kinds.includes(k)), 'table FX : ' + kinds.join(', '));
+    for (const k of kinds) {
+      const R = G.FX[k], el = d.getElementById('dice'); chimes.length = 0; const c0 = flying(), pops0 = d.querySelectorAll('.fx-pop').length;
+      G.fx(k, { n: 3, name: 'Brume néon', el }); await tick();
+      const p = G.fxLast, miss = [];
+      if (!p || p.kind !== k) miss.push('plan');
+      if (R.jingle && !chimes.some((c) => c.k === R.jingle)) miss.push('jingle');
+      if (R.flash && !d.querySelector('.stage > .fx-flash.on')) miss.push('flash');
+      if (R.shake && !has('.stage', 'fx-shake')) miss.push('shake');
+      if (R.shake > 1 && !has('.app', 'fx-quake')) miss.push('quake');
+      if (R.punch && !has('#viz', R.punch >= 2 ? 'fx-punch-big' : 'fx-punch')) miss.push('punch');
+      if (R.lcd && !has('#lcd', 'lcd-' + R.lcd)) miss.push('lcd');
+      if (R.bounce && !d.body.classList.contains('fx-bounce')) miss.push('bounce');
+      if (R.hop && !(R.hop === 'el' ? el : d.querySelector(R.hop)).classList.contains('fx-hop')) miss.push('hop');
+      if (R.pop && d.querySelectorAll('.fx-pop').length <= Math.min(pops0, 2)) miss.push('pop');
+      if (R.confetti && !(flying() > c0 || C.n >= C.MAX)) miss.push('confetti');
+      if (R.splash && GV.running() && !GV.waves.some((v) => v.who === R.splash)) miss.push('splash');
+      if (miss.length) bad.push(k + ':' + miss.join('+'));
+      await wait(40);
+    }
+    ok(!bad.length, 'chaque moment joue sa recette (flash, confettis, secousse, LCD, rebond, punch, jingle, texte, éclats) ' + (bad.join(' ') || kinds.length + ' recettes'));
+    const pop = [...d.querySelectorAll('.fx-pop')].pop();
+    ok(pop && /BRUME NÉON/.test(pop.textContent) && /Découverte : Brume néon/.test(A.lcdMsg.text), 'S5.10 prêt : « découverte » énorme, nommée (« ' + (pop && pop.textContent) + ' », LCD « ' + A.lcdMsg.text + ' »)');
+    await wait(400);
+
+    // --- 2. the bus moments go through the table; same tick = the biggest alone
+    const via = async (fn) => { plays.length = 0; fn(); await tick(); return plays.map((p) => p && p.kind).join(','); };
+    const r = {
+      juste: await via(() => A.bus.emit('resp:streak', { streak: 1 })),
+      streak: await via(() => A.bus.emit('resp:streak', { streak: 3 })),
+      record: await via(() => A.bus.emit('resp:record', { best: 7 })),
+      tier: await via(() => A.bus.emit('resp:tier', { tier: 2, name: 'Octaves', lvl: 7 })),
+      defi: await via(() => A.bus.emit('game:ready', { id: 'h.pad', by: 'm.notes' })),
+      ready: await via(() => A.bus.emit('game:ready', { id: 'h.pad', by: null })),
+      secret: await via(() => A.secrets.celebrate({ title: 'Essai', reward: {} }, null)),
+      open: await via(() => A.game.unlock('h.pad')),
+      end: await via(() => G.handOver()),
+      merged: await via(() => { A.bus.emit('resp:streak', { streak: 5 }); A.bus.emit('resp:record', { best: 5 }); A.bus.emit('resp:tier', { tier: 3, name: 'Syncopes', lvl: 9 }); A.bus.emit('game:ready', { id: 't.son', by: null }); }),
+    };
+    const wantMap = { juste: 'juste', streak: 'streak', record: 'record', tier: 'tier', defi: 'defi', ready: 'ready', secret: 'secret', open: 'open', end: 'end', merged: 'tier' };
+    ok(Object.keys(wantMap).every((k) => r[k] === wantMap[k]), 'événements → recettes (série, record, palier, défi, prêt, secret, ouverture, fin) ; même instant : la plus grosse seule ' + JSON.stringify(r));
+    G.showTree(false);
+    { const b = d.getElementById('play'); b.classList.add('is-new'); plays.length = 0;
+      b.dispatchEvent(new w.PointerEvent('pointerdown', { bubbles: true })); await tick();
+      ok(plays.length === 1 && plays[0].kind === 'first' && b.classList.contains('fx-hop') && !b.classList.contains('is-new'), 'nouveau contrôle touché la 1re fois → « first » (le bouton saute) ; puis plus rien');
+      plays.length = 0; b.dispatchEvent(new w.PointerEvent('pointerdown', { bubbles: true })); await tick(); ok(!plays.length, '2e toucher : pas de fête'); }
+    G.handing = false; A.game.s.ended = false; await wait(300);
+
+    // --- 3. the overlay never takes a click
+    { C.burst(300, d.querySelector('.stage')); await wait(60);
+      const L = d.getElementById('fxLayer'), btn = d.getElementById('treeBtn'), rc = btn.getBoundingClientRect(), hit = d.elementFromPoint(rc.left + rc.width / 2, rc.top + rc.height / 2);
+      let clicked = 0; const on = () => clicked++; btn.addEventListener('click', on); hit && hit.click(); btn.removeEventListener('click', on); G.showTree(false);
+      ok(L && w.getComputedStyle(L).pointerEvents === 'none' && w.getComputedStyle(L.querySelector('canvas')).pointerEvents === 'none' && +w.getComputedStyle(L).zIndex > 50 && hit && btn.contains(hit) && clicked === 1,
+        'overlay (z ' + w.getComputedStyle(L).zIndex + ', confettis en vol ' + flying() + ') : le clic atteint le bouton dessous (' + (hit && (hit.id || hit.className)) + ')');
+      const fl = d.querySelector('.stage > .fx-flash'); ok(fl && w.getComputedStyle(fl).pointerEvents === 'none', 'le flash de la scène laisse passer les clics'); }
+
+    // --- 4. reduced motion: a soft flash only (and the jingle, the message)
+    { await wait(1300); let bursts = 0; const b0 = C.burst; C.burst = function () { bursts++; return b0.apply(this, arguments); }; G.reduced = true; d.querySelectorAll('.fx-quake,.fx-shake,.fx-bounce').forEach((e) => e.classList.remove('fx-quake', 'fx-shake', 'fx-bounce'));
+      G.fx('discovery', { name: 'Calme' }); await tick(); const p = G.fxLast, fl = d.querySelector('.stage > .fx-flash');
+      ok(p.did.join() === 'flash,jingle,splash' && fl.classList.contains('soft') && +fl.style.getPropertyValue('--a') <= 0.3 && !has('.app', 'fx-quake') && !has('.stage', 'fx-shake') && !d.body.classList.contains('fx-bounce') && !bursts && !d.querySelector('.fx-pop'),
+        'mouvement réduit : flash doux seulement (' + p.did.join(', ') + ', opacité ' + fl.style.getPropertyValue('--a') + '), ni secousse, ni confettis, ni rebond');
+      G.reduced = false; C.burst = b0; }
+
+    // --- 5. on the beat: playing, the effects wait for the next beat of the music
+    await A.ui.play(); const ctx = A.engine.ctx;
+    for (let i = 0; i < 60 && !(ctx.state === 'running' && A.seq.playing); i++) await wait(50);
+    if (ctx.state === 'running') {
+      d.getElementById('lcd').classList.remove('lcd-arcade'); chimes.length = 0;
+      const want = G.strongBeat(0.08, undefined, undefined, 4); G.fx('defi', { say: '✓ Défi réussi' }); await tick(); const p = G.fxLast, early = has('#lcd', 'lcd-arcade');
+      const sd = A.seq.stepDur(), k = (p.at - A.seq.nextTime) / sd + A.seq.step - (A.seq.origin || 0);
+      while (ctx.currentTime < p.at + 0.06) await wait(20); await wait(30);
+      ok(Math.abs(p.at - want) < 0.05 && Math.abs(k - Math.round(k)) < 1e-6 && Math.round(k) % 4 === 0 && chimes.some((c) => c.k === 'defi' && c.at === p.at) && (p.delay < 15 || !early) && has('#lcd', 'lcd-arcade'),
+        'sur le temps : jingle et effets au temps suivant (pas ' + Math.round(k) + ', dans ' + p.delay.toFixed(0) + ' ms), LCD arcade ensuite');
+    } else log('skip temps (audio ' + ctx.state + ')');
+
+    // --- 6. cost: the biggest moment (discovery, 4 waves of confetti) while the garden draws, notes played
+    { C.bins.forEach((b) => { b.length = 0; }); C.n = 0; await wait(50); C.times.length = 0; GV.times.length = 0; G.fx('discovery', { name: 'Coût' }); await tick();
+      for (let i = 0; i < 24; i++) { A.bus.emit('live', { midi: 60 + (i % 9), time: ctx.currentTime, vel: 0.9, raw: null }); await wait(60); }
+      const s = C.stats(), gs = GV.stats();
+      ok(s.frames > 10 && s.avg < 2 && s.p95 < 2, 'coût des confettis au plus gros moment : ' + s.avg.toFixed(2) + ' ms en moyenne, p95 ' + s.p95.toFixed(2) + ' ms (' + s.frames + ' images, max ' + s.max.toFixed(2) + ')');
+      ok(s.avg + gs.avg < 2, 'avec le Jardin : ' + (s.avg + gs.avg).toFixed(2) + ' ms par image (Jardin ' + gs.avg.toFixed(2) + ' ms)'); }
+
+    // --- 7. free mode: nothing
+    { A.ui.stop(); A.game.setMode('free'); plays.length = 0; chimes.length = 0;
+      const q = G.fx('tier', { name: 'x' }); A.bus.emit('resp:tier', { tier: 1, name: 'x', lvl: 1 }); A.bus.emit('resp:streak', { streak: 4 }); await tick();
+      ok(q === null && !plays.length && !chimes.length, 'mode libre : aucun effet, aucun jingle'); A.game.setMode('path'); }
+    G.chime = ch0; G.fxPlay = fp0;
+    done();
+  } catch (e) { fail(e); }
+});
+</script></body></html>

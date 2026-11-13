@@ -188,7 +188,7 @@
       return { plant: 'pad', who: 'chord', vel: 0.9, pitch: pitchK(m), held: 'chord', shake: 1, time: t };
     }
     if (ev === 'note' && !d.live && MACHINE.has(d.layer)) return { plant: d.layer, who: 'machine', vel: d.vel == null ? 0.7 : d.vel, pitch: pitchK(d.midi), held: null, shake: 0, time: t };
-    if (ev === 'cheer') return SPLASH[d.kind] ? { plant: 'bells', who: d.kind, vel: 1, pitch: 0.8, held: null, shake: SPLASH[d.kind].shake || 0, time: t } : null;
+    if (ev === 'cheer') return SPLASH[d.kind] ? { plant: d.plant || 'bells', who: d.kind, vel: 1, pitch: 0.8, held: null, shake: SPLASH[d.kind].shake || 0, time: t } : null;
     if (ev === 'perc') return { plant: 'perc', who: 'machine', vel: d.vel == null ? 0.7 : d.vel, pitch: 0.15 + 0.2 * ((d.track | 0) % 4), held: null, shake: 0, time: t };
     return null;
   }
@@ -843,11 +843,11 @@
       }
       this.waves.push({ ...s, t0: s.time, off: null, fired: false });
     },
-    // S5.3 → S5.2: a Réponse celebration (kind = 'streak' | 'record' | 'tier', SPLASH) bursts from the Melody plant at
-    // audio time `at` (the jingle's beat), through the same splashes and the same JUICE as the notes
-    cheer(kind, at) {
+    // S5.3 → S5.2: a celebration (kind = 'streak' | 'record' | 'tier', SPLASH) bursts from a plant (the Melody's by default;
+    // S5.9 the juice table passes the opened layer's) at audio time `at` (the jingle's beat), same splashes, same JUICE
+    cheer(kind, at, plant) {
       const S = SPLASH[kind]; if (!S) return false;
-      this.onSplash('cheer', { kind, time: at == null ? this.clock() : at });
+      this.onSplash('cheer', { kind, plant, time: at == null ? this.clock() : at });
       return true;
     },
     // a held note let go (liveOff id), or every note (panic: id null)
