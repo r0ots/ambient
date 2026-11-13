@@ -353,15 +353,23 @@
       const P = AMB.puzzles; if (!e || !P || !AMB.game.path) return;
       if (e.phase === 'call') {
         const ctx = AMB.engine && AMB.engine.ctx, c = P.cur, ms = ctx ? Math.max(0, (e.ans - ctx.currentTime) * 1000) : 0;
-        const say = e.tr ? '↺ Une quinte plus haut !' : e.chord ? (e.len > 1 ? '↺ À toi : les accords' : '↺ À toi : l\'accord') : '↺ À toi';
+        const say = (e.again ? '↺ Encore : ' : '') + (e.tr ? '↺ Une quinte plus haut !' : e.chord ? (e.len > 1 ? '↺ À toi : les accords' : '↺ À toi : l\'accord') : '↺ À TOI !');
         clearTimeout(this._toiT); this.renderScore();
-        this._toiT = setTimeout(() => { if (P.cur === c && c) this.lcd(say, 2500); }, ms);
-      } else if (e.phase === 'end' && e.res) {
-        const r = e.res;
+        // S6.7: « À toi » stays as long as the answer is awaited (at least puzzles.START s), not 2.5 s
+        const left = () => (P.cur && ctx ? Math.max(0, P.cur.until - ctx.currentTime) : P.START) * 1000;
+        this._toiT = setTimeout(() => { if (P.cur === c && c) { this._toi = say; this.lcd(say, left()); } }, ms);
+      } else if (e.phase === 'note' && this._toi && P.cur) { // the window moves with the answer (timed: its bar; untimed: a slow child)
+        const ctx = AMB.engine && AMB.engine.ctx; if (ctx) this.lcd(this._toi, Math.max(0, P.cur.until - ctx.currentTime) * 1000);
+      } else if (e.phase === 'end') {
+        clearTimeout(this._toiT);
+        if (this._toi && AMB.lcdMsg && AMB.lcdMsg.text === this._toi) AMB.lcdMsg = null; // (left alone: « À toi » goes)
+        this._toi = null;
+        const r = e.res; if (!r) return;
         this.renderScore(r.ok && r.streak > 1);
         if (r.open || r.tier || r.tier || r.record || r.ok && r.streak > 1) return; // the juice table (FX: resp:*, game:ready) says it
         else if (r.ok) this.lcd(`✓ Juste · prochaine : ${r.next}`, 2500); // (its small juice: resp:streak → FX.juste)
-        else this.lcd(P.level(r.lvl).tier ? `↺ Presque · ${r.name}` : `↺ Presque · prochaine : ${r.next}`, 2500);
+        // S6.7: a wrong answer is SEEN: « RATÉ » with its BZZT! (the juice table), and the phrase comes once more
+        else this.fx('rate', { say: r.replay ? '✗ RATÉ ! Réécoute…' : `✗ RATÉ · ${r.left != null ? `encore ${r.left} essai${r.left > 1 ? 's' : ''}` : r.name}`, ms: 3000 });
       }
     },
     // S5.3 the score of the Réponse on the LCD (path only, once a phrase came): tier reached, series, record

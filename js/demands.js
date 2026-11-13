@@ -2,7 +2,8 @@
 // a musical move, judged on the time: « Fais entrer la basse sur MAINTENANT », « Force l'accord IV sur MAINTENANT », « Joue 3 notes
 // dans le temps », « Monte la Lumière avant la fin de la mesure »… One at a time, on the LCD's 2nd line, with a countdown
 // in musical time (« dans 2 mesures », then 3, 2, 1, then « MAINTENANT ! », S5.7). Judged on the placement:
-// PARFAIT (within the Réponse's tolerance), BIEN (within a beat), RATÉ (within two beats, or a hold let go too soon);
+// PARFAIT, BIEN (S6.7: the windows of the hand, puzzles.TOL: ±60 / 130 ms at the MIDI keyboard, ±250 / 600 ms at the
+// fingers), RATÉ (within two beats, or a hold let go too soon);
 // further away a gesture is not judged. Successes in a row = a combo ×n. Missed or ignored: nothing is lost, the music
 // goes on. Only on controls already open. Two sources, one judge:
 //   - the challenges kind 'demande' of js/contracts.js (the former static interface challenges: turn this knob, change
@@ -23,6 +24,10 @@
   const LEAD = 2; // bars of countdown before the 1 (an ask 'by': one bar, then the bar to do it in)
   const MISSES = 4; // a challenge missed this many times is ready anyway
   const PARTY = 2; // bar lines left alone after a placement party (S5.4), even when its queue is empty
+  // S6.7 never stuck on « ♪ bientôt »: a challenge asked in the music that could not be asked for STALL free bar lines (the
+  // LCD out of view, its controls not there) is asked anyway, or put back in the queue (contracts.skip: replaced); asked
+  // IDLE times in a row without a gesture, it is replaced too (it comes back later)
+  const STALL = 8, IDLE = 3;
   const LAYERS = ['pad', 'bells', 'grains', 'texture', 'seq', 'bass', 'perc'];
   const open = (k) => !AMB.tree || AMB.tree.paramUnlocked(k);
   const on = (l) => !!store.get(l + '.on') && open(l + '.on');
@@ -75,10 +80,10 @@
     st(g = AMB.game) { const s = g.s.dem || (g.s.dem = {}); s.combo = s.combo | 0; s.best = s.best | 0; s.miss = s.miss || {}; return s; },
     busy() { return !!this.cur; },
     // path only, playing, nothing else in the way (a Réponse, a node waiting to be opened, the Rec live)
-    can(g = AMB.game) {
+    can(g = AMB.game, unseen = false) {
       const P = AMB.puzzles, R = AMB.pianoRoll && AMB.pianoRoll.roll;
       return !!g && g.counts() && !!(AMB.seq && AMB.seq.playing) && !(P && P.busy()) && !g.nextReady() && !(R && R.recording)
-        && !(AMB.rec && AMB.rec.songRecording()) && !(AMB.looper && AMB.looper.busy()) && this.seen();
+        && !(AMB.rec && AMB.rec.songRecording()) && !(AMB.looper && AMB.looper.busy()) && (unseen || this.seen());
     },
     // S5.7: an ask is only launched where it can be seen: the LCD in the window (an opening scrolls to what it opened)
     seen() {
@@ -119,10 +124,22 @@
         this.check();
         return false;
       }
-      if ((step - o) % 16 !== 0 || !this.can()) return false;
+      if ((step - o) % 16 !== 0 || !this.can(undefined, true)) return false;
+      const gd = this.gate(), shy = !this.seen(); // (the music's gap passes even out of view)
       if (this.wait > 0) { this.wait--; return false; }
-      const p = this.pick(); if (!p) return false;
+      if (shy && !(gd && this.stalled(gd))) return false;
+      const p = this.pick();
+      if (!p) { if (gd && this.stalled(gd)) this.replace(gd); return false; }
+      this.stall = 0;
       return this.launch(p, step, time, sd);
+    },
+    // S6.7: one more free bar line where the challenge to ask could not be asked; true past STALL
+    stalled(gd) { if (this.stallId !== gd.id) { this.stallId = gd.id; this.stall = 0; } return ++this.stall > STALL; },
+    // S6.7: a challenge asked in the music that cannot be asked, or is left alone, goes to the back of the queue
+    replace(gd, g = AMB.game) {
+      this.stall = 0; const s = this.st(g); if (s.idle) delete s.idle[gd.id];
+      AMB.contracts.skip(gd.id, g);
+      if (AMB.garden) AMB.garden.renderContracts();
     },
     launch(p, step, time, sd) {
       const a = p.d.ask, by = a.how === 'by', span = (a.bars || 1) * 16;
@@ -154,12 +171,15 @@
       }
       if (now > c.end) return this.end(c.how === 'notes' && c.got.length ? 'rate' : null, 'pas assez de notes');
     },
-    // where t falls from the 1: 'parfait' (the Réponse's tolerance), 'bien' (within a beat), 'rate' (within two), or null
-    place(t, target = this.cur.tT) {
-      const c = this.cur, dt = t - target, beat = 4 * c.sd, tol = AMB.puzzles ? AMB.puzzles.tol(c.sd) : Math.max(0.09, c.sd * 1.2);
-      const a = Math.abs(dt);
-      return a <= tol ? 'parfait' : a <= beat ? 'bien' : a <= 2 * beat ? 'rate' : null;
+    // S6.7 the windows of this hand ('midi' | 'doigt'): THE table of js/puzzles.js (TOL), in absolute seconds
+    win(hand) { return AMB.puzzles ? AMB.puzzles.win(hand) : { parfait: 0.25, bien: 0.6 }; },
+    // where t falls from the 1: 'parfait', 'bien' (the hand's windows), 'rate' (within two beats), or null
+    place(t, target = this.cur.tT, hand) {
+      const c = this.cur, a = Math.abs(t - target), w = this.win(hand || this.hand()), beat = 4 * c.sd;
+      return a <= w.parfait ? 'parfait' : a <= w.bien ? 'bien' : a <= Math.max(2 * beat, w.bien) ? 'rate' : null;
     },
+    // the hand of a gesture: a note by its velocity, a CC (source 'cc') = MIDI; else the session (puzzles.midi)
+    hand(raw) { return AMB.puzzles ? AMB.puzzles.hand(raw) : 'doigt'; },
     // does this event do what the ask wants? ev 'param' (k, v, src) | 'act' (id) | 'chord' ({deg, forced})
     match(ask, ev, a, b, c) {
       if (ev === 'param') return !!ask.param && keyIs(ask.param, a) && (ask.src || ['user']).includes(c) && (!ask.v || ask.v(b)) && (ask.how !== 'hold' || ask.hold());
@@ -171,9 +191,12 @@
     input(ev, args, t = this.at()) {
       const c = this.cur; if (!c || !AMB.game.counts()) return null;
       const a = c.d.ask, beat = 4 * c.sd;
+      // S6.7 the hand: a note by its velocity (none: the pads, the keys), a CC = MIDI, a chord by the session, else a finger
+      const hand = ev === 'note' ? this.hand(args[0] && args[0].raw != null ? args[0].raw : null) : ev === 'param' ? (args[2] === 'cc' ? 'midi' : 'doigt')
+        : ev === 'chord' ? this.hand() : 'doigt';
       if (ev === 'note') {
         if (c.how !== 'notes' || t < c.tT - beat) return null;
-        const k = Math.max(0, Math.round((t - c.tT) / beat)), g = this.place(t, c.tT + k * beat); // the nearest beat from the 1
+        const k = Math.max(0, Math.round((t - c.tT) / beat)), g = this.place(t, c.tT + k * beat, hand); // the nearest beat from the 1
         c.got.push(g || 'rate');
         this.render();
         if (c.got.length < a.n) return null;
@@ -184,14 +207,15 @@
       if (c.how === 'by') { // anywhere in its bar(s) up to the 1 that ends it: perfect; just after: within the beat
         const from = c.tT - c.span * c.sd;
         if (t < from) return this.early();
-        return this.end(t <= c.tT + this.tolOf() ? 'parfait' : t <= c.tT + beat ? 'bien' : t <= c.tT + 2 * beat ? 'rate' : null, 'trop tard');
+        const w = this.win(hand);
+        return this.end(t <= c.tT + w.parfait ? 'parfait' : t <= c.tT + w.bien ? 'bien' : t <= c.tT + Math.max(2 * beat, w.bien) ? 'rate' : null, 'trop tard');
       }
-      const g = this.place(t);
+      const g = this.place(t, c.tT, hand);
       if (!g) return t < c.tT ? this.early() : null;
       if (c.how === 'hold') { c.onset = t; c.grade = g === 'rate' ? null : g; if (!c.grade) return this.end('rate', t < c.tT ? 'trop tôt' : 'trop tard'); this.until(); this.render(); return null; }
       return this.end(g, t < c.tT ? 'trop tôt' : 'trop tard');
     },
-    tolOf() { return AMB.puzzles ? AMB.puzzles.tol(this.cur.sd) : 0.1; },
+    tolOf() { return this.win(this.hand()).parfait; }, // the PARFAIT window of the session's hand (the LCD's « MAINTENANT ! »)
     // far too early: not judged, a word on the LCD (once per ask)
     early() {
       const c = this.cur; if (!c.told && AMB.garden) { c.told = true; AMB.garden.lcd(c.how === 'by' ? '♪ Pas encore…' : '♪ Pas encore : attends MAINTENANT !', 1500); }
@@ -205,10 +229,14 @@
       if (!grade) { // ignored: nothing lost but the combo; the next ones come more rarely
         this.ignored++; s.combo = 0;
         this.wait = c.gate ? RETRY : Math.min(16, this.gap() * (1 + this.ignored));
-        g.save(); g.emit('demand', { phase: 'end', id: c.id, res: null }); this.render();
+        if (c.gate) { s.idle = s.idle || {}; s.idle[c.gate] = (s.idle[c.gate] || 0) + 1; } // S6.7: left alone IDLE times: replaced
+        const idle = c.gate && s.idle[c.gate] >= IDLE && K.state(g).active.includes(c.gate);
+        g.save(); g.emit('demand', { phase: 'end', id: c.id, res: null });
+        if (idle) this.replace(K.byId[c.gate], g);
+        this.render();
         return null;
       }
-      this.ignored = 0;
+      this.ignored = 0; if (c.gate && s.idle) delete s.idle[c.gate];
       const ok = grade !== 'rate';
       s.combo = ok ? s.combo + 1 : 0; s.best = Math.max(s.best, s.combo);
       const res = { id: c.id, grade, ok, combo: s.combo, best: s.best, gate: c.gate, why: ok ? null : why };

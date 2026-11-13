@@ -177,7 +177,7 @@ window.addEventListener('load', async ()=>{
     { const c=P.cur; c.midis.forEach((m,i)=>lv(m, c.ans+i*0.9)); }
     ok(res && res.ok && st.len===5 && st.streak===2, 'réussites d\'affilée : 4 → 5 notes');
     res=null; ok(until(()=>P.cur) && P.cur.len===5 && P.cur.timed && P.cur.steps[0]===0 && P.cur.steps.every(x=>x%2===0), '5 notes : un rythme sur les croches ('+P.cur.steps.join(' ')+')');
-    { const c=P.cur; c.midis.forEach((m,i)=>lv(m, c.ans+c.steps[i]*sd+0.05)); }
+    { const c=P.cur; c.midis.forEach((m,i)=>lv(m, c.ans+c.steps[i]*sd+0.2)); } // (within the fingers' window, not a musician's: no skip)
     ok(res && res.ok && st.len===6, 'en rythme (temps joués compensés de la latence, notes traitées 150 ms plus tard) : réussie, 6 notes ensuite');
     res=null; until(()=>P.cur);
     { const c=P.cur; c.midis.forEach((m,i)=>lv(m, c.ans+c.steps[i]*sd+(i===2?3*sd:0))); }
@@ -205,7 +205,7 @@ window.addEventListener('load', async ()=>{
       let allOk=true; for(let k=0;k<9;k++){ seen.push(P.level(st.lvl).id+':'+c.len); answer(c); if(!(res&&res.ok)){ allOk=false; break; } c=next(); }
       ok(allOk && st.lvl===14 && tiers.join()==='Octaves,Syncopes,Quinte,Accords,Combinaisons', 'des réussites : un palier après l\'autre ('+tiers.join(' → ')+') ; niveaux '+seen.join(' '));
       ok(recs.join()==='3' && st.best===9 && st.streak===9 && streaks.slice(-3).join()==='7,8,9', 'série et record : le record (2) battu une fois, à 3 ; série '+st.streak+', record '+st.best);
-      ok(P.cur.tier==='combi' && P.cur.sync && P.cur.f<1 && P.tol(sd,P.cur.f)<P.tol(sd), 'au-delà : combinaisons, jugement plus serré ('+Math.round(P.tol(sd,P.cur.f)*1000)+' ms au lieu de '+Math.round(P.tol(sd)*1000)+')');
+      ok(P.cur.tier==='combi' && P.cur.sync && P.cur.f<1 && P.tol('doigt',P.cur.f)<P.tol('doigt'), 'au-delà : combinaisons, jugement plus serré ('+Math.round(P.tol('doigt',P.cur.f)*1000)+' ms au lieu de '+Math.round(P.tol('doigt')*1000)+')');
       { const c=P.cur; lv(c.want[0]+1, c.ans+0.03); until(()=>!P.cur, 30); }
       ok(res && !res.ok && st.lvl===13 && st.streak===0 && st.best===9 && P.level(st.lvl).id==='accords', 'un raté : un cran plus bas (Accords), la série retombe, le record reste');
       const saved=JSON.parse(localStorage.getItem('ambient.game.test')).resp;
@@ -240,6 +240,37 @@ window.addEventListener('load', async ()=>{
       // older saves: resp {len, streak, best = a length} load as a level
       g.s.resp={len:6, streak:2, best:7, miss:{}}; ok(P.st(g).lvl===3 && P.st(g).len===6 && P.st(g).best===2 && P.level(P.st(g).lvl).id==='phrases', 'ancienne sauvegarde (resp.len 6) : niveau 6 notes, record = série');
       g.s.resp=st; P.cancel(); }
+    // S6.7 — the child can follow (pads lit like a Simon, « À toi » ≥ 5 s, a miss seen and replayed); the musician at the
+    // MIDI keyboard starts at the Octaves; ONE table of windows (tight at MIDI, a child's at the fingers)
+    { g.s.active=[]; const calls=[]; AMB.bus.on('resp:call',e=>calls.push(e));
+      const next=(lvl)=>{ P.cancel(); if(lvl!=null) st.lvl=lvl; P.wait=0; res=null; until(()=>P.cur); return P.cur; };
+      const lm=(m,t,raw)=>AMB.bus.emit('live',{midi:m,time:t+0.15,vel:0.85,raw,played:t});
+      st.skip=true; P.midi=false;
+      let c=next(0), e=calls.pop();
+      ok(e && e.notes.length===3 && e.notes.every((n,i)=>n.midis[0]===c.midis[i] && Math.abs(n.time-(c.t0+c.steps[i]*sd))<1e-9 && n.dur>=0.25 && n.dur<=0.7),
+        'la phrase allume les pastilles une à une, longtemps (Simon) : '+e.notes.map(n=>n.dur.toFixed(2)+' s').join(', '));
+      ok(c.until-c.ans>=P.START, '« À toi » : '+(c.until-c.ans).toFixed(1)+' s pour répondre (≥ '+P.START+' s), sans rythme');
+      c=next(2); ok(c.timed && c.until-c.ans>=P.START+bar-0.01, 'phrase en rythme : la 1re note peut venir jusqu\'à '+P.START+' s après « À toi », puis sa mesure');
+      // a timed answer started late, on the 2nd beat: judged from there
+      { const a0=c.ans; c.want.forEach((m,i)=>lv(m, a0+4*sd+c.steps[i]*sd+0.05)); ok(res && res.ok, 'réponse en rythme commencée sur le 2e temps : jugée depuis là, juste'); }
+      // a miss (RATÉ with its BZZT!: tests/gameui-play.html), the same phrase once more; right the 2nd time, it climbs, without counting in the placement
+      c=next(1); const d0=c.degs.join(); c.want.forEach((m,i)=>lv(m+1, c.ans+i)); const pt0=(st.pt||[]).join();
+      ok(res && !res.ok && res.replay && st.lvl===0, 'réponse fausse : un cran plus bas, la phrase sera rejouée');
+      res=null; until(()=>P.cur); c=P.cur; ok(c.again && c.degs.join()===d0 && c.len===4, 'la même phrase est rejouée tout de suite ('+d0+')');
+      c.want.forEach((m,i)=>lv(m, c.ans+i)); ok(res && res.ok && st.lvl===2 && /-1$/.test(pt0) && (st.pt||[]).join()===pt0, 'rejouée juste : le niveau remonte (5 notes ensuite), le placement ne la compte pas');
+      c=next(1); c.want.forEach((m,i)=>lv(m+1, c.ans+i)); res=null; until(()=>P.cur); P.cur.want.forEach((m,i)=>lv(m+1, P.cur.ans+i));
+      ok(res && !res.ok && res.again && !res.replay && st.lvl===0, 'ratée deux fois : pas une 2e baisse, pas de 3e écoute');
+      res=null; until(()=>P.cur); ok(!P.cur.again, 'puis une nouvelle phrase');
+      // ONE table: at the MIDI keyboard ±130 ms is right, ±160 ms not; at the fingers ±250 ms
+      ok(P.TOL.midi.parfait===0.06 && P.TOL.midi.bien===0.13 && P.TOL.doigt.juste>=0.2, 'une seule table de fenêtres (s) : '+JSON.stringify(P.TOL));
+      c=next(3); c.want.forEach((m,i)=>lm(m, c.ans+c.steps[i]*sd+(i===1?0.16:0.1), 0.8)); ok(res && !res.ok && res.row[1].state==='off' && res.row[0].state==='ok', 'MIDI : une note à +160 ms est à côté, +100 ms juste');
+      c=next(3); c.want.forEach((m,i)=>lv(m, c.ans+c.steps[i]*sd+0.2)); ok(res && res.ok, 'aux pastilles : +200 ms reste juste (tolérance d\'enfant)');
+      // the musician: a first long answer right and tight → the Octaves; at the MIDI keyboard → the Octaves right away
+      st.skip=false; P.midi=false; c=next(2); c.want.forEach((m,i)=>lv(m, c.ans+c.steps[i]*sd+0.03)); ok(res && res.ok && st.lvl===P.OCT && st.skip && P.level(st.lvl).id==='octaves', 'une 1re longue réponse juste et serrée : les Phrases sautées, palier Octaves');
+      st.skip=false; st.lvl=0; P.midi=false; lm(60, now, 0.7); ok(P.midi, 'une note du clavier MIDI (sa vélocité) : un musicien au clavier');
+      c=next(); ok(st.lvl===P.OCT && c.oct && c.len===6 && st.skip, 'au clavier MIDI : la 1re phrase est au palier Octaves (sa gamme du départ a suffi)');
+      st.lvl=0; c=next(); ok(c.len===3 && st.lvl===0, 'une seule fois : redescendu, il remonte en jouant');
+      P.midi=false; st.skip=false; }
     // 8. stopped (panic), free mode: nothing
     gate('p.composer'); until(()=>P.cur); AMB.bus.emit('panic'); ok(!P.cur, 'lecture arrêtée : la phrase s\'en va, rien de jugé');
     g.setMode('free'); notes.length=0; run(bar*12); lv(60, now);

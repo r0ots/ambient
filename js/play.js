@@ -172,7 +172,7 @@
   }
   // S5.2: the pads light up briefly on the Mélodie auto's notes (in their own colour), so the player sees what the machine
   // plays and can copy it. The pad of the same note, nearest in pitch (another octave = the pad of that degree).
-  // The player's notes and the Réponse phrase are 'live' notes: they light nothing here.
+  // The player's notes are 'live' notes: they light nothing here (S6.7: the Réponse's phrase lights them long, 'resp:call').
   const AUTO_MS = 170, autoT = new Map();
   function padForMidi(midi) {
     const S = AMB.seq, T = AMB.theory; if (!S || !S.scale || !T) return -1;
@@ -185,14 +185,20 @@
   }
   function padAuto(n) {
     if (!n || n.layer !== 'bells' || n.live) return;
+    padLight(n.midi, n.time, AUTO_MS, 'auto');
+  }
+  // the pad of this note lit at `time` (audio clock) for ms; S6.7 'call' = the Réponse's phrase, bright and long (a Simon)
+  function padLight(midi, time, ms, cls) {
     const bar = document.getElementById('pads'); if (!bar || bar.hidden || document.hidden) return;
-    const b = bar.children[padForMidi(n.midi)]; if (!b) return;
-    const ctx = AMB.engine && AMB.engine.ctx, wait = ctx && n.time ? Math.max(0, (n.time - ctx.currentTime) * 1000) : 0;
+    const b = bar.children[padForMidi(midi)]; if (!b) return;
+    const ctx = AMB.engine && AMB.engine.ctx, wait = ctx && time ? Math.max(0, (time - ctx.currentTime) * 1000) : 0, T = cls === 'auto' ? autoT : callT;
     setTimeout(() => {
-      b.classList.add('auto'); clearTimeout(autoT.get(b));
-      autoT.set(b, setTimeout(() => b.classList.remove('auto'), AUTO_MS));
+      b.classList.add(cls); clearTimeout(T.get(b));
+      T.set(b, setTimeout(() => b.classList.remove(cls), ms));
     }, wait);
   }
+  const callT = new Map();
+  const padCall = (e) => { if (e && e.notes) e.notes.forEach((n) => n.midis.forEach((m) => padLight(m, n.time, n.dur * 1000, 'call'))); };
   function padsInit() {
     const bar = document.getElementById('pads'); if (!bar) return;
     bar.innerHTML = PADS.map((k, i) => `<button type="button" class="pad" data-deg="${i}" style="--i:${i}" title="Touche ${k} · appui long : accord" aria-label="Note ${i + 1}"><span>${k}</span></button>`).join('');
@@ -201,6 +207,7 @@
     bar.addEventListener('contextmenu', (e) => e.preventDefault());
     ['game:mode', 'game:unlock', 'game:reset'].forEach((n) => AMB.bus.on(n, padsRefresh));
     AMB.bus.on('note', padAuto);
+    AMB.bus.on('resp:call', padCall);
     padsRefresh();
   }
 
