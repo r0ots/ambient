@@ -380,3 +380,4 @@ Vague 2 (en parallèle)
 
 Vague 3
 - [ ] S6.7 Revue regards neufs (enfant sur téléphone ; musicien de 33 ans au MIDI, fan d'arcade et de Stranger Things) puis corrections ; fin de la saison 6
+  - [x] S6.7c (v1.26) Composer et ville libre Décision : une progression trop longue pour sa section voit toutes ses durées divisées par deux ensemble (≥ 1 mesure), sinon le panneau dit lesquels ne jouent pas ; vrais noms d’accords (« Épique Am – F – C – G ») sur modes et cases, degrés selon la gamme, presets sans ♭5 inattendu, une seule table dans `theory.js` ; Ville néon par défaut en mode libre (toutes les couches, sans mécanique de jeu ; Orbes/Horizon/Spectre en option, choix enregistré respecté).
