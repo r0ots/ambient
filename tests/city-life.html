@@ -36,7 +36,7 @@ window.addEventListener('load', async () => {
       size(w, h, dpr); V.draw(); step(0.5);
       const tiles = [], snap = (l) => { const c = document.createElement('canvas'); c.width = cv.width; c.height = cv.height; c.getContext('2d').drawImage(cv, 0, 0); tiles.push([c, l]); };
       if (sheet === 'traffic') {
-        dims.traffic = 0; dims.population = 0.2; step(3, music); snap('trafic 0'); dims.traffic = 0.4; step(6, music); snap('trafic 0,4');
+        dims.traffic = 0; dims.population = 0.2; step(10, music); snap('trafic 0'); dims.traffic = 0.4; step(6, music); snap('trafic 0,4');
         dims.traffic = 1; step(8, music); snap('trafic 1'); step(0.3, music); snap('trafic 1 +0,3 s'); CL.L.zep.on = true; CL.L.zep.x = 0.3; step(0.2); snap('zeppelin'); dims.traffic = 0; step(12, music); snap('trafic retombé à 0');
       } else if (sheet === 'tron') {
         dims.traffic = 0.6; for (let k = 0; k < 6; k++) { step(0.5, music); snap('motos ' + (k * 0.5 + 0.5).toFixed(1) + ' s'); }

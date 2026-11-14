@@ -134,16 +134,16 @@
   function beam() { const c = canvas(64, 128), x = c.getContext('2d'), g = x.createLinearGradient(0, 128, 0, 0); g.addColorStop(0, 'rgba(210,235,255,0.6)'); g.addColorStop(1, 'rgba(210,235,255,0)'); x.fillStyle = g; x.beginPath(); x.moveTo(30, 128); x.lineTo(34, 128); x.lineTo(64, 0); x.lineTo(0, 0); x.closePath(); x.fill(); return c; }
   function cone() { const c = canvas(32, 64), x = c.getContext('2d'), g = x.createLinearGradient(0, 64, 0, 0); g.addColorStop(0, 'rgba(95,240,255,0.5)'); g.addColorStop(1, 'rgba(95,240,255,0.04)'); x.fillStyle = g; x.beginPath(); x.moveTo(14, 64); x.lineTo(18, 64); x.lineTo(32, 0); x.lineTo(0, 0); x.closePath(); x.fill(); return c; }
   function sprites(v, gd) {
-    const px = v.px || 3, hc = Math.max(2, Math.round(gd * 0.4 / 40)), key = px * 1000 + hc;
+    const px = v.px || 3, W = v.W || 1, hc = Math.max(2, Math.round(Math.min(gd * 0.4, W * 0.3) / 40)), key = px * 1e6 + hc * 1000 + Math.round(W / 100);
     if (L.cache.key === key) return L.cache;
-    const cs = Math.max(1, Math.round(px * 1.1));
+    const cs = Math.max(1, Math.round(Math.min(px * 1.1, W / 150))), zc = Math.max(1, Math.round(Math.min(px * 1.3, W / 110))); // sizes: the city's cell, never too big for a narrow screen
     L.cache = {
       key, cs, hc, people: peopleSheet(cs),
       dog: [0, 1].map((f) => [false, true].map((fl) => pix(DOG[f], cs, { d: '#9aa2c8', e: '#ff3348' }, fl))),
       umb: COLS.map((col) => pix(UMB, cs, { u: 'rgb(' + col.join(',') + ')', s: '#140c22' })),
-      cars: LANES.map((ln) => { const cc = Math.max(1, Math.round(px * ln.s)); return COLS.map((col) => carSprite(cc, col, ln.dir < 0)); }),
+      cars: LANES.map((ln) => { const cc = Math.max(1, Math.round(Math.min(px, W / 170) * ln.s)); return COLS.map((col) => carSprite(cc, col, ln.dir < 0)); }),
       trailR: trailSprite('255,51,72', '255,70,110'), trailW: trailSprite('255,246,224', '255,246,224'),
-      zep: zeppelin(Math.max(1, Math.round(px * 1.3))), zcs: Math.max(1, Math.round(px * 1.3)), ztext: textStrip('JUNOJUNO * NEON SOUL * ', Math.max(1, Math.round(px * 1.3)), '#ff54c4'),
+      zep: zeppelin(zc), zcs: zc, ztext: textStrip('JUNOJUNO * NEON SOUL * ', zc, '#ff54c4'),
       holo: HOLO.map((k) => [holo(k, hc, false), holo(k, hc, true)]), beam: beam(), cone: cone(),
     };
     return L.cache;
@@ -274,11 +274,11 @@
   // ======================================================================================================================
   // DRAWING
   function drawBeams(g, w, cam, v) { // searchlights from the hologram bases, sweeping the sky
-    const pop = clamp(w.population || 0), n = pop > 0.25 ? (pop > 0.6 ? 2 : 1) : 0; if (!n) return;
+    const pop = clamp(w.population || 0), n = pop > 0.25 ? (pop > 0.6 && !phone(v) ? 2 : 1) : 0; if (!n) return;
     const W = cam.W, gd = cam.gd, S = sprites(v, gd), T = v.reduced ? 0 : v.st, bh = Math.round(gd * 1.05), bw = Math.round(W * 0.07);
     g.globalCompositeOperation = 'lighter'; g.imageSmoothingEnabled = true;
     for (let i = 0; i < n; i++) {
-      const hx = i ? 0.79 : 0.21, bx = cam.x(0.72, W * hx), by = cam.y(0.72, gd);
+      const hx = phone(v) ? 0.5 : i ? 0.79 : 0.21, bx = cam.x(0.72, W * hx), by = cam.y(0.72, gd);
       for (let s = 0; s < 2; s++) {
         const an = v.reduced ? (s ? 0.3 : -0.3) : Math.sin(T * (0.3 + 0.08 * s + 0.05 * i) + i * 2 + s * 3) * 0.55, co = Math.cos(an), sn = Math.sin(an);
         g.setTransform(co, sn, -sn, co, bx, by); g.globalAlpha = clamp((0.12 + 0.25 * pop) * (0.4 + 0.6 * (w.power || 0)) + 0.25 * (w.pulse.chord || 0));
@@ -311,13 +311,13 @@
     }
   }
   function drawHolo(g, w, cam, v) {
-    const pop = clamp(w.population || 0), n = pop > 0.25 ? (pop > 0.6 ? 2 : 1) : 0; if (!n) return;
+    const pop = clamp(w.population || 0), n = pop > 0.25 ? (pop > 0.6 && !phone(v) ? 2 : 1) : 0; if (!n) return;
     const W = cam.W, gd = cam.gd, S = sprites(v, gd), T = v.reduced ? 0 : v.st, j = v.reduced ? 0 : J(), red = v.reduced;
     if (!red && (L.chords >= 4 || T - L.adT > 14)) { L.ad = (L.ad + 1) % HOLO.length; L.adT = T; L.chords = 0; }
     const glitch = red ? 0 : clamp(1 - (T - L.adT) / 0.45) * j, k = cam.k(0.72);
     for (let i = 0; i < n; i++) {
       const kind = (L.ad + i * 2) % HOLO.length, alt = kind === 1 ? (!red && (T % 4) > 3.82) : (!red && Math.floor(T * 3) % 2 === 1);
-      const cv = S.holo[kind][alt ? 1 : 0], hw = cv.width * k, hh = cv.height * k, hx = i ? 0.79 : 0.21;
+      const cv = S.holo[kind][alt ? 1 : 0], hw = cv.width * k, hh = cv.height * k, hx = phone(v) ? 0.5 : i ? 0.79 : 0.21;
       const bx = cam.x(0.72, W * hx), base = cam.y(0.72, gd), lift = Math.round(gd * 0.12 * k), bob = red ? 0 : Math.sin(T * 0.9 + i * 2) * S.hc * 1.5 * k;
       const y0 = base - lift - hh + bob, x0 = bx - hw / 2 + (kind === 0 && !red ? Math.sin(T * 0.4 + i) * hw * 0.08 : 0);
       // the projector: a dark box on the ground, its cone of light up to the picture
