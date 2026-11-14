@@ -1,0 +1,156 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0;background:#000">
+<!-- S8.5 « La musique pilote la lumière » (js/city-music.js): a note → a laser from its building's roof (angle by pitch,
+     colour of the layer, player > machine, held until released, chord = fan), on the HEARD time; kick → ground ring +
+     bloom pulse + windows; strong beat without kick; chord → sky sweep by function; bass → grid lit, scrolling on the
+     tempo; shooting stars (rare); caps; garden.FX ingredients (salvo, blackout, stars); JUICE 0 and reduced motion; cost.
+     The city alone with a fake audio clock (like tests/shot-city.html), no audio. -->
+<script>window.AMB_GAME_KEY = 'ambient.game.city-music'; localStorage.removeItem(window.AMB_GAME_KEY); localStorage.removeItem('ambient.vizMode');</script>
+<script src="lib.js"></script>
+<script>testBus(); AMB.engine = {};
+AMB.tree = { NODES: [['racine', 'drone.on'], ['h.pad', 'pad.on'], ['m.bells', 'bells.on'], ['m.grains', 'grains.on'], ['c.seq', 'seq.on'], ['c.rythme', 'bass.*'], ['c.rythme', 'perc.*'], ['e.texture', 'texture.*']].map(([id, p]) => ({ id, params: [p] })) };
+</script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script><script src="../js/city-music.js"></script>
+<script>
+window.addEventListener('load', async () => {
+  try {
+    const G = AMB.game, V = AMB.visual, GV = AMB.gardenVisual, CM = AMB.cityMusic, St = AMB.store, bus = AMB.bus;
+    ok(!!CM && GV.STACK.some((l) => l.id === 'music-lasers') && GV.DIMS['music.level'], 'chargé : AMB.cityMusic, calques et dimension music.level');
+    const cv = document.createElement('canvas'); cv.width = 960; cv.height = 540; document.body.appendChild(cv);
+    V.c = cv; V.g = cv.getContext('2d'); V.dpr = 1;
+    let T = 100, fake = 1000; GV.clock = () => T; GV.now = () => fake; GV.visible = true;
+    const calls = []; AMB.cityGL = { pulse: (n, a, ms) => calls.push([n, a, ms]) };
+    G.setMode('path'); G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.rythme', 'e.texture']; GV.sig = null;
+    St.setMany({ 'seq.on': true, 'bass.on': true, 'perc.on': true, 'texture.on': true, 'grains.on': true }, 'preset');
+    AMB.seq = { playing: true, step: 0, nextTime: T, origin: 0, stepDur: () => 0.15 }; // a beat = 0.6 s
+    const seqAt = () => { const n = Math.floor((T - 100) / 0.15); AMB.seq.step = n + 1; AMB.seq.nextTime = 100 + (n + 1) * 0.15; };
+    const ms = [];
+    const step = (s) => { const n = Math.max(1, Math.round(s / 0.016)); for (let i = 0; i < n; i++) { T += s / n; fake += s / n * 1000; seqAt(); V.draw(); ms.push(CM.times[CM.times.length - 1] || 0); } };
+    const W = GV.world;
+    CM.set({ auto: false, q: 1 });
+    step(2); // the city is built (reduced = immediate? no: let the construction end)
+    step(4);
+    ok(GV.plants.some((p) => p.id === 'bells' && p.vis > 0) && GV.plants.some((p) => p.id === 'pad' && p.vis > 0), 'ville bâtie (Mélodie auto, Pad)');
+    const bells = GV.plants.find((p) => p.id === 'bells');
+    const clear = () => { CM.reset(); GV.waves.length = 0; GV.parts.length = 0; };
+
+    // --- 1. a note → a laser, on the heard time, from its roof, colour of the layer, angle by pitch
+    clear(); step(0.7); // beyond the last beat throb
+    CM.waves.length = 0;
+    bus.emit('note', { layer: 'bells', midi: 48, time: T + 0.1, vel: 0.7, dur: 0.4 });
+    step(0.05);
+    ok(CM.lasers.length === 0, 'pas encore entendue : aucun laser avant son temps');
+    step(0.07);
+    const L1 = CM.lasers[0];
+    ok(CM.lasers.length === 1 && L1.plant === 'bells' && L1.col.join() === bells.col.join(), 'une note de Mélodie auto → un laser depuis l\'enseigne, à sa couleur (' + (L1 && L1.col) + ')');
+    ok(L1 && Math.abs(L1.elev - 6) < 0.5, 'note grave (C3) → laser rasant (' + (L1 && L1.elev.toFixed(1)) + '°)');
+    bus.emit('note', { layer: 'bells', midi: 84, time: T, vel: 0.7, dur: 0.4 }); bus.emit('note', { layer: 'seq', midi: 66, time: T, vel: 0.7, dur: 0.4 }); step(0.02);
+    const Lh = CM.lasers.find((l) => l.midi === 84), Lm = CM.lasers.find((l) => l.midi === 66);
+    ok(Lh && Math.abs(Lh.elev - 90) < 0.5 && Math.abs(Lh.ang) < 0.01, 'note aiguë (C6) → laser vertical (' + (Lh && Lh.elev) + '°)');
+    ok(Lm && Lm.plant === 'seq' && Lm.elev > 40 && Lm.elev < 60, 'note médiane de la Mélodie écrite → depuis l\'écran géant, à mi-hauteur (' + (Lm && Lm.elev.toFixed(1)) + '°)');
+    ok(L1.side === Math.sign(bells.sx - GV.W / 2) || Math.abs(bells.sx - GV.W / 2) < GV.W * 0.08, 'il penche vers l\'extérieur de la ville');
+    // the pixels: along the beam, the canvas is brighter than without it
+    const g = cv.getContext('2d'), lum = (x, y) => { const d = g.getImageData(Math.round(x) - 1, Math.round(y) - 1, 3, 3).data; let s = 0; for (let i = 0; i < d.length; i += 4) s += d[i] + d[i + 1] + d[i + 2]; return s / 9; };
+    clear(); bus.emit('note', { layer: 'bells', midi: 72, time: T, vel: 1, dur: 1 }); step(0.1);
+    const Lp = CM.lasers[0], ox = bells.sx, oy = bells.sy - bells.vis * bells.k, at = (d) => [ox + Math.sin(Lp.ang) * d, oy - Math.cos(Lp.ang) * d];
+    const on = lum(...at(60)); clear(); step(0.5); const off = lum(...at(60));
+    ok(on > off + 60, 'le faisceau se voit à l\'écran (' + Math.round(off) + ' → ' + Math.round(on) + ')');
+
+    // --- 2. player > machine; held until released; looper; chord = fan
+    clear();
+    bus.emit('note', { layer: 'bells', midi: 70, time: T, vel: 0.8, dur: 0.3 });
+    bus.emit('live', { midi: 70, time: T, vel: 0.8, raw: 0.8, id: 9 }); step(0.02);
+    const mac = CM.lasers.find((l) => l.who === 'machine'), pl = CM.lasers.find((l) => l.who === 'player');
+    ok(mac && pl && pl.w > mac.w * 1.4 && pl.a > mac.a * 1.4, 'les notes du joueur plus fortes que la machine (largeur ' + (pl && pl.w.toFixed(2)) + ' / ' + (mac && mac.w.toFixed(2)) + ')');
+    step(2); ok(CM.lasers.some((l) => l.held === 9), 'note tenue : le laser reste tant qu\'elle est tenue');
+    bus.emit('liveOff', { id: 9, time: T }); step(0.5); ok(!CM.lasers.some((l) => l.held === 9), 'relâchée : il s\'éteint');
+    bus.emit('note', { layer: 'seq', midi: 70, time: T, vel: 0.8, dur: 0.3, live: true }); step(0.02);
+    ok(!CM.lasers.length, 'une note `live` de la couche ne double pas le laser du joueur');
+    bus.emit('note', { layer: 'seq', midi: 70, time: T, vel: 0.8, dur: 0.3, loop: true }); step(0.02);
+    ok(CM.lasers.length === 1 && CM.lasers[0].who === 'loop', 'looper : un laser (entre joueur et machine)');
+    clear(); bus.emit('chord', { time: T, deg: 3, midis: [53, 57, 60], forced: true }); step(0.02);
+    const fan = CM.lasers.filter((l) => l.plant === 'pad');
+    ok(fan.length === 3 && new Set(fan.map((l) => l.ang.toFixed(3))).size === 3 && fan.some((l) => l.side < 0) && fan.some((l) => l.side > 0), 'accord joué → éventail de 3 lasers depuis la pyramide');
+
+    // --- 3. kick → ring + bloom pulse + windows; other percussion: nothing; a strong beat without kick: a softer ring
+    clear(); calls.length = 0; for (const p of GV.plants) GV.energy[p.id] = 0;
+    bus.emit('perc', { track: 1, time: T, vel: 0.9 }); step(0.02);
+    ok(!CM.waves.length && !calls.length, 'un shaker : pas d\'onde');
+    bus.emit('perc', { track: 0, time: T, vel: 0.9 }); step(0.02);
+    ok(CM.waves.length === 1 && CM.waves[0].col[0] === 255, 'grosse caisse → une onde lumineuse au sol');
+    ok(calls.some((c) => c[0] === 'bloom' && c[1] > 0.5), 'grosse caisse → pulse du bloom (cityGL.pulse)');
+    ok(W.music.kick > 0.5, 'world.music.kick (' + W.music.kick.toFixed(2) + ')');
+    ok(GV.plants.every((p) => (GV.energy[p.id] || 0) > 0.25), 'les fenêtres de toute la ville s\'allument');
+    step(1.2); ok(!CM.waves.some((w) => w.col[2] !== 255) && W.music.kick < 0.05, 'puis tout retombe');
+    // strong beats: (T-100)/0.6 beats; go to just before the next bar's beat 1, no kick
+    const pos = (T - 100) / 0.6, nextBar = Math.ceil(pos / 4 + 0.01) * 4; step((nextBar - pos) * 0.6 - 0.05); CM.waves.length = 0; CM.lastKick = -99; calls.length = 0;
+    step(0.1); ok(CM.waves.length === 1 && CM.waves[0].col[2] === 255 && calls.length === 1, 'temps fort sans grosse caisse → une onde plus douce (cyan) et un pulse');
+
+    // --- 4. chord → sky sweep, hue by function
+    clear();
+    bus.emit('chord', { time: T, deg: 4, midis: [43, 47, 50] }); step(0.02);
+    ok(CM.sweep && CM.tint.fn === 'D' && CM.sweep.col === CM.FUNC_COL.D, 'accord V → balayage du ciel, teinte dominante (ambre)');
+    step(0.4); const sw0 = CM.sweep; bus.emit('chord', { time: T, deg: 4, midis: [43, 47, 50] }); step(0.02);
+    ok(CM.sweep === sw0, 'le même accord ne relance pas le balayage');
+    bus.emit('chord', { time: T, deg: 3, midis: [41, 45, 48] }); step(0.02); ok(CM.tint.fn === 'S' && CM.sweep !== sw0, 'IV → sous-dominante (cyan)');
+    bus.emit('chord', { time: T, deg: 5, midis: [45, 48, 52] }); step(0.02); ok(CM.tint.fn === 'T', 'vi → tonique (magenta)');
+    step(1.5); ok(!CM.sweep && CM.tint.a > 0.1, 'le balayage passe, la teinte reste (nuages éclairés)');
+
+    // --- 5. bass → grid lit, scrolling at the tempo
+    clear(); step(0.6);
+    ok(GV.grid && typeof GV.grid.project === 'function' && GV.grid.rows >= 4, 'gv.grid exposée (project, rows ' + (GV.grid && GV.grid.rows) + ', cols ' + (GV.grid && GV.grid.cols) + ')');
+    const f0 = CM.grid.flash; bus.emit('note', { layer: 'bass', midi: 36, time: T, vel: 0.9, dur: 0.3 }); step(0.02);
+    ok(f0 < 0.05 && CM.grid.flash > 0.8 && W.music.bass > 0.8, 'note de basse → la grille s\'illumine (' + CM.grid.flash.toFixed(2) + ')');
+    ok(!CM.lasers.length, 'la basse ne tire pas de laser');
+    const ph1 = GV.grid.phase; step(0.3); const ph2 = GV.grid.phase, adv = ((ph2 - ph1) % 1 + 1) % 1;
+    ok(Math.abs(adv - 0.5) < 0.06, 'la grille défile au tempo : un demi-temps = une demi-rangée (' + adv.toFixed(2) + ')');
+    const pz0 = GV.grid.project(0, 0), pz1 = GV.grid.project(0, 1), pu = GV.grid.project(1, 0);
+    ok(Math.abs(pz0.y - cv.height) < 2 && pz1.y < pz0.y && pu.x > pz0.x, 'projection partagée avec S8.6 (z 0 = bas de l\'écran, u vers la droite)');
+
+    // --- 6. caps; shooting stars rare
+    clear();
+    for (let i = 0; i < 5; i++) bus.emit('live', { midi: 60 + i, time: T, vel: 0.8, id: 100 + i });
+    for (let i = 0; i < 80; i++) bus.emit('note', { layer: i % 2 ? 'bells' : 'seq', midi: 60 + (i % 20), time: T, vel: 0.7, dur: 1.5 });
+    step(0.05);
+    ok(CM.lasers.length <= CM.CAPS.lasers && CM.lasers.filter((l) => l.who === 'player').length === 5, 'plafond : ' + CM.lasers.length + ' lasers ≤ ' + CM.CAPS.lasers + ', la machine ne chasse pas le joueur');
+    CM.set({ q: 0.3 }); for (let i = 0; i < 30; i++) bus.emit('note', { layer: 'bells', midi: 70, time: T, vel: 0.7, dur: 1.5 }); step(0.02);
+    ok(CM.lasers.length <= Math.round(CM.CAPS.lasers * 0.3) + 5, 'qualité basse : moins de lasers (' + CM.lasers.length + ')'); CM.set({ q: 1 });
+    clear(); for (let i = 0; i < 30; i++) { bus.emit('note', { layer: 'bells', midi: 90, time: T, vel: 0.8, dur: 0.2 }); step(0.1); }
+    ok(CM.stars.length <= 1, 'étoiles filantes rares : 30 notes très aiguës en 3 s → ' + CM.stars.length);
+    clear(); bus.emit('live', { midi: 64, time: T, vel: 1, raw: 1, id: 5 }); step(0.02); ok(CM.stars.length === 1, 'un accent du joueur → une étoile filante');
+    bus.emit('phrase', { i: 15, len: 16, time: T }); step(0.02); ok(CM.stars.length === 2, 'une fin de phrase → une étoile filante');
+    CM.fx('stars'); step(0.9); const nst = CM.stars.length; ok(nst >= 4 && nst <= CM.CAPS.stars, 'pluie d\'étoiles (fête), plafonnée (' + nst + ' ≤ ' + CM.CAPS.stars + ')');
+
+    // --- 7. garden.FX ingredients: salvo (PARFAIT), blackout (RATÉ)
+    clear(); step(0.1); CM.fx('salvo'); step(0.3);
+    const from = new Set(CM.lasers.map((l) => l.plant));
+    ok(from.size >= GV.plants.filter((p) => p.vis > 0).length - 1 && CM.lasers.length >= 9, 'PARFAIT : salve de lasers depuis chaque toit (' + CM.lasers.length + ' lasers, ' + from.size + ' bâtiments)');
+    clear(); step(1); const p0 = W.power; CM.fx('blackout'); step(0.25);
+    ok(p0 > 0.3 && W.power < 0.05, 'RATÉ : coupure de courant (' + p0.toFixed(2) + ' → ' + W.power.toFixed(2) + ')');
+    bus.emit('note', { layer: 'bells', midi: 70, time: T, vel: 1, dur: 0.1 }); step(0.02); const dark = lum(...at(60));
+    step(0.4); step(1.5); ok(W.power > p0 * 0.8 && !CM.blackout, 'une demi-seconde, puis le courant revient (' + W.power.toFixed(2) + ')');
+    ok(dark < on - 60, 'pendant la coupure, pas de laser à l\'écran');
+
+    // --- 8. JUICE 0, reduced motion: nothing moves, the light still follows
+    for (const [name, set, unset] of [['JUICE 0', () => { GV.JUICE = 0; }, () => { GV.JUICE = 1; }], ['mouvement réduit', () => { GV.reduced = true; }, () => { GV.reduced = false; }]]) {
+      clear(); set(); step(0.1);
+      bus.emit('perc', { track: 0, time: T, vel: 1 }); bus.emit('note', { layer: 'bells', midi: 96, time: T, vel: 1, dur: 0.3 }); bus.emit('live', { midi: 64, time: T, vel: 1, raw: 1 });
+      bus.emit('note', { layer: 'bass', midi: 36, time: T, vel: 1 }); bus.emit('chord', { time: T, deg: 1, midis: [50, 53, 57] }); step(0.05);
+      const ph = GV.grid.phase; step(0.3);
+      ok(!CM.waves.length && !CM.stars.length && CM.lasers.length >= 1 && GV.grid.phase === ph && (!CM.sweep || CM.sweep.dur === 0) && CM.tint.fn === 'S',
+        name + ' : pas d\'onde, d\'étoile, de défilement ni de balayage ; les lasers et la teinte restent');
+      unset();
+    }
+
+    // --- 9. world.music.level; cost
+    clear(); for (let i = 0; i < 6; i++) bus.emit('live', { midi: 60 + i, time: T, vel: 0.9, id: 200 + i }); bus.emit('perc', { track: 0, time: T, vel: 1 }); step(0.6);
+    ok(W.music.level > 0.3, 'world.music.level monte avec la musique (' + W.music.level.toFixed(2) + ')');
+    bus.emit('panic', {}); step(1);
+    ms.length = 0; CM.times.length = 0;
+    for (let k = 0; k < 40; k++) { if (k % 2 === 0) bus.emit('note', { layer: k % 4 ? 'bells' : 'seq', midi: 60 + (k * 5) % 30, time: T, vel: 0.8, dur: 0.3 }); if (k % 9 === 0) { bus.emit('perc', { track: 0, time: T, vel: 0.9 }); bus.emit('note', { layer: 'bass', midi: 36, time: T, vel: 0.9 }); } if (k % 20 === 0) bus.emit('chord', { time: T, deg: k % 7, midis: [48, 52, 55] }); step(0.05); }
+    const st = CM.stats();
+    log('coût S8.5 (calques musique seuls, 960×540) : moyenne ' + st.avg.toFixed(3) + ' ms, p95 ' + st.p95.toFixed(3) + ' ms, max ' + Math.max(...CM.times).toFixed(1) + ' ms');
+    ok(st.avg < 1.5, 'coût par image raisonnable');
+    done();
+  } catch (e) { fail(e); }
+});
+</script></body></html>
