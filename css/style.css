@@ -528,11 +528,11 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .tree-legend i { display: inline-block; flex: none; width: 14px; height: 12px; clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); background: var(--line-hi); }
 .tree-legend i.st-owned { background: conic-gradient(var(--cyan) 0 20%, var(--magenta) 0 40%, var(--green) 0 60%, var(--amber) 0 80%, #8a5cff 0); } /* (a hex of the 5 branch colours) */
 .tree-legend i.st-ready { background: var(--amber); }
-.tree-legend i.st-available { background: color-mix(in srgb, var(--amber) 45%, var(--bg)); }
 .tree-legend i.lg-dark { clip-path: none; width: 20px; height: 0; background: none; border-top: 2px dashed #8a7ca8; -webkit-mask: linear-gradient(90deg, #000, transparent); mask: linear-gradient(90deg, #000, transparent); }
 .tree-legend > .tree-tip { flex-basis: 100%; font-size: 11.5px; white-space: normal; display: block; }
 .tree-tip .tip-short { display: none; }
-.tree-view { position: relative; flex: 1 1 auto; min-height: 340px; margin-top: 10px; border-radius: var(--radius-btn); border: 1.5px solid var(--line); overflow: hidden;
+.tree-body { flex: 1 1 auto; min-height: 0; display: flex; gap: 14px; margin-top: 10px; }
+.tree-view { position: relative; flex: 1 1 auto; min-width: 0; min-height: 340px; border-radius: var(--radius-btn); border: 1.5px solid var(--line); overflow: hidden;
   background: linear-gradient(#1d1238b3 1px, transparent 1px) 0 0 / 40px 40px, linear-gradient(90deg, #1d1238b3 1px, transparent 1px) 0 0 / 40px 40px, radial-gradient(ellipse at 45% 100%, #1a0838 0%, var(--bg) 65%); }
 .tree-map { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
 .tree-map.panning { cursor: grabbing; }
@@ -546,6 +546,8 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .tree-link.owned { stroke: var(--c); filter: drop-shadow(0 0 5px var(--c)); }
 .tree-link.x { stroke-width: 2.5; }
 .tree-link.x.locked { opacity: .45; }
+/* S9.4: only open and ready nodes are drawn (.dark: everything else) */
+.tree-node.dark { display: none; }
 /* S9.1: the dark — nodes not reachable yet are not drawn; their links leave in dots that fade out (gradient set by js) */
 .tree-node.st-locked, .tree-link.gone, .tree-glow.gone, .tree-glow.dark, .tree-bname.gone { display: none; }
 .tree-link.dark { stroke-dasharray: 3 7; stroke-linecap: round; stroke-width: 2; opacity: 1; filter: none; }
@@ -580,11 +582,13 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .tree-zoom { position: absolute; bottom: 10px; right: 10px; z-index: 2; display: flex; flex-direction: column; gap: 6px; }
 .tree-zoom .btn { min-width: 44px; min-height: 44px; padding: 4px 8px; font-size: 18px; line-height: 1; background: color-mix(in srgb, var(--bg) 85%, transparent); }
 /* the selected node's panel: a tube of its branch's colour (amber when it waits on OUVRIR) */
-.tree-info { position: absolute; left: 12px; bottom: 12px; z-index: 3; width: min(340px, calc(100% - 24px)); padding: 16px 18px; background: #07040fe6; border: 1.5px solid var(--c); border-radius: var(--radius);
+/* S9.4: a side panel beside the map (under it on a phone), never over a node; with nothing selected it says what to do */
+.tree-info { --c: var(--line-hi); flex: none; align-self: flex-start; box-sizing: border-box; width: 300px; max-height: 100%; overflow: auto; padding: 16px 18px; background: #07040fe6; border: 1.5px solid var(--c); border-radius: var(--radius);
   box-shadow: 0 0 26px color-mix(in srgb, var(--c) 27%, transparent), 0 10px 30px #000b; }
 .tree-info.st-ready { --c: var(--amber); }
 .tree-info[hidden] { display: none; }
-.tree-info.right { left: auto; right: 66px; }
+.tree-info.empty { border-style: dashed; box-shadow: none; }
+.modal-card .tree-info.empty .ti-d { color: var(--muted); margin: 0; }
 .modal-card .tree-info p { margin: 0 0 6px; font-size: 13.5px; line-height: 1.45; color: #d9cdf2; }
 .modal-card .tree-info .ti-h b { display: block; color: #fff; font-size: 22px; font-weight: 700; letter-spacing: .06em; text-shadow: 0 0 12px var(--c); }
 .modal-card .tree-info .ti-h small { color: var(--c); font-size: 11px; font-weight: 700; letter-spacing: .26em; text-transform: uppercase; }
@@ -600,8 +604,10 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
   .tree-count, .tree-ready { font-size: 12px; padding: 3px 8px; }
   .tree-tip .tip-long { display: none; }
   .tree-tip .tip-short { display: inline; }
-  .tree-view { min-height: 300px; }
-  .tree-info, .tree-info.right { left: 6px; right: 6px; bottom: 6px; width: auto; padding: 12px 14px; }
+  .tree-view { min-height: 200px; }
+  .tree-body { flex-direction: column; gap: 8px; }
+  .tree-info { width: auto; align-self: stretch; max-height: 48%; padding: 12px 14px; }
+  .tree-info.empty { display: none; }
   .tree-zoom { flex-direction: row; top: 6px; bottom: auto; right: 6px; }
 }
 /* narrow phones: the legend keeps one line (short labels), the hint folds under it; the zoom buttons sit
@@ -612,6 +618,25 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
   .tree-legend .lg-short { display: inline; }
   .tree-legend > .tree-tip { font-size: 11px; }
 
+}
+
+/* S9.4 a phone held sideways (short screen): the Arbre's header shrinks so the map and the card keep the height */
+@media (max-height: 520px) {
+  #treeDlg { padding: 6px; }
+  .tree-card { height: calc(100vh - 12px); max-height: none; padding: 8px 12px 8px; }
+  .tree-card h3 { font-size: 16px; margin: 0 0 2px; }
+  .tree-counts { margin-top: -2px; }
+  .tree-count, .tree-ready { font-size: 11px; padding: 2px 8px; }
+  #treeDlg .dc-head { min-height: 30px; font-size: 12px; }
+  .modal-card .tree-legend { font-size: 11px; }
+  .tree-legend > .tree-tip { display: none; }
+  .tree-body { margin-top: 4px; gap: 8px; }
+  .tree-view { min-height: 0; }
+  .tree-info { width: 250px; padding: 10px 12px; }
+  .modal-card .tree-info p { font-size: 12px; margin-bottom: 4px; }
+  .modal-card .tree-info .ti-h b { font-size: 17px; }
+  .tree-info .ti-open { min-height: 40px; margin-top: 4px; }
+  .tree-zoom { flex-direction: row; top: 6px; bottom: auto; right: 6px; }
 }
 
 /* S9.2 the keys (Pads.dc.html): one neon tube per note of the landscape's scale (A–L, low to high: violet → magenta),

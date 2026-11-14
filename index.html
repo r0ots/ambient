@@ -147,10 +147,12 @@
       <div class="modal-card tree-card" role="dialog" aria-label="Arbre du Parcours">
         <button class="modal-x" data-close>✕</button>
         <h3>Arbre du Parcours <span class="tree-counts"><span class="tree-count"></span><span class="tree-ready" hidden></span></span></h3>
-        <p class="tree-legend"><span><i class="st-owned"></i>ouvert<em class="lg-long">&nbsp;(couleur de sa branche)</em></span><span><i class="st-ready"></i>prêt</span><span><i class="st-available"></i><em class="lg-long">peut s'ouvrir maintenant</em><em class="lg-short">à ouvrir</em></span><span><i class="lg-dark"></i><em class="lg-long">la suite, encore dans le noir</em><em class="lg-short">à découvrir</em></span><span class="tree-tip"><em class="tip-long">Survole ou touche une pièce : trait plein = ce qu'il faut avant, pointillés = ce qui vient après · glisse pour te déplacer, pince ou molette pour zoomer</em><em class="tip-short">Touche une pièce pour sa fiche · glisse, pince pour zoomer</em></span></p>
-        <div class="tree-view">
-          <div class="tree-map" role="group" aria-label="L'Arbre : glisse pour te déplacer, pince ou molette pour zoomer"></div>
-          <div class="tree-zoom"><button type="button" class="btn small" data-zoom="in" aria-label="Zoomer">+</button><button type="button" class="btn small" data-zoom="out" aria-label="Dézoomer">−</button><button type="button" class="btn small" data-zoom="fit" aria-label="Voir tout l'arbre">⤢</button></div>
+        <p class="tree-legend"><span><i class="st-owned"></i>ouvert</span><span><i class="st-ready"></i>prêt à ouvrir</span><span><i class="lg-dark"></i>encore dans le noir</span><span class="tree-tip"><em class="tip-long">Survole ou touche une pièce pour sa fiche · glisse pour te déplacer, molette pour zoomer</em><em class="tip-short">Touche une pièce pour sa fiche · glisse, pince pour zoomer</em></span></p>
+        <div class="tree-body">
+          <div class="tree-view">
+            <div class="tree-map" role="group" aria-label="L'Arbre : glisse pour te déplacer, pince ou molette pour zoomer"></div>
+            <div class="tree-zoom"><button type="button" class="btn small" data-zoom="in" aria-label="Zoomer">+</button><button type="button" class="btn small" data-zoom="out" aria-label="Dézoomer">−</button><button type="button" class="btn small" data-zoom="fit" aria-label="Voir tout l'arbre">⤢</button></div>
+          </div>
           <div class="tree-info" aria-live="polite" hidden></div>
         </div>
       </div>

@@ -76,7 +76,13 @@
       if (!on && !was) this.crtOff(d.querySelector('.tree-card')); // S7.3: the screen switches off like an old CRT
       d.hidden = !on;
       if (this.resetPointers) this.resetPointers(); // no finger left over from the last visit
-      if (on) { this.select(null); this.renderTree(); this.fitTree(); if (AMB.discoveries) AMB.discoveries.render(); }
+      // S9.4: opens on the first node waiting on « ✦ Ouvrir » (its card, the button), else on nothing
+      if (on) {
+        this.select(null); this.renderTree();
+        const r = was && AMB.tree.NODES.find((x) => AMB.tree.status(x.id) === 'ready'), b = r && d.querySelector(`.tree-node[data-id="${r.id}"]`);
+        if (b) { this.sel = r.id; b.classList.add('is-sel'); this.showInfo(r.id); } // (its card, without dimming the rest)
+        this.fitTree(); if (AMB.discoveries) AMB.discoveries.render();
+      }
       if (this.hiscores) this.hiscores.render(); // S6.6 (the entry of the initials shows while the Arbre is open)
       if (on && was) this.treeIn();
     },
@@ -215,6 +221,8 @@
       }
       map.append(stage);
     },
+    // S9.4: what is drawn — open nodes and nodes waiting on « ✦ Ouvrir »; everything else stays in the dark
+    seen(id) { const s = AMB.tree.status(id); return s === 'owned' || s === 'ready'; },
     // states only (classes, opener line, aria-label): never rebuilds, so the unlock animation survives
     paintTree() {
       const map = $('#treeDlg .tree-map'); if (!map) return;
@@ -223,6 +231,7 @@
         const n = T.byId[b.dataset.id]; if (!n) return;
         const st = T.status(n.id), op = this.openers(n.id)[0];
         for (const s of Object.keys(STATE_TXT)) b.classList.toggle('st-' + s, s === st);
+        b.classList.toggle('dark', !this.seen(n.id)); b.tabIndex = this.seen(n.id) ? 0 : -1;
         b.querySelector('span').textContent = st === 'owned' ? '✓' : st === 'ready' ? '✦ prêt' : !op ? '' : op.kind === 'reponse' ? '↺ Réponse' : op.d && op.d.kind === 'demande' ? '♪ demande' : '◇ défi';
         const ext = n.req.filter((r) => T.byId[r].branch !== n.branch);
         b.setAttribute('aria-label', `${n.name}, ${T.BRANCHES[n.branch].name}, ${STATE_TXT[st]}`
@@ -231,7 +240,7 @@
           + (ext.length && st === 'owned' ? `, relié à ${ext.map((r) => T.byId[r].name).join(', ')}` : ''));
       });
       // S9.1: only what is open or can open now is drawn; a link to the dark leaves in fading dots, two dark ends: nothing
-      const seen = (id) => T.status(id) !== 'locked', lay = this.treeLayout();
+      const seen = (id) => this.seen(id), lay = this.treeLayout();
       map.querySelectorAll('.tree-link, .tree-glow').forEach((p) => {
         const f = seen(p.dataset.from), t = seen(p.dataset.to), glow = p.classList.contains('tree-glow');
         const st = !f && !t ? 'gone' : !f || !t ? 'dark' : g.has(p.dataset.to) ? 'owned' : 'available';
@@ -248,7 +257,7 @@
       // (S9.2: right above its highest node in sight, not at the tip of a band still in the dark)
       map.querySelectorAll('.tree-bname').forEach((t) => {
         t.classList.toggle('gone', !T.NODES.some((n) => n.branch === t.dataset.b && g.has(n.id)));
-        const ps = T.NODES.filter((n) => n.branch === t.dataset.b && T.status(n.id) !== 'locked').map((n) => lay.pos[n.id]).filter(Boolean); if (!ps.length) return;
+        const ps = T.NODES.filter((n) => n.branch === t.dataset.b && this.seen(n.id)).map((n) => lay.pos[n.id]).filter(Boolean); if (!ps.length) return;
         const top = Math.min(...ps.map((q) => q.y)), xs = ps.filter((q) => q.y === top).map((q) => q.x);
         t.setAttribute('x', xs.reduce((u, v) => u + v, 0) / xs.length); t.setAttribute('y', top - 40);
       });
@@ -273,16 +282,19 @@
     },
     // opens on the whole map; on a narrow screen (< 560 px) at k ≈ 0.6 centred on the root so labels stay
     // readable (⤢ = whole map, all = true). Remembers the width it was fitted for (resize: refit only if it changes).
-    fitTree(all) {
+    // S9.4: frames what is lit (open and ready nodes, the start of the dotted traces around them), not the dark: at most
+    // 1.15, no smaller than 0.45 on a phone (then it pans). Remembers the width it was fitted for (resize: refit only if it changes).
+    fitTree() {
       const map = $('#treeDlg .tree-map'); if (!map || !map.clientWidth) return;
       const lay = this.treeLayout(), lim = this.kLimits(), v = this.view;
       this.fitW = window.innerWidth; // (the window's, not the map's: a scrollbar that comes or goes is not a resize)
-      const narrow = !all && lay.nar;
-      // S5.7: a phone opens on the whole narrow map (its width, or its height), no smaller than 0.45 (then it pans)
-      v.k = narrow ? clamp(Math.max(0.45, lim.fit), lim.min, lim.max) : !all && map.clientWidth < 560 ? clamp(0.6, lim.min, lim.max) : Math.min(lim.fit, 1.15);
-      const root = lay.pos.racine || { x: lay.W / 2, y: lay.H };
-      v.tx = map.clientWidth / 2 - root.x * v.k;
-      v.ty = map.clientHeight - (lay.H - L.BOT / 3) * v.k; // root (bottom) in view
+      const ps = AMB.tree.NODES.filter((n) => this.seen(n.id)).map((n) => lay.pos[n.id]).filter(Boolean);
+      if (!ps.length) ps.push(lay.pos.racine || { x: lay.W / 2, y: lay.H });
+      const x0 = Math.min(...ps.map((p) => p.x)) - 110, x1 = Math.max(...ps.map((p) => p.x)) + 110;
+      const y0 = Math.min(...ps.map((p) => p.y)) - 80, y1 = Math.max(...ps.map((p) => p.y)) + 90;
+      v.k = clamp(Math.min(map.clientWidth / (x1 - x0), map.clientHeight / (y1 - y0), 1.15), lay.nar ? Math.max(0.45, lim.min) : lim.min, lim.max);
+      v.tx = map.clientWidth / 2 - (x0 + x1) / 2 * v.k;
+      v.ty = map.clientHeight / 2 - (y0 + y1) / 2 * v.k;
       this.applyView();
     },
     zoomAt(cx, cy, f) {
@@ -324,16 +336,17 @@
     showInfo(id) {
       const box = $('#treeDlg .tree-info'); if (!box) return;
       const T = AMB.tree, g = AMB.game, K = AMB.contracts, n = id && T.byId[id];
-      if (!n) { box.hidden = true; box.dataset.id = ''; return; }
+      // S9.4: nothing selected — on a wide screen the side panel stays, with what to do; on a phone it goes
+      if (!n) { box.dataset.id = ''; box.className = 'tree-info empty'; box.style.removeProperty('--c'); box.innerHTML = `<p class="ti-d">${AMB.game.txt('{Survole|Touche} une pièce allumée pour voir ce qu\'elle ouvre.')}</p>`; box.hidden = false; return; }
       const st = T.status(id), br = T.BRANCHES[n.branch], ops = st === 'owned' || st === 'ready' ? [] : this.openers(id);
-      const nm = (r) => (T.status(r) === 'locked' ? '???' : T.byId[r].name); // (S9.1: what is still in the dark keeps its name)
+      const nm = (r) => (this.seen(r) ? T.byId[r].name : '???'); // (S9.1: what is still in the dark keeps its name)
       const req = n.req.map((r) => `<span class="${g.has(r) ? 'ok' : ''}">${g.has(r) ? '✓' : '·'} ${nm(r)}</span>`).join(' ');
       const now = ops.find((o) => o.d && K.state().active[0] === o.d.id);
       // S6.7: while nodes wait on « ✦ Ouvrir » no challenge runs (contracts.refill): its card says so, not a challenge
       // that cannot come yet
       const wait = g.path && !g.s.ended ? (g.s.ready || []).filter((r) => g.canOpen(r.id)).length : 0;
       const opTxt = (wait && ops.some((o) => o.d) ? [`Ouvre d'abord ce qui est prêt (${wait})`] : []).concat(ops.filter((o) => !(wait && o.d)).map((o) => o.text));
-      box.style.setProperty('--c', br.color);
+      box.style.setProperty('--c', st === 'ready' ? 'var(--amber)' : br.color);
       const fresh = box.hidden || box.dataset.id !== id; // S7.3: a new card slides in (the same one repainted does not)
       box.dataset.id = id; box.className = `tree-info st-${st}`;
       box.innerHTML = `<p class="ti-h"><b>${n.name}</b> <small>${br.name} · ${STATE_TXT[st]}</small></p>`
@@ -344,12 +357,9 @@
         // S4.6: won, waiting for the player: the same « ✦ Ouvrir » as on the LCD (after its prerequisites, for a secret's chain)
         + (st === 'ready' ? (n.req.every((r) => g.has(r)) ? '<p class="ti-o">✓ Réussi : à toi de l\'ouvrir. <button type="button" class="btn primary small ti-open">✦ Ouvrir</button></p>'
           : `<p class="ti-o">✓ Réussi : s'ouvre après ${n.req.filter((r) => !g.has(r)).map(nm).join(', ')}.</p>`) : '');
-      // the card sits in the empty corner opposite to the node (the fan leaves both bottom corners free)
-      const map = $('#treeDlg .tree-map'), el = map && map.querySelector(`.tree-node[data-id="${id}"]`);
-      if (el && map) { const r = map.getBoundingClientRect(), e = el.getBoundingClientRect(); box.classList.toggle('right', e.left + e.width / 2 < r.left + r.width / 2); }
-      box.hidden = false;
+      box.hidden = false; // (S9.4: a side panel beside the map, under it on a phone: it never hides a node)
       const M = AMB.motion;
-      if (fresh && M && M.on() && box.animate) box.animate([{ opacity: 0, translate: `${(box.classList.contains('right') ? 28 : -28) * Math.min(1.5, M.amp())}px 0`, scale: 0.94 }, { opacity: 1, translate: '0 0', scale: 1 }],
+      if (fresh && M && M.on() && box.animate) box.animate([{ opacity: 0, translate: `${28 * Math.min(1.5, M.amp())}px 0`, scale: 0.94 }, { opacity: 1, translate: '0 0', scale: 1 }],
         { duration: M.ms('med'), easing: M.EASE.spring });
     },
     // all map interaction, wired once from garden.build()
@@ -409,14 +419,13 @@
         const b = e.target.closest('.tree-node');
         if (!b) { this.select(null); return; }
         this.select(b.dataset.id);
-        const box = $('#treeDlg .tree-info');
-        if (box && getComputedStyle(box).position === 'absolute') this.panToNode(b.dataset.id, touchy() ? box.offsetHeight + 8 : 0);
+        this.applyView(); this.panToNode(b.dataset.id); // (S9.4: on a phone the card takes the bottom of the screen: the map shrinks above it)
       });
       const zm = $('#treeDlg .tree-zoom');
       if (zm) zm.addEventListener('click', (e) => {
         const b = e.target.closest('[data-zoom]'); if (!b) return;
         const r = map.getBoundingClientRect();
-        if (b.dataset.zoom === 'fit') this.fitTree(true); else this.zoomAt(r.left + r.width / 2, r.top + r.height / 2, b.dataset.zoom === 'in' ? 1.3 : 1 / 1.3);
+        if (b.dataset.zoom === 'fit') this.fitTree(); else this.zoomAt(r.left + r.width / 2, r.top + r.height / 2, b.dataset.zoom === 'in' ? 1.3 : 1 / 1.3);
       });
       // any click during the unlock sequence fast-forwards it
       if (dlg) dlg.addEventListener('click', (e) => { if (this.seq) { e.stopPropagation(); e.preventDefault(); this.seqFinish(); } }, true);
