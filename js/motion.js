@@ -597,7 +597,7 @@
     set(level, why = 'set') {
       const l = Math.max(0, Math.min(LEVELS.length - 1, level | 0));
       if (l === this.level) return false;
-      this.level = l; this.why = why; this.apply();
+      this.level = l; this.why = why; this.settle = true; this.apply();
       const ev = { level: l, name: this.name(), why };
       for (const f of this.subs.slice()) { try { f(ev); } catch (e) { console.error(e); } }
       if (AMB.bus) AMB.bus.emit('quality', ev);
@@ -619,8 +619,12 @@
       if (!this.auto || performance.now() < this.GRACE_MS) return; // (the load's own work is not a slow device)
       this.win.push(dt); this.winT += dt;
       if (this.winT < this.WINDOW_MS) return;
-      const avg = this.winT / this.win.length;
+      // the average without the worst 10 % of the frames: a few stalls (a window built, a landscape loaded) are not a slow
+      // device; a device that is slow all the time still is. After a change, one window to settle (it costs frames itself).
+      const srt = this.win.slice().sort((x, y) => x - y), keep = srt.slice(0, Math.max(1, Math.ceil(srt.length * 0.9)));
+      const avg = keep.reduce((t, x) => t + x, 0) / keep.length;
       this.win.length = 0; this.winT = 0;
+      if (this.settle) { this.settle = false; return; }
       const w = this.WINDOW_MS / 1000;
       if (avg > this.SLOW_MS) {
         this.good = 0;
