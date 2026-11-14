@@ -146,6 +146,8 @@ body.game .macros .panel:not(:has(.ctls > :not(.is-locked))) > header { display:
 .macros .knob svg { width: clamp(48px, 13cqi, 84px); height: clamp(48px, 13cqi, 84px); }
 .macros .k-val { font-size: 13px; }
 .macros .k-lab { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+@container (max-width: 470px) { .macros .k-lab { font-size: 10px; letter-spacing: .02em; } }
+@container (max-width: 330px) { .macros .k-lab { font-size: 8.5px; letter-spacing: 0; max-width: calc(100% + 4px); } } /* (S9.4: five names side by side, never on each other) */
 
 .knob:focus-visible { outline: none; }
 
@@ -674,7 +676,7 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .k-ring { position: fixed; pointer-events: none; z-index: 46; border: 2px solid var(--c); border-radius: 12px; box-shadow: 0 0 20px var(--c); }
 @media (pointer: coarse) { .pad b { display: none; } .pad small { font-size: 17px; letter-spacing: .06em; opacity: 1; } }
 .pad small i { font-style: normal; font-size: .75em; margin-left: .05em; vertical-align: .3em; letter-spacing: 0; } /* (S9.4: the sharp, small and raised) */
-@media (pointer: coarse) and (max-width: 560px) { .pad small { font-size: 13px; letter-spacing: 0; } } /* (S9.4: « SOL♯ » inside a 38 px key) */
+@media (pointer: coarse) and (max-width: 560px), (pointer: coarse) and (max-height: 520px) { .pad small { font-size: 13px; letter-spacing: 0; } } /* (S9.4: « SOL♯ » inside a 38 px key) */
 /* phones: a 3 × 3 grid (Phone.dc.html), thumb-sized */
 @media (max-width: 560px) {
   .pads { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
