@@ -660,19 +660,9 @@ body.game .app { overflow-x: clip; }
    ===================================================================== */
 :root { --arc-fg: var(--cyan); --arc-hot: var(--magenta); --arc-gold: var(--amber); --arc-bg: #0a0618; --arc-dim: var(--line-hi); --arc-glow: #22e6ff66; --arc-ink: var(--bg); --arc-soft: var(--muted); } /* (S9.2: the arcade tokens are the neon ones) */
 
-/* S11.1 the power button (was « INSERT COIN »): the machine asleep, one standby LED that blinks slowly, amber / red */
+/* S11.1 → S11.3 #coin (was « INSERT COIN »): never shown, the power button is the Drone's switch (« S11.3 » at the end) */
 .coin { display: none; }
-body.game:not(.playing):not(.coined) .coin { position: absolute; inset: 0; z-index: 6; display: grid; place-content: center; justify-items: center; gap: 10px; width: 100%;
-  border: 0; border-radius: 0; cursor: pointer; color: var(--amber); font-family: var(--f); background: transparent; }
-.coin b { display: grid; place-items: center; width: clamp(92px, 16vw, 132px); aspect-ratio: 1; border-radius: 50%; font: 400 clamp(46px, 8vw, 66px)/1 var(--f); color: #ff6a3d;
-  border: 2px solid #ff6a3d88; background: radial-gradient(circle, #2a0a06 0, #120604 70%); box-shadow: 0 0 0 6px #0008, inset 0 0 18px #ff3b1f33;
-  animation: pw-standby 2.6s ease-in-out infinite; }
-.coin .pw-led { width: 10px; height: 10px; border-radius: 50%; background: #ff3b1f; box-shadow: 0 0 10px #ff3b1f, 0 0 22px #ff3b1f88; animation: pw-led 2.6s ease-in-out infinite; }
-.coin span { font-size: clamp(14px, 2.6vw, 20px); font-weight: 700; letter-spacing: .4em; padding-left: .4em; color: #ffb347; text-shadow: 0 0 8px #ff8a0088; animation: pw-led 2.6s ease-in-out infinite; }
-.coin small { font-size: 13px; letter-spacing: .14em; color: #8f84a8; }
 @keyframes pw-standby { 0%, 100% { opacity: .55; text-shadow: none; } 45%, 60% { opacity: 1; text-shadow: 0 0 10px #ff6a3d, 0 0 26px #ff3b1f; } }
-@keyframes pw-led { 0%, 100% { opacity: .25; } 45%, 60% { opacity: 1; } }
-:is(.q-moyen, .q-bas) .coin b { animation-name: q-blink; } /* (phone: opacity only) */
 @keyframes coin-blink { 50% { opacity: .12; } }
 
 /* the high scores of the Réponse (garden.js hiscores), in the Arbre: top 5, three initials typed arcade-style */
@@ -1080,8 +1070,6 @@ body.playing #play::after { content: ""; position: absolute; inset: -2px; border
 
 /* the power button: hover = it swells and burns brighter; the press = sparks (js), a CRT line opens out on the stage,
    and the machine wakes up (body.waking, « S11.1 » at the end). The button itself is already gone: this dresses it */
-.coin b, .coin span { transition: scale var(--m-fast) var(--m-spring), letter-spacing var(--m-med) var(--m-out), color var(--m-fast), filter var(--m-fast); }
-@media (hover: hover) { .coin:hover b { scale: calc(1 + .08 * var(--m-amp)); filter: brightness(1.3); } .coin:hover span { color: #fff; letter-spacing: .22em; } }
 .coin-fx { position: absolute; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; border-radius: inherit; }
 .cf-coin { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px; border-radius: 50%; display: grid; place-items: center; font: 700 26px/1 var(--f); font-style: normal;
   color: #7a4d00; background: radial-gradient(circle at 35% 30%, #fffbe0, #ffd23f 45%, #b8860b); box-shadow: 0 0 0 3px #7a5200, 0 0 26px #ffb347; opacity: 0;
@@ -1222,7 +1210,6 @@ body.mode-compose .drawer { width: clamp(340px, 56vw, 940px); }
 .stage .toast { top: calc(var(--free-t) + 12px); left: calc(var(--free-l) + (100% - var(--free-l) - var(--free-r)) / 2); }
 .stage .hint { bottom: calc(var(--free-b) + 8px); left: calc(var(--free-l) + 12px); }
 .stage .big-play { inset: var(--free-t) var(--free-r) var(--free-b) var(--free-l); }
-body.game:not(.playing):not(.coined) .coin { inset: var(--free-t) var(--free-r) var(--free-b) var(--free-l); width: auto; background: transparent; }
 /* Plein écran: only the city (the instrument hides; Échap or ✕ Quitter brings it back) */
 body.listen .app { padding: 0; }
 body.listen .app > .stage { height: auto; }
@@ -1456,7 +1443,11 @@ body.game .dust { display: block; position: absolute; inset: 0; z-index: 5; poin
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .78 0 0 0 0 .72 0 0 0 0 .62 0 0 0 1.4 -.55'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
     radial-gradient(ellipse at 50% 45%, #2a221a33 0, #000b 100%); }
 body.game:not(.playing):not(.coined) .dust { opacity: .9; }
-body.game:not(.playing):not(.coined) .app > :is(.top, .goals, .drawer, .pads),
+body.game:not(.playing):not(.coined) .app > :is(.top, .goals, .pads),
+body.game:not(.playing):not(.coined) .drawer > :not(#layers),
+body.game:not(.playing):not(.coined) #layers > :not([data-sec=drone]),
+body.game:not(.playing):not(.coined) [data-sec=drone] > :not(header),
+body.game:not(.playing):not(.coined) [data-sec=drone] > header > :not(.tog),
 body.game:not(.playing):not(.coined) .stage > :not(.dust, .coin, .toast, .coin-fx) { filter: grayscale(.92) brightness(.42) contrast(.9) sepia(.15); }
 body.game:not(.playing):not(.coined) .app > :is(.top, .goals, .drawer) { box-shadow: none; }
 /* the wake-up, in stages (garden.coinFx sets body.waking + w1…w5 on timers, × the motion tokens): w1 a CRT line flashes
@@ -1467,12 +1458,21 @@ body.waking .dust { display: block; opacity: .9; transition: opacity var(--m-slo
 body.waking.w1 .dust { opacity: .7; translate: 0 calc(-24px * var(--m-amp)); scale: 1.04; }
 body.waking.w3 .dust { opacity: .35; translate: 0 calc(-70px * var(--m-amp)); scale: 1.12; }
 body.waking.w5 .dust { opacity: 0; translate: 0 calc(-140px * var(--m-amp)); scale: 1.2; }
-body.waking .app > :is(.top, .goals, .drawer, .pads),
+body.waking .app > :is(.top, .goals, .pads),
+body.waking .drawer > :not(#layers),
+body.waking #layers > :not([data-sec=drone]),
+body.waking [data-sec=drone] > :not(header),
+body.waking [data-sec=drone] > header > :not(.tog),
 body.waking .stage > :not(.dust, .coin, .toast, .coin-fx) { filter: grayscale(.92) brightness(.42) contrast(.9) sepia(.15); }
 body.waking:not(.w2) .logo { opacity: .12; text-shadow: none; animation: none; }
 /* (the drawer keeps its own slide-in animation: swapping it for the crackle and back replayed the slide, the panels
    seemed to close and reopen; its children crackle instead) */
-body.waking.w2 .app > .top, body.waking.w3 .app > .goals, body.waking.w4 .app > :is(.drawer, .pads) { filter: none; }
+body.waking.w2 .app > .top, body.waking.w3 .app > .goals,
+body.waking.w4 .app > .pads,
+body.waking.w4 .drawer > :not(#layers),
+body.waking.w4 #layers > :not([data-sec=drone]),
+body.waking.w4 [data-sec=drone] > :not(header),
+body.waking.w4 [data-sec=drone] > header > :not(.tog) { filter: none; }
 body.waking.w2 .app > .top, body.waking.w3 .app > .goals, body.waking.w4 .app > .drawer > *, body.waking.w4 .app > .pads { animation: m-wake-crackle calc(var(--m-med) * 2) steps(6, end) both; }
 body.waking.w5 .stage > :not(.dust, .coin, .toast, .coin-fx) { filter: none; }
 body.waking.w5 .stage > :is(canvas, .city-gl) { animation: m-wake-city calc(var(--m-slow) * 3) var(--m-out) both; }
@@ -1481,3 +1481,15 @@ body.waking.w5 .stage > :is(canvas, .city-gl) { animation: m-wake-city calc(var(
 @keyframes m-wake-city { 0% { filter: brightness(2.2) saturate(1.6); } 100% { filter: none; } }
 /* w1: the CRT line, held across the stage; w2: it opens out (m-crt-on) */
 body.waking.w1:not(.w2) .cf-crt { animation: none; opacity: .9; scale: 1 .012; box-shadow: 0 0 30px #c8f9ff; }
+
+/* S11.3 the power button IS the Drone's switch (its panel header, never hidden): asleep, or the drone off in the
+   Parcours, it blinks like a standby LED (amber / red); the big button in the middle of the stage is gone (#coin stays
+   only as the target of Space / Entrée, never shown) */
+body.game .panel[data-sec=drone] > header .tog.is-solo { display: inline-block; }
+body.game:not(.playing):not(.coined) .panel[data-sec=drone] > header .tog,
+body.game .panel[data-sec=drone] > header .tog:not(.on) { color: #ffb347; border-color: #ff6a2b; background: #1a0a04; padding: 6px 12px; text-shadow: 0 0 8px #ff8a00;
+  box-shadow: 0 0 12px #ff3b1f66; animation: pw-standby 2.6s ease-in-out infinite; }
+body.game:not(.playing):not(.coined) .panel[data-sec=drone] > header .tog::before,
+body.game .panel[data-sec=drone] > header .tog:not(.on)::before { background: #ff3b1f; box-shadow: 0 0 8px #ff3b1f, 0 0 16px #ff3b1f88; }
+body.game:not(.playing):not(.coined) .panel[data-sec=drone] > header .tog::after { content: "⏻ ALLUMER"; margin-left: 8px; font-weight: 700; letter-spacing: .18em; }
+:is(.q-moyen, .q-bas) .panel[data-sec=drone] > header .tog { animation-name: q-blink; }

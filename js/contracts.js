@@ -56,7 +56,7 @@
     // S11.1: the machine starts asleep with the drone alone; the first gesture is to switch it on (the power button,
     // Space or Entrée: garden.coin → act 'wake'); then the drone and listening, the Mélodie auto, and only then the Piano
     C('k.allume', ['racine'], 'Allume la machine', 1, { act(st, a) { if (a === 'wake') st.n = 1; } },
-      '{Le bouton ⏻ qui clignote au milieu de la ville (ou la barre d\'espace, ou Entrée) : la machine se réveille.|Touche le bouton ⏻ qui clignote au milieu de la ville : la machine se réveille.}'),
+      '{Le bouton ⏻ du Drone clignote, à droite dans son panneau (ou la barre d\'espace, ou Entrée) : la machine se réveille.|Touche le bouton ⏻ du Drone qui clignote, dans son panneau : la machine se réveille.}'),
     C('k.drone', ['racine'], 'Change la Lumière du drone pendant qu\'il joue', 1, {
       param(st, k, v, src) { if (k === 'drone.tone' && (src === 'user' || src === 'cc') && playing()) st.n = 1; },
     }, 'Sculpter > Drone > Lumière{ (ou le bouton CC74 de ton clavier MIDI)|}, pendant la lecture : le son s\'ouvre et se ferme.'),

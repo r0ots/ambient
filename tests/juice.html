@@ -142,18 +142,18 @@ f.addEventListener('load', async () => {
     G.chime = ch0; G.fxPlay = fp0;
 
     // --- 8. S6.6 « INSERT COIN » → S11.1 the power button: stopped in the Parcours (once per page), the button / Space starts the music; free mode never
-    { const coin = d.getElementById('coin'), shown = () => w.getComputedStyle(coin).display !== 'none', toast = d.getElementById('toast');
+    { const coin = d.getElementById('coin'), pw = d.querySelector('.panel[data-sec=drone] > header .tog'), shown = () => G.coinUp() && w.getComputedStyle(pw).animationName === 'pw-standby', toast = d.getElementById('toast');
       const playing = async () => { for (let i = 0; i < 40 && !A.seq.playing; i++) await wait(25); await wait(150); return A.seq.playing; };
       A.ui.stop(); await wait(50); d.body.classList.remove('coined');
-      ok(shown() && /⏻/.test(coin.textContent) && /ALLUMER/.test(coin.textContent) && !/INSERT COIN/.test(coin.textContent) && G.coinUp(), 'S11.1 Parcours à l\'arrêt : le bouton ⏻ ALLUMER (il remplace INSERT COIN)');
+      ok(shown() && w.getComputedStyle(coin).display === 'none' && /ALLUMER/.test(w.getComputedStyle(pw, '::after').content), 'S11.3 Parcours à l\'arrêt : l\'interrupteur du Drone clignote, « ⏻ ALLUMER » (pas de gros bouton au milieu)');
       A.game.setMode('free'); ok(!shown() && !G.coinUp(), 'mode libre : pas de bouton d\'allumage'); toast.textContent = '';
       d.querySelector('[data-choose=path]').click(); await wait(30);
       ok(shown() && !/une seule note/.test(toast.textContent), 'choisir le Parcours à l\'arrêt : l\'écran titre remplace l\'ancien message d\'accueil (toast « ' + toast.textContent + ' »)');
       w.dispatchEvent(new w.KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true, cancelable: true }));
       ok(await playing() && !shown() && d.body.classList.contains('coined'), 'barre d\'espace : la musique part (pas aussitôt arrêtée), l\'écran titre s\'en va');
       A.ui.stop(); await wait(50); ok(!shown(), 'arrêt ensuite : il ne revient pas (une fois par page)');
-      d.body.classList.remove('coined'); coin.dispatchEvent(new w.PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
-      ok(await playing() && !shown(), 'un doigt sur l\'écran titre : la musique part'); A.ui.stop(); await wait(50);
+      d.body.classList.remove('coined'); pw.click();
+      ok(await playing() && !shown() && A.store.get('drone.on'), 'un doigt sur l\'interrupteur du Drone : la musique part, le drone reste allumé'); A.ui.stop(); await wait(50);
       d.body.classList.remove('coined'); A.play.onMidi({ data: [0x90, 67, 100], timeStamp: w.performance.now() }); A.play.onMidi({ data: [0x80, 67, 0], timeStamp: w.performance.now() });
       ok(!(await playing()) && shown(), 'S11.1 : une note MIDI ne l\'allume pas (les notes attendent le Piano)'); A.ui.stop(); await wait(50);
       d.body.classList.remove('coined'); await A.ui.play(); await wait(30); ok(d.body.classList.contains('coined') && !shown(), '▶ Lecture de la barre : l\'écran titre s\'en va aussi'); A.ui.stop(); await wait(50); }

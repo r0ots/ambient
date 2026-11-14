@@ -47,8 +47,8 @@
       const f = document.createElement('div'); f.className = 'coin-fx'; f.setAttribute('aria-hidden', 'true');
       f.innerHTML = '<b class="cf-crt"></b>';
       stage.append(f);
-      const btn = $('#coin'); // (the sparks follow AMB.quality, like every burst)
-      if (btn) M.burst(btn.querySelector('b') || btn, { n: 30, spread: Math.PI * 2, speed: 340, color: '#ffb347' });
+      const btn = $('.panel[data-sec=drone] > header .tog') || $('#coin'); // (S11.3: from the Drone's switch; the sparks follow AMB.quality)
+      if (btn) M.burst(btn, { n: 30, spread: Math.PI * 2, speed: 340, color: '#ffb347' });
       this.wakeStages(0);
       (this._wakeTs || []).forEach(clearTimeout);
       this._wakeTs = this.WAKE.map((t, i) => setTimeout(() => this.wakeStages(i + 1), M.ms(t)));
@@ -60,8 +60,15 @@
       const c = $('#coin'); if (!c) return;
       const say = () => { const s = c.querySelector('small'); if (s) s.textContent = AMB.game.txt('{touche-le, ou barre d\'espace / Entrée|touche-le pour allumer}'); };
       say(); if (AMB.bus) AMB.bus.on('game:mode', say);
-      c.addEventListener('pointerdown', (e) => { e.preventDefault(); this.coin(); });
-      c.addEventListener('click', () => this.coin()); // (keyboard: Enter on the focused button)
+      c.addEventListener('click', () => this.coin()); // (never shown since S11.3: Space / Entrée, tests)
+      // S11.3: the power button is the Drone's own switch (its panel header): asleep, a touch wakes the machine instead
+      // of switching the drone off (capture: before the switch's own click)
+      document.addEventListener('click', (e) => {
+        const t = e.target.closest && e.target.closest('.panel[data-sec=drone] > header .tog'); if (!t || !this.coinUp()) return;
+        e.preventDefault(); e.stopImmediatePropagation();
+        if (!AMB.store.get('drone.on')) AMB.store.set('drone.on', true, 'game');
+        this.coin();
+      }, true);
       window.addEventListener('keydown', (e) => { // S11.1: Space or Entrée switch it on (the notes wait for the Piano)
         if (!this.coinUp() || e.repeat || e.metaKey || e.ctrlKey || e.altKey || this.modalUp() || !(e.code === 'Space' || e.key === 'Enter')) return;
         const t = e.target && e.target.tagName; if (t === 'INPUT' || t === 'SELECT' || t === 'TEXTAREA') return;

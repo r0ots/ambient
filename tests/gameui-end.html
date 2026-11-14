@@ -11,7 +11,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, goals, buyAll, sdiff, KEY, settle
     g.reset(); A.tree.applyLocks(); A.perform.setMode('sculpt'); await wait(30);
     const dOn=d.querySelector('.panel[data-sec=drone] > header .tog[data-key="drone.on"]');
     ok(css('#bigPlay','display')==='none' && shown('#play'), 'Parcours : pas de « ▶ Lancer le paysage » sur l\'écran, ▶ Lecture dans la barre');
-    ok(A.store.get('drone.on') && dOn.classList.contains('is-solo') && w.getComputedStyle(dOn).display==='none' && !d.querySelector('.layer-chips'), 'Graine : le drone, seule couche ouverte, n\'a pas de coupure (S9.1 : plus de raccourcis de couche à part)');
+    ok(A.store.get('drone.on') && dOn.classList.contains('is-solo') && w.getComputedStyle(dOn).display!=='none' && !d.querySelector('.layer-chips'), 'Graine : le drone, seule couche ouverte, garde son interrupteur (S11.3 : c\'est le bouton d\'allumage de la machine)');
     A.store.set('drone.on', false, 'game'); ok(!dOn.classList.contains('is-solo'), 'drone coupé (paysage, ancienne sauvegarde) : sa coupure revient pour le rallumer'); A.store.set('drone.on', true, 'game');
     g.unlock('m.bells'); await wait(30);
     const bOn=d.querySelector('.panel[data-sec=bells] > header .tog[data-key="bells.on"]');
