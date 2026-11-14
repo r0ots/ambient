@@ -20,7 +20,7 @@
     N('racine', 'tronc', 'Allumage', [], ['drone.on', 'drone.vol', 'drone.tone', 'global.volume'], ['play'], 'Une note tenue et sa lumière : la machine s\'allume. Tout part de là.'),
     // S11.1: the player's own notes are a piece of their own, after the Mélodie auto (the machine starts with the drone alone)
     N('k.piano', 'tronc', 'Piano', ['m.bells'], [], ['keys', 'midi'], 'Tes propres notes, sur des touches de couleur.'),
-    N('t.son', 'tronc', 'Timbre du drone', ['racine'], ['drone.wave', 'drone.motion'], [], 'Choisir le son du drone et le faire respirer.'),
+    N('t.son', 'tronc', 'Timbre du drone', ['racine'], ['drone.wave', 'drone.motion', 'drone.bite', 'drone.width', 'drone.attack'], [], 'Choisir le son du drone et le faire respirer.'),
     N('t.viz', 'tronc', 'Écran', ['racine'], [], ['listen'], 'Passer en plein écran : juste regarder la ville et écouter.'),
     N('t.journal', 'tronc', 'Journal', ['t.son'], [], ['journal', 'save'], 'Revenir à un moment passé, garder un paysage.'),
     N('t.rec', 'tronc', 'Enregistreur', ['t.son'], [], ['rec'], 'Enregistrer ce que tu entends.'),
@@ -29,7 +29,7 @@
     N('t.dice', 'tronc', 'Paysages', ['t.macros'], [], ['dice', 'preset'], '✦ Nouveau paysage par humeur, et les paysages prêts.'),
 
     // Harmonie — chords, key, scale, progression
-    N('h.pad', 'harmonie', 'Pad', ['racine'], ['pad.on', 'pad.vol', 'pad.wave', 'pad.tone'], [], 'Des accords tenus au-dessus du drone.'),
+    N('h.pad', 'harmonie', 'Pad', ['racine'], ['pad.on', 'pad.vol', 'pad.wave', 'pad.tone', 'pad.bite', 'pad.width'], [], 'Des accords tenus au-dessus du drone.'),
     N('h.drone', 'harmonie', 'Drone qui suit', ['h.pad'], ['drone.follow'], [], 'Le drone change de note avec les accords.'),
     N('h.pad2', 'harmonie', 'Accords riches', ['h.pad'], ['pad.attack', 'pad.voicing', 'pad.counter', 'pad.length'], [], 'Attaque, accords enrichis, voix intérieure, durée des accords.'),
     N('h.key', 'harmonie', 'Tonalité', ['h.pad'], ['global.key'], [], 'Changer la note de départ de tout le morceau.'),
@@ -46,7 +46,7 @@
     N('e.lofi', 'espace', 'Usure', ['e.tape'], ['fx.lofi'], [], 'Un son abîmé, filtré, granuleux.'),
 
     // Mouvement — melody, time, drift, grains, slow movements, scenes
-    N('m.bells', 'mouvement', 'Mélodie auto', ['racine'], ['bells.on', 'bells.vol', 'bells.wave', 'bells.density', 'bells.tone', 'bells.decay', 'bells.range'], [], 'Des notes qui improvisent sur les accords, au-dessus du drone.'),
+    N('m.bells', 'mouvement', 'Mélodie auto', ['racine'], ['bells.on', 'bells.vol', 'bells.wave', 'bells.bite', 'bells.width', 'bells.attack', 'bells.density', 'bells.tone', 'bells.decay', 'bells.range'], [], 'Des notes qui improvisent sur les accords, au-dessus du drone.'),
     N('m.tempo', 'mouvement', 'Tempo', ['m.bells'], ['global.tempo', 'global.time'], [], 'Vitesse, et temps pulsé ou flottant.'),
     N('m.phrase', 'mouvement', 'Phrases', ['m.bells'], ['bells.mode', 'bells.phraseLen', 'bells.mutate'], [], 'Un motif qui se répète et varie lentement.'),
     N('m.evolve', 'mouvement', 'Dérive', ['m.tempo'], ['global.evolve'], [], 'Tes réglages dérivent tout seuls autour de leur valeur.'),
@@ -56,7 +56,7 @@
     N('m.scenes', 'mouvement', 'Scènes', ['m.lfo'], [], ['scenes'], 'Deux états A/B et un fondu automatique entre eux.'),
 
     // Composer (S3.5: 3 nodes, was 8) — written melody (piano roll, arpeggio, motifs, Rec live), rhythm, the song
-    N('c.seq', 'composer', 'Mélodie écrite', ['h.pad', 'm.bells'], ['seq.on', 'seq.wave', 'seq.vol', 'seq.steps', 'seq.octave', 'seq.tone', 'seq.decay', 'seq.send', 'seq.pattern',
+    N('c.seq', 'composer', 'Mélodie écrite', ['h.pad', 'm.bells'], ['seq.on', 'seq.wave', 'seq.bite', 'seq.width', 'seq.attack', 'seq.vol', 'seq.steps', 'seq.octave', 'seq.tone', 'seq.decay', 'seq.send', 'seq.pattern',
       'seq.mode', 'seq.arpDir', 'seq.arpRate', 'seq.arpOct', 'seq.patB', 'seq.patC', 'seq.patD', 'seq.slot', 'seq.chain', 'seq.mutate', 'seq.follow'],
       ['pianoroll', 'mode-compose', 'midiFile', 'motifs', 'reclive'], 'Le piano roll, l\'arpège, 4 motifs et leur chaîne, le Rec live ; importer et exporter des .mid.'),
     N('c.rythme', 'composer', 'Rythme', ['c.seq'], ['bass.*', 'perc.*', 'global.swing', 'global.humanize', 'seq.swing'], [], 'Une basse qui suit les accords, 4 pistes de pulsations, le swing et l\'imprécision humaine.'),

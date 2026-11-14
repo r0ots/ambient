@@ -204,6 +204,9 @@
     const c = getComputedStyle(btn).getPropertyValue('--c').trim(); if (c) ul.style.setProperty('--c', c);
     const add = (o) => {
       const li = h('li', 'nsel-opt', o.textContent); li.id = `${ul.id}-${o.index}`; li.dataset.i = o.index;
+      // S11.9: a timbre says what it sounds like, on a second line (the schema's optHints)
+      const hs = st.layer && AMB.store && AMB.store.spec(`${st.layer}.wave`), hint = hs && hs.optHints && hs.optHints[o.value];
+      if (hint) { li.classList.add('has-hint'); li.append(h('small', 'nsel-hint', hint)); }
       li.setAttribute('role', 'option'); li.setAttribute('aria-selected', o.index === sel.selectedIndex);
       if (o.disabled) li.setAttribute('aria-disabled', 'true');
       ul.append(li);

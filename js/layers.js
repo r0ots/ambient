@@ -30,6 +30,73 @@
   // metallic partials (inharmonic square cluster, the classic cymbal recipe), scaled by a base frequency
   const METAL = [1, 1.4826, 1.8004, 2.546, 2.6303, 3.8968];
 
+  // ---- S11.9: drones built from more than a few oscillators (a builder adds its nodes to the voice: `oscs` follow the
+  // root by semitones, `tune` functions retune the rest, `stop` nodes are stopped with the voice) ----
+  function lfoOsc(ctx, hz, type = 'sine') { const o = ctx.createOscillator(); o.type = type; o.frequency.value = hz; o.start(); return o; }
+  const DRONE_X = {
+    // Pulsar: pulse-width modulation (a saw minus a delayed copy of itself = a pulse whose width is the delay), the
+    // slowly breathing hollow tone of the Juno and the Prophet
+    'Pulsar'(ctx, bus, v) {
+      const saw = ctx.createOscillator(); saw.type = 'sawtooth'; saw.frequency.value = mtof(this.root); saw.start();
+      const dl = ctx.createDelay(0.1), pos = ctx.createGain(), neg = ctx.createGain(), hp = ctx.createBiquadFilter(), lfo = lfoOsc(ctx, 0.11), depth = ctx.createGain();
+      pos.gain.value = 0.2; neg.gain.value = -0.2; hp.type = 'highpass'; hp.frequency.value = 30;
+      saw.connect(pos); saw.connect(dl); dl.connect(neg); pos.connect(hp); neg.connect(hp); hp.connect(bus);
+      lfo.connect(depth); depth.connect(dl.delayTime);
+      const set = (m, t, tc = 1.2) => { const per = 1 / mtof(m); dl.delayTime.setTargetAtTime(per * 0.5, t, tc); depth.gain.setTargetAtTime(per * 0.42, t, tc); };
+      dl.delayTime.value = 0.5 / mtof(this.root); depth.gain.value = 0.42 / mtof(this.root);
+      const sub = ctx.createOscillator(); sub.frequency.value = mtof(this.root - 12); const sg = ctx.createGain(); sg.gain.value = 0.35; sub.connect(sg); sg.connect(bus); sub.start();
+      v.oscs.push({ osc: saw, semi: 0 }, { osc: sub, semi: -12 }); v.tune.push(set); v.stop.push(lfo);
+    },
+    // Vent: wind whistling through the city, tuned — noise in two very narrow bands on the root and the twelfth
+    'Vent'(ctx, bus, v) {
+      const n = ctx.createBufferSource(); n.buffer = this.windBuf || (this.windBuf = AMB.makeNoiseBuffer(ctx, 4, 'white', 1)); n.loop = true; n.start();
+      const wg = ctx.createGain(); wg.gain.value = 1; wg.connect(bus);
+      const bands = [[0, 16, 30], [19, 9, 40], [12, 5, 25]].map(([semi, gn, q]) => {
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = q; bp.frequency.value = mtof(this.root + semi);
+        const g = ctx.createGain(); g.gain.value = gn; n.connect(bp); bp.connect(g); g.connect(wg); return [bp, semi];
+      });
+      const bed = ctx.createBiquadFilter(); bed.type = 'lowpass'; bed.frequency.value = 400; const bg = ctx.createGain(); bg.gain.value = 0.5; n.connect(bed); bed.connect(bg); bg.connect(bus);
+      // gusts: the whistle swells and fades slowly
+      const gust = lfoOsc(ctx, 0.07), ga = ctx.createGain(); ga.gain.value = 0.45; gust.connect(ga); ga.connect(wg.gain);
+      v.tune.push((m, t, tc = 1.2) => bands.forEach(([bp, semi]) => bp.frequency.setTargetAtTime(mtof(m + semi), t, tc)));
+      v.stop.push(n, gust);
+    },
+    // Voix: a held vowel, two saws through three formants that drift slowly from « ou » to « a » to « é »
+    'Voix'(ctx, bus, v) {
+      const src = ctx.createGain(), vib = lfoOsc(ctx, 4.8), va = ctx.createGain(); va.gain.value = 7; vib.connect(va);
+      [-8, 8].forEach((d) => { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.detune.value = d; o.frequency.value = mtof(this.root); va.connect(o.detune); o.connect(src); o.start(); v.oscs.push({ osc: o, semi: 0 }); });
+      const vow = lfoOsc(ctx, 0.045);
+      [[520, 200, 9, 1], [1250, 500, 11, 0.55], [2500, 120, 13, 0.3]].forEach(([ff, sw, q, gn]) => {
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = ff; bp.Q.value = q;
+        const d = ctx.createGain(); d.gain.value = sw; vow.connect(d); d.connect(bp.frequency);
+        const g = ctx.createGain(); g.gain.value = gn * 2.8; src.connect(bp); bp.connect(g); g.connect(bus);
+      });
+      v.stop.push(vib, vow);
+    },
+    // Anneau: ring modulation — a triangle multiplied by a sine just off the fifth: sums and differences, a clang that beats
+    'Anneau'(ctx, bus, v) {
+      const car = ctx.createOscillator(); car.type = 'triangle'; car.frequency.value = mtof(this.root);
+      const mod = ctx.createOscillator(); mod.frequency.value = mtof(this.root + 7.12);
+      const ring = ctx.createGain(); ring.gain.value = 0; mod.connect(ring.gain); car.connect(ring);
+      const rg = ctx.createGain(); rg.gain.value = 0.55; ring.connect(rg); rg.connect(bus);
+      const sub = ctx.createOscillator(); sub.frequency.value = mtof(this.root - 12); const sg = ctx.createGain(); sg.gain.value = 0.3; sub.connect(sg); sg.connect(bus);
+      [car, mod, sub].forEach((o) => o.start());
+      v.oscs.push({ osc: car, semi: 0 }, { osc: mod, semi: 7.12 }, { osc: sub, semi: -12 });
+    },
+    // Spectre: inharmonic FM (ratio 2.76, a bell's partials) whose index sweeps slowly: a metallic halo that turns
+    'Spectre'(ctx, bus, v) {
+      const car = ctx.createOscillator(), mod = ctx.createOscillator(), idx = ctx.createGain(), sweep = lfoOsc(ctx, 0.06), sa = ctx.createGain();
+      car.frequency.value = mtof(this.root); mod.frequency.value = mtof(this.root) * 2.76;
+      const set = (m, t, tc = 1.2) => { const f = mtof(m); idx.gain.setTargetAtTime(f * 0.9, t, tc); sa.gain.setTargetAtTime(f * 0.8, t, tc); };
+      idx.gain.value = mtof(this.root) * 0.9; sa.gain.value = mtof(this.root) * 0.8;
+      mod.connect(idx); sweep.connect(sa); sa.connect(idx.gain); idx.connect(car.frequency);
+      const cg = ctx.createGain(); cg.gain.value = 0.32; car.connect(cg); cg.connect(bus);
+      const sub = ctx.createOscillator(); sub.frequency.value = mtof(this.root - 12); const sg = ctx.createGain(); sg.gain.value = 0.35; sub.connect(sg); sg.connect(bus);
+      [car, mod, sub].forEach((o) => o.start());
+      v.oscs.push({ osc: car, semi: 0 }, { osc: mod, semi: 12 * Math.log2(2.76) }, { osc: sub, semi: -12 }); v.tune.push(set); v.stop.push(sweep);
+    },
+  };
+
   class Layer {
     constructor(name) {
       this.name = name;
@@ -37,6 +104,7 @@
       this.ctx = this.engine.ctx;
       this.ch = this.engine.channel();
       this.out = this.ch.input;
+      if (SHAPE_REF[name]) { this.out = this.ctx.createGain(); this.dry = this.ctx.createGain(); this.out.connect(this.dry); this.dry.connect(this.ch.input); this.shape(); }
       this.update();
       store.on((key) => { if (key.startsWith(name + '.')) this.onParam(key.split('.')[1]); });
     }
@@ -46,8 +114,38 @@
       this.ch.setLevel(on ? Math.pow(P(this.name, 'vol'), 1.6) : 0);
       this.ch.setSend(P(this.name, 'send'));
     }
-    onParam(k) { if (k === 'vol' || k === 'on' || k === 'send') this.update(); }
+    // S11.9 shaping, after every timbre of the layer, heard at once on the notes held: « Mordant » (a drive in parallel,
+    // level-matched) and « Épaisseur » (a Juno-style chorus: detuned copies, 3 at most, 2 on a light device). Both are
+    // built only once used: at 0 the layer's sound is untouched.
+    shape() {
+      const ctx = this.ctx, t = ctx.currentTime, bite = P(this.name, 'bite') || 0, width = P(this.name, 'width') || 0, ref = SHAPE_REF[this.name];
+      if (bite > 0 && !this.drive) {
+        const pre = ctx.createGain(), sat = shaper(ctx, driveCurve(2.5)), wet = ctx.createGain(); pre.gain.value = 0; wet.gain.value = 0;
+        this.out.connect(pre); pre.connect(sat); sat.connect(wet); wet.connect(this.ch.input); this.drive = { pre, wet };
+      }
+      if (width > 0 && !this.chorus) {
+        const lite = !!(AMB.quality && AMB.quality.lite && AMB.quality.lite()), taps = [];
+        [[0.011, 0.31, -0.85], [0.017, 0.53, 0.85], [0.023, 0.41, 0]].slice(0, lite ? 2 : 3).forEach(([d, hz, side]) => {
+          const dl = ctx.createDelay(0.05), lfo = ctx.createOscillator(), depth = ctx.createGain(), pan = ctx.createStereoPanner(), g = ctx.createGain();
+          dl.delayTime.value = d; lfo.frequency.value = hz; depth.gain.value = 0; pan.pan.value = side; g.gain.value = 0;
+          lfo.connect(depth); depth.connect(dl.delayTime); lfo.start();
+          this.out.connect(dl); dl.connect(pan); pan.connect(g); g.connect(this.ch.input); taps.push({ depth, g });
+        });
+        this.chorus = taps;
+      }
+      // drive: the input is pushed up to 10× its usual peak into a tanh, the wet part brought back to the dry level
+      if (this.drive) { this.drive.pre.gain.setTargetAtTime(bite ? (1 + bite * 9) / ref[0] : 0, t, 0.05); this.drive.wet.gain.setTargetAtTime(bite * ref[0] * ref[1], t, 0.05); }
+      const nTap = this.chorus ? this.chorus.length : 0;
+      if (this.chorus) for (const c of this.chorus) { c.depth.gain.setTargetAtTime(0.0008 + width * 0.0035, t, 0.05); c.g.gain.setTargetAtTime(width * 0.75 / Math.sqrt(nTap), t, 0.05); }
+      this.dry.gain.setTargetAtTime(1 - bite * 0.9 - width * 0.25, t, 0.05);
+    }
+    onParam(k) { if (k === 'vol' || k === 'on' || k === 'send') this.update(); if ((k === 'bite' || k === 'width') && this.dry) this.shape(); }
+    // S11.9 « Attaque » of the struck layers: seconds of rise before the note's own envelope (0 = the timbre's own strike)
+    rise(max) { const a = P(this.name, 'attack') || 0; return a * a * max; }
   }
+  // the usual peak of each shaped layer at its channel input (measured, tests/timbres.html): the drive's reference
+  // and the wet level that keeps the layer as loud once driven (a saturated sound is denser: it is brought down)
+  const SHAPE_REF = { drone: [0.15, 0.26], pad: [0.08, 0.17], bells: [0.45, 0.2], seq: [0.45, 0.2], bass: [0.1, 0.37] };
 
   // ===================== DRONE =====================
   class Drone extends Layer {
@@ -79,10 +177,10 @@
       if (this.voices) {
         const old = this.voices;
         old.bus.gain.setTargetAtTime(0, t, 0.6);
-        setTimeout(() => old.oscs.forEach((o) => { try { o.osc.stop(); } catch (e) {} }), 4000);
+        setTimeout(() => { old.oscs.forEach((o) => { try { o.osc.stop(); } catch (e) {} }); old.stop.forEach((n) => { try { n.stop(); } catch (e) {} }); }, 4000);
       }
       const bus = ctx.createGain(); bus.gain.value = 0; bus.connect(this.filter);
-      bus.gain.setTargetAtTime(1, t, 0.8);
+      bus.gain.setTargetAtTime(1, t, this.glide() * 0.67);
       const type = P('drone', 'wave');
       // [semitone offset, wave, gain, detune cents]
       const defs = {
@@ -91,6 +189,10 @@
         'Orgue': [[0, 'sine', 0.35, 0], [12, 'sine', 0.2, 1], [19, 'sine', 0.12, -1], [24, 'sine', 0.08, 2], [-12, 'sine', 0.25, 0]],
         'Sub': [[-12, 'sine', 0.6, 0], [0, 'sine', 0.3, 0], [7, 'triangle', 0.08, 4]],
         'Abîmé': [[0, 'sawtooth', 0.22, -11], [0, 'sawtooth', 0.22, 13], [-12, 'square', 0.3, 0], [7, 'sawtooth', 0.08, 6]],
+        // S11.9 — supersaw (Juno-style unison: a wide fan of saws, an octave above that shimmers) and Reese (two saws
+        // an octave down beating against each other: the slow phasing growl of drum & bass)
+        'Néon': [[0, 'sawtooth', 0.15, -17], [0, 'sawtooth', 0.15, 0], [0, 'sawtooth', 0.15, 17], [12, 'sawtooth', 0.06, 9], [-12, 'sine', 0.4, 0]],
+        'Reese': [[-12, 'sawtooth', 0.48, -24], [-12, 'sawtooth', 0.48, 24], [0, 'square', 0.08, 7]],
       }[type] || [];
       let dirt = null;
       if (type === 'Abîmé') { // damaged drone: driven into a distortion, then crushed to a few bits
@@ -109,13 +211,26 @@
         osc.start();
         return { osc, semi };
       });
-      this.voices = { bus, oscs, dirt };
+      this.voices = { bus, oscs, dirt, tune: [], stop: [] };
+      const extra = DRONE_X[type];
+      if (extra) extra.call(this, ctx, bus, this.voices); // S11.9: the drones built from more than plain oscillators
       if (dirt) this.setTone();
     }
+    // S11.9 « Attaque »: how the drone moves to a new note — 0 = it jumps there with an accent (a strike), 0.5 = the
+    // slow glide it always had, 1 = it fades out and swells back in on the new note
+    glide() { const a = P('drone', 'attack'); return 0.05 + 4.6 * (a == null ? 0.25 : a * a); }
     setRoot(midi, time) {
+      const moved = midi !== this.root, tc = this.glide(), a = P('drone', 'attack');
       this.root = midi;
       if (!this.voices) return;
-      for (const v of this.voices.oscs) v.osc.frequency.setTargetAtTime(mtof(midi + v.semi), time, 1.2);
+      for (const v of this.voices.oscs) v.osc.frequency.setTargetAtTime(mtof(midi + v.semi), time, tc);
+      for (const fn of this.voices.tune) fn(midi, time, tc);
+      if (moved && a != null && Math.abs(a - 0.5) > 0.05) { // (0.5: untouched)
+        const g = this.voices.bus.gain;
+        if (g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(time); else g.cancelScheduledValues(time);
+        if (a > 0.5) { g.setTargetAtTime(1 - (a - 0.5) * 1.8, time, 0.08); g.setTargetAtTime(1, time + 0.3, tc * 0.5); }
+        else { g.setTargetAtTime(1 + (0.5 - a) * 1.6, time, 0.006); g.setTargetAtTime(1, time + 0.03, 0.25); }
+      }
     }
     setTone() {
       const t = this.ctx.currentTime;
@@ -250,7 +365,7 @@
         const car2 = ctx.createOscillator(); car2.frequency.value = f; car2.detune.value = -det * 0.3;
         const mod = ctx.createOscillator(); mod.frequency.value = f * pick([1, 2, 0.5, 3]);
         const idx = ctx.createGain();
-        const top = f * (0.3 + tone * 2.5);
+        const top = f * (0.3 + tone * 2.5) * (1 + 1.5 * (P('pad', 'bite') || 0)); // (S11.9 Mordant: a deeper index)
         idx.gain.setValueAtTime(0, time);
         idx.gain.linearRampToValueAtTime(top, time + atk * 1.5);
         idx.gain.linearRampToValueAtTime(top * 0.3, time + Math.max(dur, atk * 2));
@@ -285,6 +400,46 @@
         mix.connect(clean); clean.connect(filt); mix.connect(cr); cr.connect(dirty); dirty.connect(filt);
         filt.frequency.setTargetAtTime(cutoff * 0.3, time + atk, life * 0.4);
         level = 0.17;
+      } else if (type === 'Juno') { // S11.9 PWM pad: a saw minus its delayed copy = a pulse whose width breathes (LFO on the delay)
+        const saw = add('sawtooth', 1, 0, det * 0.5), per = 1 / f;
+        const dl = ctx.createDelay(0.1), pos = ctx.createGain(), neg = ctx.createGain(), hp = ctx.createBiquadFilter();
+        pos.gain.value = 0.55; neg.gain.value = -0.55; hp.type = 'highpass'; hp.frequency.value = 40;
+        dl.delayTime.value = per * 0.5;
+        const lfo = ctx.createOscillator(); lfo.frequency.value = rand(0.25, 0.45); const lg = ctx.createGain(); lg.gain.value = per * 0.4;
+        lfo.connect(lg); lg.connect(dl.delayTime); oscs.push(lfo);
+        saw.connect(pos); saw.connect(dl); dl.connect(neg); pos.connect(hp); neg.connect(hp); hp.connect(filt);
+        add('square', 0.5, 0.18, -det * 0.5);
+        level = 0.2;
+      } else if (type === 'Vangelis') { // S11.9 CS-80 brass-strings: the pitch scoops up into the note, resonant filter swell, wide late vibrato
+        const os = [add('sawtooth', 1, 0.45, -7), add('sawtooth', 1, 0.45, 7), add('square', 0.5, 0.2, 0)];
+        os.forEach((o) => { const d0 = o.detune.value; o.detune.setValueAtTime(d0 - 80, time); o.detune.linearRampToValueAtTime(d0, time + 0.3); });
+        const vib = ctx.createOscillator(); vib.frequency.value = rand(5.6, 6.4);
+        const va = ctx.createGain(); va.gain.setValueAtTime(0, time); va.gain.linearRampToValueAtTime(16, time + atk + 1.2);
+        vib.connect(va); os.forEach((o) => va.connect(o.detune)); oscs.push(vib);
+        filt.Q.value = 5;
+        const top = Math.min(10000, cutoff * 1.6), rise = Math.max(0.4, atk * 0.8);
+        filt.frequency.cancelScheduledValues(time); filt.frequency.setValueAtTime(Math.max(120, f), time);
+        filt.frequency.exponentialRampToValueAtTime(top, time + rise);
+        filt.frequency.setTargetAtTime(cutoff * 0.7, time + rise, dur * 0.4 + 0.2);
+        level = 0.25;
+      } else if (type === 'Brume') { // S11.9 a breath of noise tuned on the note (very narrow bands) over a faint sine: fog in the streets
+        const n = ctx.createBufferSource(); n.buffer = this.fog || (this.fog = AMB.makeNoiseBuffer(ctx, 3, 'white', 1)); n.loop = true;
+        n.loopStart = 0; n.playbackRate.value = rand(0.9, 1.1); oscs.push(n);
+        [[1, 32, 1.4], [2, 28, 0.6], [3, 24, 0.25 + tone * 0.4]].forEach(([m, q, gn]) => {
+          const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f * m; bp.Q.value = q;
+          const g = ctx.createGain(); g.gain.value = gn * 5; n.connect(bp); bp.connect(g); g.connect(filt);
+        });
+        add('sine', 1, 0.25, 0);
+        filt.frequency.cancelScheduledValues(time); filt.frequency.setValueAtTime(Math.min(14000, f * 6 + tone * 4000), time);
+        level = 0.5;
+      } else if (type === 'Strobe') { // S11.9 trance gate: a saw chord chopped in sixteenths on the tempo (Tron, arcade)
+        add('sawtooth', 1, 0.45, -det); add('sawtooth', 1, 0.45, det); add('square', 0.5, 0.2, 0);
+        const gate = ctx.createGain(); filt.disconnect(); filt.connect(gate); gate.connect(env);
+        const bpm = (store.get('global.tempo') || 90), step = 60 / bpm / 4, lastT = time + Math.max(dur, atk + 0.1) + rel * 1.5;
+        gate.gain.setValueAtTime(0, time);
+        for (let k = 0, t0 = time; t0 < lastT && k < 2048; k++, t0 += step) { gate.gain.setTargetAtTime(1, t0, 0.003); gate.gain.setTargetAtTime(0.05, t0 + step * 0.55, 0.012); }
+        filt.Q.value = 3;
+        level = 0.34;
       } else { // Cordes
         add('sawtooth', 1, 0.4, -det); add('sawtooth', 1, 0.4, 0); add('sawtooth', 1, 0.4, det);
         const vib = ctx.createOscillator(); vib.frequency.value = rand(4.8, 5.8);
@@ -324,6 +479,7 @@
       const type = P(this.name, 'wave');
       const tone = P(this.name, 'tone');
       const decay = 0.6 + Math.pow(P(this.name, 'decay'), 1.4) * 7;
+      const rise = this.rise(1.2), bite = P(this.name, 'bite') || 0; // S11.9 Attaque, Mordant (more FM index)
       const f = mtof(midi);
       const env = ctx.createGain(); env.gain.value = 0;
       const pan = ctx.createStereoPanner(); pan.pan.value = live && live.bright != null ? 0 : rand(-0.7, 0.7);
@@ -336,13 +492,13 @@
       } else env.connect(pan);
       pan.connect((live && live.dest) || this.bus);
       const nodes = [];
-      const amp = 0.5 * vel * ({ 'Verre': 1.6, 'Pluck': 1.7 }[type] || 1);
+      const amp = 0.5 * vel * ({ 'Verre': 1.6, 'Pluck': 1.7, '8 bits': 1.55, 'Orgue': 4, 'Néon': 2.8 }[type] || 1);
       let dur = decay;
       const fm = (ratio, index, idxDecay, carrierType = 'sine') => {
         const car = ctx.createOscillator(); car.type = carrierType; car.frequency.value = f;
         const mod = ctx.createOscillator(); mod.frequency.value = f * ratio;
         const modGain = ctx.createGain();
-        modGain.gain.setValueAtTime(f * index, time);
+        modGain.gain.setValueAtTime(f * index * (1 + 1.5 * bite), time);
         modGain.gain.setTargetAtTime(f * index * 0.05, time, idxDecay);
         mod.connect(modGain); modGain.connect(car.frequency);
         car.connect(env); nodes.push(car, mod);
@@ -373,9 +529,9 @@
         const o2 = ctx.createOscillator(); o2.type = 'triangle'; o2.frequency.value = f * 2;
         const g2 = ctx.createGain(); g2.gain.value = 0.15 + tone * 0.3;
         o.connect(env); o2.connect(g2); g2.connect(env); nodes.push(o, o2);
-        const hold = Math.max(0.15, len || decay * 0.3);
+        const hold = Math.max(0.15, rise + 0.05, len || decay * 0.3);
         env.gain.setValueAtTime(0, time);
-        env.gain.linearRampToValueAtTime(amp * 0.7, time + 0.06);
+        env.gain.linearRampToValueAtTime(amp * 0.7, time + Math.max(0.06, rise));
         env.gain.setValueAtTime(amp * 0.7, time + hold);
         env.gain.setTargetAtTime(0, time + hold, 0.15 + decay * 0.08);
         const stopAt = time + hold + 1 + decay * 0.4;
@@ -385,7 +541,7 @@
         // a held live note (play.js) ends on release: same release curve, from the release time
         return { cutoff, release(t) {
           if (t >= time + hold) return;
-          const at = Math.max(t, time + 0.07), tau = 0.15 + decay * 0.08;
+          const at = Math.max(t, time + Math.max(0.07, rise + 0.01)), tau = 0.15 + decay * 0.08;
           env.gain.cancelScheduledValues(at); env.gain.setValueAtTime(amp * 0.7, at); env.gain.setTargetAtTime(0, at, tau);
           nodes.forEach((n) => { try { n.stop(at + 1 + decay * 0.4); } catch (e) {} });
         } };
@@ -402,12 +558,12 @@
         const vib = ctx.createOscillator(); vib.frequency.value = 5.2;
         const va = ctx.createGain(); va.gain.setValueAtTime(0, time); va.gain.linearRampToValueAtTime(9, time + 1.2);
         vib.connect(va); nodes.forEach((o) => va.connect(o.detune)); nodes.push(vib);
-        const hold = Math.max(0.3, len || decay * 0.45), top = f * (2 + tone * 7), peakAt = time + 0.25 + hold * 0.5;
+        const hold = Math.max(0.3, rise + 0.05, len || decay * 0.45), top = f * (2 + tone * 7), peakAt = time + 0.25 + hold * 0.5;
         lp.frequency.setValueAtTime(f * 0.9, time); lp.frequency.exponentialRampToValueAtTime(top, peakAt);
         lp.frequency.setTargetAtTime(f * 1.2, peakAt, 0.4 + decay * 0.1);
         lp.connect(env);
         const a = amp * 0.42, tau = 0.25 + decay * 0.1;
-        env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(a, time + 0.09);
+        env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(a, time + Math.max(0.09, rise));
         env.gain.setValueAtTime(a, time + hold); env.gain.setTargetAtTime(0, time + hold, tau);
         const stopAt = time + hold + tau * 6;
         nodes.forEach((n) => { n.start(time); n.stop(stopAt); });
@@ -416,10 +572,77 @@
         // a held live note (play.js) ends on release, like « Doux »
         return { cutoff, release(t) {
           if (t >= time + hold) return;
-          const at = Math.max(t, time + 0.1);
+          const at = Math.max(t, time + Math.max(0.1, rise + 0.01));
           env.gain.cancelScheduledValues(at); env.gain.setValueAtTime(a, at); env.gain.setTargetAtTime(0, at, tau);
           nodes.forEach((n) => { try { n.stop(at + tau * 6); } catch (e) {} });
         } };
+      } else if (type === 'Thérémine' || type === 'Orgue') {
+        // S11.9 held voices (like « Doux »: a played note lasts while the key is down).
+        // Thérémine: a sine that glides from the previous note, wide vibrato — the 50s sci-fi ghost.
+        // Orgue: drawbar organ (one wave holding 16′ 8′ 5⅓′ 4′ 2⅔′ 2′) through a Leslie (fast tremolo and a detuned copy).
+        let a, atk, tau;
+        if (type === 'Thérémine') {
+          const prev = this.lastThere, glide = prev && time - prev.t < 6 ? 0.22 : 0;
+          this.lastThere = { f, t: time };
+          const mk = (w, m, gn) => { const o = ctx.createOscillator(); o.type = w; if (glide) { o.frequency.setValueAtTime(prev.f * m, time); o.frequency.exponentialRampToValueAtTime(f * m, time + glide); } else o.frequency.value = f * m; const g = ctx.createGain(); g.gain.value = gn; o.connect(g); g.connect(env); nodes.push(o); return o; };
+          const o1 = mk('sine', 1, 1), o2 = mk('triangle', 2, 0.08 + tone * 0.25);
+          const vib = ctx.createOscillator(); vib.frequency.value = 6.3; const va = ctx.createGain();
+          va.gain.setValueAtTime(4, time); va.gain.linearRampToValueAtTime(28, time + 0.7);
+          vib.connect(va); va.connect(o1.detune); va.connect(o2.detune); nodes.push(vib);
+          a = amp * 0.62; atk = 0.08; tau = 0.18 + decay * 0.06;
+        } else {
+          const w = this.organ || (this.organ = (() => { const n = 10, re = new Float32Array(n), im = new Float32Array(n); [[1, 0.5], [2, 1], [3, 0.8], [4, 0.6], [6, 0.35], [8, 0.3]].forEach(([h, g]) => { im[h] = g; }); return ctx.createPeriodicWave(re, im); })());
+          // (harmonic 1 = 16′, so the note's own pitch is harmonic 2: the oscillator runs an octave down)
+          const lesl = ctx.createOscillator(); lesl.frequency.value = 6.7; const lg = ctx.createGain(); lg.gain.value = 0.18; lesl.connect(lg);
+          const trem = ctx.createGain(); trem.gain.value = 0.82; lg.connect(trem.gain); trem.connect(env);
+          [[0, 0.6], [4, 0.4]].forEach(([d, gn]) => { const o = ctx.createOscillator(); o.setPeriodicWave(w); o.frequency.value = f / 2; o.detune.value = d; const g = ctx.createGain(); g.gain.value = gn; o.connect(g); g.connect(trem); nodes.push(o); });
+          const pd = ctx.createGain(); pd.gain.value = 3; lesl.connect(pd); nodes.forEach((o) => pd.connect(o.detune)); nodes.push(lesl);
+          const click = ctx.createOscillator(); click.frequency.value = f * 4; const cg = ctx.createGain(); cg.gain.setValueAtTime(0.25 * (0.3 + tone), time); cg.gain.setTargetAtTime(0, time, 0.012);
+          click.connect(cg); cg.connect(env); nodes.push(click);
+          a = amp * 0.5; atk = 0.012; tau = 0.06 + decay * 0.03;
+        }
+        atk = Math.max(atk, rise);
+        const hold = Math.max(0.15, rise + 0.05, len || decay * 0.3);
+        env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(a, time + atk);
+        env.gain.setValueAtTime(a, time + hold); env.gain.setTargetAtTime(0, time + hold, tau);
+        const stopAt = time + hold + tau * 7;
+        nodes.forEach((n) => { n.start(time); n.stop(stopAt); });
+        nodes[0].onended = () => { env.disconnect(); pan.disconnect(); };
+        AMB.bus.emit('note', { layer: this.name, midi, time, vel, dur: hold, live: !!live && !live.loop, loop: !!(live && live.loop) });
+        return { cutoff, release(t) {
+          if (t >= time + hold) return;
+          const at = Math.max(t, time + atk + 0.01);
+          env.gain.cancelScheduledValues(at); env.gain.setValueAtTime(a, at); env.gain.setTargetAtTime(0, at, tau);
+          nodes.forEach((n) => { try { n.stop(at + tau * 7); } catch (e) {} });
+        } };
+      } else if (type === 'Piano FM') { // S11.9 the DX7 electric piano: a soft FM body (1:1) and a bright tine (1:14) that dies at once
+        fm(1, 1.2 + tone * 1.8, 0.25 + decay * 0.05);
+        const car = ctx.createOscillator(); car.frequency.value = f; car.detune.value = 6;
+        const mod = ctx.createOscillator(); mod.frequency.value = f * 14;
+        const mg = ctx.createGain(); mg.gain.setValueAtTime(f * (0.6 + tone * 1.2), time); mg.gain.setTargetAtTime(0, time, 0.02);
+        const cg = ctx.createGain(); cg.gain.value = 0.5; mod.connect(mg); mg.connect(car.frequency); car.connect(cg); cg.connect(env); nodes.push(car, mod);
+        dur = decay * 0.7;
+      } else if (type === 'Laser') { // S11.9 arcade zap: a square diving from three octaves up onto the note
+        const o = ctx.createOscillator(); o.type = 'square';
+        o.frequency.setValueAtTime(f * 8, time); o.frequency.exponentialRampToValueAtTime(f, time + 0.07 + tone * 0.08);
+        const s2 = ctx.createOscillator(); s2.type = 'sawtooth'; s2.frequency.value = f; s2.detune.value = 10;
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 4;
+        lp.frequency.setValueAtTime(12000, time); lp.frequency.setTargetAtTime(f * (2 + tone * 6), time + 0.06, 0.12);
+        const g2 = ctx.createGain(); g2.gain.value = 0.45; o.connect(lp); s2.connect(g2); g2.connect(lp); lp.connect(env); nodes.push(o, s2);
+        dur = decay * 0.4;
+      } else if (type === '8 bits') { // S11.9 a game console voice: a thin 25 % pulse, an octave flick at the attack, late vibrato
+        const w = this.pulse25 || (this.pulse25 = (() => { const n = 32, re = new Float32Array(n), im = new Float32Array(n); for (let k = 1; k < n; k++) re[k] = (2 / (k * Math.PI)) * Math.sin(k * Math.PI * 0.25); return ctx.createPeriodicWave(re, im); })());
+        const o = ctx.createOscillator(); o.setPeriodicWave(w);
+        o.frequency.setValueAtTime(f * 2, time); o.frequency.setValueAtTime(f, time + 0.035);
+        const vib = ctx.createOscillator(); vib.frequency.value = 7; const va = ctx.createGain(); va.gain.setValueAtTime(0, time + 0.2); va.gain.linearRampToValueAtTime(30, time + 0.5);
+        vib.connect(va); va.connect(o.detune); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = Math.min(16000, f * (4 + tone * 24)); o.connect(lp); lp.connect(env); nodes.push(o, vib);
+        dur = decay * 0.6;
+      } else if (type === 'Néon') { // S11.9 supersaw stab: three saws fanned wide, a filter that snaps shut (synthwave, trance)
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 1.5;
+        lp.frequency.setValueAtTime(Math.min(16000, f * (6 + tone * 14)), time); lp.frequency.setTargetAtTime(f * 1.5, time + 0.01, 0.12 + decay * 0.1);
+        [-16, 0, 16].forEach((d) => { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = d; const g = ctx.createGain(); g.gain.value = 0.34; o.connect(g); g.connect(lp); nodes.push(o); });
+        lp.connect(env);
+        dur = decay * 0.5;
       } else { // Pluck: filtered saw with fast filter env
         const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
         const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 3;
@@ -429,9 +652,10 @@
         dur = decay * 0.5;
       }
       env.gain.setValueAtTime(0, time);
-      env.gain.linearRampToValueAtTime(amp, time + 0.004);
-      env.gain.setTargetAtTime(0, time + 0.004, dur / 4);
-      const stopAt = time + dur * 1.3 + 0.1;
+      const top = Math.max(0.004, rise);
+      env.gain.linearRampToValueAtTime(amp, time + top);
+      env.gain.setTargetAtTime(0, time + top, dur / 4);
+      const stopAt = time + top + dur * 1.3 + 0.1;
       nodes.forEach((n) => { n.start(time); n.stop(stopAt); });
       nodes[0].onended = () => { env.disconnect(); pan.disconnect(); };
       AMB.bus.emit('note', { layer: this.name, midi, time, vel, dur, live: !!live && !live.loop, loop: !!(live && live.loop) });
@@ -443,6 +667,7 @@
   class SeqVoice extends Bells { constructor() { super('seq'); } }
 
   // ===================== BASS (step-sequenced, follows the chord root) =====================
+  const BASS_LVL = { 'Acide': 1.5, '808': 0.66 }; // S11.9: level of each timbre (measured, tests/timbres.html), 1 = the old ones
   class Bass extends Layer {
     constructor() {
       super('bass');
@@ -466,11 +691,28 @@
         const sat = shaper(ctx, driveCurve(2.5)), post = ctx.createGain(); post.gain.value = 0.75;
         lp.disconnect(); lp.connect(pre); pre.connect(sat); sat.connect(post); post.connect(env);
       }
+      // S11.9 — Acide: the 303, a saw through a screaming resonant filter that snaps shut on every note
+      else if (type === 'Acide') { osc('sawtooth', 1, 0.7); lp.Q.value = 11; lp.frequency.setValueAtTime(Math.min(8000, f * (6 + tone * 30)), time); lp.frequency.setTargetAtTime(f * 1.3, time, 0.06 + tone * 0.12); }
+      // FM: the DX7 slap bass, a 1:1 FM whose index falls at once (the attack barks, the body is round)
+      else if (type === 'FM') {
+        const car = ctx.createOscillator(), mod = ctx.createOscillator(), mg = ctx.createGain();
+        car.frequency.value = f; mod.frequency.value = f; mg.gain.setValueAtTime(f * (2.5 + tone * 3), time); mg.gain.setTargetAtTime(f * 0.4, time, 0.05);
+        mod.connect(mg); mg.connect(car.frequency); car.connect(lp); nodes.push(car, mod); osc('sine', 0.5, 0.35); lp.frequency.value = 2500 + tone * 4000;
+      }
+      // Reese: two saws a few cents apart (the beating growl of drum & bass) over a sine
+      else if (type === 'Reese') { osc('sawtooth', 1, 0.42); nodes[nodes.length - 1].detune.value = -18; osc('sawtooth', 1, 0.42); nodes[nodes.length - 1].detune.value = 18; osc('sine', 1, 0.5); lp.frequency.value = 220 + tone * 1500; lp.Q.value = 2; }
+      // 808: a sine falling from above onto the note, long boom, lightly driven
+      else if (type === '808') {
+        const o = ctx.createOscillator(); o.frequency.setValueAtTime(f * 2.4, time); o.frequency.exponentialRampToValueAtTime(f, time + 0.05); nodes.push(o);
+        const pre = ctx.createGain(); pre.gain.value = 1 + tone * 2.5; const sat = shaper(ctx, driveCurve(1.6));
+        o.connect(pre); pre.connect(sat); sat.connect(lp); lp.frequency.value = 3000;
+      }
       else { osc('sawtooth', 1, 0.6); lp.frequency.setValueAtTime(200 + tone * 3000, time); lp.frequency.setTargetAtTime(150, time, 0.08); }
-      const hold = Math.max(0.12, len * (0.3 + P('bass', 'decay') * 0.7));
-      env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(0.55, time + 0.012);
-      env.gain.setValueAtTime(0.55, time + hold); env.gain.setTargetAtTime(0, time + hold, 0.08);
-      const stopAt = time + hold + 0.6;
+      const lvl = 0.55 * (BASS_LVL[type] || 1), tail = type === '808' ? 0.35 : 0.08;
+      const rise = Math.max(0.012, this.rise(0.6)), hold = Math.max(0.12, rise, len * (0.3 + P('bass', 'decay') * 0.7));
+      env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(lvl, time + rise);
+      env.gain.setValueAtTime(lvl, time + hold); env.gain.setTargetAtTime(0, time + hold, tail);
+      const stopAt = time + hold + tail * 7.5;
       nodes.forEach((n) => { n.start(time); n.stop(stopAt); });
       nodes[0].onended = () => { env.disconnect(); lp.disconnect(); };
       AMB.bus.emit('note', { layer: 'bass', midi, time, vel: 0.8, dur: hold });

@@ -1,0 +1,102 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body>
+<!-- S11.9: every timbre of every sound (Drone, Pad, Mélodie auto / écrite, Basse), rendered offline, 2 s each, with the
+     same notes as the neon list's preview: it sounds, no NaN, peak < 1, its level (RMS) within ±3 dB of the median of
+     the sound's older timbres, and no heavier than the heaviest older timbre (sources started per voice). Each timbre
+     has a hint in the neon list. ?wav=1 also sends one listening WAV per sound (all its timbres in a row) to
+     /__wav?<name> (a server that accepts it: not the test runner's). -->
+<script src="lib.js"></script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script>
+<script>
+// the timbres before S11.9 (the level reference)
+const OLD = { drone: ['Chaud', 'Creux', 'Orgue', 'Sub', 'Abîmé'], pad: ['Nappe', 'Verre', 'Chœur', 'Cordes', 'Onde', 'FM', 'Cuivres', 'Cendre'],
+  bells: ['Cloche', 'Kalimba', 'Verre', 'Pluck', 'Doux', 'Lame'], bass: ['Sub', 'Ronde', 'Pluck', 'Saturée'] };
+// level kept within (dB) at full Mordant (a driven sound is denser: plucks become sustained; or within ±3 dB of the
+// sound's reference: a quiet timbre driven joins the others) and Épaisseur; Attaque
+// slows the rise, so its 2 s clip is quieter by design (only: sound, no NaN, no clipping)
+const LIM = { bite: 6, width: 3 };
+const SECS = 2, SR = 44100, MEL = [62, 65, 69, 67], BASS = [38, 38, 45, 43];
+const WAV = new URLSearchParams(location.search).get('wav');
+if (!window.AMB.bus) testBus();
+
+// render one timbre offline: a fake engine whose channel goes straight to the destination; the started sources are counted
+async function render(sec, wave, set = {}) {
+  const st = AMB.store; st.set(sec + '.wave', wave, 'test');
+  for (const k of ['bite', 'width', 'attack']) { const sp = st.spec(sec + '.' + k); if (sp && sec !== 'pad') st.set(sec + '.' + k, k in set ? set[k] : sp.def, 'test'); }
+  if (sec === 'pad') { st.set('pad.bite', set.bite || 0, 'test'); st.set('pad.width', set.width || 0, 'test'); }
+  const ctx = new OfflineAudioContext(2, SECS * SR, SR);
+  let started = 0;
+  for (const m of ['createOscillator', 'createBufferSource']) { const f = ctx[m].bind(ctx); ctx[m] = () => { const n = f(), s = n.start.bind(n); n.start = (...a) => { started++; return s(...a); }; return n; }; }
+  const real = AMB.engine;
+  AMB.engine = { ctx, channel() { const input = ctx.createGain(); input.connect(ctx.destination); return { input, setLevel() {}, setSend() {} }; } };
+  let L, voices = 1;
+  try {
+    const C = AMB.layers;
+    if (sec === 'drone') { L = new C.Drone(); L.setRoot(55, 1.0); } // (a chord change half-way: the Attaque)
+    else if (sec === 'pad') { L = new C.Pad(); L.playChord([50, 57, 62], 0.02, 1.3); voices = 3; }
+    else if (sec === 'bells' || sec === 'seq') { L = sec === 'seq' ? new C.SeqVoice() : new C.Bells(); MEL.forEach((m, i) => L.note(m, 0.02 + i * 0.48, 0.75, true, 0.35, { bright: null, dest: null })); voices = MEL.length; }
+    else { L = new C.Bass(); BASS.forEach((m, i) => L.note(m, 0.02 + i * 0.48, 0.4)); voices = BASS.length; }
+  } finally { AMB.engine = real; }
+  const perVoice = sec === 'drone' ? started - 2 : started / voices; // (the drone's own 2 LFOs are not the timbre's)
+  const buf = await ctx.startRendering();
+  const a = buf.getChannelData(0), b = buf.getChannelData(1);
+  let peak = 0, sum = 0, nan = false;
+  const from = sec === 'drone' ? Math.floor(0.5 * SR) : 0; // (the drone fades in)
+  for (let i = 0; i < a.length; i++) { const x = a[i], y = b[i]; if (!Number.isFinite(x) || !Number.isFinite(y)) nan = true; peak = Math.max(peak, Math.abs(x), Math.abs(y)); if (i >= from) sum += x * x + y * y; }
+  return { buf, peak, nan, rms: Math.sqrt(sum / (2 * (a.length - from))), perVoice };
+}
+const dB = (x) => 20 * Math.log10(Math.max(1e-9, x));
+const median = (v) => { const s = v.slice().sort((x, y) => x - y); return s[s.length >> 1]; };
+
+function wavOf(bufs, gain) { // 16-bit stereo, the clips in a row
+  const n = bufs.reduce((s, b) => s + b.length, 0), out = new DataView(new ArrayBuffer(44 + n * 4));
+  const str = (o, s) => [...s].forEach((c, i) => out.setUint8(o + i, c.charCodeAt(0)));
+  str(0, 'RIFF'); out.setUint32(4, 36 + n * 4, true); str(8, 'WAVEfmt '); out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 2, true);
+  out.setUint32(24, SR, true); out.setUint32(28, SR * 4, true); out.setUint16(32, 4, true); out.setUint16(34, 16, true); str(36, 'data'); out.setUint32(40, n * 4, true);
+  let o = 44;
+  for (const b of bufs) { const l = b.getChannelData(0), r = b.getChannelData(1); for (let i = 0; i < b.length; i++) { for (const x of [l[i], r[i]]) { out.setInt16(o, Math.max(-1, Math.min(1, x * gain)) * 32767, true); o += 2; } } }
+  return out.buffer;
+}
+
+window.addEventListener('load', async () => {
+  try {
+    const SCH = AMB.SCHEMA;
+    ok(JSON.stringify(SCH.seq.params.wave.options) === JSON.stringify(SCH.bells.params.wave.options), 'Mélodie écrite : les mêmes timbres que la Mélodie auto');
+    for (const sec of ['drone', 'pad', 'bells', 'bass']) {
+      const sp = SCH[sec].params.wave, opts = sp.options.slice(), res = {};
+      ok(opts.length >= (sec === 'bass' ? 8 : 12) && OLD[sec].every((o) => opts.includes(o)), `${SCH[sec].label} : ${opts.length} timbres, les anciens gardés (${opts.join(', ')})`);
+      ok(opts.every((o) => sp.optHints && sp.optHints[o]), `${SCH[sec].label} : chaque timbre a son aide dans la liste`);
+      for (const w of opts) res[w] = await render(sec, w);
+      const ref = median(OLD[sec].map((w) => res[w].rms)), heavy = Math.max(...OLD[sec].map((w) => res[w].perVoice));
+      for (const w of opts) {
+        const r = res[w], d = dB(r.rms / ref), isNew = !OLD[sec].includes(w);
+        const line = `${SCH[sec].label} « ${w} » : rms ${r.rms.toFixed(3)} (${d >= 0 ? '+' : ''}${d.toFixed(1)} dB), crête ${r.peak.toFixed(3)}, ${r.perVoice} sources/voix`;
+        if (isNew) ok(!r.nan && r.rms > 0.003 && r.peak < 1 && Math.abs(d) <= 3 && r.perVoice <= heavy, line);
+        else ok(!r.nan && r.rms > 0.003 && r.peak < 1, line + ' (ancien : référence)');
+      }
+      // S11.9 shaping (Mordant, Épaisseur, Attaque) at full on every timbre: no NaN, no clipping, the level kept (±3 dB)
+      const knobs = sec === 'pad' ? ['bite', 'width'] : ['bite', 'width', 'attack'], worst = {};
+      for (const k of knobs) {
+        worst[k] = 0;
+        for (const w of opts) {
+          const r = await render(sec, w, { [k]: 1 }), d = dB(r.rms / res[w].rms);
+          if (Math.abs(d) > Math.abs(worst[k])) worst[k] = d;
+          if (r.nan || r.peak >= 1 || r.rms < 0.003 || (k !== 'attack' && Math.abs(d) > LIM[k] && Math.abs(dB(r.rms / ref)) > 3)) ok(false, `${SCH[sec].label} « ${w} » ${k} = 1 : rms ${d.toFixed(1)} dB, crête ${r.peak.toFixed(3)}${r.nan ? ', NaN' : ''}`);
+        }
+        ok(true, `${SCH[sec].label} : ${SCH[sec].params[k].label} à fond sur les ${opts.length} timbres, sans NaN ni saturation (écart de niveau max ${worst[k].toFixed(1)} dB${k === 'attack' ? ', montée plus lente' : ''})`);
+      }
+      if (WAV) { // listening file: every timbre, then the default timbre with Mordant, Épaisseur, Attaque at 0 / 0.5 / 1; same gain for the whole sound
+        const def = SCH[sec].params.wave.def, extra = [], names = [];
+        for (const k of [...knobs, ...(sec === 'pad' ? ['attack'] : [])]) for (const v of [0, 0.5, 1]) {
+          if (sec === 'pad' && k === 'attack') { const a0 = AMB.store.get('pad.attack'); AMB.store.set('pad.attack', v * 0.5, 'test'); extra.push(await render(sec, def)); AMB.store.set('pad.attack', a0, 'test'); }
+          else extra.push(await render(sec, def, { [k]: v }));
+          names.push(`${def} ${SCH[sec].params[k].label} ${v}`);
+        }
+        const all = opts.map((w) => res[w]).concat(extra), top = Math.max(...all.map((r) => r.peak)), g = Math.min(4, 0.89 / top);
+        await fetch('/__wav?' + sec, { method: 'POST', body: wavOf(all.map((r) => r.buf), g) }).catch(() => {});
+        log('wav ' + sec + ' : ' + opts.concat(names).join(' / '));
+      }
+    }
+    done();
+  } catch (e) { fail(e); }
+});
+</script></body></html>

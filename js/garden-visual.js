@@ -79,14 +79,18 @@
   const fn = (keys, f) => ({ keys, f });
   const share = (s, re) => { s = String(s || ''); const all = s.replace(/[^0-9a-z]/gi, '').length; return all ? (s.match(re) || []).length / all : 0; };
   const BELL_WAVES = { Cloche: 0.55, Kalimba: 0.3, Verre: 0.85, Pluck: 1, Doux: 0 };
+  // S11.9: the shaping of a sound (Mordant, Épaisseur, Attaque) shows on its element through an aspect it already has:
+  // `plus(c, keys)` = the larger of the aspect and those settings (each 0..1; a centred key « ~ » counts only above its middle: the Attaque of the drone, 0.5 = untouched)
+  const plus = (c, ks) => ({ keys: [...(typeof c === 'string' ? [c] : c.keys), ...ks.map((k) => k.replace(/^~/, ''))],
+    f: (get) => Math.max(cell(c, get), ...ks.map((k) => (k[0] === '~' ? Math.max(0, norm(k.slice(1), get(k.slice(1))) - 0.5) * 2 : norm(k, get(k))))) });
   const LOOK = {
-    drone: { size: 'drone.vol', light: 'drone.tone', shape: sel('drone.wave', { Sub: 0, Chaud: 0.2, Creux: 0.55, Orgue: 0.9 }), halo: 'drone.send', sway: 'drone.motion', bloom: num(0) },
-    pad: { size: 'pad.vol', light: 'pad.tone', shape: sel('pad.wave', { Nappe: 0.1, Onde: 0.25, 'Chœur': 0.35, Cordes: 0.6, Verre: 0.85, FM: 1 }), halo: 'pad.send', sway: 'pad.attack', bloom: 'pad.voicing' },
-    bells: { size: 'bells.vol', light: 'bells.tone', shape: sel('bells.wave', BELL_WAVES), halo: 'bells.send', sway: 'bells.decay', bloom: 'bells.density' },
+    drone: { size: 'drone.vol', light: 'drone.tone', shape: plus(sel('drone.wave', { Sub: 0, Chaud: 0.2, Creux: 0.55, Orgue: 0.9 }), ['drone.bite']), halo: 'drone.send', sway: plus('drone.motion', ['~drone.attack']), bloom: plus(num(0), ['drone.width']) },
+    pad: { size: 'pad.vol', light: 'pad.tone', shape: plus(sel('pad.wave', { Nappe: 0.1, Onde: 0.25, 'Chœur': 0.35, Cordes: 0.6, Verre: 0.85, FM: 1 }), ['pad.bite']), halo: 'pad.send', sway: 'pad.attack', bloom: plus('pad.voicing', ['pad.width']) },
+    bells: { size: 'bells.vol', light: 'bells.tone', shape: plus(sel('bells.wave', BELL_WAVES), ['bells.bite']), halo: 'bells.send', sway: plus('bells.decay', ['bells.attack']), bloom: plus('bells.density', ['bells.width']) },
     texture: { size: 'texture.vol', light: 'texture.tone', shape: sel('texture.type', { 'Océan': 0, Ruisseau: 0.2, Vent: 0.35, Pluie: 0.55, Oiseaux: 0.65, Ville: 0.8, Vinyle: 0.9, Feu: 1 }), halo: 'texture.send', sway: 'texture.motion', bloom: num(0.35) },
     grains: { size: 'grains.vol', light: num(0.6), shape: fn(['grains.size'], (get) => 1 - norm('grains.size', get('grains.size'))), halo: 'grains.send', sway: 'grains.spray', bloom: 'grains.density' },
-    seq: { size: 'seq.vol', light: 'seq.tone', shape: sel('seq.wave', BELL_WAVES), halo: 'seq.send', sway: 'seq.swing', bloom: fn(['seq.pattern'], (get) => Math.min(1, (String(val(get, 'seq.pattern') || '').split(',').filter(Boolean).length) / 16)) },
-    bass: { size: 'bass.vol', light: 'bass.tone', shape: sel('bass.wave', { Sub: 0, Ronde: 0.35, Pluck: 1 }), halo: 'bass.send', sway: 'bass.decay', bloom: fn(['bass.pattern'], (get) => Math.min(1, share(val(get, 'bass.pattern'), /1/g) * 6)) },
+    seq: { size: 'seq.vol', light: 'seq.tone', shape: plus(sel('seq.wave', BELL_WAVES), ['seq.bite']), halo: 'seq.send', sway: plus('seq.swing', ['seq.attack']), bloom: plus(fn(['seq.pattern'], (get) => Math.min(1, (String(val(get, 'seq.pattern') || '').split(',').filter(Boolean).length) / 16)), ['seq.width']) },
+    bass: { size: 'bass.vol', light: 'bass.tone', shape: plus(sel('bass.wave', { Sub: 0, Ronde: 0.35, Pluck: 1 }), ['bass.bite']), halo: 'bass.send', sway: plus('bass.decay', ['bass.attack']), bloom: plus(fn(['bass.pattern'], (get) => Math.min(1, share(val(get, 'bass.pattern'), /1/g) * 6)), ['bass.width']) },
     perc: { size: 'perc.vol', light: 'perc.tone', shape: sel('perc.kit', { 'Feutré': 0.15, Organique: 0.85 }), halo: 'perc.send', sway: 'perc.swing', bloom: fn(['perc.pattern', 'perc.prob'], (get) => Math.min(1, share(val(get, 'perc.pattern'), /[1-9a-z]/gi) * 2) * (0.4 + 0.6 * norm('perc.prob', get('perc.prob')))) },
   };
   for (const id in LOOK) LOOK[id].on = id + '.on';
