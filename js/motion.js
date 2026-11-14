@@ -33,7 +33,8 @@
   const PRESS = 'button, summary, [role=button], .knob, .ctl.sel, .pad, select:not(.ctl.sel select), input[type=range], label.btn';
   const TILT = 'button:not(.pad):not(.modal-x):not(.tree-node):not(.coin):not(.welcome-choice), summary, [role=button]:not(.knob), select, label.btn'; // (not the pads: a playing surface; knobs: css)
   const SPARKY = '.tog, .chip, .mode-btn, .pad, .song-chip, .chord-slot, .pulse-cell'; // more sparks when let go
-  const sparkColor = (el) => { try { return (getComputedStyle(el).getPropertyValue('--c') || '').trim() || null; } catch (e) { return null; } };
+  const colors = new WeakMap(); // S10.1: an element's --c read once (getComputedStyle on every release forced a style pass)
+  const sparkColor = (el) => { if (colors.has(el)) return colors.get(el); let c = null; try { c = (getComputedStyle(el).getPropertyValue('--c') || '').trim() || null; } catch (e) {} colors.set(el, c); return c; };
   const notch = new WeakMap(); // knob → travel since its last notch
   const timers = new WeakMap(); // el → Map(class → timeout)
   const rolls = new WeakMap(); // el → its running roll animation

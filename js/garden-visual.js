@@ -450,7 +450,7 @@
     LOOK, LOOK_ALL, ASPECTS, look, concerns, aim: null, cur: {}, kicks: {}, lookDirty: true, // S4.6 settings → look
     // S7.1 the one knob lives in js/motion.js (css --juice, interface motion); GV.JUICE reads and sets it there
     get JUICE() { return AMB.motion ? AMB.motion.JUICE : this._juice; }, set JUICE(v) { if (AMB.motion) AMB.motion.set({ juice: v }); else this._juice = v; }, _juice: JUICE,
-    SPLASH, WAVES_PER_PLANT, partsMax(), splash, waves: [], zap: {}, shake: null, ox: 0, oy: 0, // S5.2 notes seen
+    SPLASH, WAVES_PER_PLANT, PARTS_MAX, splash, waves: [], zap: {}, shake: null, ox: 0, oy: 0, // S5.2 notes seen
     SCENE, scene, sc: {}, kick: {}, sAim: null, sPoll: {}, st: 0, speed: 1, fxc: {}, // S5.8 scene layers
     world: makeWorld(), // S8.1 the world model
     hooks: [], post2d: true, safe: null, // S8.1 for S8.2 (afterDraw, post2d) and S8.3 (safe)

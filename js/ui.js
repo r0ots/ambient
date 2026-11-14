@@ -482,6 +482,13 @@
     // LCD status screen in the top bar
     const top = $('#lcdTop'), line = $('#lcdLine');
     const abbr = (s) => s.split(' ')[0].slice(0, 4).toUpperCase();
+    // S10.1 the LCD's width, kept by a ResizeObserver (read in its callback, after layout)
+    let lcdWv = -1, lcdRO = null;
+    const lcdW = (el) => {
+      if (!el) return 0;
+      if (!lcdRO && typeof ResizeObserver !== 'undefined') { lcdRO = new ResizeObserver(() => { lcdWv = el.clientWidth; }); lcdRO.observe(el); }
+      return lcdWv >= 0 ? lcdWv : (lcdWv = el.clientWidth);
+    };
     const lcd = () => {
       if (!top || !line) return;
       const sel = $('#preset'), patch = sel && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.replace('✦ ', '') : 'JUNOJUNO';
@@ -492,7 +499,7 @@
       const G = AMB.game, plain = !!(G && G.path && !G.has('h.key'));
       document.body.classList.toggle('jargon-off', plain);
       const txt = on ? m.text.toUpperCase().slice(0, 48) : (plain ? 'JUNOJUNO' : patch.toUpperCase().slice(0, 24)) + (rec ? '  ● REC' : '');
-      const lw = top.parentElement ? top.parentElement.clientWidth : 0;
+      const lw = lcdW(top.parentElement); // (S10.1: measured by a ResizeObserver, not on every update: no forced layout)
       if (top.textContent !== txt || lw !== top._lw) {
         // S7.1: a new text is typed in (a cursor sweeps it, neon), a resize only re-fits it
         if (top.textContent !== txt && top.textContent && AMB.motion) { if (on && m.stamp) AMB.motion.pop(top, 'm-stamp', { ms: AMB.motion.ms('slow') + 60 }); else AMB.motion.pop(top, 'type'); } // (S7.3: PARFAIT / BIEN / RATÉ stamp in)

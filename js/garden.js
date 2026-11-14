@@ -533,7 +533,9 @@
     fxPop(text, stage, rank, J = 1, kind = null) {
       const cur = this._pop, now = Date.now();
       if (cur && cur.el.isConnected) { if (now < cur.until && rank < cur.rank) return null; cur.el.remove(); }
+      // S10.1: every box is read before the word is built (no forced layout after a write)
       const L = this.confetti.layer(), r = stage ? stage.getBoundingClientRect() : { left: 0, top: 0, width: innerWidth, height: innerHeight };
+      const lcd = document.getElementById('lcd'), lr = lcd && lcd.getBoundingClientRect();
       const word = String(text || ''), k = Math.min(1.5, 0.7 + 0.3 * J);
       const p = document.createElement('div'); p.className = 'fx-pop'; p.setAttribute('role', 'status');
       if (this.SIGN_COL[kind]) p.style.setProperty('--k', this.SIGN_COL[kind]);
@@ -544,7 +546,7 @@
       const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height * 0.42);
       p.style.left = x + 'px'; p.style.top = y + 'px';
       L.hidden = false; L.append(p);
-      const lcd = document.getElementById('lcd'), lr = lcd && lcd.getBoundingClientRect(), half = p.offsetHeight * 0.75;
+      const half = Math.min((20 + rank * 4) * k, 0.075 * k * innerWidth) * 0.75; // (the word's height ≈ its font size: not measured)
       if (lr && lr.height && y - half < lr.bottom + 6) p.style.top = Math.round(lr.bottom + 6 + half) + 'px'; // under the LCD, never over it
       const ms = rank >= 7 ? 1900 : 1400, out = AMB.motion.ms('slow');
       this._pop = { el: p, rank, until: now + ms };

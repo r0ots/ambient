@@ -130,7 +130,15 @@
       if (this.warmed) return false;
       this.warmed = true;
       const M = AMB.motion, G = AMB.garden;
-      try { if (M && M.particles) { const L = M.particles.layer(), cv = L.querySelector('canvas'), g = cv && cv.getContext('2d'); if (g) { g.fillStyle = '#000'; g.fillRect(0, 0, 1, 1); g.clearRect(0, 0, 2, 2); } } } catch (e) {}
+      // the particles' layer and its canvas: created, sized and composited once (the first spark created them)
+      try {
+        if (M && M.particles && !M.particles.raf) {
+          const P = M.particles, L = P.layer(), cv = L.querySelector('canvas'), g = cv && cv.getContext('2d');
+          if (cv.width !== innerWidth || cv.height !== innerHeight) { cv.width = innerWidth; cv.height = innerHeight; }
+          if (g) { L.hidden = false; cv.hidden = false; g.globalAlpha = 0.01; g.fillStyle = '#22e6ff'; g.fillRect(0, 0, 2, 2); g.globalAlpha = 1;
+            requestAnimationFrame(() => requestAnimationFrame(() => { if (!P.raf) { g.clearRect(0, 0, 4, 4); cv.hidden = true; P.idle(); } })); }
+        }
+      } catch (e) {}
       // the fonts of the parties' word, the tags and the canvas captions: shaped and rasterised once, out of sight
       try {
         const box = document.createElement('div'); box.className = 'q-warm'; box.setAttribute('aria-hidden', 'true');

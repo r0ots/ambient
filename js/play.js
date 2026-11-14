@@ -136,6 +136,16 @@
   // it (the note already sounds). The machine's notes light the keys their own way (padAuto, softer).
   const struck = new Map(); // input key ('k…', 'm…', 'p…') → the pad button it holds down
   const downs = new Map(); // pad button → how many inputs hold it
+  // S10.1: the keys' boxes, read at most once a second (or after a resize / a scroll / a change of the bar): reading one
+  // on every strike, after the strike's own writes, forced a style + layout pass of the whole page
+  const rects = new WeakMap(); let rectGen = 0;
+  if (typeof window !== 'undefined') { const bump = () => { rectGen++; }; window.addEventListener('resize', bump); window.addEventListener('scroll', bump, true);
+    if (typeof ResizeObserver !== 'undefined') { const ro = new ResizeObserver(bump); const watch = () => { const bar = document.getElementById('pads'); if (bar) ro.observe(bar); }; if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watch); else watch(); } }
+  function padRect(b) {
+    const c = rects.get(b), now = performance.now();
+    if (c && c.g === rectGen && now - c.t < 1000 && c.r.width) return c.r;
+    const r = b.getBoundingClientRect(); rects.set(b, { r, g: rectGen, t: now }); return r;
+  }
   function padEl(i) { const bar = document.getElementById('pads'); return bar && !bar.hidden && i >= 0 ? bar.children[i] || null : null; }
   function strike(b, down, o = {}) {
     if (!b) return;
@@ -143,7 +153,7 @@
     if (n > 0) downs.set(b, n); else downs.delete(b);
     // S10.1: the key's box is read FIRST, before any class changes: read after them, it forced a style + layout pass of
     // the whole page on every strike
-    const r = (down || n <= 0) && M && M.on() ? b.getBoundingClientRect() : null;
+    const r = (down || n <= 0) && M && M.on() ? padRect(b) : null;
     if (down) {
       b.classList.remove('k-rel'); b.classList.add('on'); if (o.chord) b.classList.add('chord');
       if (M) M.press(b, true);
@@ -264,7 +274,7 @@
     // the machine's note on key i (padAuto): softer, never squashed (a player's strike goes through strike(), above)
     hit(i, o = {}) {
       const b = padEl(i); if (!b) return null;
-      const M = AMB.motion, r = M && M.on() && !document.hidden ? b.getBoundingClientRect() : null; // (read before the class: no forced layout)
+      const M = AMB.motion, r = M && M.on() && !document.hidden ? padRect(b) : null; // (no forced layout)
       b.classList.add('auto'); clearTimeout(machineT.get(b)); machineT.set(b, setTimeout(() => b.classList.remove('auto'), o.ms || AUTO_MS));
       return this.fx(b, { source: 'machine', rect: r });
     },
@@ -272,7 +282,7 @@
     fx(b, o = {}) {
       const soft = o.source === 'machine', M = AMB.motion, i = +b.dataset.deg;
       if (!M || !M.on() || document.hidden) return b;
-      const r = o.rect || b.getBoundingClientRect(), c = KEY_COL[i] || '#22e6ff', v = o.vel != null ? o.vel : 0.85; if (!r.width) return b;
+      const r = o.rect || padRect(b), c = KEY_COL[i] || '#22e6ff', v = o.vel != null ? o.vel : 0.85; if (!r.width) return b;
       // the laser: from the key's top up into the city (longer when struck harder; the machine's = shorter, fainter)
       const h = Math.max(50, Math.min(r.top * 0.55, 340)) * (soft ? 0.45 : 0.55 + 0.45 * v), lz = M.ghost('k-laser', { left: r.left + r.width / 2 + 'px', top: r.top - h + 'px', height: h + 'px' });
       lz.style.setProperty('--c', c);
@@ -288,7 +298,7 @@
     },
     // let go: no longer crushed, 400 ms brighter, a few sparks
     release(b, r) {
-      const i = +b.dataset.deg, M = AMB.motion; if (M && M.on()) { r = r || b.getBoundingClientRect(); M.pop(b, 'k-rel', { ms: 400 }); if (r.width) M.burst({ x: r.left + r.width / 2, y: r.top + r.height / 2 }, { n: 6, spread: 2, speed: 220, life: 0.4, color: KEY_COL[i] }); }
+      const i = +b.dataset.deg, M = AMB.motion; if (M && M.on()) { r = r || padRect(b); M.pop(b, 'k-rel', { ms: 400 }); if (r.width) M.burst({ x: r.left + r.width / 2, y: r.top + r.height / 2 }, { n: 6, spread: 2, speed: 220, life: 0.4, color: KEY_COL[i] }); }
     },
   };
   AMB.keys = keys;

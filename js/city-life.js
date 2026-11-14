@@ -68,7 +68,8 @@
 
   const J = () => clamp(+GV.JUICE || 0, 0, 2);
   const phone = (v) => (v.W || 1) / (v.dpr || 1) <= 600;
-  const caps = (v) => { const k = (phone(v) ? 0.55 : 1) * L.q * (A.quality ? [1, 0.7, 0.4][A.quality.level] : 1); // S10.1: fewer at moyen / bas return { cars: Math.max(4, Math.round(CAP.cars * k)), people: Math.round(CAP.people * k), bikes: Math.max(2, Math.round(CAP.bikes * Math.min(1, k + 0.2))) }; };
+  // S10.1: fewer at moyen / bas (A.quality)
+  const caps = (v) => { const k = (phone(v) ? 0.55 : 1) * L.q * (A.quality ? [1, 0.7, 0.4][A.quality.level] : 1); return { cars: Math.max(4, Math.round(CAP.cars * k)), people: Math.round(CAP.people * k), bikes: Math.max(2, Math.round(CAP.bikes * Math.min(1, k + 0.2))) }; };
   const heard = () => { const c = A.engine && A.engine.ctx; return GV.clock() - (c ? c.outputLatency || c.baseLatency || 0 : 0); };
   const pitchK = (m) => clamp(((m == null ? 60 : +m) - 48) / 36);
 
