@@ -23,6 +23,22 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
     pads[6].dispatchEvent(PE('pointercancel',2)); await wait(10);
     ok(rel.length===2 && A.play.held===0, 'pointercancel : note relâchée');
     ok(((A.game.s.prog['m.notes']||{}).n||0)===n0+2 || A.game.s.contracts.includes('m.notes'), 'une pastille compte pour « Joue 6 notes » ('+(((A.game.s.prog['m.notes']||{}).n||0)-n0)+')');
+    // S9.1: ONE strike whatever plays the key — a pointer, a computer key, a MIDI note: the same classes while held, the
+    // same press (motion.js), the same sparks when struck, the same spring back when let go
+    { const M=A.motion, PP=M.particles, look=(b)=>['on','is-pressed'].map(c=>b.classList.contains(c)).join();
+      const bu=M.burst, calls=[]; M.burst=function(el,o){ if (el&&el.classList&&el.classList.contains('pad')) calls.push('touche:'+((o&&o.n)||'')); return bu.apply(this,arguments); }; // (the keys' own sparks only)
+      const by=async(down,up,b)=>{ M.unpop(b,'is-released'); calls.length=0; down(); await wait(20); const held=look(b), sp=calls.join(); calls.length=0; up(); await wait(20); return {held, sp, up:calls.join(), after:look(b), rel:b.classList.contains('is-released')}; };
+      const kd=(t,code)=>d.dispatchEvent(new w.KeyboardEvent(t,{code,bubbles:true}));
+      const mn=A.theory.degreeToMidi(0, A.seq.root, A.seq.scale, 4);
+      const r={ souris: await by(()=>pads[0].dispatchEvent(PE('pointerdown',9)),()=>pads[0].dispatchEvent(PE('pointerup',9)),pads[0]),
+        clavier: await by(()=>kd('keydown','KeyA'),()=>kd('keyup','KeyA'),pads[0]),
+        midi: await by(()=>A.play.onMidi({data:[0x90,mn,100],timeStamp:0}),()=>A.play.onMidi({data:[0x80,mn,0],timeStamp:0}),pads[A.play.padForMidi(mn)]) };
+      M.burst=bu; const v=Object.values(r), same=v.every(x=>x.held===v[0].held && x.sp===v[0].sp && x.up===v[0].up && x.after===v[0].after && x.rel===v[0].rel);
+      ok(A.play.padForMidi(mn)===0 && same && v[0].held==='true,true' && /touche:9/.test(v[0].sp) && /touche/.test(v[0].up) && v[0].after==='false,false' && v[0].rel, 'S9.1 parité : souris, touche A et note MIDI frappent la touche pareil ('+JSON.stringify(r)+')');
+      // the other shortcuts press their button on screen like a click (space = ▶ Lecture)
+      d.body.classList.add('coined'); const pb=d.getElementById('play'); kd('keydown','Space'); const sp1=pb.classList.contains('is-pressed'); await wait(250);
+      ok(sp1 && !pb.classList.contains('is-pressed') && pb.classList.contains('is-released'), 'S9.1 : la barre d\'espace enfonce ▶ Lecture comme un clic, puis il rebondit');
+      kd('keydown','Space'); await wait(50); A.seq.playing=true; }
     const ch=[], fc=A.seq.forceChord; A.seq.forceChord=(dg)=>ch.push(dg); A.game.unlock('h.pad');
     pads[3].dispatchEvent(PE('pointerdown',3)); await wait(250); const early=ch.length; await wait(350);
     ok(early===0 && ch.join()==='3' && pads[3].classList.contains('chord'), 'appui long : l\'accord du degré (pas avant)');
@@ -36,10 +52,10 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
       await wait(300); ok(!lit().length, 'brièvement (~0,17 s)');
       A.bus.emit('note',{layer:'bells',midi:dm(2,4),time:0,vel:0.85,live:true}); A.bus.emit('note',{layer:'bass',midi:dm(2,3),time:0,vel:0.8}); await wait(30);
       ok(!lit().length, 'une note jouée, la phrase de la Réponse (live) ou la basse : aucune pastille allumée par la machine'); }
-    // 390 px: at least 44 px under the thumb, nothing wider than the screen
+    // 390 px: at least 44 px high under the thumb (S9.1: Sculpter's sheet is always there, the 9 keys stay on one row), nothing wider than the screen
     f.style.width='390px'; f.style.height='780px'; await wait(250);
     const de=d.documentElement, r2=pads.map(b=>b.getBoundingClientRect());
-    ok(r2.every(r=>r.width>=44 && r.height>=44 && r.right<=de.clientWidth+1 && r.left>=-1) && de.scrollWidth<=de.clientWidth+1, '390 px : pastilles ≥ 44 px, dans l\'écran ('+Math.round(Math.min(...r2.map(r=>r.width)))+'×'+Math.round(Math.min(...r2.map(r=>r.height)))+')');
+    ok(r2.every(r=>r.width>=36 && r.height>=44 && r.right<=de.clientWidth+1 && r.left>=-1) && de.scrollWidth<=de.clientWidth+1, '390 px : touches ≥ 36 × 44 px sur une rangée, dans l\'écran ('+Math.round(Math.min(...r2.map(r=>r.width)))+'×'+Math.round(Math.min(...r2.map(r=>r.height)))+')');
     f.style.width='1300px'; f.style.height='900px'; await wait(200);
     A.game.setMode('free'); await wait(30); A.bus.emit('note',{layer:'bells',midi:60,time:0,vel:0.7}); await wait(30);
     ok(bar.hidden && !shown('#pads') && !bar.querySelector('.auto'), 'mode libre (tactile ou non) : aucune pastille (ni allumée par la Mélodie auto)');
@@ -82,7 +98,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
       ok(none===0 && half===3 && green>=81, 'S4.5w + S4.2 : une plante Mélodie auto qui pousse porte ses feuilles de Réponse (aucune avant de sortir, toutes à mi-hauteur) ; une feuille ≥ 4 px par carreau ('+green+' px verts)'); }
     A.bus.emit('live',{midi:c.midis[2],time:0,vel:0.85,raw:null,played:c.ans+1}); await wait(350);
     A.garden.fx=fx0;
-    ok(!P.cur && /RATÉ/.test(d.getElementById('lcdTop').textContent) && fxr.some(([k])=>k==='rate') && A.garden.FX.rate.boom==='BZZT!' && !A.game.has('t.macros'), 'S6.7 réponse fausse : « '+d.getElementById('lcdTop').textContent.trim()+' » sur le LCD avec la bulle BZZT! (garden.FX.rate), porte fermée');
+    ok(!P.cur && /RATÉ/.test(d.getElementById('lcdTop').textContent) && fxr.some(([k])=>k==='rate') && A.garden.FX.rate.pop==='RATÉ' && !A.garden.FX.rate.boom && !A.game.has('t.macros'), 'S6.7 réponse fausse : « '+d.getElementById('lcdTop').textContent.trim()+' » sur le LCD, le mot RATÉ (S9.1 : plus de bulle BZZT!), porte fermée');
     P.launch(ctx.currentTime+0.05, sd); const c2=P.cur;
     ok(c2.again && c2.degs.join()===c.degs.join(), 'la même phrase est rejouée'); c2.midis.forEach((m,i)=>A.bus.emit('live',{midi:m+12,time:0,vel:0.85,raw:null,played:c2.ans+0.5+i})); await wait(30);
     ok(A.game.isReady('t.macros') && !A.game.has('t.macros') && A.game.s.contracts.includes('p.premier') && A.lcdMsg.text==='↺ ✓ Juste !' && JSON.stringify(A.store.stableSnapshot())===snap, 'réponse juste : « Juste ! », Grands réglages prêt, l\'ambiance est intacte');
@@ -93,7 +109,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
       ok(shown('#lcdScore') && /↺ PHRASES · SÉRIE 1 · RECORD 1/.test(sc.textContent), 'LCD : le palier, la série et le record « '+sc.textContent+' »');
       stR.lvl=11; stR.streak=4; stR.best=6; let tierEv=null; A.bus.on('resp:tier',e=>tierEv=e);
       P.launch(ctx.currentTime+0.05, sd); const c3=P.cur; c3.want.forEach((m,i)=>A.bus.emit('live',{midi:m,time:0,vel:0.85,raw:null,played:c3.ans+c3.steps[i]*sd})); await wait(30);
-      ok(tierEv && tierEv.name==='Accords' && A.lcdMsg.text==='↑ Palier : Accords' && lcdEl.classList.contains('lcd-glitch-big') && /ACCORDS · SÉRIE 5 · RECORD 6/.test(sc.textContent), 'palier franchi : « '+A.lcdMsg.text+' », le LCD passe en glitch, « '+sc.textContent+' »');
+      ok(tierEv && tierEv.name==='Accords' && A.lcdMsg.text==='↑ Niveau : Accords' && lcdEl.classList.contains('lcd-glitch-big') && /ACCORDS · SÉRIE 5 · RECORD 6/.test(sc.textContent), 'palier franchi : « '+A.lcdMsg.text+' », le LCD passe en glitch, « '+sc.textContent+' »');
       const wv=gv.waves.find(w=>w.who==='tier');
       ok(wv && wv.plant==='bells' && wv.shake===1 && P.mark()===4, 'la fête du palier passe par les éclats S5.2 de la plante Mélodie auto (vague '+(wv&&wv.who)+', secousse) ; repère de palier : '+P.mark());
       const cv2=d.createElement('canvas'); cv2.width=480; cv2.height=320; const g3=cv2.getContext('2d'); gv.refresh(480,320,true);
@@ -156,7 +172,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
   A.garden.showTree(false);
   // S3.8: the path help is short and says how secrets work now (a node opened, hint 2 after 2 secrets, never with time)
   { d.getElementById('help').click(); const hp=d.querySelector('#helpDlg .help-path'), tx=hp.textContent;
-    ok(!hp.hidden && hp.querySelectorAll('.help-grid h4').length===4 && /nœud <b>prêt|nœud prêt/.test(tx) && /✦ Ouvrir/.test(tx) && /après 2 découvertes/.test(tx) && /Réponse/.test(tx) && /À toi/.test(tx) && !/Écho/.test(tx) && !/avec le temps/.test(tx), 'aide du Parcours : 4 rubriques, découvertes (combos et gestes), indice clair après 2 découvertes, Réponse');
+    ok(!hp.hidden && hp.querySelectorAll('.help-grid h4').length===4 && /<b>prête|pièce .*prête/.test(hp.innerHTML) && !/pastille/.test(tx) && /✦ Ouvrir/.test(tx) && /après 2 découvertes/.test(tx) && /Réponse/.test(tx) && /À toi/.test(tx) && !/Écho/.test(tx) && !/avec le temps/.test(tx), 'aide du Parcours : 4 rubriques, découvertes (combos et gestes), indice clair après 2 découvertes, Réponse');
     d.querySelector('#helpDlg [data-close]').click(); }
   g.setMode('free'); await wait(400); ok(!shown('#treeBtn') && !shown('#lcdTask') && !d.body.classList.contains('jargon-off'), 'pas d\'arbre ni de défi en libre, l\'écran garde tonalité et tempo');
 });
