@@ -516,26 +516,29 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .tree-link.locked { stroke-width: 2; stroke-dasharray: 3 7; stroke-linecap: round; opacity: .55; }
 .tree-link.available { stroke: var(--amber); stroke-width: 2.5; opacity: .9; stroke-dasharray: 6 6; stroke-linecap: butt; filter: drop-shadow(0 0 4px var(--amber-glow)); animation: tree-flow 1.4s linear infinite; }
 .tree-link.owned { stroke: var(--c); filter: drop-shadow(0 0 5px var(--c)); }
-.tree-link.x { stroke-width: 2.5; }
-.tree-link.x.locked { opacity: .45; }
+/* S11.8: a secondary prerequisite (not the main parent): a thin dotted trace, discreet — no spaghetti */
+.tree-link.x { stroke-width: 1.5; stroke-dasharray: 2 6; stroke-linecap: round; opacity: .55; filter: none; }
+.tree-link.x.available { stroke-width: 1.5; stroke-dasharray: 2 6; }
+.tree-link.x.locked { opacity: .35; }
 /* S9.4: only open and ready nodes are drawn (.dark: everything else) */
 .tree-node.dark { display: none; }
 /* S9.1: the dark — nodes not reachable yet are not drawn; their links leave in dots that fade out (gradient set by js) */
 .tree-node.st-locked, .tree-link.gone, .tree-glow.gone, .tree-glow.dark, .tree-bname.gone { display: none; }
 .tree-link.dark { stroke-dasharray: 3 7; stroke-linecap: round; stroke-width: 2; opacity: 1; filter: none; }
+.tree-link.x.dark { stroke-width: 1.5; stroke-dasharray: 2 6; opacity: .8; }
 .tree-link.is-hl { stroke-width: 4.5; opacity: 1; }
 .tree-map:has(.is-focus) .tree-link:not(.is-hl) { opacity: .2; }
 @keyframes tree-flow { to { stroke-dashoffset: -12; } }
 .tree-glow { fill: none; stroke: #fff; stroke-width: 4; stroke-linejoin: round; stroke-dasharray: 1 1; stroke-dashoffset: 1; opacity: 0; pointer-events: none; }
 /* nodes: a hexagon (.led: the tube = its outline, ::before = its inside), the name on a dark plate */
-.tree-node { position: absolute; width: 112px; margin: -20px 0 0 -56px; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: 0;
-  color: var(--muted); font: 700 11.5px/1.15 var(--f); letter-spacing: .1em; text-transform: uppercase; text-align: center; cursor: pointer; transition: opacity .2s; --edge: #3a2560; --core: #0b0618; }
+.tree-node { position: absolute; width: 112px; margin: -20px 0 0 -56px; /* (S11.8: width and margin-left set per node by its label) */ padding: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: 0;
+  color: var(--muted); font: 700 13px/1.15 var(--f); letter-spacing: .04em; text-transform: uppercase; text-align: center; cursor: pointer; transition: opacity .2s; --edge: #3a2560; --core: #0b0618; }
 .tree-node .led { position: relative; width: 46px; height: 40px; display: grid; place-items: center; font-style: normal; clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); background: var(--edge); }
 .tree-node .led::before { content: ""; position: absolute; inset: 3px 3.5px; clip-path: inherit; background: var(--core); }
 .tree-node.root { margin-top: -25px; }
 .tree-node.root .led { width: 58px; height: 50px; }
-.tree-node b, .tree-node span { background: #07040fd9; border-radius: 2px; padding: 1px 5px; max-width: 112px; }
-.tree-node b { font-weight: 700; font-size: 11.5px; line-height: 1.15; }
+.tree-node b, .tree-node span { background: #07040fd9; border-radius: 2px; padding: 1px 5px; }
+.tree-node b { font-weight: 700; font-size: 13px; line-height: 1.15; white-space: nowrap; } /* (S11.8: one or two lines, split by the layout) */
 .tree-node span { font: 600 10.5px var(--f); letter-spacing: .06em; text-transform: none; }
 .tree-node.st-locked { color: #8a7ca8; }
 .tree-node.st-available { --edge: color-mix(in srgb, var(--amber) 55%, var(--bg)); color: #e8c79a; }
