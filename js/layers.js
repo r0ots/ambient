@@ -42,7 +42,7 @@
       pos.gain.value = 0.2; neg.gain.value = -0.2; hp.type = 'highpass'; hp.frequency.value = 30;
       saw.connect(pos); saw.connect(dl); dl.connect(neg); pos.connect(hp); neg.connect(hp); hp.connect(bus);
       lfo.connect(depth); depth.connect(dl.delayTime);
-      const set = (m, t) => { const per = 1 / mtof(m); dl.delayTime.setTargetAtTime(per * 0.5, t, 1.2); depth.gain.setTargetAtTime(per * 0.42, t, 1.2); };
+      const set = (m, t, tc = 1.2) => { const per = 1 / mtof(m); dl.delayTime.setTargetAtTime(per * 0.5, t, tc); depth.gain.setTargetAtTime(per * 0.42, t, tc); };
       dl.delayTime.value = 0.5 / mtof(this.root); depth.gain.value = 0.42 / mtof(this.root);
       const sub = ctx.createOscillator(); sub.frequency.value = mtof(this.root - 12); const sg = ctx.createGain(); sg.gain.value = 0.35; sub.connect(sg); sg.connect(bus); sub.start();
       v.oscs.push({ osc: saw, semi: 0 }, { osc: sub, semi: -12 }); v.tune.push(set); v.stop.push(lfo);
@@ -58,7 +58,7 @@
       const bed = ctx.createBiquadFilter(); bed.type = 'lowpass'; bed.frequency.value = 400; const bg = ctx.createGain(); bg.gain.value = 0.5; n.connect(bed); bed.connect(bg); bg.connect(bus);
       // gusts: the whistle swells and fades slowly
       const gust = lfoOsc(ctx, 0.07), ga = ctx.createGain(); ga.gain.value = 0.45; gust.connect(ga); ga.connect(wg.gain);
-      v.tune.push((m, t) => bands.forEach(([bp, semi]) => bp.frequency.setTargetAtTime(mtof(m + semi), t, 1.2)));
+      v.tune.push((m, t, tc = 1.2) => bands.forEach(([bp, semi]) => bp.frequency.setTargetAtTime(mtof(m + semi), t, tc)));
       v.stop.push(n, gust);
     },
     // Voix: a held vowel, two saws through three formants that drift slowly from « ou » to « a » to « é »
@@ -87,7 +87,7 @@
     'Spectre'(ctx, bus, v) {
       const car = ctx.createOscillator(), mod = ctx.createOscillator(), idx = ctx.createGain(), sweep = lfoOsc(ctx, 0.06), sa = ctx.createGain();
       car.frequency.value = mtof(this.root); mod.frequency.value = mtof(this.root) * 2.76;
-      const set = (m, t) => { const f = mtof(m); idx.gain.setTargetAtTime(f * 0.9, t, 1.2); sa.gain.setTargetAtTime(f * 0.8, t, 1.2); };
+      const set = (m, t, tc = 1.2) => { const f = mtof(m); idx.gain.setTargetAtTime(f * 0.9, t, tc); sa.gain.setTargetAtTime(f * 0.8, t, tc); };
       idx.gain.value = mtof(this.root) * 0.9; sa.gain.value = mtof(this.root) * 0.8;
       mod.connect(idx); sweep.connect(sa); sa.connect(idx.gain); idx.connect(car.frequency);
       const cg = ctx.createGain(); cg.gain.value = 0.32; car.connect(cg); cg.connect(bus);
@@ -104,6 +104,7 @@
       this.ctx = this.engine.ctx;
       this.ch = this.engine.channel();
       this.out = this.ch.input;
+      if (SHAPE_REF[name]) { this.out = this.ctx.createGain(); this.dry = this.ctx.createGain(); this.out.connect(this.dry); this.dry.connect(this.ch.input); this.shape(); }
       this.update();
       store.on((key) => { if (key.startsWith(name + '.')) this.onParam(key.split('.')[1]); });
     }
@@ -113,8 +114,38 @@
       this.ch.setLevel(on ? Math.pow(P(this.name, 'vol'), 1.6) : 0);
       this.ch.setSend(P(this.name, 'send'));
     }
-    onParam(k) { if (k === 'vol' || k === 'on' || k === 'send') this.update(); }
+    // S11.9 shaping, after every timbre of the layer, heard at once on the notes held: « Mordant » (a drive in parallel,
+    // level-matched) and « Épaisseur » (a Juno-style chorus: detuned copies, 3 at most, 2 on a light device). Both are
+    // built only once used: at 0 the layer's sound is untouched.
+    shape() {
+      const ctx = this.ctx, t = ctx.currentTime, bite = P(this.name, 'bite') || 0, width = P(this.name, 'width') || 0, ref = SHAPE_REF[this.name];
+      if (bite > 0 && !this.drive) {
+        const pre = ctx.createGain(), sat = shaper(ctx, driveCurve(2.5)), wet = ctx.createGain(); pre.gain.value = 0; wet.gain.value = 0;
+        this.out.connect(pre); pre.connect(sat); sat.connect(wet); wet.connect(this.ch.input); this.drive = { pre, wet };
+      }
+      if (width > 0 && !this.chorus) {
+        const lite = !!(AMB.quality && AMB.quality.lite && AMB.quality.lite()), taps = [];
+        [[0.011, 0.31, -0.85], [0.017, 0.53, 0.85], [0.023, 0.41, 0]].slice(0, lite ? 2 : 3).forEach(([d, hz, side]) => {
+          const dl = ctx.createDelay(0.05), lfo = ctx.createOscillator(), depth = ctx.createGain(), pan = ctx.createStereoPanner(), g = ctx.createGain();
+          dl.delayTime.value = d; lfo.frequency.value = hz; depth.gain.value = 0; pan.pan.value = side; g.gain.value = 0;
+          lfo.connect(depth); depth.connect(dl.delayTime); lfo.start();
+          this.out.connect(dl); dl.connect(pan); pan.connect(g); g.connect(this.ch.input); taps.push({ depth, g });
+        });
+        this.chorus = taps;
+      }
+      // drive: the input is pushed up to 10× its usual peak into a tanh, the wet part brought back to the dry level
+      if (this.drive) { this.drive.pre.gain.setTargetAtTime(bite ? (1 + bite * 9) / ref[0] : 0, t, 0.05); this.drive.wet.gain.setTargetAtTime(bite * ref[0] * ref[1], t, 0.05); }
+      const nTap = this.chorus ? this.chorus.length : 0;
+      if (this.chorus) for (const c of this.chorus) { c.depth.gain.setTargetAtTime(0.0008 + width * 0.0035, t, 0.05); c.g.gain.setTargetAtTime(width * 0.75 / Math.sqrt(nTap), t, 0.05); }
+      this.dry.gain.setTargetAtTime(1 - bite * 0.9 - width * 0.25, t, 0.05);
+    }
+    onParam(k) { if (k === 'vol' || k === 'on' || k === 'send') this.update(); if ((k === 'bite' || k === 'width') && this.dry) this.shape(); }
+    // S11.9 « Attaque » of the struck layers: seconds of rise before the note's own envelope (0 = the timbre's own strike)
+    rise(max) { const a = P(this.name, 'attack') || 0; return a * a * max; }
   }
+  // the usual peak of each shaped layer at its channel input (measured, tests/timbres.html): the drive's reference
+  // and the wet level that keeps the layer as loud once driven (a saturated sound is denser: it is brought down)
+  const SHAPE_REF = { drone: [0.15, 0.26], pad: [0.08, 0.17], bells: [0.45, 0.2], seq: [0.45, 0.2], bass: [0.1, 0.37] };
 
   // ===================== DRONE =====================
   class Drone extends Layer {
@@ -149,7 +180,7 @@
         setTimeout(() => { old.oscs.forEach((o) => { try { o.osc.stop(); } catch (e) {} }); old.stop.forEach((n) => { try { n.stop(); } catch (e) {} }); }, 4000);
       }
       const bus = ctx.createGain(); bus.gain.value = 0; bus.connect(this.filter);
-      bus.gain.setTargetAtTime(1, t, 0.8);
+      bus.gain.setTargetAtTime(1, t, this.glide() * 0.67);
       const type = P('drone', 'wave');
       // [semitone offset, wave, gain, detune cents]
       const defs = {
@@ -185,11 +216,21 @@
       if (extra) extra.call(this, ctx, bus, this.voices); // S11.9: the drones built from more than plain oscillators
       if (dirt) this.setTone();
     }
+    // S11.9 « Attaque »: how the drone moves to a new note — 0 = it jumps there with an accent (a strike), 0.5 = the
+    // slow glide it always had, 1 = it fades out and swells back in on the new note
+    glide() { const a = P('drone', 'attack'); return 0.05 + 4.6 * (a == null ? 0.25 : a * a); }
     setRoot(midi, time) {
+      const moved = midi !== this.root, tc = this.glide(), a = P('drone', 'attack');
       this.root = midi;
       if (!this.voices) return;
-      for (const v of this.voices.oscs) v.osc.frequency.setTargetAtTime(mtof(midi + v.semi), time, 1.2);
-      for (const fn of this.voices.tune) fn(midi, time);
+      for (const v of this.voices.oscs) v.osc.frequency.setTargetAtTime(mtof(midi + v.semi), time, tc);
+      for (const fn of this.voices.tune) fn(midi, time, tc);
+      if (moved && a != null && Math.abs(a - 0.5) > 0.05) { // (0.5: untouched)
+        const g = this.voices.bus.gain;
+        if (g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(time); else g.cancelScheduledValues(time);
+        if (a > 0.5) { g.setTargetAtTime(1 - (a - 0.5) * 1.8, time, 0.08); g.setTargetAtTime(1, time + 0.3, tc * 0.5); }
+        else { g.setTargetAtTime(1 + (0.5 - a) * 1.6, time, 0.006); g.setTargetAtTime(1, time + 0.03, 0.25); }
+      }
     }
     setTone() {
       const t = this.ctx.currentTime;
@@ -324,7 +365,7 @@
         const car2 = ctx.createOscillator(); car2.frequency.value = f; car2.detune.value = -det * 0.3;
         const mod = ctx.createOscillator(); mod.frequency.value = f * pick([1, 2, 0.5, 3]);
         const idx = ctx.createGain();
-        const top = f * (0.3 + tone * 2.5);
+        const top = f * (0.3 + tone * 2.5) * (1 + 1.5 * (P('pad', 'bite') || 0)); // (S11.9 Mordant: a deeper index)
         idx.gain.setValueAtTime(0, time);
         idx.gain.linearRampToValueAtTime(top, time + atk * 1.5);
         idx.gain.linearRampToValueAtTime(top * 0.3, time + Math.max(dur, atk * 2));
@@ -438,6 +479,7 @@
       const type = P(this.name, 'wave');
       const tone = P(this.name, 'tone');
       const decay = 0.6 + Math.pow(P(this.name, 'decay'), 1.4) * 7;
+      const rise = this.rise(1.2), bite = P(this.name, 'bite') || 0; // S11.9 Attaque, Mordant (more FM index)
       const f = mtof(midi);
       const env = ctx.createGain(); env.gain.value = 0;
       const pan = ctx.createStereoPanner(); pan.pan.value = live && live.bright != null ? 0 : rand(-0.7, 0.7);
@@ -456,7 +498,7 @@
         const car = ctx.createOscillator(); car.type = carrierType; car.frequency.value = f;
         const mod = ctx.createOscillator(); mod.frequency.value = f * ratio;
         const modGain = ctx.createGain();
-        modGain.gain.setValueAtTime(f * index, time);
+        modGain.gain.setValueAtTime(f * index * (1 + 1.5 * bite), time);
         modGain.gain.setTargetAtTime(f * index * 0.05, time, idxDecay);
         mod.connect(modGain); modGain.connect(car.frequency);
         car.connect(env); nodes.push(car, mod);
@@ -487,9 +529,9 @@
         const o2 = ctx.createOscillator(); o2.type = 'triangle'; o2.frequency.value = f * 2;
         const g2 = ctx.createGain(); g2.gain.value = 0.15 + tone * 0.3;
         o.connect(env); o2.connect(g2); g2.connect(env); nodes.push(o, o2);
-        const hold = Math.max(0.15, len || decay * 0.3);
+        const hold = Math.max(0.15, rise + 0.05, len || decay * 0.3);
         env.gain.setValueAtTime(0, time);
-        env.gain.linearRampToValueAtTime(amp * 0.7, time + 0.06);
+        env.gain.linearRampToValueAtTime(amp * 0.7, time + Math.max(0.06, rise));
         env.gain.setValueAtTime(amp * 0.7, time + hold);
         env.gain.setTargetAtTime(0, time + hold, 0.15 + decay * 0.08);
         const stopAt = time + hold + 1 + decay * 0.4;
@@ -499,7 +541,7 @@
         // a held live note (play.js) ends on release: same release curve, from the release time
         return { cutoff, release(t) {
           if (t >= time + hold) return;
-          const at = Math.max(t, time + 0.07), tau = 0.15 + decay * 0.08;
+          const at = Math.max(t, time + Math.max(0.07, rise + 0.01)), tau = 0.15 + decay * 0.08;
           env.gain.cancelScheduledValues(at); env.gain.setValueAtTime(amp * 0.7, at); env.gain.setTargetAtTime(0, at, tau);
           nodes.forEach((n) => { try { n.stop(at + 1 + decay * 0.4); } catch (e) {} });
         } };
@@ -516,12 +558,12 @@
         const vib = ctx.createOscillator(); vib.frequency.value = 5.2;
         const va = ctx.createGain(); va.gain.setValueAtTime(0, time); va.gain.linearRampToValueAtTime(9, time + 1.2);
         vib.connect(va); nodes.forEach((o) => va.connect(o.detune)); nodes.push(vib);
-        const hold = Math.max(0.3, len || decay * 0.45), top = f * (2 + tone * 7), peakAt = time + 0.25 + hold * 0.5;
+        const hold = Math.max(0.3, rise + 0.05, len || decay * 0.45), top = f * (2 + tone * 7), peakAt = time + 0.25 + hold * 0.5;
         lp.frequency.setValueAtTime(f * 0.9, time); lp.frequency.exponentialRampToValueAtTime(top, peakAt);
         lp.frequency.setTargetAtTime(f * 1.2, peakAt, 0.4 + decay * 0.1);
         lp.connect(env);
         const a = amp * 0.42, tau = 0.25 + decay * 0.1;
-        env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(a, time + 0.09);
+        env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(a, time + Math.max(0.09, rise));
         env.gain.setValueAtTime(a, time + hold); env.gain.setTargetAtTime(0, time + hold, tau);
         const stopAt = time + hold + tau * 6;
         nodes.forEach((n) => { n.start(time); n.stop(stopAt); });
@@ -530,7 +572,7 @@
         // a held live note (play.js) ends on release, like « Doux »
         return { cutoff, release(t) {
           if (t >= time + hold) return;
-          const at = Math.max(t, time + 0.1);
+          const at = Math.max(t, time + Math.max(0.1, rise + 0.01));
           env.gain.cancelScheduledValues(at); env.gain.setValueAtTime(a, at); env.gain.setTargetAtTime(0, at, tau);
           nodes.forEach((n) => { try { n.stop(at + tau * 6); } catch (e) {} });
         } };
@@ -559,7 +601,8 @@
           click.connect(cg); cg.connect(env); nodes.push(click);
           a = amp * 0.5; atk = 0.012; tau = 0.06 + decay * 0.03;
         }
-        const hold = Math.max(0.15, len || decay * 0.3);
+        atk = Math.max(atk, rise);
+        const hold = Math.max(0.15, rise + 0.05, len || decay * 0.3);
         env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(a, time + atk);
         env.gain.setValueAtTime(a, time + hold); env.gain.setTargetAtTime(0, time + hold, tau);
         const stopAt = time + hold + tau * 7;
@@ -609,9 +652,10 @@
         dur = decay * 0.5;
       }
       env.gain.setValueAtTime(0, time);
-      env.gain.linearRampToValueAtTime(amp, time + 0.004);
-      env.gain.setTargetAtTime(0, time + 0.004, dur / 4);
-      const stopAt = time + dur * 1.3 + 0.1;
+      const top = Math.max(0.004, rise);
+      env.gain.linearRampToValueAtTime(amp, time + top);
+      env.gain.setTargetAtTime(0, time + top, dur / 4);
+      const stopAt = time + top + dur * 1.3 + 0.1;
       nodes.forEach((n) => { n.start(time); n.stop(stopAt); });
       nodes[0].onended = () => { env.disconnect(); pan.disconnect(); };
       AMB.bus.emit('note', { layer: this.name, midi, time, vel, dur, live: !!live && !live.loop, loop: !!(live && live.loop) });
@@ -665,8 +709,8 @@
       }
       else { osc('sawtooth', 1, 0.6); lp.frequency.setValueAtTime(200 + tone * 3000, time); lp.frequency.setTargetAtTime(150, time, 0.08); }
       const lvl = 0.55 * (BASS_LVL[type] || 1), tail = type === '808' ? 0.35 : 0.08;
-      const hold = Math.max(0.12, len * (0.3 + P('bass', 'decay') * 0.7));
-      env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(lvl, time + 0.012);
+      const rise = Math.max(0.012, this.rise(0.6)), hold = Math.max(0.12, rise, len * (0.3 + P('bass', 'decay') * 0.7));
+      env.gain.setValueAtTime(0, time); env.gain.linearRampToValueAtTime(lvl, time + rise);
       env.gain.setValueAtTime(lvl, time + hold); env.gain.setTargetAtTime(0, time + hold, tail);
       const stopAt = time + hold + tail * 7.5;
       nodes.forEach((n) => { n.start(time); n.stop(stopAt); });

@@ -10,13 +10,19 @@
 // the timbres before S11.9 (the level reference)
 const OLD = { drone: ['Chaud', 'Creux', 'Orgue', 'Sub', 'Abîmé'], pad: ['Nappe', 'Verre', 'Chœur', 'Cordes', 'Onde', 'FM', 'Cuivres', 'Cendre'],
   bells: ['Cloche', 'Kalimba', 'Verre', 'Pluck', 'Doux', 'Lame'], bass: ['Sub', 'Ronde', 'Pluck', 'Saturée'] };
+// level kept within (dB) at full Mordant (a driven sound is denser: plucks become sustained; or within ±3 dB of the
+// sound's reference: a quiet timbre driven joins the others) and Épaisseur; Attaque
+// slows the rise, so its 2 s clip is quieter by design (only: sound, no NaN, no clipping)
+const LIM = { bite: 6, width: 3 };
 const SECS = 2, SR = 44100, MEL = [62, 65, 69, 67], BASS = [38, 38, 45, 43];
 const WAV = new URLSearchParams(location.search).get('wav');
 if (!window.AMB.bus) testBus();
 
 // render one timbre offline: a fake engine whose channel goes straight to the destination; the started sources are counted
-async function render(sec, wave) {
+async function render(sec, wave, set = {}) {
   const st = AMB.store; st.set(sec + '.wave', wave, 'test');
+  for (const k of ['bite', 'width', 'attack']) { const sp = st.spec(sec + '.' + k); if (sp && sec !== 'pad') st.set(sec + '.' + k, k in set ? set[k] : sp.def, 'test'); }
+  if (sec === 'pad') { st.set('pad.bite', set.bite || 0, 'test'); st.set('pad.width', set.width || 0, 'test'); }
   const ctx = new OfflineAudioContext(2, SECS * SR, SR);
   let started = 0;
   for (const m of ['createOscillator', 'createBufferSource']) { const f = ctx[m].bind(ctx); ctx[m] = () => { const n = f(), s = n.start.bind(n); n.start = (...a) => { started++; return s(...a); }; return n; }; }
@@ -25,7 +31,7 @@ async function render(sec, wave) {
   let L, voices = 1;
   try {
     const C = AMB.layers;
-    if (sec === 'drone') { L = new C.Drone(); }
+    if (sec === 'drone') { L = new C.Drone(); L.setRoot(55, 1.0); } // (a chord change half-way: the Attaque)
     else if (sec === 'pad') { L = new C.Pad(); L.playChord([50, 57, 62], 0.02, 1.3); voices = 3; }
     else if (sec === 'bells' || sec === 'seq') { L = sec === 'seq' ? new C.SeqVoice() : new C.Bells(); MEL.forEach((m, i) => L.note(m, 0.02 + i * 0.48, 0.75, true, 0.35, { bright: null, dest: null })); voices = MEL.length; }
     else { L = new C.Bass(); BASS.forEach((m, i) => L.note(m, 0.02 + i * 0.48, 0.4)); voices = BASS.length; }
@@ -67,10 +73,27 @@ window.addEventListener('load', async () => {
         if (isNew) ok(!r.nan && r.rms > 0.003 && r.peak < 1 && Math.abs(d) <= 3 && r.perVoice <= heavy, line);
         else ok(!r.nan && r.rms > 0.003 && r.peak < 1, line + ' (ancien : référence)');
       }
-      if (WAV) { // listening file: same gain for the whole sound, the loudest clip at -1 dBFS at most
-        const top = Math.max(...opts.map((w) => res[w].peak)), g = Math.min(4, 0.89 / top);
-        await fetch('/__wav?' + sec, { method: 'POST', body: wavOf(opts.map((w) => res[w].buf), g) }).catch(() => {});
-        log('wav ' + sec + ' : ' + opts.join(' / '));
+      // S11.9 shaping (Mordant, Épaisseur, Attaque) at full on every timbre: no NaN, no clipping, the level kept (±3 dB)
+      const knobs = sec === 'pad' ? ['bite', 'width'] : ['bite', 'width', 'attack'], worst = {};
+      for (const k of knobs) {
+        worst[k] = 0;
+        for (const w of opts) {
+          const r = await render(sec, w, { [k]: 1 }), d = dB(r.rms / res[w].rms);
+          if (Math.abs(d) > Math.abs(worst[k])) worst[k] = d;
+          if (r.nan || r.peak >= 1 || r.rms < 0.003 || (k !== 'attack' && Math.abs(d) > LIM[k] && Math.abs(dB(r.rms / ref)) > 3)) ok(false, `${SCH[sec].label} « ${w} » ${k} = 1 : rms ${d.toFixed(1)} dB, crête ${r.peak.toFixed(3)}${r.nan ? ', NaN' : ''}`);
+        }
+        ok(true, `${SCH[sec].label} : ${SCH[sec].params[k].label} à fond sur les ${opts.length} timbres, sans NaN ni saturation (écart de niveau max ${worst[k].toFixed(1)} dB${k === 'attack' ? ', montée plus lente' : ''})`);
+      }
+      if (WAV) { // listening file: every timbre, then the default timbre with Mordant, Épaisseur, Attaque at 0 / 0.5 / 1; same gain for the whole sound
+        const def = SCH[sec].params.wave.def, extra = [], names = [];
+        for (const k of [...knobs, ...(sec === 'pad' ? ['attack'] : [])]) for (const v of [0, 0.5, 1]) {
+          if (sec === 'pad' && k === 'attack') { const a0 = AMB.store.get('pad.attack'); AMB.store.set('pad.attack', v * 0.5, 'test'); extra.push(await render(sec, def)); AMB.store.set('pad.attack', a0, 'test'); }
+          else extra.push(await render(sec, def, { [k]: v }));
+          names.push(`${def} ${SCH[sec].params[k].label} ${v}`);
+        }
+        const all = opts.map((w) => res[w]).concat(extra), top = Math.max(...all.map((r) => r.peak)), g = Math.min(4, 0.89 / top);
+        await fetch('/__wav?' + sec, { method: 'POST', body: wavOf(all.map((r) => r.buf), g) }).catch(() => {});
+        log('wav ' + sec + ' : ' + opts.concat(names).join(' / '));
       }
     }
     done();
