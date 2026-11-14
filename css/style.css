@@ -1394,7 +1394,7 @@ body.listen .app > .stage { height: auto; }
 @media (max-width: 560px) { .top .btn, .top summary.btn { padding-inline: 8px; letter-spacing: .04em; font-size: 12px; } .top .mode-btn { padding-inline: 8px; letter-spacing: .06em; } }
 
 /* =====================================================================
-   S10.1 « Fluide sur téléphone » — js/quality.js puts q-haut | q-moyen | q-bas on <html>. q-haut = the look above,
+   S10.1 « Fluide sur téléphone » — AMB.quality, end of js/motion.js puts q-haut | q-moyen | q-bas on <html>. q-haut = the look above,
    untouched (desktop). q-moyen / q-bas (phone): no backdrop-filter (the glass is simply darker), and the neon loops
    that repainted every frame (box-shadow, text-shadow, filter in an infinite animation) become transform / opacity
    only: their glow stays, still. Plus the fps counter (?fps=1, ⋯ « Afficher les images/s ») and the warm-up box.

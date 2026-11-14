@@ -13,7 +13,7 @@
 //     half strength, every motion effect off (no flash), time frozen. fog is content (not scaled).
 //   - robustness: no WebGL or a lost context → automatic fallback: the GL canvas hides, #viz shows again with the css CRT
 //     (body.city .stage::after) and the 2D post of garden-visual (gardenVisual.post2d). A restored context brings WebGL back.
-//   - S10.1 quality (js/quality.js, the ONE governor on the real frame intervals; the own budget of S8.2 is gone — it
+//   - S10.1 quality (AMB.quality, end of js/motion.js, the ONE governor on the real frame intervals; the own budget of S8.2 is gone — it
 //     never fired): level haut = two bloom radii (1/2, 1/4), moyen = one radius rendered at 1/4, bas = no WebGL (2D,
 //     reason 'quality'); back up = WebGL again. ?gl=0 = never WebGL; ?gl=1 = WebGL whatever the level (dev captures).
 //   - resolution: output = source size × 1/ceil(devicePixelRatio / 1.5) (S9.4: a whole fraction, nearest, pixelated) × quality scale; bloom at 1/2 and 1/4 of it.

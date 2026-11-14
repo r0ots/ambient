@@ -6,7 +6,6 @@
 <script src="lib.js"></script>
 <script>testBus();</script>
 <script src="../js/motion.js"></script>
-<script src="../js/quality.js"></script>
 <div class="stage" style="position:relative;width:640px;height:400px"><canvas id="viz" width="640" height="400" style="width:640px;height:400px;display:block"></canvas></div>
 <script>
 // the stub scene: a dark city with a pink neon bar and a cyan line (what garden-visual.js would have drawn)
@@ -97,7 +96,7 @@ window.addEventListener('load', async () => {
     { const t = []; for (let i = 0; i < 20; i++) { const a = performance.now(); frame(); G.gl.finish(); t.push(performance.now() - a); } t.sort((a, b) => a - b);
       log('coût d\'une image 640×400 avec finish() (swiftshader, CPU) : médiane ' + t[10].toFixed(2) + ' ms'); }
 
-    // --- S10.1 the quality governor (js/quality.js): real frame intervals → level down, WebGL follows; the counter
+    // --- S10.1 the quality governor (AMB.quality, end of js/motion.js): real frame intervals → level down, WebGL follows; the counter
     { const Q = AMB.quality; ok(Q && !Q.auto && Q.level === Q.pick(), 'qualité : niveau de départ choisi, gouverneur coupé hors de l\'appli (' + Q.name() + ')');
       const fake = (o) => ({ matchMedia: (q) => ({ matches: q === '(pointer: coarse)' && !!o.coarse }), innerWidth: o.w, screen: { width: o.w } });
       ok(Q.pick({ hardwareConcurrency: 12, deviceMemory: 8 }, fake({ w: 1440 })) === 0 && Q.pick({ hardwareConcurrency: 8, deviceMemory: 8 }, fake({ w: 412, coarse: true })) === 1

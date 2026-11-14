@@ -17,7 +17,7 @@
 //   - garden.FX: `city` ingredient — 'salvo' (PARFAIT: every roof fires), 'blackout' (RATÉ: half a second of power cut),
 //     'stars' (a party: a shower of shooting stars). No second juice system: garden.fxPlay calls `cityMusic.fx` on its beat.
 // Every event waits for the moment it is HEARD (audio clock minus the output latency), not the scheduler's lookahead.
-// Caps (LASERS, STARS, WAVES) × the quality `q` (0.3..1: S10.1, from the app's quality level, js/quality.js).
+// Caps (LASERS, STARS, WAVES) × the quality `q` (0.3..1: S10.1, from the app's quality level, AMB.quality, end of js/motion.js).
 // JUICE (AMB.motion) scales it; JUICE 0 or reduced motion: nothing moves (no ring, no shooting star, no scroll, no sweep,
 // no flicker), the light still follows (beams, grid lit on the bass, sky tint).
 (function () {
@@ -232,7 +232,7 @@
     },
 
     // ---- automatic quality: slow frames lower the caps (lasers, stars, rings, grid lines); fast frames bring them back
-    // S10.1: the app's ONE governor (js/quality.js) decides; its own frame watch of S8.5 is gone (haut 1, moyen 0.6, bas 0.3)
+    // S10.1: the app's ONE governor (AMB.quality, end of js/motion.js) decides; its own frame watch of S8.5 is gone (haut 1, moyen 0.6, bas 0.3)
     budget() {
       if (!this.auto || !AMB.quality) return;
       this.q = [1, 0.6, 0.3][AMB.quality.level] || 1;
