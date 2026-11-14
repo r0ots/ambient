@@ -140,7 +140,6 @@
     aurora: { at: 'lumières : aurores néon', keys: ['fx.shimmer'] },
     rays: { at: 'lumières : projecteurs qui balaient le ciel', keys: ['drone.follow', 'pad.length', 'pad.prog', 'pad.custom', 'pad.counter'] },
     fireflies: { at: 'lumières : drones qui clignotent', keys: ['bells.mode', 'bells.phraseLen', 'bells.mutate', 'bells.range', 'seq.mode', 'seq.arpDir', 'seq.arpRate', 'seq.arpOct', 'seq.steps', 'seq.octave', 'seq.follow', 'seq.decay', 'seq.mutate', 'seq.patB', 'seq.patC', 'seq.patD', 'seq.slot', 'seq.chain'] },
-    haze: { at: 'météo : smog néon', keys: ['fx.space', 'fx.revType', 'fx.size', 'fx.predelay'] },
     snow: { at: 'météo : neige de pixels', keys: ['grains.scan', 'grains.pitch', 'grains.reverse', 'grains.glide'] },
     frost: { at: 'météo : givre', keys: ['grains.source'], ev: 'freeze' },
     ripple: { at: 'sol : ondulation', keys: ['global.swing', 'global.humanize', 'bass.octave', 'perc.steps'] },
@@ -229,8 +228,8 @@
     'cam.frame': { tau: 1.8, at: 'caméra : cadrage (1 = toute la rue, plus = plus près de la ville bâtie)', aim: (c) => c.frame().z },
     'cam.cx': { tau: 1.8, at: 'caméra : centre du cadrage (x, part de la largeur)', aim: (c) => c.frame().cx },
     'cam.back': { tau: 1.5, at: 'caméra : recul (0 = près, 1 = loin)', aim: (c) => 0.15 + 0.35 * c.all.space },
-    'cam.depth': { tau: 1.5, at: 'caméra : profondeur (parallaxe)', aim: (c) => 0.3 + 0.7 * c.L.haze },
-    'cam.fog': { tau: 1.2, at: 'caméra : brouillard à l\'horizon', aim: (c) => 0.15 + 0.6 * c.L.haze * c.L.haze },
+    'cam.depth': { tau: 1.5, at: 'caméra : profondeur (parallaxe)', aim: (c) => 0.3 + 0.7 * c.all.space },
+    'cam.fog': { tau: 1.2, at: 'caméra : brouillard à l\'horizon', aim: (c) => 0.15 + 0.6 * c.all.space * c.all.space },
     'weather.rain': { tau: 2, at: 'météo : pluie (s\'arrête à l\'aube)', aim: (c) => (1 - c.dawn) * (0.45 + 0.55 * c.nature) },
     'weather.wind': { tau: 2, at: 'météo : vent (pluie penchée, nuages)', aim: (c) => 0.15 + 0.85 * c.L.clouds },
     'weather.storm': { tau: 2, at: 'météo : orage (éclairs)', aim: (c) => (1 - c.dawn) * clamp((c.nature - 0.75) / 0.25) },
@@ -974,7 +973,8 @@
         const slot = Math.floor(this.st * 0.7), r = ih(slot, 77);
         if (slot !== this.boltSlot) { this.boltSlot = slot; if (r < 0.25 + 0.6 * w.weather.storm) { this.impulse('flash', 0.6 + 0.4 * w.weather.storm); this.bolt = { x: 0.15 + 0.7 * ih(slot, 3), seed: slot }; } }
       }
-      w.cam.x = this.reduced ? 0 : Math.sin(this.st * 0.045) * 0.012 * (0.4 + (w.cam.depth || 0));
+      // S8.4 hook: + cam.dx (a dimension: Espace's dolly and gesture push, js/city-dims.js)
+      w.cam.x = (this.reduced ? 0 : Math.sin(this.st * 0.045) * 0.012 * (0.4 + (w.cam.depth || 0))) + (w.cam.dx || 0);
       w.cam.shake = Math.hypot(this.ox, this.oy);
       w.speed = this.speed; w.t = this.st;
       return w;
@@ -1521,7 +1521,7 @@
   // traffic (z 50): S8.6 moved it to js/city-life.js (flying cars in lanes, zeppelin, light-cycles, people, holograms)
   // weather (z 60): rain (how much, slanted by the wind; it stops at dawn), splashes on the street, lightning
   addLayer({ id: 'weather', z: 60, draw(g, w, cam, v) { v.drawRain(g, cam, w); } });
-  // front (z 70): street lamps near the camera (the strongest parallax), then the scene's front layers: smog, drones,
+  // front (z 70): street lamps near the camera (the strongest parallax), then the scene.s front layers: drones,
   // snow, frost, lens
   addLayer({ id: 'front', z: 70, draw(g, w, cam, v) {
     const W = cam.W, H = cam.H, gd = cam.gd, px = cam.px, T = v.st, red = v.reduced, s = Math.max(1, px - 1);
@@ -1530,25 +1530,13 @@
       for (const xf of xs) {
         const x = Math.round(cam.x(d, W * xf)), lw = Math.max(2, Math.round(1.6 * px * k)), arm = Math.round(6 * px * k) * (xf < 0.5 ? 1 : -1);
         g.fillStyle = '#05030a'; g.fillRect(x, Math.round(ys - hgt), lw, Math.round(hgt)); g.fillRect(Math.min(x, x + arm), Math.round(ys - hgt), Math.abs(arm) + lw, lw);
-        const gl = v.glow([255, 170, 90], Math.round(14 * px * k)); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.5 + 0.3 * w.power;
+        const gl = v.glow([255, 170, 90], Math.round(14 * px * k)); g.globalCompositeOperation = 'lighter'; g.globalAlpha = w.lamps != null ? clamp(w.lamps) : 0.5 + 0.3 * w.power; // S8.4 hook: lamps (dead in a blackout)
         g.drawImage(gl, x + arm - gl.width / 2, Math.round(ys - hgt) - gl.height / 2 + lw); g.fillStyle = '#ffd9a0'; g.fillRect(x + arm - lw, Math.round(ys - hgt + lw), 2 * lw, lw);
         g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
       }
     }
     g.setTransform(1, 0, 0, 1, cam.ox, cam.oy);
     let a;
-    if ((a = v.amt('haze')) > 0.03) {
-      const bh = Math.round(H * 0.32), cv = v.fx('haze', W, H, (ww) => {
-        const c = v.canvas(ww / 4, bh / 4), x = c.getContext('2d'), r = mulberry(11);
-        const grd = x.createLinearGradient(0, 0, 0, c.height); grd.addColorStop(0, 'rgba(200,90,190,0)'); grd.addColorStop(0.6, 'rgba(200,90,190,0.38)'); grd.addColorStop(1, 'rgba(120,60,160,0.12)');
-        x.fillStyle = grd; x.fillRect(0, 0, c.width, c.height);
-        for (let i = 0; i < 14; i++) { const cx = r() * c.width, cy = c.height * (0.35 + 0.4 * r()), R2 = c.height * (0.2 + 0.3 * r()), gg = x.createRadialGradient(cx, cy, 0, cx, cy, R2); gg.addColorStop(0, 'rgba(230,120,210,0.32)'); gg.addColorStop(1, 'rgba(230,120,210,0)'); x.fillStyle = gg; x.fillRect(cx - R2, cy - R2, 2 * R2, 2 * R2); }
-        return c;
-      });
-      const off = red ? 0 : ((T * px * 4 * (0.5 + 1.5 * w.weather.wind)) % W + W) % W, y = gd - bh * 0.7;
-      g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.9 * a);
-      g.drawImage(cv, off, y, W, bh); g.drawImage(cv, off - W, y, W, bh); g.imageSmoothingEnabled = false;
-    }
     g.globalCompositeOperation = 'lighter';
     if ((a = v.amt('fireflies')) > 0.03) { // drones blinking between the towers
       const r = mulberry(23), n = Math.round(4 + 26 * a);

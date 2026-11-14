@@ -11,7 +11,7 @@
 AMB.tree = { NODES: [['racine', 'drone.on'], ['t.son', 'drone.wave'], ['h.drone', 'drone.follow'], ['h.pad', 'pad.on'], ['h.pad2', 'pad.attack'], ['h.prog', 'pad.prog'],
   ['m.bells', 'bells.on'], ['m.phrase', 'bells.mode'], ['m.grains', 'grains.on'], ['c.seq', 'seq.on'], ['c.rythme', 'bass.*'], ['c.rythme', 'perc.*'], ['e.texture', 'texture.*'], ['e.reverb', '*.send']].map(([id, p]) => ({ id, params: [p] })) };
 </script>
-<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script><script src="../js/city-music.js"></script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script><script>if (/[?&]gl=1/.test(location.search)) document.write('<script src="../js/city-gl.js"><\/script>');</script><script src="../js/city-dims.js"></script><script src="../js/city-music.js"></script><script src="../js/widgets.js"></script><script src="../js/perform.js"></script>
 <canvas id="out"></canvas>
 <script>
 window.addEventListener('load', () => {
@@ -20,13 +20,15 @@ window.addEventListener('load', () => {
   const G = AMB.game, V = AMB.visual, GV = AMB.gardenVisual, St = AMB.store, cv = document.createElement('canvas');
   cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv.style.width = w + 'px'; cv.style.height = h + 'px'; document.body.appendChild(cv);
   V.c = cv; V.g = cv.getContext('2d'); V.dpr = dpr;
+  if (AMB.cityGL) { const G = AMB.cityGL, P0 = G.pulse, R0 = G.render; G.pulse = function (n, a, ms) { const r = P0.call(this, n, a, ms); if (r) this.pulses[this.pulses.length - 1].t0 = fake; return r; }; G.render = function () { return R0.call(this, fake); }; } // the WebGL pass on the fake clock too
+  (Q.get('off') || '').split(',').filter(Boolean).forEach((id) => { const i = GV.STACK.findIndex((l) => l.id === id); if (i >= 0) GV.STACK.splice(i, 1); }); // ?off=<layer ids> (cost per layer)
   let T = 100, fake = 1000; GV.clock = () => T; GV.now = () => fake; GV.visible = true;
   const ALL = ['racine', 't.son', 'h.drone', 'h.pad', 'h.pad2', 'h.prog', 'm.bells', 'm.phrase', 'm.grains', 'c.seq', 'c.rythme', 'e.texture', 'e.reverb'];
   G.setMode('path'); G.s.nodes = ALL.slice(); GV.sig = null; St.setMany({ 'seq.on': true, 'bass.on': true, 'perc.on': true, 'texture.on': true, 'grains.on': true }, 'preset');
   AMB.seq = { playing: true, step: 0, nextTime: T, origin: 0, stepDur: () => 0.15 };
   const seqAt = () => { const sd = 0.15, n = Math.floor((T - 100) / sd); AMB.seq.step = n + 1; AMB.seq.nextTime = 100 + (n + 1) * sd; };
   const step = (s, notes) => { const n = Math.max(1, Math.round(s / 0.016)); for (let i = 0; i < n; i++) { T += s / n; fake += s / n * 1000; seqAt(); if (notes) notes(i); const t0 = performance.now(); V.draw(); ms.push(performance.now() - t0); } }, ms = [];
-  const tiles = [], snap = (label) => { const c = document.createElement('canvas'); c.width = cv.width; c.height = cv.height; c.getContext('2d').drawImage(cv, 0, 0); tiles.push([c, label]); };
+  const tiles = [], snap = (label) => { const c = document.createElement('canvas'), GL = AMB.cityGL, gl = GL && GL.mode === 'gl' && GL.cv; c.width = cv.width; c.height = cv.height; if (gl) { GL.render(); c.getContext('2d').drawImage(gl, 0, 0, c.width, c.height); } else c.getContext('2d').drawImage(cv, 0, 0); tiles.push([c, label + (AMB.cityDims && /dbg/.test(location.hash) ? ' P' + GV.world.power.toFixed(2) + ' L' + St.get('macro.light').toFixed(2) + ' w' + AMB.cityDims.waves.length : '')]); };
   const music = (i) => { if (i % 9 === 0) AMB.bus.emit('note', { layer: ['bells', 'seq', 'bass'][(i / 9) % 3], midi: 55 + (i * 7) % 24, time: T, vel: 0.8 }); if (i % 6 === 0) AMB.bus.emit('perc', { track: i % 3, time: T, vel: 0.8 }); if (i % 60 === 0) AMB.bus.emit('chord', { time: T, deg: (i / 60) % 7, midis: [52, 55, 59] }); };
   V.draw(); step(0.5);
   if (sheet === 'build') {
@@ -58,6 +60,14 @@ window.addEventListener('load', () => {
     ev.sort((a, b) => a[0] - b[0]); let k = 0;
     const music2 = () => { while (k < ev.length && t0 + ev[k][0] <= T + 0.001) { const [dt2, n, d] = ev[k++]; AMB.bus.emit(n, { ...d, time: t0 + dt2 }); } };
     for (let f = 0; f < 12; f++) { step(0.2, music2); snap('t ' + (T - t0).toFixed(2) + ' s · temps ' + (1 + Math.floor((T - t0 - 0.001) / 0.6))); }
+  } else if (sheet === 'dims') { // S8.4: one grand réglage (#sheet=dims&m=light|density|space|nostalgia|nature) turned from 0 to 1 by hand (a gesture of `g` s), then held
+    const m = (/[&#]m=([a-z]+)/.exec(location.hash) || [, 'light'])[1], k = 'macro.' + m, g = +((/[&#]g=([0-9.]+)/.exec(location.hash) || [, '1.2'])[1]);
+    St.set(k, 0, 'user'); step(4, music); snap(m + ' 0');
+    const n = Math.round(g / 0.016); let i = 0;
+    const turn = (to) => { for (; i < n * to; i++) { St.set(k, Math.min(1, (i + 1) / n), 'user'); step(0.016, music); } };
+    for (const f of [0.3, 0.55, 0.8, 1]) { turn(f); snap(m + ' geste ' + Math.round(f * 100) + ' %'); }
+    step(0.35, music); snap(m + ' 1 +0,35 s'); step(3, music); snap(m + ' 1 (posé)');
+    step(0.5); St.set(k, 0.5, 'user'); step(0.05); St.set(k, 1, 'user'); step(0.05); St.set(k, 0.2, 'user'); step(0.12, music); snap(m + ' surcharge (vite)');
   } else if (sheet === 'empty') { G.s.nodes = []; GV.sig = null; step(0.5); snap('vide'); }
   else { step(1.5, music); snap('ville'); }
   const out = document.getElementById('out'), tw = Math.round(cv.width * sc), th = Math.round(cv.height * sc), n = tiles.length, c = Math.min(cols, n), rws = Math.ceil(n / c);
