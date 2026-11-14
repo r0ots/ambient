@@ -1518,41 +1518,7 @@
       g.fillRect(Math.round(qq.x / px) * px, Math.round(qq.y / px) * px, px * qq.s - 1, px * qq.s - 1);
     }
   } });
-  // traffic (z 50): flying cars in lanes across the sky (head lights, red tails, light trails) and cars down the street;
-  // how many = traffic, how fast = the scene's speed
-  addLayer({ id: 'traffic', z: 50, draw(g, w, cam, v) {
-    const W = cam.W, H = cam.H, gd = cam.gd, px = cam.px, T = v.reduced ? 0 : v.st, tr = w.traffic;
-    if (tr < 0.03) return;
-    g.globalCompositeOperation = 'lighter';
-    const lanes = [[0.42, 0.7, 1], [0.55, 0.85, -1], [0.3, 0.6, -1], [0.66, 1, 1]];
-    const trail = v.fx('trail', 1, 1, () => { const c = v.canvas(64, 1), x2 = c.getContext('2d'), grd = x2.createLinearGradient(0, 0, 64, 0); grd.addColorStop(0, 'rgba(255,51,72,0)'); grd.addColorStop(1, 'rgba(255,70,110,0.5)'); x2.fillStyle = grd; x2.fillRect(0, 0, 64, 1); return c; });
-    lanes.forEach(([yf, d, dir], li) => {
-      const n = Math.round(tr * (li < 2 ? 4 : 3)); if (!n) return;
-      const k = cam.k(d), y = cam.y(d, gd * yf), span = W * 1.4, sp = W * (0.05 + 0.04 * li) * d;
-      for (let i = 0; i < n; i++) {
-        const x = ((ih(li, i) * span + dir * T * sp * (0.8 + 0.4 * ih(i, li))) % span + span) % span - W * 0.2 + cam.pan * d * W, bob = Math.sin(T * 1.3 + i * 2 + li) * px * 0.5;
-        const len = Math.round((8 + 10 * tr) * px * k), cw = Math.max(2, Math.round(3 * px * k)), ch = Math.max(1, Math.round(px * k));
-        const xx = Math.round(x), yy = Math.round(y + bob);
-        g.globalAlpha = 0.9 * d; g.imageSmoothingEnabled = true;
-        if (dir > 0) g.drawImage(trail, xx - len, yy, len, ch); else { g.setTransform(-1, 0, 0, 1, xx + len, 0); g.drawImage(trail, 0, yy, len, ch); g.setTransform(1, 0, 0, 1, 0, 0); }
-        g.imageSmoothingEnabled = false; g.globalAlpha = 1;
-        g.fillStyle = rgb(TOK.wall, 2.2); g.fillRect(xx - (dir > 0 ? cw : 0), yy - ch, cw, 2 * ch);
-        g.fillStyle = '#fff6e0'; g.fillRect(dir > 0 ? xx : xx - ch, yy - ch, ch, ch);
-      }
-    });
-    // the street: headlights coming towards us, tail lights going away
-    const sgd = cam.y(1, gd), lanesG = [[0.3, 1], [0.6, -1]];
-    lanesG.forEach(([yf, dir], li) => {
-      const n = Math.round(tr * 3); if (!n) return;
-      const y = Math.round(sgd + (H - sgd) * yf), span = W * 1.5;
-      for (let i = 0; i < n; i++) {
-        const x = ((ih(i, 40 + li) * span + dir * T * W * 0.12) % span + span) % span - W * 0.25, cw = 6 * px, col = dir > 0 ? [255, 246, 224] : [255, 51, 72];
-        g.fillStyle = rgb(TOK.wall, 1.8); g.fillRect(Math.round(x), y - 2 * px, cw, 2 * px);
-        g.fillStyle = rgb(col, 1, 0.9); g.fillRect(Math.round(dir > 0 ? x + cw - px : x), y - px, px, px);
-        g.fillStyle = rgb(col, 1, 0.18); g.fillRect(Math.round(dir > 0 ? x + cw : x - 10 * px), y - px, 10 * px, Math.max(1, px >> 1));
-      }
-    });
-  } });
+  // traffic (z 50): S8.6 moved it to js/city-life.js (flying cars in lanes, zeppelin, light-cycles, people, holograms)
   // weather (z 60): rain (how much, slanted by the wind; it stops at dawn), splashes on the street, lightning
   addLayer({ id: 'weather', z: 60, draw(g, w, cam, v) { v.drawRain(g, cam, w); } });
   // front (z 70): street lamps near the camera (the strongest parallax), then the scene's front layers: smog, drones,
