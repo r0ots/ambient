@@ -945,7 +945,7 @@
       // the tempo is the scene's speed (Flottant slower); reduced motion: the scene stands still
       const tp = norm('global.tempo', get('global.tempo')), fl = val(get, 'global.time') === 'Flottant';
       this.speed = (0.5 + 1.5 * tp) * (fl ? 0.6 : 1);
-      if (!this.reduced) this.st += dt * this.speed;
+
     },
     // S5.9 → S5.8: a moment of the juice table (garden.FX `kick`) flares scene layers up, k = JUICE
     flare(names, k = this.JUICE) { if (!this.running() || this.reduced) return 0; let n = 0; for (const x of names) if (SCENE[x]) { this.kick[x] = Math.max(this.kick[x] || 0, Math.min(1, k)); n++; } return n; },
@@ -1213,6 +1213,7 @@
       this.lastT = t0; this.t = (this.t || 0) + dt; this.dt = dt; this.dpr = dpr;
       const now = this.clock();
       this.watch(); this.updateScene(dt); this.updateLook(dt); this.updateCombos(dt);
+      if (!this.reduced) this.st += dt * this.speed; // the scene's time: the tempo is its speed, still in reduced motion
       for (let i = this.pending.length - 1; i >= 0; i--) { const e = this.pending[i]; if (e.time <= now + 0.02) { this.pending.splice(i, 1); this.hit(e.layer, e.vel); } }
       const ans = this.answer(now);
       if (ans) this.lightAnswer(ans);
@@ -1500,15 +1501,17 @@
     if (tr < 0.03) return;
     g.globalCompositeOperation = 'lighter';
     const lanes = [[0.42, 0.7, 1], [0.55, 0.85, -1], [0.3, 0.6, -1], [0.66, 1, 1]];
+    const trail = v.fx('trail', 1, 1, () => { const c = v.canvas(64, 1), x2 = c.getContext('2d'), grd = x2.createLinearGradient(0, 0, 64, 0); grd.addColorStop(0, 'rgba(255,51,72,0)'); grd.addColorStop(1, 'rgba(255,70,110,0.5)'); x2.fillStyle = grd; x2.fillRect(0, 0, 64, 1); return c; });
     lanes.forEach(([yf, d, dir], li) => {
       const n = Math.round(tr * (li < 2 ? 4 : 3)); if (!n) return;
       const k = cam.k(d), y = cam.y(d, gd * yf), span = W * 1.4, sp = W * (0.05 + 0.04 * li) * d;
       for (let i = 0; i < n; i++) {
-        const x = ((ih(li, i) * span + dir * T * sp * (0.8 + 0.4 * ih(i, li))) % span + span) % span - W * 0.2, bob = Math.sin(T * 1.3 + i * 2 + li) * px * 0.5;
+        const x = ((ih(li, i) * span + dir * T * sp * (0.8 + 0.4 * ih(i, li))) % span + span) % span - W * 0.2 + cam.pan * d * W, bob = Math.sin(T * 1.3 + i * 2 + li) * px * 0.5;
         const len = Math.round((8 + 10 * tr) * px * k), cw = Math.max(2, Math.round(3 * px * k)), ch = Math.max(1, Math.round(px * k));
         const xx = Math.round(x), yy = Math.round(y + bob);
-        const grd = g.createLinearGradient(xx - dir * len, 0, xx, 0); grd.addColorStop(0, 'rgba(255,51,72,0)'); grd.addColorStop(1, `rgba(255,70,110,${(0.45 * d).toFixed(2)})`);
-        g.fillStyle = grd; g.fillRect(Math.min(xx, xx - dir * len), yy, len, ch);
+        g.globalAlpha = 0.9 * d; g.imageSmoothingEnabled = true;
+        if (dir > 0) g.drawImage(trail, xx - len, yy, len, ch); else { g.setTransform(-1, 0, 0, 1, xx + len, 0); g.drawImage(trail, 0, yy, len, ch); g.setTransform(1, 0, 0, 1, 0, 0); }
+        g.imageSmoothingEnabled = false; g.globalAlpha = 1;
         g.fillStyle = rgb(TOK.wall, 2.2); g.fillRect(xx - (dir > 0 ? cw : 0), yy - ch, cw, 2 * ch);
         g.fillStyle = '#fff6e0'; g.fillRect(dir > 0 ? xx : xx - ch, yy - ch, ch, ch);
       }
@@ -1677,14 +1680,15 @@
     }
     const Rn = this.rain, lw = Rn.lw, slant = 0.06 + 0.5 * (w.weather.wind || 0), mx = cam.pan * W * 1.2;
     g.setTransform(1, 0, 0, 1, cam.ox, cam.oy);
-    for (let c = 0; c < 3; c++) {
-      g.fillStyle = Rn.cols[c];
+    g.globalAlpha = Math.min(1, k * 1.2); g.lineWidth = lw; g.lineCap = 'butt';
+    for (let c = 0; c < 3; c++) { // one path per colour: each streak a line, slanted by the wind
+      g.strokeStyle = Rn.cols[c]; g.beginPath();
       for (const [x0, y0, L, vv, keep] of Rn.by[c]) {
         if (keep > k) continue; // lighter rain: fewer streaks
         const d = y0 + T * vv, y = (d % (H + L)) - L, x = ((x0 - d * slant + mx) % W + W) % W;
-        if (slant > 0.15) { g.globalAlpha = Math.min(1, k * 1.2); for (let i = 0; i < L; i += 2 * lw) g.fillRect((x - i * slant) | 0, (y + i) | 0, lw, 2 * lw); }
-        else { g.globalAlpha = Math.min(1, k * 1.2); g.fillRect(x | 0, y | 0, lw, L); }
+        g.moveTo(x, y); g.lineTo(x - L * slant, y + L);
       }
+      g.stroke();
     }
     const qq = mulberry(Math.floor(T * 9)), gd = cam.y(1, cam.gd) - cam.oy, s = Math.max(1, px >> 1);
     g.fillStyle = Rn.cols[1]; g.globalAlpha = Math.min(1, k * 0.9);
