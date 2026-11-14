@@ -1462,7 +1462,7 @@ body.game:not(.playing):not(.coined) .app > :is(.top, .goals, .drawer) { box-sha
 /* the wake-up, in stages (garden.coinFx sets body.waking + w1…w5 on timers, × the motion tokens): w1 a CRT line flashes
    across the stage and the dust starts to lift; w2 the bar and the logo crackle on; w3 the Objectifs widget; w4 the
    editors and the keys; w5 the city lights up (the drone's tower), the last dust blows away. Each piece crackles once
-   (m-crackle) when its stage comes. Reduced motion / a slow phone: no stages, the final state at once */
+   (m-wake-crackle) when its stage comes. Reduced motion / a slow phone: no stages, the final state at once */
 body.waking .dust { display: block; opacity: .9; transition: opacity var(--m-slow) var(--m-in), translate var(--m-slow) var(--m-out), scale var(--m-slow) var(--m-out); }
 body.waking.w1 .dust { opacity: .7; translate: 0 calc(-24px * var(--m-amp)); scale: 1.04; }
 body.waking.w3 .dust { opacity: .35; translate: 0 calc(-70px * var(--m-amp)); scale: 1.12; }
@@ -1470,10 +1470,13 @@ body.waking.w5 .dust { opacity: 0; translate: 0 calc(-140px * var(--m-amp)); sca
 body.waking .app > :is(.top, .goals, .drawer, .pads),
 body.waking .stage > :not(.dust, .coin, .toast, .coin-fx) { filter: grayscale(.92) brightness(.42) contrast(.9) sepia(.15); }
 body.waking:not(.w2) .logo { opacity: .12; text-shadow: none; animation: none; }
-body.waking.w2 .app > .top, body.waking.w3 .app > .goals, body.waking.w4 .app > :is(.drawer, .pads) { filter: none; animation: m-crackle calc(var(--m-med) * 2) steps(6, end) both; }
+/* (the drawer keeps its own slide-in animation: swapping it for the crackle and back replayed the slide, the panels
+   seemed to close and reopen; its children crackle instead) */
+body.waking.w2 .app > .top, body.waking.w3 .app > .goals, body.waking.w4 .app > :is(.drawer, .pads) { filter: none; }
+body.waking.w2 .app > .top, body.waking.w3 .app > .goals, body.waking.w4 .app > .drawer > *, body.waking.w4 .app > .pads { animation: m-wake-crackle calc(var(--m-med) * 2) steps(6, end) both; }
 body.waking.w5 .stage > :not(.dust, .coin, .toast, .coin-fx) { filter: none; }
 body.waking.w5 .stage > :is(canvas, .city-gl) { animation: m-wake-city calc(var(--m-slow) * 3) var(--m-out) both; }
-@keyframes m-crackle { 0% { filter: brightness(2.4) saturate(1.5); } 18% { filter: grayscale(.8) brightness(.3); } 36% { filter: brightness(1.9); }
+@keyframes m-wake-crackle { 0% { filter: brightness(2.4) saturate(1.5); } 18% { filter: grayscale(.8) brightness(.3); } 36% { filter: brightness(1.9); }
   54% { filter: grayscale(.5) brightness(.5); } 72% { filter: brightness(1.5); } 100% { filter: none; } }
 @keyframes m-wake-city { 0% { filter: brightness(2.2) saturate(1.6); } 100% { filter: none; } }
 /* w1: the CRT line, held across the stage; w2: it opens out (m-crt-on) */
