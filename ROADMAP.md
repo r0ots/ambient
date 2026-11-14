@@ -406,3 +406,9 @@ Vague 2 (en parallèle)
 
 Vague 3
 - [x] S7.5 (v1.33) Revue du mouvement image par image (bureau et 390 px), coût par image, reduced-motion, puis corrections ; fin de la saison 7 Décision : inventaire de 506 éléments (≈ 250 commandes par largeur) ; l’appui se voit sur tous les boutons (enfoncé, lueur intérieure, écrasement), survol des curseurs et des champs, × des fenêtres qui tourne ; coût grilles 1,67 → 1,52 ms/image (transition `filter` retirée, piano roll plus redessiné hors écran) ; une seule règle `.m-still` pour reduced-motion et JUICE 0 ; `run-all.sh` lance son propre serveur, tests d’Arbre, de glissé et d’aller-retour rendus robustes : 3 passes ALL OK d’affilée en ~60 s.
+
+## Fin de la saison 7
+- Acquis : un seul système de mouvement (`js/motion.js`, jetons `--m-*`, un émetteur de particules) ; chaque commande de l'app (≈ 250 par largeur, Parcours et mode libre) se soulève, brille et s'incline au survol, s'écrase et lance des étincelles à l'appui ; potentiomètres à ressort qui crachent des étincelles ; Composer, Parcours, barre, Sculpter et fenêtres ont leurs mouvements propres, calés sur le temps entendu ; tout est coupé par une seule règle en reduced-motion ou JUICE 0 ; coût ≤ ~1,5 ms par image en lecture.
+- Acquis : suite de tests stable (3 passes ALL OK d'affilée, ~60 s, serveur propre à la suite).
+- Question à l'utilisateur : écouter les 4 WAV sombres (scratchpad/dark) puis décider de la suppression des paysages doux.
+- Reste ouvert : halo « Nouveau » coûteux (~0,8 ms par image pendant 8 s) quand beaucoup de commandes s'ouvrent d'un coup ; Sauver et Renommer restent des `prompt()` natifs, sans mouvement.
