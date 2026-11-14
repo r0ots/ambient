@@ -1,5 +1,5 @@
 // Common harness of the gameui*.html pages (the app in an iframe, path chosen): gameUI(body, {choose}) loads
-// ../index.html with its own game key, then runs `await body(T)` with T = {f, w, d, A, shown, locked, tn, task, lline,
+// ../index.html with its own game key, then runs `await body(T)` with T = {f, w, d, A, shown, locked, tn, goals,
 // buyAll, sdiff}; logs DONE (or EXC) and clears the key. Split from one long page (v1.16) so the suite stays ~1 min.
 window.gameUI = (body, o = {}) => {
   const KEY = 'ambient.game.uitest';
@@ -19,7 +19,7 @@ window.gameUI = (body, o = {}) => {
       if (o.choose !== false) { d.querySelector('[data-choose=path]').click(); await wait(50); }
       // S5.6 (suite ~1 min): instead of fixed 1.5 s waits, wait until an opening sequence on the map is over (at least `min` ms)
       const settle = async (min = 150, max = 3000) => { await wait(min); for (let t = min; t < max && A.garden.seq; t += 40) await wait(40); };
-      await body({ f, w, d, A, shown, locked, tn, task: d.getElementById('lcdTask'), lline: d.getElementById('lcdLine'), buyAll, sdiff, KEY, settle });
+      await body({ f, w, d, A, shown, locked, tn, goals: d.getElementById('goals'), buyAll, sdiff, KEY, settle });
       for (const k of Object.keys(localStorage)) if (k.startsWith(KEY)) localStorage.removeItem(k);
       log('DONE');
     } catch (e) { log('EXC ' + e.stack); }

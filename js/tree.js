@@ -66,7 +66,7 @@
   // S4.6 — what opening a node gives, in plain words for a child who is not a musician (the « ✦ Ouvrir » card, garden.js):
   // one or two sentences, the words of the lexicon (ARCHITECTURE.md). The only table of these texts.
   const EXPLAIN = {
-    'k.piano': 'Tu joues tes propres notes : des touches de couleur apparaissent sous l\'écran (et les lettres A à L, ou ton clavier MIDI). Garde le doigt sur une touche, plus tard, pour jouer un accord.',
+    'k.piano': 'Tu joues tes propres notes : des touches de couleur sous l\'écran, les lettres A à L ou ton clavier MIDI.',
     't.son': 'Le drone change de voix : plus doux, plus rond ou plus pointu, et il peut respirer lentement. À régler dans Sculpter, Drone.',
     't.viz': 'Tu peux passer en plein écran pour juste regarder la ville et écouter.',
     't.journal': 'L\'instrument se souvient de ce que tu as entendu : ♥ garde un moment, et tu peux revenir à un moment passé.',
@@ -87,7 +87,7 @@
     'e.halo': 'Une lueur aiguë qui scintille autour du son, comme des étoiles dans la salle.',
     'e.tape': 'Le son tremble un peu, comme sur une vieille cassette : plus chaud, plus rêveur.',
     'e.lofi': 'Le son devient abîmé et granuleux, comme un vieux disque ou une radio lointaine.',
-    'm.bells': 'Un son qui joue des notes tout seul, au-dessus du drone, dans la même gamme que le drone. Une fois le Piano ouvert, elle te proposera aussi des petites phrases à rejouer.',
+    'm.bells': 'Un son qui joue des notes tout seul, au-dessus du drone. Avec le Piano, il te proposera des phrases à rejouer.',
     'm.tempo': 'Tu choisis la vitesse de la musique, et si elle bat comme un cœur (Pulsé) ou si elle flotte (Flottant).',
     'm.phrase': 'La Mélodie auto peut répéter une petite phrase, qui change un peu à chaque tour, comme une chanson.',
     'm.evolve': 'Tes réglages bougent tout seuls, un tout petit peu, autour de là où tu les as mis : le son vit sans toi.',
