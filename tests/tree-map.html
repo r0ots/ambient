@@ -55,13 +55,13 @@ f.addEventListener('load', async ()=>{
   // --- S4.3 the card says what opens the node; a click (mouse or finger) selects, never opens
   const card=()=>d.querySelector('.tree-info'), op=()=>(card().querySelector('.ti-o')||{}).textContent||'';
   map.querySelector('.tree-node[data-id="h.drone"]').click(); await wait(20);
-  ok(!G.has('h.drone') && Gd.sel==='h.drone' && /Pour l'ouvrir : ◇ Joue 3 accords/.test(op()) && !card().querySelector('.tree-buy'), 'clic sur Drone qui suit : sa fiche, « '+op()+' », rien d\'acheté');
+  ok(!G.has('h.drone') && Gd.sel==='h.drone' && /Pour l'ouvrir :☐ Joue 6 accords.*☐ Joue \d+ notes sur les accords du Pad/.test(op()) && !card().querySelector('.tree-buy'), 'clic sur Drone qui suit : sa fiche, « '+op()+' », rien d\'acheté');
   Gd.select('t.macros');
-  ok(/↺ Réponse « Premier reflet » \(3 notes\)/.test(op()) && !card().querySelector('.tree-buy, button'), 'Grands réglages : « '+op()+' », sans bouton (la Réponse se joue dans la musique)');
+  ok(/☐ Réponse « Premier reflet » \(4 notes\)☐ Joue pendant/.test(op()) && !card().querySelector('.tree-buy, button'), 'Grands réglages : « '+op()+' », sans bouton (la Réponse se joue dans la musique)');
   Gd.select('m.phrase');
   ok(/Réponse « Suite connue »/.test(op()) && /ou ✦ Découverte : \?\?\?/.test(op()), 'Phrases : une Réponse ou une découverte cachée (« '+op()+' »)');
   const spans=[...map.querySelectorAll('.tree-node')].map(b=>b.querySelector('span').textContent);
-  ok(!spans.some(t=>/✧|\d/.test(t)) && spans.includes('↺ Réponse') && spans.includes('◇ défi') && spans.includes('✓'), 'nœuds : ✓, ◇ défi ou ↺ Réponse, aucun coût');
+  ok(!spans.some(t=>/✧/.test(t)) && spans.every(t=>/^(✓|✦ prêt|✦|◇ \d\/[23]|)$/.test(t)) && spans.some(t=>/^◇ 0\/2$/.test(t)) && spans.includes('✓'), 'S11.1 nœuds : ✓, ◇ objectifs faits / à faire (« ◇ 0/2 »), aucun coût');
   ok(/^\d+ ouverts?$/.test(d.querySelector('.tree-count').textContent), 'en-tête : nœuds ouverts '+d.querySelector('.tree-count').textContent);
   Gd.select(null); Gd.showTree(false);
   localStorage.removeItem('ambient.game.treemap');

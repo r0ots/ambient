@@ -69,7 +69,8 @@
       }
       return (this._lay = { n: T.NODES.length, nar, pos, W, H, maxL });
     },
-    showTree(on) {
+    // id: S11.1 open on that piece (« ✦ Pad est prêt » in the Objectifs widget), else the first ready one
+    showTree(on, id = null) {
       const d = $('#treeDlg'); if (!d) return;
       if (!on && this.seq) { this.seqFinish(); return; } // closing during the unlock sequence = finish it now
       const was = d.hidden;
@@ -79,7 +80,7 @@
       // S9.4: opens on the first node waiting on « ✦ Ouvrir » (its card, the button), else on nothing
       if (on) {
         this.select(null); this.renderTree();
-        const r = was && AMB.tree.NODES.find((x) => AMB.tree.status(x.id) === 'ready'), b = r && d.querySelector(`.tree-node[data-id="${r.id}"]`);
+        const r = was && ((id && AMB.tree.byId[id] && AMB.tree.status(id) === 'ready' && AMB.tree.byId[id]) || AMB.tree.NODES.find((x) => AMB.tree.status(x.id) === 'ready')), b = r && d.querySelector(`.tree-node[data-id="${r.id}"]`);
         if (b) { this.sel = r.id; b.classList.add('is-sel'); this.showInfo(r.id); } // (its card, without dimming the rest)
         this.fitTree(); if (AMB.discoveries) AMB.discoveries.render();
       }
@@ -108,7 +109,7 @@
       return out;
     },
     // a screen that closes: a ghost of its frame collapses to a line, then a dot (under the windows: never over one;
-    // not while an ask runs, the LCD stays clear)
+    // not while an ask runs, the widget stays clear)
     crtOff(card) {
       const M = AMB.motion; if (!M || !M.on() || !card || (AMB.demands && AMB.demands.cur)) return null;
       const r = card.getBoundingClientRect(); if (!r.width) return null;
@@ -150,10 +151,15 @@
       if (!map.querySelector('.tree-stage') || map.dataset.n !== T.NODES.length + (this.narrowTree() ? 'n' : '')) this.buildMap(map);
       this.paintTree();
     },
-    // what opens a node: its challenge, or a discovery (S4.3, S5.10) — « ◇ Joue 6 notes », « ↺ Réponse « Premier reflet » (3 notes) », « ✦ Découverte : ??? »
+    // what opens a node: its objectives (S11.1: all of them, ✓ = done), or a discovery (S4.3, S5.10) — « ◇ Joue 16 notes
+    // + ✓ Laisse jouer 8 mesures… », « ↺ Réponse « Premier reflet » (4 notes) », « ✦ Découverte : ??? »
+    objText(d) { return d.kind === 'reponse' ? `↺ Réponse « ${d.title} » (${AMB.puzzles.need(d)} notes)` : AMB.game.txt(d.kind === 'demande' ? `♪ Demande : ${d.title}` : `◇ ${d.title}`); },
     openers(id) {
-      const K = AMB.contracts, S = AMB.discoveries, d = K && K.forNode(id), out = [];
-      if (d) out.push({ kind: d.kind === 'reponse' ? 'reponse' : 'défi', d, text: d.kind === 'reponse' ? `↺ Réponse « ${d.title} » (${AMB.puzzles.need(d)} notes)` : AMB.game.txt(d.kind === 'demande' ? `♪ Demande : ${d.title}` : `◇ ${d.title}`) });
+      const K = AMB.contracts, S = AMB.discoveries, objs = K ? K.forNode(id) : [], out = [];
+      if (objs.length) {
+        const done = objs.filter((d) => K.done(d.id)).length;
+        out.push({ kind: 'défi', d: objs[0], objs, done, text: objs.map((d) => (K.done(d.id) ? '✓ ' + this.objText(d).slice(2) : this.objText(d))).join(' + ') });
+      }
       if (S) for (const [sid, nid] of Object.entries(S.OPENS)) if (nid === id) out.push({ kind: 'secret', text: `✦ Découverte : ${S.has(sid) ? S.byId[sid].name : '???'}` });
       return out;
     },
@@ -232,10 +238,10 @@
         const st = T.status(n.id), op = this.openers(n.id)[0];
         for (const s of Object.keys(STATE_TXT)) b.classList.toggle('st-' + s, s === st);
         b.classList.toggle('dark', !this.seen(n.id)); b.tabIndex = this.seen(n.id) ? 0 : -1;
-        b.querySelector('span').textContent = st === 'owned' ? '✓' : st === 'ready' ? '✦ prêt' : !op ? '' : op.kind === 'reponse' ? '↺ Réponse' : op.d && op.d.kind === 'demande' ? '♪ demande' : '◇ défi';
+        b.querySelector('span').textContent = st === 'owned' ? '✓' : st === 'ready' ? '✦ prêt' : !op ? '' : op.objs ? `◇ ${op.done}/${op.objs.length}` : '✦';
         const ext = n.req.filter((r) => T.byId[r].branch !== n.branch);
         b.setAttribute('aria-label', `${n.name}, ${T.BRANCHES[n.branch].name}, ${STATE_TXT[st]}`
-          + (st === 'ready' ? ', réussi : à toi de l\'ouvrir' : st !== 'owned' && op ? `, s'ouvre par : ${op.text.slice(2)}` : '')
+          + (st === 'ready' ? ', réussi : à toi de l\'ouvrir' : st !== 'owned' && op ? `, s'ouvre par : ${op.text}` : '')
           + (n.req.length && st !== 'owned' ? `, il faut d'abord ${n.req.map((r) => T.status(r) === 'locked' ? 'une pièce cachée' : T.byId[r].name).join(', ')}` : '')
           + (ext.length && st === 'owned' ? `, relié à ${ext.map((r) => T.byId[r].name).join(', ')}` : ''));
       });
@@ -341,11 +347,11 @@
       const st = T.status(id), br = T.BRANCHES[n.branch], ops = st === 'owned' || st === 'ready' ? [] : this.openers(id);
       const nm = (r) => (this.seen(r) ? T.byId[r].name : '???'); // (S9.1: what is still in the dark keeps its name)
       const req = n.req.map((r) => `<span class="${g.has(r) ? 'ok' : ''}">${g.has(r) ? '✓' : '·'} ${nm(r)}</span>`).join(' ');
-      const now = ops.find((o) => o.d && K.state().active[0] === o.d.id);
+      const now = ops.find((o) => o.objs) && K.current() === id;
       // S6.7: while nodes wait on « ✦ Ouvrir » no challenge runs (contracts.refill): its card says so, not a challenge
       // that cannot come yet
       const wait = g.path && !g.s.ended ? (g.s.ready || []).filter((r) => g.canOpen(r.id)).length : 0;
-      const opTxt = (wait && ops.some((o) => o.d) ? [`Ouvre d'abord ce qui est prêt (${wait})`] : []).concat(ops.filter((o) => !(wait && o.d)).map((o) => o.text));
+      const opTxt = (wait && ops.some((o) => o.d || o.objs) ? [`Ouvre d'abord ce qui est prêt (${wait})`] : []).concat(ops.filter((o) => !(wait && (o.d || o.objs))).map((o) => o.objs ? o.objs.map((d) => `${K.done(d.id) ? '☑' : '☐'} ${this.objText(d).slice(2)}`).join('<br>') : o.text));
       box.style.setProperty('--c', st === 'ready' ? 'var(--amber)' : br.color);
       const fresh = box.hidden || box.dataset.id !== id; // S7.3: a new card slides in (the same one repainted does not)
       box.dataset.id = id; box.className = `tree-info st-${st}`;
@@ -353,8 +359,8 @@
         + `<p class="ti-d">${st === 'ready' ? g.txt(n.why) : n.desc}</p>`
         + `<p class="ti-g">Ouvre : ${T.grantsText(id) || '—'}</p>`
         + (n.req.length ? `<p class="ti-r">Il faut d'abord : ${req}</p>` : '')
-        + (ops.length ? `<p class="ti-o">Pour l'ouvrir : ${opTxt.map((t) => `<span>${t}</span>`).join(' · ou ')}${now && !wait ? ' <em>(le défi en cours)</em>' : ''}</p>` : '')
-        // S4.6: won, waiting for the player: the same « ✦ Ouvrir » as on the LCD (after its prerequisites, for a secret's chain)
+        + (ops.length ? `<p class="ti-o">Pour l'ouvrir${now && !wait ? ' <em>(en cours)</em>' : ''} :<br>${opTxt.map((t) => `<span>${t}</span>`).join('<br>ou ')}</p>` : '')
+        // S4.6 → S11.1: won, waiting for the player: THE « ✦ Ouvrir » of the path (after its prerequisites, for a secret's chain)
         + (st === 'ready' ? (n.req.every((r) => g.has(r)) ? '<p class="ti-o">✓ Réussi : à toi de l\'ouvrir. <button type="button" class="btn primary small ti-open">✦ Ouvrir</button></p>'
           : `<p class="ti-o">✓ Réussi : s'ouvre après ${n.req.filter((r) => !g.has(r)).map(nm).join(', ')}.</p>`) : '');
       box.hidden = false; // (S9.4: a side panel beside the map, under it on a phone: it never hides a node)

@@ -1,5 +1,5 @@
 // « Jardin sonore » : « Réponse » (S4.2) — the Écho played INSIDE the music, no card. While the instrument plays in the
-// path, the Melody auto now and then plays a marked phrase on the grid (one bar; the Melody plant lights up, the LCD says
+// path, the Melody auto now and then plays a marked phrase on the grid (one bar; the Melody plant lights up, the Objectifs widget says
 // « ↺ À toi »); the player plays it back right after (A–L keys, pads or MIDI, any octave), one leaf per note on the
 // plant: right, or red. Each success climbs one level, a miss goes one level down (S5.3: no ceiling, `level` below):
 // phrases of 3 → 8 notes (from 5 notes the rhythm counts too, each note against its place in the answer bar, timed with
@@ -31,8 +31,8 @@
   const SHOW = 3; // seconds the leaves of the last answer stay on the plant
   const GROUP = 0.35; // s: the notes of a chord played by hand (MIDI, keys) come within this
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
-  // a gate's length from its difficulty d (0..1): 3 notes at 0, up to 6 at 1
-  const respLen = (d) => clamp(3 + Math.round((d || 0) * 3), 3, 6);
+  // a gate's length from its difficulty d (0..1): S11.1 4 notes at 0, up to 7 at 1 (never timed)
+  const respLen = (d) => clamp(4 + Math.round((d || 0) * 3), 4, 7);
   // S5.3 — THE ladder. A level = a tier and a length (notes, or chords for the Accords); a success climbs one, a miss
   // goes one down. Past the named tiers, without end: combinations (octave leaps or a fifth higher, always syncopated),
   // a little longer, judged tighter (f scales the timing tolerance). `mark` = the tier mark on the Melody plant.
@@ -54,9 +54,9 @@
   }
   // S5.4 — placement (Rocksmith): the Réponse is also a discreet level test, without a « musician » mode to choose. RUN
   // right answers in a row at a tier or higher (a gate's phrase aside: it is capped, it neither counts nor breaks the run)
-  // make a whole set of nodes « prêt » at once, in the existing queue: the player still opens each one (« ✦ Ouvrir »). A
-  // place includes the ones below; any time on the path. Discoveries stay to be found (one whose node is ready opens the
-  // next node instead). Never by chance: Syncopes are 5–6 timed notes with off-beats, reached after ≥ 8 right answers
+  // check one objective of each piece of a set at once (S11.1: never a whole piece, the others are still to play; the
+  // pieces open in the Arbre as always). A place includes the ones below; any time on the path. Discoveries stay to be
+  // found (one whose piece is ready opens the next piece instead). Never by chance: Syncopes are 5–6 timed notes with off-beats, reached after ≥ 8 right answers
   // climbing (a miss = one level down); the son's 3 slow notes stay at Phrases.
   const RUN = 2;
   const OCT = TIERS[0].lens.length; // S6.7: the first level of the Octaves, where a musician starts
@@ -73,7 +73,7 @@
     for (let p = PLACE.length - 1; p >= 0; p--) if (low >= PLACE[p].tier) return p;
     return -1;
   };
-  // the level's name as the LCD shows it: « Syncopes », « Combinaisons +3 »
+  // the level's name as the widget shows it: « Syncopes », « Combinaisons +3 »
   const tierName = (lv) => lv.plus ? `${lv.name} +${lv.plus}` : lv.name;
   // a singable walk of n notes from `start`, inside 0..hi-1 (seconds, thirds; a fourth from 5 notes), no note twice in a row
   function walk(n, rnd, start, hi = DEGS) {
@@ -128,7 +128,7 @@
       s.lvl = Math.max(0, s.lvl | 0); s.len = level(s.lvl).len; s.streak = s.streak | 0; s.best = Math.max(s.best | 0, s.streak); s.miss = s.miss || {};
       return s;
     },
-    // the score on the LCD (garden.js): null until the first answer
+    // the score in the widget (garden.js): null until the first answer
     score(g = AMB.game) {
       if (!g || !g.s || !g.s.resp || !this.can(g)) return null;
       const s = this.st(g), lv = level(s.lvl);
@@ -136,14 +136,15 @@
     },
     // the tier mark of the Melody plant (garden-visual.js): 0 = Phrases, then one more per tier
     mark(g = AMB.game) { const v = this.score(g); return v ? v.mark : 0; },
-    // the gate to open now: the active challenge, when it is a kind 'reponse'
+    // the gate to answer now: the first active objective of kind 'reponse' (S11.1: a piece has several objectives)
     gate(g = AMB.game) {
-      const K = AMB.contracts, id = K && g.path ? K.state(g).active[0] : null, d = id && K.byId[id];
-      return d && d.kind === 'reponse' ? d : null;
+      const K = AMB.contracts; if (!K || !g.path) return null;
+      const id = K.state(g).active.find((x) => K.byId[x] && K.byId[x].kind === 'reponse');
+      return id ? K.byId[id] : null;
     },
     need(d) { return respLen(d.d); },
     // path only, once the Melody is there; never in free mode nor once the instrument is handed over
-    can(g = AMB.game) { return !!g && g.counts() && g.has('m.bells'); },
+    can(g = AMB.game) { return !!g && g.counts() && g.has('m.bells') && g.has('k.piano'); }, // (S11.1: answered on the Piano)
     busy() { return !!this.cur; },
     // the Melody auto keeps quiet from the phrase to the end of its answer (js/sequencer.js melodyNote)
     hush(time) { const c = this.cur; return !!c && time >= c.t0 - 0.05 && time <= c.until; },
@@ -181,7 +182,7 @@
       if (!gate && !re && this.midi && !s.skip && s.lvl < OCT) { s.lvl = OCT; s.skip = true; s.len = level(s.lvl).len; }
       // a gate: a plain phrase, its length capped (never a tier); otherwise the level reached
       const lv = re ? a.lv : gate ? level(Math.min(s.lvl, MAX - MIN, this.need(gate) - MIN)) : level(s.lvl), len = lv.len;
-      const tr = lv.tr ? fifth(sc) : 0, chord = !!lv.chord, timed = !chord && len >= RHYTHM;
+      const tr = lv.tr ? fifth(sc) : 0, chord = !!lv.chord, timed = !chord && !gate && len >= RHYTHM; // (a gate is never timed)
       const mid = (dg) => Th.degreeToMidi(dg, S.root, sc, 4);
       let degs, steps, midis, want, cdeg = null, pcs = null, tri = null;
       if (chord) { // 1 or 2 chords on the beats 1 and 3 (triads of the key), any inversion accepted
@@ -306,13 +307,16 @@
       }
       return res;
     },
-    // S5.4: place p reached: its nodes and the lower places' ones (with their missing prerequisites) ready, in order
+    // S5.4: place p reached → S11.1: the first objective left of each piece of « Musicien » is checked (the lower place's
+    // too, when a player jumps straight to Virtuose); never a whole piece (its other objectives still ask to be played).
+    // « Virtuose » itself checks nothing more: it lifts the Réponse to the Quinte (balance.html: the nephew's 1 h 30 – 2 h).
+    // `objs` = the objectives checked
     place(p, g = AMB.game) {
-      const s = this.st(g), ids = [];
+      const s = this.st(g), first = !(s.place >= 0);
       s.place = p;
-      for (let i = 0; i <= p; i++) for (const id of PLACE[i].nodes) g.readyChain(id, ids);
+      const objs = AMB.contracts && first ? AMB.contracts.grant(PLACE[0].nodes, g) : []; // (once: the first place reached)
       g.save();
-      return { id: PLACE[p].id, name: PLACE[p].name, nodes: ids };
+      return { id: PLACE[p].id, name: PLACE[p].name, objs, nodes: [...new Set(objs.map((id) => AMB.contracts.byId[id].node))] };
     },
     // playback stopped, free mode, path restarted: the phrase goes, nothing is judged
     cancel() {

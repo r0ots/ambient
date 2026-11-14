@@ -33,7 +33,7 @@ f.addEventListener('load', async () => {
       if (R.shake && !has('.stage', 'fx-shake')) miss.push('shake');
       if (R.shake > 1 && !has('.app', 'fx-quake')) miss.push('quake');
       if (R.punch && !has('#viz', R.punch >= 2 ? 'fx-punch-big' : 'fx-punch')) miss.push('punch');
-      if (R.lcd && !has('#lcd', 'lcd-' + R.lcd)) miss.push('lcd');
+      if (R.lcd && !has('#goals', 'lcd-' + R.lcd)) miss.push('lcd');
       if (R.bounce && !d.body.classList.contains('fx-bounce')) miss.push('bounce');
       if (R.hop && !(R.hop === 'el' ? el : d.querySelector(R.hop)).classList.contains('fx-hop')) miss.push('hop');
       if (R.pop && d.querySelectorAll('.fx-pop').length <= Math.min(pops0, 2)) miss.push('pop');
@@ -63,10 +63,10 @@ f.addEventListener('load', async () => {
       const p = last(), cs = p && w.getComputedStyle(p, '::before');
       ok(plain && letters && /Chakra Petch/.test(w.getComputedStyle(p).fontFamily) && size.open > size.defi && size.placement > size.open && cs.content === 'none', 'le mot du moment, enseigne néon écrite lettre à lettre (sans bulle ni « ! »), plus gros pour les gros moments (' + JSON.stringify(size) + ', « ' + (p && p.textContent) + ' »)');
       // a phone: the LCD right above the stage — the word goes under it, never over it
-      const lcd = d.getElementById('lcd'), sr = d.querySelector('.stage').getBoundingClientRect(), css0 = lcd.style.cssText;
+      const lcd = d.getElementById('goals'), sr = d.querySelector('.stage').getBoundingClientRect(), css0 = lcd.style.cssText;
       lcd.style.cssText = 'position:fixed;left:0;right:0;top:' + Math.round(sr.top + sr.height * 0.25) + 'px;z-index:1'; const lb = lcd.getBoundingClientRect().bottom;
       G._pop = null; G.fx('end', {}); await tick(); const pe = last(), top = parseFloat(pe.style.top) - pe.offsetHeight / 2;
-      ok(top >= lb - 1, 'jamais par-dessus le LCD (haut du mot ' + Math.round(top) + ' px ≥ bas du LCD ' + Math.round(lb) + ' px)'); lcd.style.cssText = css0;
+      ok(top >= lb - 1, 'jamais par-dessus le widget Objectifs (haut du mot ' + Math.round(top) + ' px ≥ bas du widget ' + Math.round(lb) + ' px)'); lcd.style.cssText = css0;
       // S6.7: two words never overlap — a bigger moment replaces the one up, a smaller one is dropped, after it ends: shown
       { d.querySelectorAll('.fx-pop').forEach((x) => x.remove()); G._pop = null; const words = () => [...d.querySelectorAll('.fx-pop')].map((x) => x.textContent);
         G.fx('defi', {}); await tick(); const a = words(); G.fx('open', {}); await tick(); const b = words(); G.fx('bien', { n: 1 }); await tick(); const c = words();
@@ -120,11 +120,11 @@ f.addEventListener('load', async () => {
     await A.ui.play(); const ctx = A.engine.ctx;
     for (let i = 0; i < 60 && !(ctx.state === 'running' && A.seq.playing); i++) await wait(50);
     if (ctx.state === 'running') {
-      d.getElementById('lcd').classList.remove('lcd-arcade'); chimes.length = 0;
-      const want = G.strongBeat(0.08, undefined, undefined, 4); G.fx('defi', { say: '✓ Défi réussi' }); await tick(); const p = G.fxLast, early = has('#lcd', 'lcd-arcade');
+      d.getElementById('goals').classList.remove('lcd-arcade'); chimes.length = 0;
+      const want = G.strongBeat(0.08, undefined, undefined, 4); G.fx('defi', { say: '✓ Défi réussi' }); await tick(); const p = G.fxLast, early = has('#goals', 'lcd-arcade');
       const sd = A.seq.stepDur(), k = (p.at - A.seq.nextTime) / sd + A.seq.step - (A.seq.origin || 0);
       while (ctx.currentTime < p.at + 0.06) await wait(20); await wait(30);
-      ok(Math.abs(p.at - want) < 0.05 && Math.abs(k - Math.round(k)) < 1e-6 && Math.round(k) % 4 === 0 && chimes.some((c) => c.k === 'defi' && c.at === p.at) && (p.delay < 15 || !early) && has('#lcd', 'lcd-arcade'),
+      ok(Math.abs(p.at - want) < 0.05 && Math.abs(k - Math.round(k)) < 1e-6 && Math.round(k) % 4 === 0 && chimes.some((c) => c.k === 'defi' && c.at === p.at) && (p.delay < 15 || !early) && has('#goals', 'lcd-arcade'),
         'sur le temps : jingle et effets au temps suivant (pas ' + Math.round(k) + ', dans ' + p.delay.toFixed(0) + ' ms), LCD arcade ensuite');
     } else log('skip temps (audio ' + ctx.state + ')');
 
@@ -141,12 +141,12 @@ f.addEventListener('load', async () => {
       ok(q === null && !plays.length && !chimes.length, 'mode libre : aucun effet, aucun jingle'); A.game.setMode('path'); }
     G.chime = ch0; G.fxPlay = fp0;
 
-    // --- 8. S6.6 « INSERT COIN »: stopped in the Parcours (once per page), the first press starts the music; free mode never
+    // --- 8. S6.6 « INSERT COIN » → S11.1 the power button: stopped in the Parcours (once per page), the button / Space starts the music; free mode never
     { const coin = d.getElementById('coin'), shown = () => w.getComputedStyle(coin).display !== 'none', toast = d.getElementById('toast');
       const playing = async () => { for (let i = 0; i < 40 && !A.seq.playing; i++) await wait(25); await wait(150); return A.seq.playing; };
       A.ui.stop(); await wait(50); d.body.classList.remove('coined');
-      ok(shown() && /INSERT COIN/.test(coin.textContent) && /APPUIE POUR JOUER/.test(coin.textContent) && G.coinUp(), 'Parcours à l\'arrêt : écran « INSERT COIN / APPUIE POUR JOUER »');
-      A.game.setMode('free'); ok(!shown() && !G.coinUp(), 'mode libre : pas d\'INSERT COIN'); toast.textContent = '';
+      ok(shown() && /⏻/.test(coin.textContent) && /ALLUMER/.test(coin.textContent) && !/INSERT COIN/.test(coin.textContent) && G.coinUp(), 'S11.1 Parcours à l\'arrêt : le bouton ⏻ ALLUMER (il remplace INSERT COIN)');
+      A.game.setMode('free'); ok(!shown() && !G.coinUp(), 'mode libre : pas de bouton d\'allumage'); toast.textContent = '';
       d.querySelector('[data-choose=path]').click(); await wait(30);
       ok(shown() && !/une seule note/.test(toast.textContent), 'choisir le Parcours à l\'arrêt : l\'écran titre remplace l\'ancien message d\'accueil (toast « ' + toast.textContent + ' »)');
       w.dispatchEvent(new w.KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true, cancelable: true }));
@@ -155,7 +155,7 @@ f.addEventListener('load', async () => {
       d.body.classList.remove('coined'); coin.dispatchEvent(new w.PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
       ok(await playing() && !shown(), 'un doigt sur l\'écran titre : la musique part'); A.ui.stop(); await wait(50);
       d.body.classList.remove('coined'); A.play.onMidi({ data: [0x90, 67, 100], timeStamp: w.performance.now() }); A.play.onMidi({ data: [0x80, 67, 0], timeStamp: w.performance.now() });
-      ok(await playing() && !shown(), 'une note MIDI : la musique part'); A.ui.stop(); await wait(50);
+      ok(!(await playing()) && shown(), 'S11.1 : une note MIDI ne l\'allume pas (les notes attendent le Piano)'); A.ui.stop(); await wait(50);
       d.body.classList.remove('coined'); await A.ui.play(); await wait(30); ok(d.body.classList.contains('coined') && !shown(), '▶ Lecture de la barre : l\'écran titre s\'en va aussi'); A.ui.stop(); await wait(50); }
 
     // --- 9. S6.6 HIGH SCORES of the Réponse: top 5, three initials (keys, MIDI note names, ▲ ▼ OK), localStorage

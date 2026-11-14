@@ -519,7 +519,7 @@
     SKY: 0.1, zones: [],
     ceilFrac() {
       this.zones = [];
-      const sf = this.safe && this.safe.top != null ? clamp(+this.safe.top, 0, 0.6) : null; // S8.3: the bar + LCD on top
+      const sf = this.safe && this.safe.top != null ? clamp(+this.safe.top, 0, 0.6) : null; // S8.3: the bar on top
       try {
         const c = this.observed, ch = document.getElementById('chordName'), info = document.getElementById('hudInfo'), tools = document.querySelector('.stage-tools'), hud = ch && ch.parentElement;
         const r = c && c.getBoundingClientRect();

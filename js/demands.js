@@ -1,6 +1,6 @@
 // « Demandes en direct » (S5.5, after Fuser): while the instrument plays in the path, the landscape now and then ASKS for
 // a musical move, judged on the time: « Fais entrer la basse sur MAINTENANT », « Force l'accord IV sur MAINTENANT », « Joue 3 notes
-// dans le temps », « Monte la Lumière avant la fin de la mesure »… One at a time, on the LCD's 2nd line, with a countdown
+// dans le temps », « Monte la Lumière avant la fin de la mesure »… One at a time, in the Objectifs widget, with a countdown
 // in musical time (« dans 2 mesures », then 3, 2, 1, then « MAINTENANT ! », S5.7). Judged on the placement:
 // PARFAIT, BIEN (S6.7: the windows of the hand, puzzles.TOL: ±60 / 130 ms at the MIDI keyboard, ±250 / 600 ms at the
 // fingers), RATÉ (within two beats, or a hold let go too soon);
@@ -25,7 +25,7 @@
   const MISSES = 4; // a challenge missed this many times is ready anyway
   const PARTY = 2; // bar lines left alone after a placement party (S5.4), even when its queue is empty
   // S6.7 never stuck on « ♪ bientôt »: a challenge asked in the music that could not be asked for STALL free bar lines (the
-  // LCD out of view, its controls not there) is asked anyway, or put back in the queue (contracts.skip: replaced); asked
+  // widget out of view, its controls not there) is asked anyway, or put back in the queue (contracts.skip: replaced); asked
   // IDLE times in a row without a gesture, it is replaced too (it comes back later)
   const STALL = 8, IDLE = 3;
   const LAYERS = ['pad', 'bells', 'grains', 'texture', 'seq', 'bass', 'perc'];
@@ -38,11 +38,11 @@
   // by the player); ok() = it makes sense now (the bass to bring in is off…). ----
   const F = (id, need, title, ask, hint, intro) => ({ id, need, title, ask, hint, intro });
   const FREE = [
-    F('accord', ['h.pad'], 'Force un accord sur MAINTENANT', { how: 'hit', chord: 'any' },
+    F('accord', ['h.pad', 'k.piano'], 'Force un accord sur MAINTENANT', { how: 'hit', chord: 'any' },
       '{Une lettre de Z à M, ou garde le doigt sur une touche|Garde le doigt sur une touche}, pile quand l\'écran dit MAINTENANT.', 'Nouveau : essaie le Pad, force un accord sur MAINTENANT'),
-    F('iv', ['h.pad', 'h.key'], 'Force l\'accord IV sur MAINTENANT', { how: 'hit', chord: 3 }, // (S5.7: once the key and the chords' names are shown)
+    F('iv', ['h.pad', 'h.key', 'k.piano'], 'Force l\'accord IV sur MAINTENANT', { how: 'hit', chord: 3 }, // (S5.7: once the key and the chords' names are shown)
       'L\'accord IV : {la lettre V, ou garde le doigt sur la 4e touche|garde le doigt sur la 4e touche}, pile quand l\'écran dit MAINTENANT.'),
-    F('notes', ['m.bells'], 'Joue 3 notes dans le temps', { how: 'notes', n: 3 },
+    F('notes', ['m.bells', 'k.piano'], 'Joue 3 notes dans le temps', { how: 'notes', n: 3 },
       'À partir de MAINTENANT, trois notes sur les temps (touches à l\'écran{, A à L ou MIDI|}), comme on tape du pied.', 'Nouveau : joue 3 notes dans le temps'),
     F('melodie', ['m.bells'], 'Fais revenir la Mélodie auto sur MAINTENANT', { how: 'hit', param: 'bells.on', v: (v) => !!v, ok: () => !store.get('bells.on') },
       'Sculpter > Mélodie auto > On, pile sur MAINTENANT.'),
@@ -85,9 +85,9 @@
       return !!g && g.counts() && !!(AMB.seq && AMB.seq.playing) && !(P && P.busy()) && !g.nextReady() && !(R && R.recording)
         && !(AMB.rec && AMB.rec.songRecording()) && !(AMB.looper && AMB.looper.busy()) && (unseen || this.seen());
     },
-    // S5.7: an ask is only launched where it can be seen: the LCD in the window (an opening scrolls to what it opened)
+    // S5.7: an ask is only launched where it can be seen: S11.1 the Objectifs widget on screen (not in Plein écran)
     seen() {
-      const el = typeof document !== 'undefined' && document.getElementById('lcd'); if (!el || this.always) return true;
+      const el = typeof document !== 'undefined' && document.getElementById('goals'); if (!el || this.always) return true;
       const r = el.getBoundingClientRect(), h = window.innerHeight || document.documentElement.clientHeight;
       return r.height > 0 && r.bottom > 8 && r.top < h - 8;
     },
@@ -96,10 +96,11 @@
       const a = d.ask;
       return d.need.every((n) => g.has(n)) && (!a.param || a.param.includes('*') || open(a.param)) && (!a.ok || a.ok());
     },
-    // the challenge to ask now: the active one, when it is a kind 'demande'
+    // the objective to ask now: the first active one of kind 'demande' (S11.1: a piece has several objectives)
     gate(g = AMB.game) {
-      const K = AMB.contracts, id = K && g.path ? K.state(g).active[0] : null, d = id && K.byId[id];
-      return d && d.kind === 'demande' ? d : null;
+      const K = AMB.contracts; if (!K || !g.path) return null;
+      const id = K.state(g).active.find((x) => K.byId[x] && K.byId[x].kind === 'demande');
+      return id ? K.byId[id] : null;
     },
     // what to ask: an opening first introduces its controls, then the challenge to win, else a free ask (never twice in a row)
     pick(g = AMB.game) {
@@ -215,8 +216,8 @@
       if (c.how === 'hold') { c.onset = t; c.grade = g === 'rate' ? null : g; if (!c.grade) return this.end('rate', t < c.tT ? 'trop tôt' : 'trop tard'); this.until(); this.render(); return null; }
       return this.end(g, t < c.tT ? 'trop tôt' : 'trop tard');
     },
-    tolOf() { return this.win(this.hand()).parfait; }, // the PARFAIT window of the session's hand (the LCD's « MAINTENANT ! »)
-    // far too early: not judged, a word on the LCD (once per ask)
+    tolOf() { return this.win(this.hand()).parfait; }, // the PARFAIT window of the session's hand (the widget's « MAINTENANT ! »)
+    // far too early: not judged, a word in the widget (once per ask)
     early() {
       const c = this.cur; if (!c.told && AMB.garden) { c.told = true; AMB.garden.lcd(c.how === 'by' ? '♪ Pas encore…' : '♪ Pas encore : attends MAINTENANT !', 1500); }
       return null;
@@ -247,7 +248,7 @@
       this.wait = c.gate && !res.open ? RETRY : this.gap();
       const n = res.open && AMB.tree.byId[res.open];
       if (AMB.garden) {
-        if (res.out) AMB.garden.fx('consolation', { say: '✦ Prêt quand même', ms: 3000, toast: `Pas cette fois, mais ${n ? n.name : 'la suite'} est prêt à ouvrir quand même.` });
+        if (res.out) AMB.garden.fx('consolation', { say: '✦ Prêt quand même', ms: 3000, toast: `Pas cette fois, mais ${n ? 'la pièce ' + n.name : 'la suite'} est prête à ouvrir quand même.` });
         else AMB.garden.fx(grade, { n: s.combo, why: res.why, node: n ? n.name : null });
       }
       if (res.open) K.finish(c.gate, g); // its node ready (game:ready: the juice above already said it)
@@ -263,7 +264,7 @@
       if (c && AMB.game) AMB.game.emit('demand', { phase: 'end', id: c.id, res: null });
       this.render();
     },
-    // what the LCD shows (garden.renderContracts): the ask and its countdown in musical time
+    // what the widget shows (garden.renderContracts): the ask and its countdown in musical time
     // S5.7: the countdown follows what is heard (the output latency later), « MAINTENANT ! » from the start of the PARFAIT
     // window: « 3 », « 2 », « 1 », « MAINTENANT ! » (the asks say « sur MAINTENANT », never « sur le 1 », which a child
     // read as the « 1 » of the countdown, one beat early)

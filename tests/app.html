@@ -35,7 +35,7 @@ f.addEventListener('load', async ()=>{
   await wait(200); log('undo toast='+d.getElementById('toast').textContent);
   // Jardin sonore (G6.4): free mode = the whole app; a round trip through the path leaves it intact
   const ok=(c,m)=>log((c?'ok ':'ERROR fail ')+m);
-  ok(!d.body.classList.contains('game') && !d.querySelector('.is-locked') && d.getElementById('lcdTask').hidden && d.getElementById('welcomeDlg').hidden, 'mode libre : rien de verrouillé, pas de jeu à l\'écran');
+  ok(!d.body.classList.contains('game') && !d.querySelector('.is-locked') && w.getComputedStyle(d.getElementById('goals')).display==='none' && d.getElementById('welcomeDlg').hidden, 'mode libre : rien de verrouillé, pas de jeu à l\'écran');
   const evo=A.seq.evolve, lfo=A.seq.runLfos; A.seq.evolve=A.seq.runLfos=()=>{}; // the Dérive and the Mouvements lents move knobs on their own: off while comparing
   for(const [k,v] of Object.entries(A.seq.homes)) if(JSON.stringify(A.store.get(k))!==JSON.stringify(v)) A.store.set(k,v,'game'); // (back to the player's values: what a round trip keeps)
   await wait(150); // (the macro knobs follow: perform.js syncs them 60 ms later)

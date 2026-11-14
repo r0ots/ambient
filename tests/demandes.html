@@ -1,6 +1,6 @@
 <!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
 <!-- S5.5 live asks (js/demands.js), on a simulated clock (the sequencer's grid is driven by hand, no audio): an ask comes
-     during the playback with its countdown on the LCD; judged PARFAIT / BIEN / RATÉ on the placement; the combo ×n; an
+     during the playback with its countdown in the Objectifs widget (S11.1); judged PARFAIT / BIEN / RATÉ on the placement; the combo ×n; an
      interface challenge asked in the music makes its node « prêt » (4 misses: ready anyway); never during a Réponse, nor
      while a node waits, never on a closed control; nothing in free mode. -->
 <script src="lib.js"></script>
@@ -18,11 +18,11 @@ f.addEventListener('load', async () => {
     let now = 0, step = 0; D.now = () => now; D.at = () => now;
     A.seq.playing = true; // the grid is ours: no timer, no audio
     const fxs = []; const fx0 = A.garden.fx; A.garden.fx = function (k, o) { fxs.push([k, o || {}]); return fx0.apply(this, arguments); };
-    const own = (ids) => { G.s.nodes = ['racine', ...ids]; G.s.ready = []; G.s.contracts = []; G.s.skipped = []; G.s.active = []; T.applyLocks(); };
+    const own = (ids) => { G.s.nodes = ['racine', 'k.piano', ...ids]; G.s.ready = []; G.s.contracts = []; G.s.skipped = []; G.s.active = []; T.applyLocks(); };
     const bar = () => { step = Math.ceil(step / 16) * 16; now = step * SD; const r = D.onStep(step, now, SD); step++; return r; }; // a bar line
     const fresh = () => { D.cur = null; D.wait = 0; D.fresh = null; D.last = null; Pz.cur = null; };
     const launch = (id) => { fresh(); step = Math.ceil(step / 16) * 16; now = step * SD; D.launch({ d: D.byId[id], text: D.byId[id].title }, step, now, SD); step++; return D.cur; };
-    const lcd = () => [d.querySelector('#lcdTask .lcd-task-txt').textContent, d.querySelector('#lcdTask .lcd-task-n').textContent, !d.querySelector('#lcdTask').hidden];
+    const lcd = () => [d.querySelector('#goals .gw-dtxt').textContent, d.querySelector('#goals .gw-dn').textContent, !d.querySelector('#goals .gw-demand').hidden && !d.getElementById('goals').hidden];
 
     // --- an ask comes during the playback, with its countdown in musical time
     own(['m.bells', 'h.pad']); fresh();
@@ -30,7 +30,7 @@ f.addEventListener('load', async () => {
     const c = D.cur;
     ok(c && D.reach(c.d, G) && c.tT - now === 2 * BAR, 'pendant la lecture, une demande est proposée sur une barre de mesure : « ' + (c && c.text) + ' », le 1 dans 2 mesures');
     A.garden.renderContracts(); let L = lcd();
-    ok(L[2] && /^♪ /.test(L[0]) && L[1] === 'dans 2 mesures', 'LCD : « ' + L[0] + ' » · ' + L[1]);
+    ok(L[2] && /^♪ /.test(L[0]) && L[1] === 'dans 2 mesures', 'S11.1 widget, en grand : « ' + L[0] + ' » · ' + L[1]);
     now = c.tT - 1.5 * BEAT; ok(D.view().n === '2', 'compte à rebours sur les temps : ' + D.view().n);
     now = c.tT - 0.1; ok(D.view().n === 'MAINTENANT !' && D.view().hot, 'sur le 1 : MAINTENANT !');
     D.cancel(); ok(!D.cur, '■ Stop (annulation) : la demande s\'en va');
@@ -69,14 +69,15 @@ f.addEventListener('load', async () => {
     ok(st.best >= 3 && JSON.parse(localStorage.getItem('ambient.game.demtest')).dem.combo === 3, 'combo et record sauvegardés');
 
     // --- an interface challenge, asked in the music, makes its node « prêt » (the player opens it)
-    own(['m.bells', 'h.pad']); G.s.contracts = ['k.xy', 'm.notes']; G.s.active = ['k.couleur']; G.s.prog = { 'k.couleur': { n: 0 } };
+    own(['m.bells', 'h.pad']); G.s.nodes = G.s.nodes.filter((x) => x !== 'k.piano'); G.s.contracts = ['m.ecoute']; G.s.active = ['k.couleur']; // (S11.1: the Piano's last objective)
+    G.s.prog = { 'k.couleur': { n: 0 } };
     fresh(); bar(); ok(D.cur && D.cur.gate === 'k.couleur', 'défi d\'interface converti : « ' + K.byId['k.couleur'].title + ' » arrive comme demande');
     now = D.cur.tT + 0.05; fxs.length = 0; St.set('drone.tone', 0.7, 'user'); await wait(0);
-    ok(G.isReady('t.son') && !G.has('t.son') && G.s.contracts.includes('k.couleur') && fxs.some(([kk, o]) => kk === 'parfait' && /Timbre/.test(o.node || '')) && !fxs.some(([kk]) => kk === 'defi'),
-      'lumière du drone sur le 1 : Timbre du drone « prêt » (pas ouvert), fêté par PARFAIT (pas de 2e fête)');
+    ok(G.isReady('k.piano') && !G.has('k.piano') && G.s.contracts.includes('k.couleur') && fxs.some(([kk, o]) => kk === 'parfait' && /Piano/.test(o.node || '')) && !fxs.some(([kk]) => kk === 'defi'),
+      'lumière du drone sur le 1 : Piano « prêt » (pas ouvert), fêté par PARFAIT (pas de 2e fête)');
     ok(!D.cur && !bar() && !D.cur, 'un nœud attend « ✦ Ouvrir » : pas de demande');
     // 4 misses: ready anyway
-    own(['m.bells', 'h.pad', 't.son']); G.s.active = ['k.timbre']; G.s.prog = { 'k.timbre': { n: 0 } }; D.st(G).miss = {};
+    own(['m.bells', 'h.pad', 't.son']); G.s.contracts = ['t.deux']; G.s.active = ['k.timbre']; G.s.prog = { 'k.timbre': { n: 0 } }; D.st(G).miss = {};
     const waves = St.spec('drone.wave').options; fxs.length = 0;
     for (let i = 0; i < D.MISSES; i++) { fresh(); bar(); now = D.cur.tT + 1.5 * BEAT; St.set('drone.wave', waves[i % 2 ? 1 : 2], 'user'); }
     await wait(0);
@@ -110,12 +111,12 @@ f.addEventListener('load', async () => {
     ok(n1.grade === 'bien' && n2.grade === 'parfait' && n3.grade === 'parfait', '3 notes à +100 ms : BIEN au clavier MIDI (sa vélocité), PARFAIT aux pastilles ; à +40 ms au MIDI : PARFAIT');
     Pz.midi = true; launch('accord'); ok(Math.abs(D.tolOf() - Pz.TOL.midi.parfait) < 1e-9, '« MAINTENANT ! » s\'allume sur la fenêtre PARFAIT de la main (MIDI : 60 ms)'); D.cancel(); Pz.midi = false;
 
-    // --- S6.7 never stuck on « ♪ bientôt »: the LCD out of view, a challenge whose controls are not there, an ask left alone
+    // --- S6.7 never stuck on « ♪ bientôt »: the widget out of view, a challenge whose controls are not there, an ask left alone
     const gateOn = (id) => { G.s.contracts = ['k.xy', 'm.notes']; G.s.active = [id]; G.s.prog = { [id]: { n: 0 } }; };
     own(['m.bells', 'h.pad']); gateOn('k.couleur'); fresh(); const seen0 = D.seen; D.seen = () => false;
     let nb = 0; while (!D.cur && nb < 30) { bar(); nb++; }
     D.seen = seen0;
-    ok(D.cur && D.cur.gate === 'k.couleur' && nb > 4 && nb <= D.STALL + 1, `écran (LCD) hors de vue : la demande attend, puis vient quand même après ${nb} mesures (≤ ${D.STALL + 1})`);
+    ok(D.cur && D.cur.gate === 'k.couleur' && nb > 4 && nb <= D.STALL + 1, `widget Objectifs hors de vue : la demande attend, puis vient quand même après ${nb} mesures (≤ ${D.STALL + 1})`);
     D.cancel();
     own(['m.bells', 'h.pad']); gateOn('k.timbre'); fresh(); nb = 0; while (G.s.active[0] === 'k.timbre' && !D.cur && nb < 30) { bar(); nb++; }
     ok(G.s.active[0] !== 'k.timbre' && G.s.skipped.includes('k.timbre') && nb === D.STALL + 1, `défi demandé dont la commande n'est pas là (Timbre du drone) : remplacé (remis en fin de file) après ${nb} mesures, au suivant : ${G.s.active[0] || '—'}`);
@@ -130,7 +131,7 @@ f.addEventListener('load', async () => {
     for (let i = 0; i < 4; i++) bar();
     D.input('chord', [{ deg: 0, forced: true }], now);
     A.garden.renderContracts();
-    ok(!D.cur && !fxs.length && d.querySelector('#lcdTask').hidden, 'mode libre : aucune demande, aucun effet, pas de ligne de demande');
+    ok(!D.cur && !fxs.length && (d.getElementById('goals').hidden || d.querySelector('#goals .gw-demand').hidden), 'mode libre : aucune demande, aucun effet, pas de ligne de demande');
     A.seq.playing = false;
     done();
   } catch (e) { fail(e); }

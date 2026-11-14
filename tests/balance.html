@@ -1,47 +1,59 @@
 <!doctype html><html><head><meta charset="utf-8"></head><body>
-<!-- Pace of the Parcours (S4.3, no currency): scripted players run through the path on the REAL data (tree, contracts.OPENS,
-     contracts.eligible / refill order, Écho lengths, discoveries.OPENS) with a time model per activity. Each challenge opens its
-     node; a secret opens its own node (or, already owned, the next node of the path).
-     Targets: typical full path ≤ 45 min, never more than 3 min without a new node, no dead end whatever the order the
-     challenges are played in (↷), the musician who finds the key secrets is faster; the slow player is reported.
-     S4.6: a node won is only « prêt »: the player touches « ✦ Ouvrir », reads what it gives and opens it (TIME.open per node,
-     one more click). That time is the player's own pace: it counts in the total and in the waits without a new node, the
-     45-min target stays on the time spent playing (total minus opening).
-     S5.4: the Réponse ladder and placement (puzzles.level / placeOf / PLACE) run during play: the nephew at the MIDI keyboard
-     reaches the full instrument in < 20 min, the son is never placed.
-     S5.5: the interface challenges are asked in the music (kind 'demande', js/demands.js): TIME.demande = find the control
-     (~15 s) + the ask itself (~1 bar of wait + 2 bars of countdown ≈ 13 s at 66 bpm) + one miss on average (4 bars more +
-     the countdown ≈ 22 s) + the « Nouveau » ask that may come first after an opening (≈ 10 s); after MISSES misses the node
-     is ready anyway, so an ask can never block the path. -->
+<!-- Pace of the Parcours. Scripted players run through the path on the REAL data (tree, contracts.OPENS — S11.1: 2 or 3
+     objectives per piece —, contracts.pieceOk / queue order, Réponse lengths, discoveries.OPENS, puzzles.PLACE) with a
+     time model per objective. A piece is READY once all its objectives are done; the player opens it in the Arbre
+     (TIME.open: the widget's « ✦ … est prêt », the Arbre, its card, ✦ Ouvrir).
+     Objectives of one piece run together: what is played or listened to (notes, chords, « let N bars play », « play for
+     a minute ») counts at the same time (the longest one + a quarter of the others); a live ask, a Réponse, a recording
+     or a gesture on a control come one after the other.
+     S11.1 targets: the first piece after ~1 min of real play; a piece every 2–4 min on average; the nephew (MIDI keyboard,
+     right and in time, finds discoveries, placed « Musicien » then « Virtuose » — a placement checks ONE objective of
+     each piece of its set, never a whole piece) completes the path in ~1 h 30 – 2 h; no order of play ever blocks
+     (40 random orders, ↷); the son (slow, 3 notes) completes it and is never placed. -->
 <script src="lib.js"></script>
 <script>localStorage.removeItem('ambient.game.balance');</script>
 <iframe id="f" src="../index.html?gamekey=ambient.game.balance&listen" style="width:800px;height:600px"></iframe>
 <script>
-// seconds per activity, for a player exploring at a calm pace (`k` slows everything down); each run draws 0.75–1.25× per activity
 const JITTER = 0.25;
 const mulberry = (a) => () => { a = (a + 0x6d2b79f5) >>> 0; let t = Math.imul(a ^ (a >>> 15), a | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 
 document.getElementById('f').addEventListener('load', async () => {
   try {
-    const w = document.getElementById('f').contentWindow, A = w.AMB, T = A.tree, K = A.contracts, nodes = T.NODES;
-    const TIME = { contract: (d) => 40 + 12 * Math.min(d.goal, 8), echo: (d) => 45 + 15 * A.puzzles.respLen(d.d), demande: 60, secret: 45, open: 8 };
-    const tOf = (d) => (d.kind === 'reponse' ? TIME.echo(d) : d.kind === 'demande' ? TIME.demande : TIME.contract(d));
+    const w = document.getElementById('f').contentWindow, A = w.AMB, T = A.tree, K = A.contracts, nodes = T.NODES, P = A.puzzles;
+    const BAR = 4 * 60 / A.store.spec('global.tempo').def; // s, default tempo
+    const RUNS = ['m.monte', 'm.descend', 'm.pas', 'm.respire'];
+    // seconds per objective for a calm player; `skill` (the musician) speeds up what is played, never what is listened to
+    const TIME = { demande: 60, open: 15, secret: 150 };
+    const kindOf = (d) => d.kind === 'demande' ? 'ask' : d.kind === 'reponse' ? 'resp' : d.on.bar ? 'bars' : d.unit === 's' ? 'time' : d.on.rec ? 'rec' : d.on.bass ? 'bass' : d.on.param ? 'param'
+      : d.on.act && d.id === 'k.allume' ? 'wake' : d.on.act ? 'chords' : RUNS.includes(d.id) ? 'run' : 'notes';
+    const PAR = ['bars', 'time', 'notes', 'chords', 'run', 'bass']; // played / listened at the same time
+    const tOf = (d, skill = 1) => {
+      switch (kindOf(d)) {
+        case 'ask': return TIME.demande;
+        case 'resp': return (45 + 15 * P.respLen(d.d)) * (skill < 1 ? 0.75 : 1);
+        case 'bars': return 15 + d.goal * BAR;
+        case 'time': return d.goal * 1.25;
+        case 'rec': return 90;
+        case 'bass': return 40 + d.goal * BAR;
+        case 'param': return 30;
+        case 'wake': return 5;
+        case 'chords': return (30 + 6 * d.goal) * skill;
+        case 'run': return (30 + 8 * d.goal) * skill;
+        default: return (15 + 2.5 * d.goal) * skill;
+      }
+    };
+    const pieceT = (objs, skill, jit) => {
+      const par = objs.filter((d) => PAR.includes(kindOf(d))).map((d) => tOf(d, skill) * jit()), ser = objs.filter((d) => !PAR.includes(kindOf(d))).map((d) => tOf(d, skill) * jit());
+      const mx = par.length ? Math.max(...par) : 0, sum = (a) => a.reduce((x, y) => x + y, 0);
+      return mx + 0.25 * (sum(par) - mx) + sum(ser);
+    };
     const fmt = (s) => (s / 60).toFixed(1);
-    // a key secret is reachable once its node is owned (Lenteur céleste also plays Halo and Tempo); MIDI-only ones for the musician
     const SECRET_NEED = { lent: ['e.halo', 'm.tempo'] };
-    const SECRETS = A.discoveries.GESTES.map((d) => ({ id: d.id, need: [...d.need, ...(SECRET_NEED[d.id] || [])], opens: A.discoveries.OPENS[d.id], midi: d.midi })) // the gestures (former secrets)
-      .concat(A.discoveries.COMBOS.map((d) => ({ id: d.id, need: d.need, opens: A.discoveries.OPENS[d.id], midi: false }))); // S8.7 the huge combos (two knobs held ~2 bars: a SUPER), once Grands réglages is open
-
-    // S5.4 the Réponse during play, once the Melody is there: one phrase every PH s (phrase bar + answer bar + GAP.free bars,
-    // default tempo), the REAL ladder (puzzles.level: one up on a success, one down on a miss) and placement rule
-    // (puzzles.placeOf / PLACE). A profile = {p(level) -> chance of a right answer, ign (share of phrases left unanswered)}.
-    // S6.7: a phrase's cycle = its wait (GAP.free; GAP.hot after a right answer; GAP.gate before the replay of a miss) + the
-    // phrase bar + the answer bar; a miss is replayed once (it does not count in the placement); at the MIDI keyboard the
-    // ladder starts at the Octaves (puzzles.OCT).
-    const P = A.puzzles, BAR = 4 * 60 / A.store.spec('global.tempo').def;
-    const NEVEU = { midi: true, ign: 0, p: (lv) => [0.97, 0.95, 0.92, 0.9, 0.9][lv.tier] || 0.8 }; // MIDI keyboard, in rhythm, chords by hand
-    const FILS = { ign: 0.4, p: (lv) => lv.chord ? 0.05 : !lv.tier && lv.len < P.RHYTHM ? [0.6, 0.45][lv.len - 3] : lv.tier ? 0.01 : lv.len === P.RHYTHM ? 0.05 : 0.02 }; // 3 slow notes on the pads
-    // one ladder: a step = one phrase; returns {place (index or -1), top level}; dur() = the next phrase's cycle (s)
+    const SECRETS = A.discoveries.GESTES.map((d) => ({ id: d.id, need: [...d.need, ...(SECRET_NEED[d.id] || []), ...(['lent', 'silence'].includes(d.id) ? [] : ['k.piano'])], opens: A.discoveries.OPENS[d.id], midi: d.midi }))
+      .concat(A.discoveries.COMBOS.map((d) => ({ id: d.id, need: d.need, opens: A.discoveries.OPENS[d.id], midi: false })));
+    // the Réponse ladder during play, once the Mélodie auto AND the Piano are there (puzzles.can)
+    const NEVEU = { midi: true, ign: 0, p: (lv) => [0.97, 0.95, 0.92, 0.9, 0.9][lv.tier] || 0.8 };
+    const FILS = { ign: 0.4, p: (lv) => lv.chord ? 0.05 : !lv.tier && lv.len < P.RHYTHM ? [0.6, 0.45][lv.len - 3] : lv.tier ? 0.01 : lv.len === P.RHYTHM ? 0.05 : 0.02 };
     const ladder = (prof, rnd) => { const s = { lvl: prof.midi ? P.OCT : 0, pt: [], place: -1, top: 0, again: null, gap: P.GAP.free }; return { s,
       dur: () => (2 + s.gap) * BAR,
       step() {
@@ -55,90 +67,91 @@ document.getElementById('f').addEventListener('load', async () => {
         const p = P.placeOf(s.pt); if (p > s.place) { s.place = p; return p; } return -1;
       } }; };
 
-    // one scripted player. opts: {k, seed, jitter, random (plays any eligible challenge, ↷ at random), secrets, midi, resp (a Réponse profile)}
+    // one scripted player. opts: {k (slower), skill (< 1: plays faster), seed, jitter, random (any piece that can be
+    // worked on, ↷ at random), secrets, secretShare (share of the discoveries found), midi, resp (a Réponse profile)}
     function sim(opts) {
-      const k = opts.k || 1, rnd = mulberry(opts.seed || 7), jit = () => (opts.jitter ? 1 + JITTER * (2 * rnd() - 1) : 1);
-      const own = new Set(['racine']), done = new Set(), found = new Set();
-      const g = { has: (id) => own.has(id), s: { contracts: [] } }; // enough of game for tree.status / contracts.eligible
+      const k = opts.k || 1, skill = opts.skill || 1, rnd = mulberry(opts.seed || 7), jit = () => (opts.jitter ? 1 + JITTER * (2 * rnd() - 1) : 1);
+      const own = new Set(['racine']), done = new Set(), found = new Set(), ready = new Set();
+      const g = { has: (id) => own.has(id), isReady: (id) => ready.has(id), s: { contracts: [] } };
       const status = (id) => T.status(id, g);
-      const eligible = (d) => !done.has(d.id) && d.need.every((n) => own.has(n)) && (d.node ? status(d.node) === 'available' : true);
+      const left = (n) => K.forNode(n).filter((d) => !done.has(d.id));
+      const ok = (n) => left(n).length && status(n) === 'available' && left(n).every((d) => d.need.every((x) => own.has(x)));
       const openChain = (id) => { if (own.has(id)) return; T.byId[id].req.forEach(openChain); own.add(id); };
-      const nextNode = () => { const d = K.ORDER.find((x) => x.node && status(x.node) === 'available'); return d && d.node; };
-      let t = 0, tOpen = 0, last = 0, gap = 0, gapAt = '', firstNode = null, tFull = null; const steps = [], placed = [];
-      const L = opts.resp && ladder(opts.resp, rnd); let tl = null, tMel = null; const placedIn = []; // the Réponse's clock, from the Melody on
-      const respTo = () => { // the phrases heard up to now; a placement makes its nodes ready, the player opens them (TIME.open)
-        if (!L) return; if (tl == null) { if (own.has('m.bells')) tl = tMel = t; return; }
-        while (tl + L.dur() <= t) { tl += L.dur(); const p = L.step(); if (p >= 0) { placed.push(`${P.PLACE[p].name} ${fmt(tl)}′`); placedIn.push(tl - tMel); const before = own.size; for (let i = 0; i <= p; i++) P.PLACE[i].nodes.forEach(openChain); opened(before); } }
+      const nextNode = () => K.PIECES.find((n) => status(n) === 'available');
+      let t = 0, tOpen = 0, last = 0, gap = 0, gapAt = '', firstNode = null, tFull = null, granted = 0; const steps = [], placed = [], pieceTimes = [];
+      const L = opts.resp && ladder(opts.resp, rnd); let tl = null, tPiano = null; const placedIn = [];
+      const respTo = () => {
+        if (!L) return; if (tl == null) { if (own.has('m.bells') && own.has('k.piano')) tl = tPiano = t; return; }
+        while (tl + L.dur() <= t) { tl += L.dur(); const p = L.step(); if (p >= 0) { placed.push(`${P.PLACE[p].name} ${fmt(tl)}′`); placedIn.push(tl - tPiano);
+          if (placed.length === 1) for (const n of P.PLACE[0].nodes) { const l = left(n); if (l.length > 1 && !own.has(n)) { done.add(l[0].id); granted++; } } } }
       };
-      const opened = (before) => { if (own.size > before) { const o = (own.size - before) * TIME.open * k; t += o; tOpen += o; /* « ✦ Ouvrir », read, « Ouvrir » */ if (firstNode == null) firstNode = t; if (t - last > gap) { gap = t - last; gapAt = [...own].pop(); } last = t; steps.push(`${Math.round(t / 60)}′ ${[...own].pop()}`); } };
+      const opened = (before) => { if (own.size > before) { const o = (own.size - before) * TIME.open * k; t += o; tOpen += o; if (firstNode == null) firstNode = t; if (t - last > gap) { gap = t - last; gapAt = [...own].pop(); } last = t; steps.push(`${Math.round(t / 60)}′ ${[...own].pop()}`); } };
+      const share = opts.secretShare != null ? opts.secretShare : 1;
       for (let guard = 0; guard < 500; guard++) {
         respTo(); if (tFull == null && own.size === nodes.length) tFull = t;
         if (own.size === nodes.length && done.has(A.garden.FINALE)) break;
         const before = own.size;
+        // a piece whose objectives are all done (placement) opens as soon as it can
+        const free = K.PIECES.find((n) => !left(n).length && status(n) === 'available'); if (free) { own.add(free); opened(before); continue; }
         const sec = opts.secrets && SECRETS.find((x) => !found.has(x.id) && (opts.midi || !x.midi) && x.need.every((n) => own.has(n)));
-        if (sec) { found.add(sec.id); t += TIME.secret * k * jit(); const nid = own.has(sec.opens) ? nextNode() : sec.opens; if (nid) openChain(nid); opened(before); continue; }
-        const cand = K.ORDER.filter((d) => d.first).concat(K.ORDER.filter((d) => !d.first)).filter(eligible);
-        if (!cand.length) break;
-        const d = opts.random ? cand[Math.floor(rnd() * cand.length)] : cand[0];
-        done.add(d.id); t += tOf(d) * k * jit();
-        if (d.node) own.add(d.node);
+        if (sec) { found.add(sec.id); if (rnd() < share) { t += TIME.secret * k * jit(); const nid = own.has(sec.opens) ? nextNode() : sec.opens; if (nid) openChain(nid); opened(before); continue; } }
+        const cand = K.PIECES.filter(ok);
+        if (!cand.length) {
+          const fin = K.byId[A.garden.FINALE]; if (own.size === nodes.length && !done.has(fin.id)) { done.add(fin.id); t += tOf(fin) * k; continue; }
+          break;
+        }
+        const n = opts.random ? cand[Math.floor(rnd() * cand.length)] : cand[0];
+        const pt = pieceT(left(n), skill, jit) * k; t += pt; pieceTimes.push(pt);
+        left(n).forEach((d) => done.add(d.id)); own.add(n);
         opened(before);
       }
       if (tFull == null && own.size === nodes.length) tFull = t;
-      return { t, tFull, placed, placedIn, ladder: L && L.s, play: t - tOpen, tOpen, gap, gapAt, firstNode, steps, left: nodes.filter((n) => !own.has(n.id)).map((n) => n.id), fin: done.has(A.garden.FINALE), secrets: found.size };
+      const avg = pieceTimes.reduce((a, b) => a + b, 0) / Math.max(1, pieceTimes.length);
+      return { t, tFull, placed, placedIn, granted, ladder: L && L.s, play: t - tOpen, tOpen, gap, gapAt, firstNode, steps, avg, left: nodes.filter((x) => !own.has(x.id)).map((x) => x.id), fin: done.has(A.garden.FINALE), secrets: found.size };
     }
 
-    const echoes = K.DEFS.filter((d) => d.kind === 'reponse').map((d) => `${d.title} ${A.puzzles.respLen(d.d)}`);
+    const pieces = K.PIECES.map((n) => K.forNode(n).length);
+    ok(pieces.every((x) => x >= 2 && x <= 3), `S11.1 : chaque pièce demande 2 ou 3 objectifs (${pieces.filter((x) => x === 2).length} × 2, ${pieces.filter((x) => x === 3).length} × 3)`);
     const asks = K.DEFS.filter((d) => d.kind === 'demande');
-    ok(asks.length && asks.every((d) => d.node && A.demands.MISSES > 0 && d.ask && ['hit', 'by'].includes(d.ask.how)), `S5.5 : ${asks.length} défis demandés en musique (${TIME.demande} s chacun), prêts quand même après ${A.demands.MISSES} ratés : jamais d'impasse`);
-    const base = K.DEFS.reduce((a, d) => a + tOf(d), 0);
-    log(`ouvrir un nœud prêt : ${TIME.open} s (lire la carte, toucher Ouvrir)`);
-    log(`${K.DEFS.length} défis (${echoes.length} Échos : ${echoes.join(', ')}), ${nodes.length - 1} nœuds à ouvrir ; somme des temps nominaux ${fmt(base)} min`);
+    ok(asks.length && asks.every((d) => d.node && A.demands.MISSES > 0 && d.ask && ['hit', 'by'].includes(d.ask.how)), `${asks.length} objectifs demandés en musique (${TIME.demande} s chacun), cochés quand même après ${A.demands.MISSES} ratés : jamais d'impasse`);
+    const echoes = K.DEFS.filter((d) => d.kind === 'reponse').map((d) => `${d.title} ${P.respLen(d.d)}`);
+    ok(K.DEFS.filter((d) => d.kind === 'reponse').every((d) => P.respLen(d.d) >= 4 && P.respLen(d.d) <= 7), `Réponses de 4 à 7 notes (${echoes.join(', ')})`);
+    log(`ouvrir une pièce prête : ${TIME.open} s (le widget, l'Arbre, sa fiche, ✦ Ouvrir) ; ${K.DEFS.length} objectifs, ${nodes.length - 1} pièces`);
 
-    // typical player: the path's order (the LCD's), 5 jittered runs
+    // the typical player (a calm adult, no keyboard skills): the path's order, 5 jittered runs
     const runs = [1, 2, 3, 4, 5].map((seed) => sim({ seed, jitter: true }));
-    const tMin = Math.min(...runs.map((r) => r.t)), tMax = Math.max(...runs.map((r) => r.t)), gMax = Math.max(...runs.map((r) => r.gap));
-    const pMin = Math.min(...runs.map((r) => r.play)), pMax = Math.max(...runs.map((r) => r.play));
-    log(`parcours type (5 tirages) : tout l'arbre puis « Enregistre ton morceau » en ${fmt(tMin)}–${fmt(tMax)} min dont ${fmt(runs[0].tOpen)} min à ouvrir (jeu : ${fmt(pMin)}–${fmt(pMax)} min), plus longue attente sans nouveau nœud ${fmt(gMax)} min (avant ${runs.find((r) => r.gap === gMax).gapAt})`);
+    const tMin = Math.min(...runs.map((r) => r.t)), tMax = Math.max(...runs.map((r) => r.t)), gMax = Math.max(...runs.map((r) => r.gap)), aMax = Math.max(...runs.map((r) => r.avg)), aMin = Math.min(...runs.map((r) => r.avg));
+    log(`parcours type (5 tirages) : ${fmt(tMin)}–${fmt(tMax)} min, une pièce toutes les ${fmt(aMin)}–${fmt(aMax)} min en moyenne, 1re pièce à ${Math.round(runs[0].firstNode)} s, attente max ${fmt(gMax)} min (avant ${runs.find((r) => r.gap === gMax).gapAt})`);
     log('jalons (tirage 1) : ' + runs[0].steps.filter((s, i) => i % 6 === 5 || i === runs[0].steps.length - 1).join(' · '));
-    ok(runs.every((r) => !r.left.length && r.fin), 'parcours type : tout l\'arbre ouvert et le dernier défi joué ' + runs.map((r) => r.left.join(',')).join(''));
-    ok(pMax <= 45 * 60, 'cible : parcours type joué en ≤ 45 min, ouvertures à part (' + fmt(pMin) + '–' + fmt(pMax) + ' ; avec elles ' + fmt(tMin) + '–' + fmt(tMax) + ')');
-    ok(gMax <= 3 * 60, 'cible : jamais plus de 3 min sans nouveau nœud (' + fmt(gMax) + ' min)');
+    ok(runs.every((r) => !r.left.length && r.fin), 'parcours type : tout l\'arbre et le dernier objectif ' + runs.map((r) => r.left.join(',')).join(''));
+    ok(runs.every((r) => r.firstNode >= 40 && r.firstNode <= 100), `cible : la 1re pièce après ~1 min de jeu (${runs.map((r) => Math.round(r.firstNode)).join(', ')} s)`);
+    ok(aMin >= 2 * 60 && aMax <= 4 * 60, `cible : une pièce toutes les 2 à 4 min en moyenne (${fmt(aMin)}–${fmt(aMax)})`);
+    ok(gMax <= 7 * 60, `jamais plus de 7 min sans nouvelle pièce (${fmt(gMax)} min)`);
 
-    // any order (↷ at random among the eligible challenges): never a dead end
+    // any order (↷ at random among the pieces that can be worked on): never a dead end
     const any = Array.from({ length: 40 }, (_, i) => sim({ seed: 100 + i, random: true, jitter: true }));
-    ok(any.every((r) => !r.left.length && r.fin), '40 ordres au hasard : jamais d\'impasse, tout l\'arbre et le dernier défi ' + any.map((r) => r.left.join(',')).join(''));
+    ok(any.every((r) => !r.left.length && r.fin), '40 ordres au hasard : jamais d\'impasse, tout l\'arbre et le dernier objectif ' + any.map((r) => r.left.join(',')).join(''));
     log(`ordres au hasard : ${fmt(Math.min(...any.map((r) => r.t)))}–${fmt(Math.max(...any.map((r) => r.t)))} min, attente max ${fmt(Math.max(...any.map((r) => r.gap)))} min`);
 
-    // the slow player (the son): 1.3× slower, reported
-    const kid = sim({ seed: 3, k: 1.3, jitter: true });
-    log(`joueur lent (×1,3) : 1er nœud à ${Math.round(kid.firstNode)} s, arbre en ${fmt(kid.t)} min, attente max ${fmt(kid.gap)} min`);
-    ok(!kid.left.length && kid.fin, 'joueur lent : tout l\'arbre et le dernier défi (rapporté, pas de cible de temps)');
-
-    // the musician (MIDI keyboard) who finds the key secrets: each one opens a node, the path is shorter
-    const mus = [1, 2, 3, 4, 5].map((seed) => sim({ seed, midi: true, secrets: true, jitter: true }));
-    const mMax = Math.max(...mus.map((r) => r.t));
-    log(`musicien MIDI qui trouve les secrets-clés (${mus[0].secrets}) : ${fmt(Math.min(...mus.map((r) => r.t)))}–${fmt(mMax)} min, attente max ${fmt(Math.max(...mus.map((r) => r.gap)))} min`);
-    ok(mus.every((r) => !r.left.length && r.fin) && mMax < tMin, 'musicien avec secrets : tout l\'arbre, plus rapide que le parcours type (' + fmt(mMax) + ' < ' + fmt(tMin) + ' min)');
-
-    // S5.4 placement: the nephew at the MIDI keyboard answers the Réponse right and in rhythm (and finds the key secrets):
-    // « Musicien », then « Virtuose » put whole branches « prêt »; target: the full instrument in < 20 min
-    const nev = [1, 2, 3, 4, 5].map((seed) => sim({ seed, midi: true, secrets: true, jitter: true, resp: NEVEU }));
-    const nMax = Math.max(...nev.map((r) => r.tFull));
-    log(`neveu MIDI (placement) : ${nev[0].placed.join(', ')} ; instrument complet en ${fmt(Math.min(...nev.map((r) => r.tFull)))}–${fmt(nMax)} min (morceau enregistré ${fmt(Math.max(...nev.map((r) => r.t)))} min), attente max ${fmt(Math.max(...nev.map((r) => r.gap)))} min`);
-    log('jalons neveu (tirage 1) : ' + nev[0].steps.join(' · '));
-    ok(nev.every((r) => r.placed.length === P.PLACE.length && !r.left.length && r.fin), 'neveu : les deux placements, tout l\'arbre et le morceau');
-    ok(nMax < 20 * 60, 'cible : neveu MIDI, instrument complet en < 20 min (' + fmt(nMax) + ' min)');
-    // S6.7: at the MIDI keyboard the Réponse starts at the Octaves: « ⚡ Musicien détecté » < 90 s after the Mélodie auto (50 draws)
-    const det = Array.from({ length: 50 }, (_, i) => sim({ seed: 500 + i, midi: true, secrets: true, jitter: true, resp: NEVEU }).placedIn[0]);
-    const dSorted = det.slice().sort((a, b) => a - b), dMed = dSorted[25], d90 = dSorted[44];
-    log(`neveu MIDI : « Musicien détecté » ${Math.round(dSorted[0])}–${Math.round(dSorted[49])} s après la Mélodie auto (médiane ${Math.round(dMed)} s, 9 sur 10 sous ${Math.round(d90)} s)`);
-    ok(dMed < 90 && d90 < 120, 'cible : bon musicien au MIDI, « ⚡ Musicien détecté » en < 90 s (médiane ' + Math.round(dMed) + ' s ; un raté en route ajoute une phrase)');
-    // the son: slow, 3 notes on the pads, over his whole path (and far beyond): never placed
-    const sons = Array.from({ length: 200 }, (_, i) => sim({ seed: 300 + i, k: 1.3, jitter: true, resp: FILS }));
+    // the son: 1.3× slower, the Réponse at 3 slow notes, never placed
+    const sons = Array.from({ length: 100 }, (_, i) => sim({ seed: 300 + i, k: 1.3, jitter: true, resp: FILS }));
     const far = ladder(FILS, mulberry(9)); let farP = -1; for (let i = 0; i < 5000; i++) farP = Math.max(farP, far.step());
-    log(`fils : niveau de Réponse max ${Math.max(...sons.map((r) => r.ladder.top))} (${P.level(Math.max(...sons.map((r) => r.ladder.top))).name}) sur 200 parcours ; 5000 phrases d'affilée : niveau max ${far.s.top}`);
-    ok(sons.every((r) => !r.placed.length && !r.left.length) && farP < 0, 'fils : jamais de placement (200 parcours, puis 5000 phrases), tout l\'arbre quand même');
+    log(`fils (×1,3) : arbre en ${fmt(Math.min(...sons.map((r) => r.t)))}–${fmt(Math.max(...sons.map((r) => r.t)))} min, 1re pièce à ${Math.round(sons[0].firstNode)} s ; niveau de Réponse max ${Math.max(...sons.map((r) => r.ladder.top))} ; 5000 phrases : niveau max ${far.s.top}`);
+    ok(sons.every((r) => !r.placed.length && !r.left.length && r.fin) && farP < 0, 'fils : jamais de placement, tout l\'arbre quand même');
+
+    // the nephew: MIDI keyboard (skill 0.6 on what he plays), right and in time (placement), finds half the discoveries
+    const nev = [1, 2, 3, 4, 5].map((seed) => sim({ seed, skill: 0.6, midi: true, secrets: true, secretShare: 0.5, jitter: true, resp: NEVEU }));
+    const nMin = Math.min(...nev.map((r) => r.t)), nMax = Math.max(...nev.map((r) => r.t));
+    log(`neveu MIDI : ${nev[0].placed.join(', ')} (${nev[0].granted} objectifs cochés d'avance) ; Parcours complet en ${fmt(nMin)}–${fmt(nMax)} min, une pièce toutes les ${fmt(nev[0].avg)} min, 1re pièce à ${Math.round(nev[0].firstNode)} s, attente max ${fmt(Math.max(...nev.map((r) => r.gap)))} min`);
+    log('jalons neveu (tirage 1) : ' + nev[0].steps.filter((s, i) => i % 4 === 3 || i === nev[0].steps.length - 1).join(' · '));
+    ok(nev.every((r) => r.placed.length === P.PLACE.length && !r.left.length && r.fin), 'neveu : les deux placements, tout l\'arbre et le morceau');
+    ok(nMin >= 80 * 60 && nMax <= 125 * 60, `cible : neveu, Parcours complet en ~1 h 30 – 2 h (${fmt(nMin)}–${fmt(nMax)} min)`);
+    const det = Array.from({ length: 50 }, (_, i) => sim({ seed: 500 + i, skill: 0.6, midi: true, jitter: true, resp: NEVEU }).placedIn[0]).sort((a, b) => a - b);
+    log(`neveu : « Musicien détecté » ${Math.round(det[0])}–${Math.round(det[49])} s après le Piano (médiane ${Math.round(det[25])} s)`);
+    ok(det[25] < 120, 'bon musicien au MIDI : « ⚡ Musicien détecté » en < 2 min de Piano (médiane ' + Math.round(det[25]) + ' s)');
+    // a musician who finds every discovery is faster than the typical player
+    const mus = [1, 2, 3].map((seed) => sim({ seed, skill: 0.6, midi: true, secrets: true, jitter: true }));
+    ok(mus.every((r) => !r.left.length && r.fin) && Math.max(...mus.map((r) => r.t)) < tMin, `musicien qui trouve toutes les découvertes : plus rapide que le parcours type (${fmt(Math.max(...mus.map((r) => r.t)))} < ${fmt(tMin)} min)`);
     done();
   } catch (e) { fail(e); }
 });

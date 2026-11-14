@@ -212,7 +212,7 @@
       if (!g.s.ended && OPENS[id]) { // handed over: no node
         const own = OPENS[id], nid = g.has(own) || g.isReady(own) ? AMB.contracts && AMB.contracts.nextNode(g) : own;
         node = nid && AMB.tree.byId[nid];
-        if (node) { g.readyChain(node.id); this.state().opened = { ...this.state().opened, [id]: node.id }; g.save(); }
+        if (node) { g.readyChain(node.id); this.state().opened = { ...this.state().opened, [id]: node.id }; if (AMB.contracts) AMB.contracts.note({ disc: id, node: node.id }); g.save(); } // (S11.1: a line in the Objectifs history)
       }
       g.emit('discovery', { id });
       this.celebrate(d, node);
@@ -220,7 +220,7 @@
     },
     celebrate(d, node) {
       const GD = AMB.garden, gift = d.reward && d.reward.gift; // the juice table (S5.9 FX.discovery); its node waits on « ✦ Ouvrir »
-      if (GD && GD.fx) GD.fx('discovery', { name: d.name, ms: 6000, boom: d.kind === 'combo' ? 'SUPER' : undefined, toast: `✦ Découverte : ${d.name}${node ? ` · ${node.name} prêt à ouvrir` : ''}${gift ? ' · ' + gift.label : ''}` });
+      if (GD && GD.fx) GD.fx('discovery', { name: d.name, ms: 6000, boom: d.kind === 'combo' ? 'SUPER' : undefined, toast: `✦ Découverte : ${d.name}${node ? ` · pièce prête : ${node.name}, ouvre-la dans l'Arbre` : ''}${gift ? ' · ' + gift.label : ''}` });
       this.render(true);
     },
     giveGift(gift) {

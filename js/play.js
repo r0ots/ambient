@@ -13,8 +13,9 @@
     const tag = e.target.tagName;
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
     let i;
-    // in the path, notes play from the Graine (S5.7: the first challenge is a note), forcing chords needs the Pad
+    // in the path, notes play once the Piano is open (S11.1: the machine starts with the drone alone), forcing chords needs the Pad
     const g = AMB.game, can = (id) => !g || g.isUnlocked(id), note = MELODY_LOW.includes(e.code) || MELODY_HIGH.includes(e.code);
+    if ((note || CHORDS.includes(e.code)) && !can('k.piano')) return;
     if (CHORDS.includes(e.code) && !can('h.pad')) return;
     // notes sound when stopped too, once audio has been started once (in the path, a note key starts it: S5.7)
     if (!AMB.engine.ctx && !(note && g && g.path && wakeAudio(true))) return;
@@ -176,15 +177,15 @@
   // Path only, from the Graine (S5.7; free mode is unchanged). The first touch starts the audio (a user gesture) and the note sounds.
   const PADS = ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'], PAD_LONG_MS = 450;
   const padPtr = new Map(); // pointerId → { b: pad button, t: long-press timer }
-  function padsWanted() { // S5.7: from the Graine (its challenge is « Joue une note »)
+  function padsWanted() { // S11.1: once the Piano is open (S5.7: they were there from the start)
     const g = AMB.game;
-    return !!(g && g.path);
+    return !!(g && g.path && g.has('k.piano'));
   }
   // S5.7: in the path, before the Mélodie auto is open, the first note also starts the playback (the drone comes in), as
   // the first glide does; free mode unchanged
   function firstNote() {
     const g = AMB.game;
-    if (AMB.garden && AMB.garden.coin && AMB.garden.coin()) return; // S6.6: « INSERT COIN » — the first press starts the music
+    if (AMB.garden && AMB.garden.coin && AMB.garden.coin()) return; // S11.1: the machine asleep (a reload with the Piano open): a note wakes it too
     if (g && g.path && !g.has('m.bells') && AMB.seq && !AMB.seq.playing && AMB.ui && AMB.ui.play) Promise.resolve(AMB.ui.play()).catch(() => {});
   }
   function padsRefresh() {
@@ -315,6 +316,7 @@
       // Notes sound while stopped too (like A–L), chords need the playback.
       const g = AMB.game, can = (id) => !g || g.isUnlocked(id);
       // the heard velocity is remapped to 0.25–1 (soft notes stay audible); the raw one (0..1) rides along on 'live'
+      if (!can('k.piano')) return; // S11.1: the MIDI notes wait for the Piano (its CCs work from the start)
       if (d1 < LOW) { if (can('h.pad') && AMB.seq.playing) lowOn(d1); }
       else if (wakeAudio()) { firstNote(); press('m' + d1, AMB.seq.playMidi(d1, 0.25 + (d2 / 127) * 0.75, d2 / 127, true, msg.timeStamp)); }
     } else if (type === 0xb0) {
