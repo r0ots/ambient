@@ -43,17 +43,17 @@ f.addEventListener('load', async () => {
     ['m.bells', 'h.pad', 't.son', 't.viz', 't.journal', 't.rec', 't.share', 'h.key', 'h.drone', 'h.pad2', 'e.reverb', 'e.salle', 'e.echo', 'm.tempo', 'm.phrase', 't.macros', 't.dice', 'm.grains'].forEach((i) => G.unlock(i));
     for (let t = 0; t < 60 && Gd.seq; t++) await wait(40); Gd.showTree(false); A.perform.setMode('listen'); w.scrollTo(0, 0); await wait(80);
     const pr = d.getElementById('pads').getBoundingClientRect();
-    ok(G.s.nodes.length === 19 && css('#pads', 'position') === 'sticky' && pr.top < w.innerHeight - 100 && pr.bottom <= w.innerHeight + 8, // (a party's hop may lift them a few px)
+    const hit = d.elementFromPoint(pr.left + pr.width / 2, pr.top + pr.height / 4); // S8.3: the pads float over the city, at the bottom of the window
+    ok(G.s.nodes.length === 19 && !!hit && !!hit.closest('#pads') && pr.top < w.innerHeight - 100 && pr.bottom <= w.innerHeight + 8, // (a party's hop may lift them a few px)
         'S5.7 : 19 nœuds à 390 px, les pastilles restent visibles (' + Math.round(pr.top) + '–' + Math.round(pr.bottom) + ' / ' + w.innerHeight + ')');
 
     // --- 1. an ask only when the LCD is seen (an opening scrolls to what it opened)
-    // S6.7: the rule stays (an ask waits for a visible LCD), but the LCD no longer leaves the window: pinned on top
-    { A.perform.setMode('sculpt'); await wait(200); const lcd = d.getElementById('lcd'), y0 = lcd.getBoundingClientRect().top, bar0 = d.querySelector('.transport').getBoundingClientRect().height;
-      w.scrollTo(0, 3000); await wait(30); Gd._pin.check(); const r = lcd.getBoundingClientRect(), pinned = lcd.classList.contains('lcd-pin');
-      const ph = d.querySelector('.lcd-ph').getBoundingClientRect();
-      const seen = D.seen(); w.scrollTo(0, 0); await wait(60); Gd._pin.check(); const y1 = lcd.getBoundingClientRect().top;
-      ok(pinned && Math.abs(r.top) < 2 && r.width > 300 && seen && Math.round(ph.height) >= 60 && !lcd.classList.contains('lcd-pin') && Math.abs(y1 - y0) < 3,
-        'S6.7 : page défilée → LCD collé en haut (' + Math.round(r.top) + ' px, ' + Math.round(r.width) + ' px de large, seen ' + seen + ', place ' + Math.round(ph.height) + ' px) ; revenu en haut → à sa place (' + Math.round(y0) + ' → ' + Math.round(y1) + ' px, barre ' + Math.round(bar0) + ' px)');
+    // S6.7: the rule stays (an ask waits for a visible LCD); S8.3: the LCD never leaves the window: the page does not scroll, the panels scroll inside their drawer
+    { A.perform.setMode('sculpt'); await wait(200); const lcd = d.getElementById('lcd'), dr = d.querySelector('.drawer'), y0 = lcd.getBoundingClientRect().top;
+      w.scrollTo(0, 3000); dr.scrollTop = 1e5; await wait(60); const r = lcd.getBoundingClientRect(), seen = D.seen(), y1 = r.top;
+      ok(w.scrollY === 0 && dr.scrollTop > 0 && seen && Math.abs(y1 - y0) < 2 && r.bottom <= w.innerHeight && r.width > 300,
+        'S8.3 : panneaux défilés dans le tiroir (' + Math.round(dr.scrollTop) + ' px), page immobile, LCD en vue à sa place (' + Math.round(y0) + ' → ' + Math.round(y1) + ' px, ' + Math.round(r.width) + ' px de large, seen ' + seen + ')');
+      dr.scrollTop = 0;
       lcd.style.display = 'none'; const hid = D.seen(); lcd.style.display = '';
       ok(!hid, 'la règle reste : un LCD invisible → aucune demande'); }
     A.perform.setMode('listen');
@@ -131,9 +131,9 @@ f.addEventListener('load', async () => {
       // 2 + 6. the end of the path at 390 px: a compact bar, the city and the pads together in the window, no chord / tempo over the city
       for (let k = 0; k < 40; k++) T.NODES.forEach((n) => { if (T.status(n.id) === 'available') G.unlock(n.id); });
       for (let t = 0; t < 80 && Gd.seq; t++) await wait(40); Gd.showTree(false); A.tree.release && A.tree.release(); Gd.checkEnd(); Gd.renderContracts(); w.scrollTo(0, 0); await wait(120);
-      const top = rect('.top'), st = rect('.stage'), pd = rect('#pads'), H = w.innerHeight;
-      ok(Gd.complete() && K.state().active[0] === 'c.morceau' && top.height <= 0.42 * H && pd.bottom <= H + 1 && st.bottom <= pd.top + 2 && st.height >= 150 && css('.brand', 'display') === 'none' && css('.stage .hud', 'display') === 'none',
-        'S6.7 fin du Parcours à 390 px : barre ' + Math.round(top.height) + ' px (≤ 42 % de ' + H + '), ville ' + Math.round(st.top) + '–' + Math.round(st.bottom) + ' px puis pastilles ' + Math.round(pd.top) + '–' + Math.round(pd.bottom) + ' px, sans accord ni tempo sur la ville');
+      A.layout.measure(); const top = rect('.top'), st = rect('.stage'), pd = rect('#pads'), H = w.innerHeight, fr = A.layout.free, ft = fr.t, fb = H - fr.b; // S8.3: the city fills the window, `free` = what the floating pieces leave of it
+      ok(Gd.complete() && K.state().active[0] === 'c.morceau' && top.height <= 0.42 * H && pd.bottom <= H + 1 && st.height >= H - 30 && fb <= pd.top + 2 && fb - ft >= 150 && css('.brand', 'display') === 'none' && css('.stage .hud', 'display') === 'none',
+        'S6.7 fin du Parcours à 390 px : barre ' + Math.round(top.height) + ' px (≤ 42 % de ' + H + '), ville dégagée ' + Math.round(ft) + '–' + Math.round(fb) + ' px (en fond : ' + Math.round(st.height) + ' px) puis pastilles ' + Math.round(pd.top) + '–' + Math.round(pd.bottom) + ' px, sans accord ni tempo sur la ville');
       // 5. the Parcours keeps the city: no visual chip, no cycle; a toast over the chips
       const vm = A.visual.cycleMode();
       ok(css('#vizMode', 'display') === 'none' && vm === 'Jardin' && A.visual.mode === 'Jardin' && +css('#toast', 'zIndex') > +css('.stage-tools', 'zIndex'), 'S6.7 : en Parcours, la vue reste la Ville (pas de bouton Orbes / Spectre) ; les toasts passent au-dessus des boutons du visuel');

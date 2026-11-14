@@ -1308,8 +1308,14 @@ body.listen .app > .stage { height: auto; }
 /* a portrait screen (phone, tablet upright): the drawer is a bottom sheet over the pads, the city above it */
 @media (orientation: portrait) and (max-width: 900px) {
   .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto auto; grid-template-areas: "top" "free" "drawer" "macros" "pads"; }
-  body.mode-sculpt .drawer, body.mode-compose .drawer { width: auto; height: 44dvh; animation-name: s8-in-sheet; border-radius: 12px 12px 6px 6px; }
-  body.mode-compose .drawer { height: 50dvh; }
+  body.mode-sculpt .drawer, body.mode-compose .drawer { width: auto; height: 40dvh; animation-name: s8-in-sheet; border-radius: 12px 12px 6px 6px; }
+  body.mode-compose .drawer { height: 46dvh; }
+}
+/* a phone with a sheet open: the pads on one row (thumb-wide), the city keeps a window above the sheet */
+@media (orientation: portrait) and (max-width: 560px) {
+  body.mode-sculpt .drawer { height: 36dvh; } body.mode-compose .drawer { height: 42dvh; }
+  body:not(.mode-listen) .pads { grid-template-columns: repeat(9, 1fr); }
+  body:not(.mode-listen) .pad, body:not(.mode-listen) .pad:nth-child(6) { grid-column: auto; height: 48px; }
 }
 /* phones: smaller knobs (the five on one row), tighter glass */
 @media (max-width: 560px) {
@@ -1323,6 +1329,7 @@ body.listen .app > .stage { height: auto; }
   .macros .layer-chips { gap: 4px; }
   .macros .layer-chips .tog { padding: 4px 8px; font-size: 11px; }
   .modes { display: flex; width: 100%; } .modes .mode-btn { flex: 1; }
+  .rec-opts { position: static; } .rec-opts > .menu { left: 0; right: 0; min-width: 0; } /* (like ⋯: across the bar, inside the screen) */
   .drawer { padding: 8px; }
 }
 /* a short screen (phone on its side): the bar on two rows at most, small knobs, the drawer on the side */

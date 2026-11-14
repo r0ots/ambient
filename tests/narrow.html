@@ -11,7 +11,7 @@ f.addEventListener('load', async ()=>{ try{
   A.game.setMode('free'); A.garden.welcome(false); A.song.add(); A.song.add(); A.song.add(); await wait(300);
   for (const m of ['listen','sculpt','compose']) { A.perform.setMode(m); await wait(200);
     // elements past the right edge, outside a container that scrolls on its own
-    const past=[...d.querySelectorAll('body *')].filter(e=>{ if(e.classList.contains('m-wipe')) return false; /* (S7.1: a view change's scan, fixed, click-through, gone after 0.3 s) */ const r=e.getBoundingClientRect(); if(!r.width || r.right<=de.clientWidth+1 || !e.getClientRects().length) return false;
+    const past=[...d.querySelectorAll('body *')].filter(e=>{ if(e.classList.contains('m-wipe')) return false; /* (S7.1: a view change's scan, fixed, click-through, gone after 0.3 s) */ const r=e.getBoundingClientRect(); if(!r.width || r.right<=de.clientWidth+1 || !e.getClientRects().length) return false; const dt=e.parentElement && e.parentElement.closest('details'); if(dt && !dt.open && !e.closest('summary')) return false; /* (a closed menu is not drawn: Chrome still gives its content stale boxes; open, it is checked below) */
       for(let p=e.parentElement;p&&p!==d.body;p=p.parentElement){ const ox=w.getComputedStyle(p).overflowX; if(ox==='auto'||ox==='scroll'||ox==='hidden') return false; } return true; });
     ok(de.scrollWidth<=de.clientWidth+1 && !past.length, '390 px, '+m+' : largeur '+de.scrollWidth+' ≤ '+de.clientWidth+(past.length?' — dépassent : '+past.slice(0,6).map(e=>e.tagName+'.'+String(e.className).split(' ')[0]).join(' '):'')); }
   // the ⋯ menu (and the ▾ of ● Rec) open inside the screen, never past its left or right edge
