@@ -4,10 +4,12 @@
   const AMB = (window.AMB = window.AMB || {});
   const $ = (s) => document.querySelector(s);
   const SVGNS = 'http://www.w3.org/2000/svg';
-  // fan order, left to right: the trunk in the middle, Composer between its two parents
-  const FAN = ['espace', 'harmonie', 'tronc', 'composer', 'mouvement'];
+  // lanes, left to right (S11.8): Effets, the trunk, Harmonie with Composer at its right, next to Mouvement (its two parents)
+  const FAN = ['espace', 'tronc', 'harmonie', 'composer', 'mouvement'];
   const STATE_TXT = { owned: 'ouvert', ready: 'prêt', available: 'à ouvrir', locked: 'encore dans le noir' };
-  const L = { W: 1220, ROW: 98, TOP: 60, BOT: 66, MIN: 94, GAP: 94, A: 46, B: 50, M: 50 };
+  // S11.8 layout units: row height, room above (branch names) and below, side margin, gap between two subtrees, the hexagon,
+  // labels (13 px capitals: CH = width of a letter, ONE = the widest single line before it splits, PAD = its plate)
+  const L = { ROW: 136, TOP: 110, BOT: 110, M: 60, GAP: 30, LED: 46, CH: 8.4, ONE: 100, PAD: 14, KR: 0.86, MINW: 1000 };
   const SEQ = { link: 380, end: 1700, reduced: 650 }; // unlock sequence timing (ms; S4.6: a bit longer, to see it)
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -21,53 +23,88 @@
       const bs = Object.keys(AMB.tree.BRANCHES);
       return FAN.filter((b) => bs.includes(b)).concat(bs.filter((b) => !FAN.includes(b)));
     },
-    // ---- layout (G11.1): rows by level from the bottom, branch bands spreading out like a fan ----
-    // A branch holds at most 2 nodes per row (3 for the trunk and big branches), so rows stay readable
-    // and the outer branches climb into the upper corners.
-    // S5.7: a phone (map < 560 px) gets a narrow fan — branches side by side but barely spreading, taller rows — so the
-    // whole map fits its width and fills its height (the wide fan was cut at the sides, with an empty quarter below)
-    narrowTree() { const m = $('#treeDlg .tree-map'); return !!m && m.clientWidth > 0 && m.clientWidth < 560; },
+    // ---- S11.8 layout: a real tree, rows by depth from Allumage, each piece right above its main parent ----
+    // Only what is drawn is laid out (open and ready pieces, S9.4): the map stays tight, a piece that becomes ready
+    // makes room for itself (the map is rebuilt; opening a ready piece moves nothing).
+    // main parent = the prerequisite of its own branch (else the deepest one): its link is the solid trace; the other
+    // prerequisites are thin dotted traces. Tidy-tree packing (each subtree's outline row by row, never closer than GAP),
+    // siblings ordered by branch (lanes), then by where their other links go (fewer crossings). Deterministic, no
+    // hand-placed coordinates. Labels: 13 px, one or two lines (split at the best space), never cut.
+    labelLines(name) {
+      const t = name.toUpperCase(), wd = (s) => s.length * L.CH, ws = t.split(' ');
+      if (wd(t) <= L.ONE || ws.length < 2) return [t];
+      let best = null;
+      for (let i = 1; i < ws.length; i++) { const a = ws.slice(0, i).join(' '), b = ws.slice(i).join(' '), m = Math.max(wd(a), wd(b)); if (!best || m < best.m) best = { m, l: [a, b] }; }
+      return best.l;
+    },
+    treeSig() { return AMB.tree.NODES.filter((n) => this.seen(n.id)).map((n) => n.id).join(); },
     treeLayout() {
-      const T = AMB.tree, nar = this.narrowTree(), A = nar ? 8 : L.A, B = nar ? 6 : L.B, ROW = nar ? 185 : L.ROW, MIN = nar ? 82 : L.MIN, GAP = nar ? 82 : L.GAP;
-      if (this._lay && this._lay.n === T.NODES.length && this._lay.nar === nar) return this._lay;
-      const memo = {}, order = this.fanOrder(), mid = (order.length - 1) / 2;
-      const slot = Object.fromEntries(order.map((b, i) => [b, i - mid]));
-      const count = {}; T.NODES.forEach((n) => { count[n.branch] = (count[n.branch] || 0) + 1; });
-      const lvl = {}, used = {};
-      const sorted = T.NODES.map((n, i) => [n, i]).sort((a, b) => this.depth(a[0].id, memo) - this.depth(b[0].id, memo) || a[1] - b[1]).map((x) => x[0]);
-      for (const n of sorted) {
-        let l = n.req.length ? 1 + Math.max(...n.req.map((r) => lvl[r])) : 0;
-        const cap = slot[n.branch] === 0 || count[n.branch] > 8 ? 3 : 2;
-        while ((used[n.branch + '|' + l] || 0) >= cap) l++;
-        used[n.branch + '|' + l] = (used[n.branch + '|' + l] || 0) + 1;
-        lvl[n.id] = l;
+      const T = AMB.tree, sig = this.treeSig();
+      if (this._lay && this._lay.sig === sig) return this._lay;
+      const memo = {}, dep = (id) => this.depth(id, memo), idx = {}, lane = {}, prim = {}, kids = {}, lab = {}, W = {};
+      const on = new Set(sig ? sig.split(',') : T.NODES.filter((n) => !n.req.length).map((n) => n.id)), NS = T.NODES.filter((n) => on.has(n.id));
+      this.fanOrder().forEach((b, i) => { lane[b] = i; });
+      T.NODES.forEach((n, i) => {
+        idx[n.id] = i; kids[n.id] = []; lab[n.id] = this.labelLines(n.name);
+        W[n.id] = Math.max(n.req.length ? L.LED : 58, ...lab[n.id].map((s) => s.length * L.CH + L.PAD));
+      });
+      for (const n of NS) if (n.req.some((r) => on.has(r))) { // (main parent among the drawn ones: a ready piece may wait on a hidden one)
+        prim[n.id] = n.req.filter((r) => on.has(r)).sort((a, b) => (T.byId[b].branch === n.branch) - (T.byId[a].branch === n.branch) || dep(b) - dep(a) || n.req.indexOf(a) - n.req.indexOf(b))[0];
+        kids[prim[n.id]].push(n.id);
       }
-      const maxL = Math.max(...Object.values(lvl)), H = L.TOP + maxL * ROW + L.BOT, CX = L.W / 2;
-      const pos = {};
-      for (let l = 0; l <= maxL; l++) {
-        const row = [];
-        for (const b of order) {
-          const sib = T.NODES.filter((n) => n.branch === b && lvl[n.id] === l);
-          sib.forEach((n, i) => row.push({ n, want: CX + slot[b] * (A + B * l) + (i - (sib.length - 1) / 2) * GAP }));
+      const roots = NS.filter((n) => !prim[n.id]).map((n) => n.id), sec = [];
+      for (const n of NS) for (const r of n.req) if (r !== prim[n.id] && on.has(r)) sec.push([r, n.id]);
+      // a subtree: positions relative to its root, and its outline row by row ([left, right]); a child two rows up keeps
+      // a thin stem free through the row between (no neighbour sits on its trace)
+      const sub = (id) => {
+        const r0 = dep(id), w = W[id] / 2, pos = { [id]: 0 }, cont = {};
+        const ks = kids[id];
+        ks.forEach((k, i) => {
+          const s = sub(k);
+          for (let r = r0 + 1; r < dep(k); r++) s.cont[r] = s.cont[r] ? [Math.min(s.cont[r][0], -8), Math.max(s.cont[r][1], 8)] : [-8, 8];
+          let off = 0;
+          if (i) { off = -Infinity; for (const r in s.cont) if (cont[r]) off = Math.max(off, cont[r][1] + L.GAP - s.cont[r][0]); if (off === -Infinity) off = 0; }
+          for (const r in s.cont) { const c = s.cont[r]; cont[r] = cont[r] ? [Math.min(cont[r][0], c[0] + off), Math.max(cont[r][1], c[1] + off)] : [c[0] + off, c[1] + off]; }
+          for (const q in s.pos) pos[q] = s.pos[q] + off;
+        });
+        if (ks.length) { // the parent right under the middle of its children
+          const c = (pos[ks[0]] + pos[ks[ks.length - 1]]) / 2;
+          for (const q in pos) pos[q] -= c;
+          for (const r in cont) { cont[r][0] -= c; cont[r][1] -= c; }
+          pos[id] = 0;
         }
-        if (!row.length) continue;
-        // (rows are built branch by branch in fan order: branches never interleave)
-        // sweep: keep a minimum gap, then shift the row back to where it wanted to be, inside the stage
-        row.forEach((r, i) => { r.x = i ? Math.max(r.want, row[i - 1].x + MIN) : r.want; });
-        const shift = row.reduce((s, r) => s + r.want - r.x, 0) / row.length;
-        let lo = row[0].x + shift, hi = row[row.length - 1].x + shift, d = shift;
-        if (lo < L.M) d += L.M - lo; else if (hi > L.W - L.M) d -= hi - (L.W - L.M);
-        lo = row[0].x + d; if (lo < L.M) d += L.M - lo; // too wide: pin to the left edge
-        row.forEach((r) => { pos[r.n.id] = { x: Math.round(r.x + d), y: L.TOP + (maxL - l) * ROW, l }; });
+        cont[r0] = [-w, w];
+        return { pos, cont };
+      };
+      const place = () => {
+        const x = {}, cont = {}; let at = 0;
+        for (const rt of roots) {
+          const s = sub(rt); let off = 0;
+          if (at) { off = -Infinity; for (const r in s.cont) if (cont[r]) off = Math.max(off, cont[r][1] + L.GAP * 2 - s.cont[r][0]); if (off === -Infinity) off = 0; }
+          for (const r in s.cont) { const c = s.cont[r]; cont[r] = cont[r] ? [Math.min(cont[r][0], c[0] + off), Math.max(cont[r][1], c[1] + off)] : [c[0] + off, c[1] + off]; }
+          for (const q in s.pos) x[q] = s.pos[q] + off;
+          at++;
+        }
+        const lo = Math.min(...Object.values(cont).map((c) => c[0])), hi = Math.max(...Object.values(cont).map((c) => c[1]));
+        for (const q in x) x[q] += L.M - lo;
+        return { x, w: hi - lo + 2 * L.M };
+      };
+      // siblings: by lane first; then 4 passes pulling each subtree towards where its other links go (barycentre)
+      const key = {}; NS.forEach((n) => { key[n.id] = lane[n.branch] * 1000 + idx[n.id]; });
+      const members = {}; const coll = (id) => (members[id] = [id, ...kids[id].flatMap(coll)]); roots.forEach(coll);
+      let P = null;
+      for (let pass = 0; pass < 5; pass++) {
+        for (const id in kids) kids[id].sort((a, b) => key[a] - key[b] || idx[a] - idx[b]);
+        P = place();
+        if (pass === 4) break;
+        for (const id in members) {
+          const S = new Set(members[id]), xs = sec.filter(([a, b]) => S.has(a) !== S.has(b)).map(([a, b]) => P.x[S.has(a) ? b : a]);
+          key[id] = xs.length ? (P.x[id] + xs.reduce((u, v) => u + v, 0) / xs.length) / 2 : P.x[id];
+        }
       }
-      // a row too wide for the stage is pinned left and spills right: widen the stage so "see all" really shows all
-      const W = Math.max(L.W, ...Object.values(pos).map((p) => p.x + L.M));
-      if (nar) { // the narrow fan: the stage only as wide as its widest row
-        const xs = Object.values(pos).map((p) => p.x), lo = Math.min(...xs) - 42;
-        for (const p of Object.values(pos)) p.x -= lo;
-        return (this._lay = { n: T.NODES.length, nar, pos, W: Math.max(...xs) - lo + 42, H, maxL });
-      }
-      return (this._lay = { n: T.NODES.length, nar, pos, W, H, maxL });
+      const maxL = Math.max(...NS.map((n) => dep(n.id))), pos = {}, sw = Math.max(P.w, L.MINW), dx = (sw - P.w) / 2; // (a young tree on a stage wide enough to pan)
+      for (const n of NS) pos[n.id] = { x: Math.round(P.x[n.id] + dx), y: L.TOP + (maxL - dep(n.id)) * L.ROW, l: dep(n.id), w: Math.round(W[n.id]) };
+      return (this._lay = { sig, pos, prim, lab, W: Math.round(sw), H: L.TOP + maxL * L.ROW + L.BOT, maxL });
     },
     // id: S11.1 open on that piece (« ✦ Pad est prêt » in the Objectifs widget), else the first ready one
     showTree(on, id = null) {
@@ -148,7 +185,7 @@
       const cnt = $('#treeDlg .tree-count'), rdy = $('#treeDlg .tree-ready'), nr = T.NODES.filter((x) => T.status(x.id) === 'ready').length;
       cnt.classList.toggle('done', !!g.s.ended);
       if (rdy) { rdy.hidden = !nr || !!g.s.ended; rdy.textContent = `${nr} ${nr > 1 ? 'prêts' : 'prêt'}`; } // (S9.2: the neon counters)
-      if (!map.querySelector('.tree-stage') || map.dataset.n !== T.NODES.length + (this.narrowTree() ? 'n' : '')) this.buildMap(map);
+      if (!map.querySelector('.tree-stage') || map.dataset.n !== this.treeSig()) this.buildMap(map);
       this.paintTree();
     },
     // what opens a node: its objectives (S11.1: all of them, ✓ = done), or a discovery (S4.3, S5.10) — « ◇ Joue 16 notes
@@ -163,38 +200,36 @@
       if (S) for (const [sid, nid] of Object.entries(S.OPENS)) if (nid === id) out.push({ kind: 'secret', text: `✦ Découverte : ${S.has(sid) ? S.byId[sid].name : '???'}` });
       return out;
     },
-    // S9.2 a circuit trace from a (below) to b: straight up, a 45° bend towards b's column (a flat run if the step is
-    // wide), straight up into b — never a curve
-    linkPath(a, b) {
-      const dx = b.x - a.x, dy = a.y - b.y, sx = Math.sign(dx), diag = Math.min(Math.abs(dx), Math.max(0, dy - 24)), flat = Math.abs(dx) - diag;
-      if (!dx) return `M${a.x} ${a.y}V${b.y}`;
-      const y1 = a.y - Math.max(12, (dy - diag) / 2), y2 = y1 - diag;
-      return `M${a.x} ${a.y}V${y1}L${a.x + sx * diag} ${y2}${flat ? `H${b.x}` : ''}V${b.y}`;
+    // S11.8 a circuit trace from a (below) to b, right angles only. Main parent: up to its bus (just above it, shared by
+    // all its children), across, straight up into the child. Another prerequisite (sec): up to just under the child's
+    // label, across, up — a thin dotted trace that never runs on a bus.
+    linkPath(a, b, sec) {
+      if (a.x === b.x) return `M${a.x} ${a.y}V${b.y}`;
+      const y = sec ? b.y + L.ROW - 54 : a.y - 42;
+      return `M${a.x} ${a.y}V${y}H${b.x}V${b.y}`;
     },
     // the stage: SVG links under absolutely placed LED buttons, in layout units (pan/zoom = one transform)
     buildMap(map) {
       const T = AMB.tree, lay = this.treeLayout();
-      map.innerHTML = ''; map.dataset.n = T.NODES.length + (lay.nar ? 'n' : '');
+      map.innerHTML = ''; map.dataset.n = lay.sig;
       const stage = document.createElement('div');
       stage.className = 'tree-stage'; stage.style.width = lay.W + 'px'; stage.style.height = lay.H + 'px';
       const svg = document.createElementNS(SVGNS, 'svg');
       svg.setAttribute('class', 'tree-links'); svg.setAttribute('viewBox', `0 0 ${lay.W} ${lay.H}`);
       svg.setAttribute('width', lay.W); svg.setAttribute('height', lay.H); svg.setAttribute('aria-hidden', 'true');
-      // branch names at the tip of each band
-      const tops = {}; // (narrow fan: names side by side on one row alternate on two lines)
+      // branch names in a header row above what is lit (placed by paintTree)
       for (const bid of this.fanOrder()) {
-        const ps = T.NODES.filter((n) => n.branch === bid).map((n) => lay.pos[n.id]); if (!ps.length) continue;
-        const top = Math.min(...ps.map((p) => p.y)), xs = ps.filter((p) => p.y === top).map((p) => p.x);
-        const t = document.createElementNS(SVGNS, 'text'), up = lay.nar && bid !== 'tronc' && (tops[top] = (tops[top] || 0) + 1) % 2 === 0 ? 26 : 0;
-        t.setAttribute('class', 'tree-bname'); t.setAttribute('x', xs.reduce((a, b) => a + b, 0) / xs.length); t.setAttribute('y', top - 30 - up);
-        t.setAttribute('text-anchor', 'middle'); t.style.setProperty('--c', T.BRANCHES[bid].color); t.textContent = T.BRANCHES[bid].name; t.dataset.b = bid;
-        if (bid !== 'tronc') svg.append(t);
+        if (bid === 'tronc') continue;
+        const t = document.createElementNS(SVGNS, 'text');
+        t.setAttribute('class', 'tree-bname'); t.setAttribute('text-anchor', 'middle'); t.style.setProperty('--c', T.BRANCHES[bid].color);
+        t.textContent = T.BRANCHES[bid].name; t.dataset.b = bid; svg.append(t);
       }
       const gl = document.createElementNS(SVGNS, 'g'), defs = document.createElementNS(SVGNS, 'defs');
       svg.append(defs);
       for (const n of T.NODES) for (const r of n.req) {
-        const d = this.linkPath(lay.pos[r], lay.pos[n.id]);
-        const cross = T.byId[r].branch !== n.branch;
+        // (.x: a secondary prerequisite; one end hidden: a short stub out of the drawn end, into the dark; both: nothing)
+        const a = lay.pos[r], c = lay.pos[n.id], cross = !!(a && c) && lay.prim[n.id] !== r;
+        const d = a && c ? this.linkPath(a, c, cross) : a ? `M${a.x} ${a.y}V${a.y - 64}` : c ? `M${c.x} ${c.y}V${c.y + 100}` : 'M0 0';
         // S9.1: a link towards a node still in the dark fades out from the visible end (its gradient, oriented by paintTree)
         const lg = document.createElementNS(SVGNS, 'linearGradient');
         lg.id = `tl-${r}-${n.id}`.replace(/\./g, '_'); lg.setAttribute('gradientUnits', 'userSpaceOnUse');
@@ -213,13 +248,13 @@
       // buttons in reading order: branch by branch (fan order), bottom to top
       const ord = this.fanOrder();
       const nodes = [...T.NODES].sort((a, b) => (a.id === 'racine' ? -1 : b.id === 'racine' ? 1 : 0)
-        || ord.indexOf(a.branch) - ord.indexOf(b.branch) || lay.pos[a.id].l - lay.pos[b.id].l || lay.pos[a.id].x - lay.pos[b.id].x);
+        || ord.indexOf(a.branch) - ord.indexOf(b.branch) || this.depth(a.id) - this.depth(b.id) || ((lay.pos[a.id] || {}).x || 0) - ((lay.pos[b.id] || {}).x || 0));
       for (const n of nodes) {
-        const p = lay.pos[n.id], b = document.createElement('button');
+        const p = lay.pos[n.id] || { x: 0, y: 0, w: 112 }, b = document.createElement('button'); // (hidden ones: not drawn, anywhere)
         b.type = 'button'; b.className = 'tree-node'; b.dataset.id = n.id;
         if (!n.req.length) b.classList.add('root');
-        b.style.left = p.x + 'px'; b.style.top = p.y + 'px'; b.style.setProperty('--c', T.BRANCHES[n.branch].color);
-        b.innerHTML = `<i class="led" aria-hidden="true"></i><b>${n.name}</b><span></span>`;
+        b.style.left = p.x + 'px'; b.style.top = p.y + 'px'; b.style.width = p.w + 'px'; b.style.marginLeft = -p.w / 2 + 'px'; b.style.setProperty('--c', T.BRANCHES[n.branch].color);
+        b.innerHTML = `<i class="led" aria-hidden="true"></i><b>${lay.lab[n.id].join('<br>')}</b><span></span>`;
         b.title = `${n.desc}\n\nOuvre : ${T.grantsText(n.id) || '—'}`
           + (n.req.length ? `\nIl faut d'abord : ${n.req.map((r) => T.byId[r].name).join(', ')}` : '')
           + this.openers(n.id).map((o) => `\n${o.text}`).join('');
@@ -246,6 +281,7 @@
           + (ext.length && st === 'owned' ? `, relié à ${ext.map((r) => T.byId[r].name).join(', ')}` : ''));
       });
       // S9.1: only what is open or can open now is drawn; a link to the dark leaves in fading dots, two dark ends: nothing
+      if (map.dataset.n !== this.treeSig()) { this.buildMap(map); this.paintTree(); return; } // (a piece came into sight: room for it)
       const seen = (id) => this.seen(id), lay = this.treeLayout();
       map.querySelectorAll('.tree-link, .tree-glow').forEach((p) => {
         const f = seen(p.dataset.from), t = seen(p.dataset.to), glow = p.classList.contains('tree-glow');
@@ -254,19 +290,23 @@
         if (glow) return;
         const id = `tl-${p.dataset.from}-${p.dataset.to}`.replace(/\./g, '_'), lg = map.querySelector('#' + id);
         if (st === 'dark' && lg) {
-          const a = lay.pos[f ? p.dataset.from : p.dataset.to], b = lay.pos[f ? p.dataset.to : p.dataset.from];
-          lg.setAttribute('x1', a.x); lg.setAttribute('y1', a.y); lg.setAttribute('x2', b.x); lg.setAttribute('y2', b.y);
+          const a = lay.pos[f ? p.dataset.from : p.dataset.to], dy = f ? -64 : 100; // (along the stub, out of the drawn end)
+          lg.setAttribute('x1', a.x); lg.setAttribute('y1', a.y + dy * 0.3); lg.setAttribute('x2', a.x); lg.setAttribute('y2', a.y + dy * 1.6);
           p.style.stroke = `url(#${id})`;
         } else p.style.stroke = '';
       });
-      // a branch's name shows once one of its nodes is open
-      // (S9.2: right above its highest node in sight, not at the tip of a band still in the dark)
+      // a branch's name shows once one of its nodes is open: in a header row above everything lit, over the middle of its
+      // lit pieces, names pushed apart so they never touch (S11.8)
+      const lit = T.NODES.filter((n) => this.seen(n.id)).map((n) => lay.pos[n.id]), yTop = (lit.length ? Math.min(...lit.map((q) => q.y)) : lay.H) - 62;
+      const names = [];
       map.querySelectorAll('.tree-bname').forEach((t) => {
-        t.classList.toggle('gone', !T.NODES.some((n) => n.branch === t.dataset.b && g.has(n.id)));
-        const ps = T.NODES.filter((n) => n.branch === t.dataset.b && this.seen(n.id)).map((n) => lay.pos[n.id]).filter(Boolean); if (!ps.length) return;
-        const top = Math.min(...ps.map((q) => q.y)), xs = ps.filter((q) => q.y === top).map((q) => q.x);
-        t.setAttribute('x', xs.reduce((u, v) => u + v, 0) / xs.length); t.setAttribute('y', top - 40);
+        const off = !T.NODES.some((n) => n.branch === t.dataset.b && g.has(n.id)); t.classList.toggle('gone', off);
+        const ps = T.NODES.filter((n) => n.branch === t.dataset.b && this.seen(n.id)).map((n) => lay.pos[n.id]); if (off || !ps.length) return;
+        names.push({ t, x: (Math.min(...ps.map((q) => q.x)) + Math.max(...ps.map((q) => q.x))) / 2, w: t.textContent.length * 11.4 + 16 });
       });
+      names.sort((a, b) => a.x - b.x).forEach((o, i, a) => { if (i) o.x = Math.max(o.x, a[i - 1].x + (a[i - 1].w + o.w) / 2); });
+      names.forEach((o) => { o.t.setAttribute('x', Math.round(o.x)); o.t.setAttribute('y', yTop); });
+      this._bx = names.length ? [Math.min(...names.map((o) => o.x - o.w / 2)), Math.max(...names.map((o) => o.x + o.w / 2))] : null; // (fitTree frames them too)
       if (this.sel) this.showInfo(this.sel);
     },
 
@@ -286,21 +326,31 @@
       stage.style.transform = `translate(${v.tx}px, ${v.ty}px) scale(${v.k})`;
       map.classList.toggle('zoomed', w > vw + 1 || h > vh + 1);
     },
-    // opens on the whole map; on a narrow screen (< 560 px) at k ≈ 0.6 centred on the root so labels stay
-    // readable (⤢ = whole map, all = true). Remembers the width it was fitted for (resize: refit only if it changes).
-    // S9.4: frames what is lit (open and ready nodes, the start of the dotted traces around them), not the dark: at most
-    // 1.15, no smaller than 0.45 on a phone (then it pans). Remembers the width it was fitted for (resize: refit only if it changes).
-    fitTree() {
+    // S11.8: opens on what is lit (open and ready pieces, their branch names) at a size where every label reads (13 px ×
+    // KR ≥ 11 px on screen); a lit tree bigger than the frame is not squeezed: it opens centred on the pieces waiting on
+    // « ✦ Ouvrir » (else the last one opened) and pans. ⤢ (all = true) = everything lit in sight, however small.
+    // Remembers the width it was fitted for (resize: refit only if it changes).
+    fitTree(all = false) {
       const map = $('#treeDlg .tree-map'); if (!map || !map.clientWidth) return;
-      const lay = this.treeLayout(), lim = this.kLimits(), v = this.view;
+      const T = AMB.tree, lay = this.treeLayout(), lim = this.kLimits(), v = this.view, mw = map.clientWidth, mh = map.clientHeight;
       this.fitW = window.innerWidth; // (the window's, not the map's: a scrollbar that comes or goes is not a resize)
-      const ps = AMB.tree.NODES.filter((n) => this.seen(n.id)).map((n) => lay.pos[n.id]).filter(Boolean);
-      if (!ps.length) ps.push(lay.pos.racine || { x: lay.W / 2, y: lay.H });
-      const x0 = Math.min(...ps.map((p) => p.x)) - 110, x1 = Math.max(...ps.map((p) => p.x)) + 110;
-      const y0 = Math.min(...ps.map((p) => p.y)) - 80, y1 = Math.max(...ps.map((p) => p.y)) + 90;
-      v.k = clamp(Math.min(map.clientWidth / (x1 - x0), map.clientHeight / (y1 - y0), 1.15), lay.nar ? Math.max(0.45, lim.min) : lim.min, lim.max);
-      v.tx = map.clientWidth / 2 - (x0 + x1) / 2 * v.k;
-      v.ty = map.clientHeight / 2 - (y0 + y1) / 2 * v.k;
+      const ids = T.NODES.filter((n) => this.seen(n.id)).map((n) => n.id);
+      if (!ids.length) ids.push(T.NODES[0].id);
+      const ps = ids.map((id) => lay.pos[id]);
+      const bx = this._bx || [Infinity, -Infinity];
+      const x0 = Math.min(bx[0], ...ps.map((p) => p.x - p.w / 2)) - 24, x1 = Math.max(bx[1], ...ps.map((p) => p.x + p.w / 2)) + 24;
+      const y0 = Math.min(...ps.map((p) => p.y)) - 90, y1 = Math.max(...ps.map((p) => p.y)) + 96;
+      const k = Math.min(mw / (x1 - x0), mh / (y1 - y0), 1.15);
+      v.k = clamp(all ? k : Math.max(k, L.KR), lim.min, lim.max);
+      let cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+      if (!all && k < L.KR) { // too big to read at once: centre on what waits, else on the last piece opened (its height)
+        const g = AMB.game, rd = ids.filter((id) => T.status(id) === 'ready'), last = g.s.nodes[g.s.nodes.length - 1];
+        const f = (rd.length ? rd : [last && lay.pos[last] ? last : ids[0]]).map((id) => lay.pos[id]);
+        const fx = (Math.min(...f.map((p) => p.x)) + Math.max(...f.map((p) => p.x))) / 2, fy = (Math.min(...f.map((p) => p.y)) + Math.max(...f.map((p) => p.y))) / 2 + 20;
+        if ((x1 - x0) * v.k > mw && rd.length) cx = clamp(fx, x0 + mw / 2 / v.k, x1 - mw / 2 / v.k); // (nothing waits: the middle of the tree)
+        if ((y1 - y0) * v.k > mh) cy = clamp(fy, y0 + mh / 2 / v.k, y1 - mh / 2 / v.k);
+      }
+      v.tx = mw / 2 - cx * v.k; v.ty = mh / 2 - cy * v.k;
       this.applyView();
     },
     zoomAt(cx, cy, f) {
@@ -431,7 +481,7 @@
       if (zm) zm.addEventListener('click', (e) => {
         const b = e.target.closest('[data-zoom]'); if (!b) return;
         const r = map.getBoundingClientRect();
-        if (b.dataset.zoom === 'fit') this.fitTree(); else this.zoomAt(r.left + r.width / 2, r.top + r.height / 2, b.dataset.zoom === 'in' ? 1.3 : 1 / 1.3);
+        if (b.dataset.zoom === 'fit') this.fitTree(true); else this.zoomAt(r.left + r.width / 2, r.top + r.height / 2, b.dataset.zoom === 'in' ? 1.3 : 1 / 1.3);
       });
       // any click during the unlock sequence fast-forwards it
       if (dlg) dlg.addEventListener('click', (e) => { if (this.seq) { e.stopPropagation(); e.preventDefault(); this.seqFinish(); } }, true);

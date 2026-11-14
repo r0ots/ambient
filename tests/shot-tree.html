@@ -25,7 +25,8 @@ document.getElementById('f').addEventListener('load', () => {
       if (o.includes('early')) ['m.bells', 'h.pad', 't.son', 'e.reverb', 'h.key'].forEach((id) => A.game.unlock(id)); else for (let k = 0; k < 6; k++) A.tree.NODES.forEach((n) => { if (A.tree.status(n.id) === 'available' && !/^c\.morceau/.test(n.id)) A.game.unlock(n.id); }); }
     else { A.game.setMode('free'); A.garden.welcome(false); }
     if (m === 'compose') { A.store.setMany({ 'seq.on': true, 'seq.pattern': '0.7.4,4.9.2,8.b.4,g.a.8' }, 'user'); A.song.add(); A.song.add(); A.song.render(); }
-    setTimeout(() => { A.garden.showTree(o.includes('tree')); A.tree.release && A.tree.release(); doc.querySelectorAll('.is-new').forEach((e) => e.classList.remove('is-new', 'is-new-first'));
+    setTimeout(() => { A.garden.showTree(o.includes('tree')); if (o.includes('all')) A.garden.fitTree(true); // (S11.8 all: ⤢, everything lit in sight)
+      A.tree.release && A.tree.release(); doc.querySelectorAll('.is-new').forEach((e) => e.classList.remove('is-new', 'is-new-first'));
       A.perform.setMode(m); if (o.includes('full')) doc.getElementById('listen').click(); A.visual.gardenSync && A.visual.gardenSync();
       // S9.1 strike: the computer key D held down — its on-screen key is struck like a finger would (play.js strike)
       if (o.includes('strike')) setTimeout(() => { doc.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyD', bubbles: true })); }, 1500); }, 1200);
