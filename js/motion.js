@@ -630,8 +630,11 @@
         this.good = 0;
         if (this.sinceUp != null && this.sinceUp < this.UP_S) this.upWait = Math.min(120, this.upWait * 2); // a climb that did not hold: wait longer next time
         this.sinceUp = null;
-        if (this.level < LEVELS.length - 1) this.set(this.level + 1, `lent (${avg.toFixed(1)} ms)`);
+        // (from haut — a desktop — two slow windows in a row: its look only goes for a lasting slowness)
+        this.slowN = (this.slowN || 0) + 1;
+        if (this.level < LEVELS.length - 1 && (this.level > 0 || this.slowN >= 2)) { this.slowN = 0; this.set(this.level + 1, `lent (${avg.toFixed(1)} ms)`); }
       } else {
+        this.slowN = 0;
         if (this.sinceUp != null) this.sinceUp += w;
         if (avg < this.FAST_MS && this.level > this.start) {
           this.good += w;

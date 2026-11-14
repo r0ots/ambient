@@ -108,8 +108,8 @@ window.addEventListener('load', async () => {
       for (let i = 0; i < 150; i++) Q.tick(16.7);
       ok(Q.level === 0, 'images à 60 i/s pendant 2,5 s : le niveau reste haut');
       for (let i = 0; i < 125; i++) Q.tick(i % 25 ? 16.7 : 200); ok(Q.level === 0, 'quelques à-coups isolés (une fenêtre qui s\'ouvre) : pas de baisse');
-      Q.win.length = 0; Q.winT = 0; for (let i = 0; i < 70; i++) Q.tick(33); // 2.3 s at 30 fps
-      ok(Q.level === 1 && G.mode === 'gl' && G.level === 1 && seen[0] === 'moyen' && document.documentElement.classList.contains('q-moyen'), 'images lentes (33 ms) pendant 2 s : niveau moyen (WebGL à un rayon, classe q-moyen) — ' + Q.why);
+      Q.win.length = 0; Q.winT = 0; for (let i = 0; i < 70; i++) Q.tick(33); ok(Q.level === 0, 'haut (bureau) : une seule fenêtre lente ne suffit pas'); for (let i = 0; i < 61; i++) Q.tick(33); // 4.3 s at 30 fps
+      ok(Q.level === 1 && G.mode === 'gl' && G.level === 1 && seen[0] === 'moyen' && document.documentElement.classList.contains('q-moyen'), 'images lentes (33 ms) pendant 4 s : niveau moyen (WebGL à un rayon, classe q-moyen) — ' + Q.why);
       frame(); ok(G.cv.width > 0, 'moyen : une image rendue (bloom au 1/4)');
       for (let i = 0; i < 110; i++) Q.tick(40); // (one window to settle after a change, then 2 s)
       ok(Q.level === 2 && G.mode === '2d' && G.reason === 'quality' && Q.fx() === 0, 'encore lentes : niveau bas, plus de WebGL (2D), plus de particules');
