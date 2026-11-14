@@ -238,6 +238,12 @@ Règle de produit (v1.05) : le jeu se joue SUR l'instrument (ses commandes, son 
 - Tests : `city-life` (A : départ vide, construction, Pad coupé → déconstruit puis rien, Niveau 0, nœud non ouvert ; B : Mélodie silencieuse = 0 voiture, N notes = N voitures, Densité ×2, embouteillage plafonné, motos, dirigeables, habitants, enseigne ; libre). Planche : `tests/shot-city.html?w=&h=&dpr=&cols=&scale=#sheet=grows`.
 - Coût (appli réelle, WebGL, tout actif et en lecture) : 1440×900 60 fps, dessin 1,0 ms (p95 1,5) ; CPU ×4 : 2,3 ms (p95 3,0) ; 390×780 dpr 2, CPU ×4 : 60 fps, dessin 4,0 ms (p95 5,0).
 
+## Revue regards neufs (S9.4)
+- Arbre : seules les pièces ouvertes et prêtes sont dessinées (`seen()` dans garden-tree.js, `.tree-node.dark` caché) ; légende ouvert / prêt / dans le noir ; la fiche est un panneau à côté de la carte (`.tree-body`, en colonne ≤760 px) et ne cache jamais un nœud ; ⤢ et l'ouverture cadrent ce qui est allumé (`fitTree`).
+- Ville : les noms des tours sont des étiquettes HTML nettes (`gv.tags`, `.city-tags`, Chakra Petch), jamais sous le tiroir ; la sortie WebGL est agrandie d'un nombre entier de pixels (filtre NEAREST, `image-rendering: pixelated`) ; la météo dépend de la pièce Grands réglages (`FUNCS.weather` → t.macros).
+- Retirés : Diapason (A4 = 440 Hz fixe), format du Rec (toujours WAV), minuteur Sommeil.
+- city-music.html : la moyenne du coût ignore les 2 pires images (le passage canvas → GL en headless en coûte une).
+
 ## Finitions (S5.6)
 - Parcours : pas de « ▶ Lancer le paysage » (`body.game .big-play`, CSS) ; ▶ Lecture de la barre (ou une note) lance le son, l'écran reste aux plantes. La coupure (On) d'une couche est cachée quand c'est la seule couche ouverte et qu'elle sonne (`tree.solo`, `.tog.is-solo`, recalculé à `applyLocks` et à chaque `*.on` ; en-tête de son panneau et pastille d’Écouter) : la couper couperait tout ; à l'Allumage, Écouter n’a alors plus de boîte vide.
 - Retour de pression : remplacé en S7.1 par celui de `js/motion.js`, partout (Parcours et libre), voir « Mouvement ».
