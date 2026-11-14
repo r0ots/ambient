@@ -205,7 +205,6 @@ canvas.roll { display: block; cursor: pointer; touch-action: none; }
 .pulse-cell.on[data-lvl="3"] { filter: brightness(1.25); box-shadow: 0 0 12px var(--c); }
 .pulse-cell.on { background: var(--c); border-color: var(--c); box-shadow: 0 0 8px color-mix(in srgb, var(--c) 50%, transparent); }
 .pulse-cell.now { outline: 1px solid #ffffffaa; }
-.pulse-cell.on.now { filter: brightness(1.35); }
 @media (max-width: 560px) { .pulse-wrap { overflow-x: auto; } .pulse-grid { gap: 2px; --pl: 50px; --pc: 10px; } .pulse-cell.bar { margin-left: 2px; } .pulse-lab { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
 
 .chords-mode { font-size: 11px; color: var(--muted); }
@@ -803,7 +802,7 @@ body.game .lcd.lcd-pin .lcd-score { display: none; }
 .app { overflow-x: clip; } /* (a section sliding in never widens the page) */
 
 /* every control: transitions on the motion tokens (no specificity: an element's own transition wins) */
-:where(button, summary, select, label.btn, [role=button], .knob svg) {
+:where(button, summary, select, label.btn, [role=button], .knob svg, input, textarea) {
   transition: translate var(--m-fast) var(--m-out), scale var(--m-fast) var(--m-out), transform var(--m-fast) var(--m-out),
     box-shadow var(--m-med) var(--m-out), filter var(--m-med) var(--m-out);
 }
@@ -830,6 +829,12 @@ body.game .lcd.lcd-pin .lcd-score { display: none; }
   }
   select:is(:hover, .m-tilt) { translate: 0 var(--m-lift); filter: brightness(var(--m-bright));
     box-shadow: var(--bevel-in), var(--m-drop), 0 0 var(--m-glow) calc(2px * var(--m-amp)) var(--lcd-glow), inset 0 0 0 1px color-mix(in srgb, var(--lcd-fg) 60%, transparent); }
+  /* S7.5: text fields (motif chain, initials, names) light up like an LCD under the pointer */
+  :where(input[type=text], input[type=number], input:not([type]), textarea):is(:hover, :focus):not(:disabled) { filter: brightness(var(--m-bright));
+    box-shadow: var(--bevel-in), 0 0 calc(var(--m-glow) / 2.5) var(--lcd-glow), inset 0 0 0 1px color-mix(in srgb, var(--lcd-fg) 60%, transparent); }
+  /* S7.5: the × of a window spins a quarter turn and glows (it does not lean: css only) */
+  .modal-x { transition: rotate var(--m-med) var(--m-spring), scale var(--m-med) var(--m-spring), color var(--m-fast) var(--m-out), text-shadow var(--m-fast) var(--m-out); }
+  .modal-x:hover { color: #fff; rotate: calc(90deg * min(1, var(--m-amp))); scale: calc(1 + .35 * var(--m-amp)); text-shadow: 0 0 calc(var(--m-glow) / 3) var(--accent), 0 0 4px #fff; }
   .knob:hover svg { translate: 0 calc(var(--m-lift) * .8); scale: calc(1 + .06 * var(--m-amp));
     filter: drop-shadow(0 calc(10px * var(--m-amp)) 5px #000c) drop-shadow(0 0 calc(var(--m-glow) / 2.5) color-mix(in srgb, var(--c, var(--accent)) 85%, transparent)); }
 }
