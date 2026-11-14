@@ -35,7 +35,7 @@
         <div class="tgrp"><small>Paysage</small>
           <div class="tgrp-row">
             <select id="preset" title="Choisir un paysage prêt ou un des tiens" aria-label="Paysage"></select>
-            <button id="dice" class="btn" title="Créer un nouveau paysage cohérent selon l'humeur choisie"><i class="m-die">✦</i> Nouveau paysage</button>
+            <button id="dice" class="btn" title="Créer un nouveau paysage cohérent selon l'humeur choisie"><i class="m-die">✦</i> Nouveau<span class="dl-long"> paysage</span></button>
             <select id="mood" title="Humeur du prochain paysage" aria-label="Humeur">
               <option value="">toutes humeurs</option><option value="__day">☀ du jour</option><option>Lumineux</option><option>Mélancolique</option><option>Mystérieux</option>
               <option>Contemplatif</option><option>Nocturne</option><option>Aquatique</option>
@@ -83,7 +83,7 @@
     <div class="stage">
       <canvas id="viz"></canvas>
       <div class="hud">
-        <div id="chordName" class="chord">—</div>
+        <div id="chordName" class="chord"></div>
         <div id="hudInfo" class="hud-info"></div>
       </div>
       <button id="bigPlay" class="big-play" aria-label="Lecture">▶<span>Lancer le paysage</span></button>
@@ -116,7 +116,7 @@
         <p>Une machine à paysages sonores qui joue toute seule. Comment veux-tu la découvrir ?</p>
         <div class="welcome-choices">
           <button class="welcome-choice" data-choose="path"><b>🕹 Parcours</b><span>Commence avec une seule note. Relève des défis musicaux, rejoue des phrases à l'oreille : chaque réussite ouvre une pièce de l'instrument.</span></button>
-          <button class="welcome-choice" data-choose="free"><b>◎ Mode libre</b><span>Tout est ouvert tout de suite : couches, effets, composition. Tu pourras commencer le parcours plus tard (menu ⋯).</span></button>
+          <button class="welcome-choice" data-choose="free"><b>◎ Mode libre</b><span>Tout est ouvert tout de suite : tous les sons, les effets, la composition. Tu pourras commencer le parcours plus tard (menu ⋯).</span></button>
         </div>
       </div>
     </div>

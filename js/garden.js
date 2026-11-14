@@ -107,7 +107,7 @@
       txt.textContent = g.txt(help ? d.hint : resp ? `↺ Réponse : ${d.title}` : `◇ ${d.title}`);
       txt.title = help ? 'Toucher : revenir au défi' : `${g.txt(d.hint)}\n(Toucher : comment faire)`;
       // S5.5 a challenge asked in the music: it comes with the playback
-      this.rollN(box.querySelector('.lcd-task-n'), resp ? `${AMB.puzzles.need(d)} ♪` : ask ? (AMB.seq && AMB.seq.playing ? '♪ bientôt' : '▶ lecture') : d.goal > 1 ? `${n}/${d.goal}` : n ? '✓' : '·');
+      this.rollN(box.querySelector('.lcd-task-n'), resp ? `${AMB.puzzles.need(d)} ♪` : ask ? (AMB.seq && AMB.seq.playing ? '♪ bientôt' : '▶ lecture') : d.goal > 1 ? `${n}/${d.goal}` : n ? '✓' : '');
       if (flashId === id) { box.classList.remove('bump'); void box.offsetWidth; box.classList.add('bump'); }
     },
     // S7.3: the LCD's counter — a count rolls in (motion.roll), the countdown of an ask slams in (« MAINTENANT ! » harder)

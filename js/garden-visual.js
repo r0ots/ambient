@@ -629,10 +629,12 @@
         if (!el) { el = this._tag[p.id] = document.createElement('span'); el.style.setProperty('--c', rgb(p.col)); el._w = {}; box.append(el); }
         const room = Math.max(24, 2 * Math.min(p.roomL, p.roomR) * k * (p.row ? 1.4 : 1) - 4);
         const wOf = (t) => { if (el._w[t] == null) { el.textContent = t; el._w[t] = el.offsetWidth; } return el._w[t]; };
-        let t = p.label.toUpperCase(); if (wOf(t) > room) t = p.short.toUpperCase();
+        const lo = fr.l + 2, hi = cv.clientWidth - fr.r - 2, cx = p.sx * k;
+        if (cx < lo || cx > hi) continue; // (under the drawer: no caption)
+        const fits = (t) => wOf(t) <= room && cx - wOf(t) / 2 >= lo - 8 && cx + wOf(t) / 2 <= hi + 8;
+        let t = p.label.toUpperCase(); if (!fits(t)) t = p.short.toUpperCase();
         const w = wOf(t); if (el.textContent !== t) el.textContent = t;
-        const x = Math.round(p.sx * k - w / 2);
-        if (p.sx * k < fr.l || p.sx * k > cv.clientWidth - fr.r) continue; // (under the drawer: no caption)
+        const x = Math.round(Math.max(lo, Math.min(hi - w, cx - w / 2)));
         let y = p.row ? Math.round((p.sy - Math.max(p.vis, 6 * px) * p.k) * k) - 18 : Math.round(p.sy * k + 4);
         for (let n = 0; n < 3 && used.some((u) => x < u.x1 + 4 && x + w > u.x0 - 4 && Math.abs(y - u.y) < 13); n++) y += 13; // (no overlap: one line lower)
         used.push({ x0: x, x1: x + w, y });
