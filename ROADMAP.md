@@ -1,4 +1,4 @@
-# Ambient — machine à ambient générative (web)
+# JunoJuno — machine à ambient générative (web)
 
 Inspiration : Sonicware LIVEN Ambient Ø (couches génératives, textures, FX "espace") et LIVEN Evoke (granulaire, sampling).
 Stack : HTML + CSS + JS vanilla, Web Audio API, aucun build. Ouvrir `index.html` directement ou `python3 -m http.server`.

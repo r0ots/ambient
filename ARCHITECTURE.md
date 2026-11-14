@@ -1,7 +1,7 @@
 # Architecture (v1.20)
 
 ## Lexique (S4.5) — un mot par concept, à l'écran, dans l'aide, le README et les textes du jeu
-- **Ambient** : l'instrument (en-tête, LCD). **Parcours** : le jeu (jamais « Jardin sonore » à l'écran). **Mode libre** : tout ouvert.
+- **JunoJuno** : l'instrument (nom de l'app depuis v1.34 ; anciennement Ambient) (en-tête, LCD). **Parcours** : le jeu (jamais « Jardin sonore » à l'écran). **Mode libre** : tout ouvert.
 - **Ville** (S6.5, ancien « Jardin » : le code et le mode gardent `Jardin`, `garden*`, `plants`) : le visuel du Parcours, une ville la nuit sous la pluie qu'on rallume, un **élément** par couche (tour, enseigne…), pas « plante », « pousser ». **Arbre** : la carte du Parcours ; un nœud est **ouvert**, **prêt** (réussi, attend que le joueur touche « ✦ Ouvrir »), **à ouvrir** ou **fermé** (pas « débloqué », « acquis »).
 - **Défi** (◇ sur le LCD) : ce qui ouvre un nœud (pas « contrat »). **Réponse** (↺) : rejouer une phrase entendue (`kind: 'reponse'`). **Demande** (♪, S5.5) : un geste réclamé par le paysage, jugé sur le temps (PARFAIT, BIEN, RATÉ). **Découverte** (✦ ; S5.10 : combos et gestes, anciens « secrets » ; pas « achievement »). ✓ = réussi ; ✦ = nouveau (nœud ouvert, secret, paysage généré, remise).
 - **Paysage** : un son complet (menu Paysage, ✦ Nouveau paysage, Mes paysages, lien partagé ; pas « patch », « preset », « Son »). **Timbre** : le son d'une couche.

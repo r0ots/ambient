@@ -119,7 +119,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
   // S5.7: the first one is « Joue une note »; no jargon yet. S6.2: no glide on the screen, a MIDI CC still reaches the drone's colour
   A.game.reset(); A.perform.setMode('listen'); A.lcdMsg=null; await wait(400);
   ok(!d.getElementById('contracts') && shown('#lcdTask') && lline.hidden && /Joue une note/.test(task.textContent) && /·/.test(task.querySelector('.lcd-task-n').textContent) && !/✧/.test(task.textContent), 'premier défi sur la 2e ligne du LCD, sans ✧ : '+task.textContent);
-  ok(d.body.classList.contains('jargon-off') && d.getElementById('lcdTop').textContent==='AMBIENT' && w.getComputedStyle(d.getElementById('hudInfo')).visibility==='hidden' && w.getComputedStyle(d.getElementById('chordName')).visibility==='hidden', 'début : ni nom de paysage, ni tonalité, gamme, tempo ou accord à l\'écran (« '+d.getElementById('lcdTop').textContent+' »)');
+  ok(d.body.classList.contains('jargon-off') && d.getElementById('lcdTop').textContent==='JUNOJUNO' && w.getComputedStyle(d.getElementById('hudInfo')).visibility==='hidden' && w.getComputedStyle(d.getElementById('chordName')).visibility==='hidden', 'début : ni nom de paysage, ni tonalité, gamme, tempo ou accord à l\'écran (« '+d.getElementById('lcdTop').textContent+' »)');
   ok(!d.getElementById('xyTip') && !d.querySelector('.xy-label'), 'S6.2 : plus de bulle ni de libellés du glissé sur l\'écran');
   A.seq.playing=true; const tone0=A.store.get('drone.tone'), mac0=A.store.get('macro.light');
   for (const x of [0.1,0.9,0.2,0.8]) { A.perform.setMacro('macro.light', x); A.perform.setMacro('macro.density', 0.5); }
@@ -133,7 +133,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
   const first=task.dataset.id; task.querySelector('.lcd-skip').click(); await wait(20);
   ok(task.dataset.id && task.dataset.id!==first && A.game.s.skipped.includes(first), '↷ : le défi suivant ('+first+' → '+task.dataset.id+')');
   A.game.unlock('h.pad'); A.game.unlock('h.key'); await wait(60); A.lcdMsg=null; await wait(350); // (the LCD refreshes every 300 ms; the « Ouvert » message cleared)
-  ok(!d.body.classList.contains('jargon-off') && d.getElementById('lcdTop').textContent!=='AMBIENT' && w.getComputedStyle(d.getElementById('hudInfo')).visibility==='visible', 'nœud Tonalité : tonalité, gamme, tempo et nom du paysage reviennent (« '+d.getElementById('lcdTop').textContent+' »)');
+  ok(!d.body.classList.contains('jargon-off') && d.getElementById('lcdTop').textContent!=='JUNOJUNO' && w.getComputedStyle(d.getElementById('hudInfo')).visibility==='visible', 'nœud Tonalité : tonalité, gamme, tempo et nom du paysage reviennent (« '+d.getElementById('lcdTop').textContent+' »)');
   // S4.2: a gate opened by a Réponse on the LCD; a tap says how (no card any more)
   { const st=A.contracts.state(); A.game.unlock('t.son'); st.active=['p.premier']; A.garden.renderContracts(); await wait(20);
     ok(/↺ Réponse : Premier reflet/.test(task.textContent) && /3 ♪/.test(task.querySelector('.lcd-task-n').textContent), 'une porte à Réponse sur le LCD : '+task.textContent);

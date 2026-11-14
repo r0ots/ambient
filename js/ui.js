@@ -121,7 +121,7 @@
   function mediaSession() {
     if (!('mediaSession' in navigator)) return;
     try {
-      navigator.mediaSession.metadata = new MediaMetadata({ title: 'Ambient', artist: $('#preset').selectedOptions[0]?.textContent || 'Paysage génératif' });
+      navigator.mediaSession.metadata = new MediaMetadata({ title: 'JunoJuno', artist: $('#preset').selectedOptions[0]?.textContent || 'Paysage génératif' });
       navigator.mediaSession.setActionHandler('play', () => play());
       navigator.mediaSession.setActionHandler('pause', () => stop());
       navigator.mediaSession.setActionHandler('stop', () => stop());
@@ -473,14 +473,14 @@
     const abbr = (s) => s.split(' ')[0].slice(0, 4).toUpperCase();
     const lcd = () => {
       if (!top || !line) return;
-      const sel = $('#preset'), patch = sel && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.replace('✦ ', '') : 'AMBIENT';
+      const sel = $('#preset'), patch = sel && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.replace('✦ ', '') : 'JUNOJUNO';
       const rec = document.querySelector('#rec.rec');
       // short game messages (G6.2) take over the top line for a few seconds
       const m = AMB.lcdMsg, on = m && Date.now() < m.until;
       // S4.3: in the path, the jargon (landscape name, key, scale, tempo, chord name) waits for the Tonalité node
       const G = AMB.game, plain = !!(G && G.path && !G.has('h.key'));
       document.body.classList.toggle('jargon-off', plain);
-      const txt = on ? m.text.toUpperCase().slice(0, 48) : (plain ? 'AMBIENT' : patch.toUpperCase().slice(0, 24)) + (rec ? '  ● REC' : '');
+      const txt = on ? m.text.toUpperCase().slice(0, 48) : (plain ? 'JUNOJUNO' : patch.toUpperCase().slice(0, 24)) + (rec ? '  ● REC' : '');
       const lw = top.parentElement ? top.parentElement.clientWidth : 0;
       if (top.textContent !== txt || lw !== top._lw) {
         // S7.1: a new text is typed in (a cursor sweeps it, neon), a resize only re-fits it

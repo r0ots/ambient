@@ -125,7 +125,7 @@
       renderSpan(live, 0, totalSteps, out);
     }
     const bpm = store.get('global.tempo'), usq = Math.round(60000000 / bpm);
-    const title = useSong ? 'Ambient · morceau' : `${store.get('global.key')} ${store.get('global.scale')}`;
+    const title = useSong ? 'JunoJuno · morceau' : `${store.get('global.key')} ${store.get('global.scale')}`;
     const meta = [
       { t: 0, bytes: [0xff, 0x51, 3, (usq >> 16) & 255, (usq >> 8) & 255, usq & 255] },
       { t: 0, bytes: [0xff, 0x58, 4, 4, 2, 24, 8] },
@@ -135,7 +135,7 @@
       let t = 0;
       for (const sec of song.sections) { meta.push({ t, bytes: [0xff, 0x06, ...vlq(str(sec.name).length), ...str(sec.name)] }); t += sec.bars * 16 * STEP; }
     }
-    const tracks = [track('Ambient', meta)];
+    const tracks = [track('JunoJuno', meta)];
     if (out.ch.length) tracks.push(track('Accords (Pad)', out.ch));
     if (out.pr.length) tracks.push(track('Mélodie écrite', out.pr));
     if (out.bs.length) tracks.push(track('Basse', out.bs));

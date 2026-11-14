@@ -1,4 +1,4 @@
-# Ambient
+# JunoJuno
 
 Machine à paysages sonores génératifs dans le navigateur, inspirée des Sonicware LIVEN Ambient Ø et LIVEN Evoke.
 HTML + JS vanilla + Web Audio, aucune dépendance, aucun build, rien n'est envoyé en ligne.

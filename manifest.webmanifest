@@ -1,6 +1,6 @@
 {
-  "name": "Ambient — machine générative",
-  "short_name": "Ambient",
+  "name": "JunoJuno — machine générative",
+  "short_name": "JunoJuno",
   "description": "Machine à paysages sonores génératifs (drone, pads, mélodie, grains, textures).",
   "start_url": "./",
   "scope": "./",
