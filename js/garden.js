@@ -236,7 +236,7 @@
         for (const [sel, id] of this.CLICKS) if (t.matches(sel)) return emit(id);
       }, true);
     },
-    // ---- game feedback (G6.2): a chime tuned to the key, LCD messages ----
+    // ---- game feedback (G6.2): a chime tuned to the key, messages on the Objectifs widget (S11.1) ----
     // kind: 'unlock' (rising arpeggio), 'solve' (two chords), 'small' (one soft note); straight to the speakers
     // S4.5w: `at` = audio time (the next strong beat, see beat()), `deg` = the opened layer's own note, in the key
     chime(kind = 'unlock', o = {}) {
@@ -333,7 +333,7 @@
     // ---- the instrument handed over (G6.3, S3.7) ----
     complete() { const T = AMB.tree; return T.NODES.every((n) => AMB.game.has(n.id)); },
     // whole tree owned: no game interface any more (challenge line), the tree stays to look at; saved (game.s.ended)
-    handing: false, // the moment itself (chime, LCD message) before the game interface goes
+    handing: false, // the moment itself (chime, widget message) before the game interface goes
     handedOver() { return !!AMB.game.s.ended && !this.handing; },
     // the path's last challenge (« Enregistre ton morceau ») closes it: with the whole tree owned, it comes first, and
     // the instrument is handed over once it is done or passed (↷)
@@ -347,7 +347,7 @@
         return false;
       }
       g.s.ended = true; g.save(); // nothing counts from now on (game.counts)
-      // no end screen: the instrument itself says it (chime, LCD), then the challenge line goes; the sound is untouched.
+      // no end screen: the instrument itself says it (chime, the widget), then the challenge line goes; the sound is untouched.
       // S4.5w: when the recorded song just ended the path (keepSong), it is heard again first (finale)
       this.handing = true;
       setTimeout(() => { this.showTree(false); if (this.song) this.finale(); else this.handOver(); }, this.END_MS);
@@ -360,7 +360,7 @@
 
     // ---- S4.5w: a real ending. The song recorded by « Enregistre ton morceau » is replayed on the instrument (the live
     // sound steps back), the garden goes from night to dawn and each plant lights up when its layer plays (the events
-    // taped during the recording); then « L'instrument est à toi » and the WAV is offered on the LCD line. ----
+    // taped during the recording); then « L'instrument est à toi » and the WAV is offered in the widget. ----
     // The replay is an excerpt of REPLAY s (the whole song if barely longer): a song lasts 1-3 min at these tempos, the
     // dawn is a moment to watch, not a second listening; the window with the most layers heard is chosen, and the whole
     // WAV is what is offered.
@@ -460,11 +460,11 @@
     //   `from` = where they burst) · shake (1 = the scene, 2 = the whole instrument too) · lcd ('glitch' | 'glitch-big' |
     //   'arcade' = the message scrolls in and blinks) · bounce (the buttons hop) · hop (one element hops) · punch (the scene
     //   zooms in, 1 | 1.5 | 2) · jingle (garden.chime kind, in the key) · pop (text that jumps out, arcade combo) · splash
-    //   (S5.2 splashes of a plant) · beats (confetti again on the next beats) · say (the LCD message) · kick (S5.8 scene
+    //   (S5.2 splashes of a plant) · beats (confetti again on the next beats) · say (the widget message) · kick (S5.8 scene
     //   layers of the Jardin that flare up: gardenVisual.flare, same JUICE). S9.1: the pop is one short word (PARFAIT,
     //   RATÉ, COMBO…), written plainly; the comic onomatopoeias (POW!, BZZT!…) and their bubbles are gone.
     // Moments fired in the same tick merge: the biggest (rank) plays alone (a gate answered = a challenge won, not also a
-    // series). Reduced motion: a soft flash only (plus the jingle and the LCD message). S5.10 (combos, discoveries) reuses
+    // series). Reduced motion: a soft flash only (plus the jingle and the widget message). S5.10 (combos, discoveries) reuses
     // it: fx('discovery', {name}).
     FX: {
       first: { rank: 1, confetti: 16, from: 'el', hop: 'el', jingle: 'pop', pop: 'NOUVEAU', kick: ['fireflies'] }, // a new control touched the 1st time
@@ -510,10 +510,10 @@
       'resp:place': (d) => { const k = (d.objs || []).length; return ['placement', { name: d.name, n: k, ms: 6000, toast: k ? `Tu joues déjà bien : ${k} objectif${k > 1 ? 's' : ''} coché${k > 1 ? 's' : ''} d'avance (⚡ dans les Objectifs)` : '' }]; },
     },
     juice() { const GV = AMB.gardenVisual; return GV && GV.JUICE != null ? GV.JUICE : 1; },
-    // a moment: its message at once (LCD, toast), its effects on the next beat. Returns the queued {kind, o} or null.
+    // a moment: its message at once (widget, toast), its effects on the next beat. Returns the queued {kind, o} or null.
     fx(kind, o = {}) {
       const R = this.FX[kind]; if (!R || !AMB.game || !(AMB.game.path || R.free)) return null;
-      const say = !AMB.game.path ? null : o.say || (typeof R.say === 'function' ? R.say(o) : R.say); // (free mode: the LCD stays the sound's)
+      const say = !AMB.game.path ? null : o.say || (typeof R.say === 'function' ? R.say(o) : R.say); // (free mode: no game message)
       if (say) this.lcd(say, o.ms || 3500, !!R.stamp);
       if (o.toast && AMB.ui && AMB.ui.toast) AMB.ui.toast(o.toast);
       const q = this._fxQ;
@@ -611,7 +611,7 @@
     build() {
       this.hookActions();
       if (AMB.bus) {
-        // a node opens: by a challenge = the unlock sequence on the map (garden-tree.js); by a discovery = chime + LCD
+        // a node opens: by a challenge = the unlock sequence on the map (garden-tree.js); by a discovery = chime + widget
         AMB.bus.on('game:unlock', (d) => {
           const n = AMB.tree.byId[d.id]; if (!AMB.game.path || !n || !n.req.length) return;
           if (this.checkEnd()) return;
@@ -669,7 +669,7 @@
     },
   };
 
-  // ---- S6.6 HIGH SCORES of the Réponse (its series: the same score as the LCD's « SÉRIE · RECORD », no second one) ----
+  // ---- S6.6 HIGH SCORES of the Réponse (its series: the same score as the widget's « SÉRIE · RECORD », no second one) ----
   // Top 5 kept in localStorage (<game key>.hiscores, try/catch), shown in the Arbre like an arcade cabinet. A series that
   // enters the top 5 (≥ MIN) waits to be signed (★ on the Arbre button); in the Arbre, three initials arcade-style:
   // letters typed (↑ ↓ ← →, ⌫, Entrée), ▲ ▼ and OK under a finger, or MIDI notes = their name (C D E F G A B).

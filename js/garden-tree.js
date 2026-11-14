@@ -109,7 +109,7 @@
       return out;
     },
     // a screen that closes: a ghost of its frame collapses to a line, then a dot (under the windows: never over one;
-    // not while an ask runs, the LCD stays clear)
+    // not while an ask runs, the widget stays clear)
     crtOff(card) {
       const M = AMB.motion; if (!M || !M.on() || !card || (AMB.demands && AMB.demands.cur)) return null;
       const r = card.getBoundingClientRect(); if (!r.width) return null;

@@ -1,5 +1,5 @@
 // « Jardin sonore » : « Réponse » (S4.2) — the Écho played INSIDE the music, no card. While the instrument plays in the
-// path, the Melody auto now and then plays a marked phrase on the grid (one bar; the Melody plant lights up, the LCD says
+// path, the Melody auto now and then plays a marked phrase on the grid (one bar; the Melody plant lights up, the Objectifs widget says
 // « ↺ À toi »); the player plays it back right after (A–L keys, pads or MIDI, any octave), one leaf per note on the
 // plant: right, or red. Each success climbs one level, a miss goes one level down (S5.3: no ceiling, `level` below):
 // phrases of 3 → 8 notes (from 5 notes the rhythm counts too, each note against its place in the answer bar, timed with
@@ -73,7 +73,7 @@
     for (let p = PLACE.length - 1; p >= 0; p--) if (low >= PLACE[p].tier) return p;
     return -1;
   };
-  // the level's name as the LCD shows it: « Syncopes », « Combinaisons +3 »
+  // the level's name as the widget shows it: « Syncopes », « Combinaisons +3 »
   const tierName = (lv) => lv.plus ? `${lv.name} +${lv.plus}` : lv.name;
   // a singable walk of n notes from `start`, inside 0..hi-1 (seconds, thirds; a fourth from 5 notes), no note twice in a row
   function walk(n, rnd, start, hi = DEGS) {
@@ -128,7 +128,7 @@
       s.lvl = Math.max(0, s.lvl | 0); s.len = level(s.lvl).len; s.streak = s.streak | 0; s.best = Math.max(s.best | 0, s.streak); s.miss = s.miss || {};
       return s;
     },
-    // the score on the LCD (garden.js): null until the first answer
+    // the score in the widget (garden.js): null until the first answer
     score(g = AMB.game) {
       if (!g || !g.s || !g.s.resp || !this.can(g)) return null;
       const s = this.st(g), lv = level(s.lvl);

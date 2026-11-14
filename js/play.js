@@ -185,7 +185,7 @@
   // the first glide does; free mode unchanged
   function firstNote() {
     const g = AMB.game;
-    if (AMB.garden && AMB.garden.coin && AMB.garden.coin()) return; // S6.6: « INSERT COIN » — the first press starts the music
+    if (AMB.garden && AMB.garden.coin && AMB.garden.coin()) return; // S11.1: the machine asleep (a reload with the Piano open): a note wakes it too
     if (g && g.path && !g.has('m.bells') && AMB.seq && !AMB.seq.playing && AMB.ui && AMB.ui.play) Promise.resolve(AMB.ui.play()).catch(() => {});
   }
   function padsRefresh() {

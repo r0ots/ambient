@@ -74,7 +74,7 @@
       return true;
     },
     // S4.6: a success no longer opens its node by itself: the node is « prêt » and waits in a queue until the player opens it
-    // (garden.js: « ✦ Ouvrir » on the LCD, a few words on what it gives, then the opening). by = as for unlock
+    // (garden.js: S11.1 « ✦ … est prêt » in the Objectifs widget, the Arbre, a few words on what it gives, then the opening). by = as for unlock
     isReady(id) { return (this.s.ready || []).some((r) => r.id === id); },
     readyIds() { return (this.s.ready || []).map((r) => r.id); },
     ready(id, by = null) {
