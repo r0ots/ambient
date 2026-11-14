@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>JunoJuno — machine générative</title>
-  <meta name="theme-color" content="#161514">
+  <meta name="theme-color" content="#07040f">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=VT323&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Monoton&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -17,11 +17,7 @@
   <div class="app">
     <header class="top">
       <div class="brand">
-        <img class="logo" src="icon.svg" alt="" width="40" height="40">
-        <div>
-          <h1>JUNOJUNO</h1>
-          <p>machine à paysages sonores génératifs</p>
-        </div>
+        <h1 class="logo" title="JunoJuno, machine à paysages sonores génératifs">JUNOJUNO</h1>
       </div>
       <div id="lcd" class="lcd" aria-live="polite" title="État du son">
         <span id="lcdTop">JUNOJUNO</span>
@@ -152,7 +148,7 @@
     <div id="treeDlg" class="modal" hidden>
       <div class="modal-card tree-card" role="dialog" aria-label="Arbre du Parcours">
         <button class="modal-x" data-close>✕</button>
-        <h3>Arbre du Parcours <span class="tree-count"></span></h3>
+        <h3>Arbre du Parcours <span class="tree-counts"><span class="tree-count"></span><span class="tree-ready" hidden></span></span></h3>
         <p class="tree-legend"><span><i class="st-owned"></i>ouvert<em class="lg-long">&nbsp;(couleur de sa branche)</em></span><span><i class="st-ready"></i>prêt</span><span><i class="st-available"></i><em class="lg-long">peut s'ouvrir maintenant</em><em class="lg-short">à ouvrir</em></span><span><i class="st-locked"></i><em class="lg-long">pas encore accessible</em><em class="lg-short">fermé</em></span><span class="tree-tip"><em class="tip-long">Survole ou touche un nœud : trait plein = ce qu'il demande, pointillés = ce qu'il ouvre · glisse pour te déplacer, pince ou molette pour zoomer</em><em class="tip-short">Touche un nœud pour sa fiche · glisse, pince pour zoomer</em></span></p>
         <div class="tree-view">
           <div class="tree-map" role="group" aria-label="Carte des talents : glisse pour te déplacer, pince ou molette pour zoomer"></div>
