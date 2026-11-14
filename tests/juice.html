@@ -11,7 +11,7 @@ f.addEventListener('load', async () => {
   try {
     const w = f.contentWindow, d = f.contentDocument, A = w.AMB, G = A.garden, GV = A.gardenVisual;
     w.addEventListener('error', e => log('ERROR ' + e.message + ' @' + e.filename + ':' + e.lineno));
-    A.game.setMode('path'); G.welcome(false); A.game.unlock('m.bells'); await wait(300); G.showTree(false); A.perform.setMode('listen'); A.visual.gardenSync();
+    A.game.setMode('path'); G.welcome(false); A.game.unlock('m.bells'); await wait(300); G.showTree(false); A.perform.setMode('sculpt'); A.visual.gardenSync();
     const tick = () => new Promise((r) => setTimeout(r, 0));
     const chimes = []; const ch0 = G.chime; G.chime = function (k, o) { chimes.push({ k, at: o && o.at }); return ch0.apply(this, arguments); };
     const plays = []; const fp0 = G.fxPlay; G.fxPlay = function (k, o) { const r = fp0.apply(this, arguments); plays.push(r); return r; };
@@ -48,30 +48,30 @@ f.addEventListener('load', async () => {
     ok(pop && /BRUME NÉON/.test(pop.textContent) && /Découverte : Brume néon/.test(A.lcdMsg.text), 'S5.10 prêt : « découverte » énorme, nommée (« ' + (pop && pop.textContent) + ' », LCD « ' + A.lcdMsg.text + ' »)');
     await wait(400);
 
-    // --- 1b. S9.2 the party's word = a neon sign (no comic bubble): written letter by letter (one <i> per letter, each
-    // later than the one before), no tilt, no starred / screened bubble; size by rank × JUICE; never over the LCD;
-    // S6.7 one at a time (the bigger moment wins). JUICE 0: no onomatopoeia (the moment's own text stays)
-    { const lastPop = () => [...d.querySelectorAll('.fx-pop')].pop(), wordOf = (x) => { const b = x && x.querySelector('.fx-word'); return b ? b.getAttribute('aria-label') : ''; };
-      const size = {}; let letters = true, plain = true;
+    // --- 1b. S9.1 no more comics: one short plain word per moment (no onomatopoeia, no bubble, no tilt), bigger for
+    // bigger moments; S9.2 written as a neon sign, letter by letter (one <i> per letter, each later than the one before); never over the LCD; JUICE 0 = none (reduced motion: section 4)
+    { const last = () => [...d.querySelectorAll('.fx-pop')].pop();
+      ok(kinds.every((k) => !G.FX[k].boom) && G.FX.rate.pop === 'RATÉ' && G.FX.parfait.pop({ n: 1 }) === 'PARFAIT' && G.FX.combo.pop({ n: 2 }) === 'COMBO ×2' && !G.BOOM_COLS, 'S9.1 : plus d\'onomatopées de BD, un mot court par moment (RATÉ, PARFAIT, COMBO ×2…)');
+      const size = {}; let plain = true, letters = true;
       for (const k of ['defi', 'open', 'placement']) {
-        G._pop = null; G.fx(k, { name: 'Musicien' }); await tick(); const p = lastPop(), ls = p ? [...p.querySelectorAll('.fx-word > i')] : [];
-        if (!p || !ls.length || ls.map((e) => e.textContent).join('') !== wordOf(p) || ls.some((e, n) => +e.style.getPropertyValue('--d') !== n)) letters = false;
-        const cs = p && w.getComputedStyle(p, '::before');
-        if (!p || p.style.getPropertyValue('--rot') || /polygon/.test(cs.clipPath) || /radial-gradient/.test(cs.backgroundImage) || p.querySelector('small')) plain = false;
+        G._pop = null; G.fx(k, { name: 'Musicien' }); await tick(); const p = last();
+        if (!p || p.querySelector('small') || p.classList.contains('fx-boom') || /!/.test(p.textContent)) plain = false;
+        const ls = p ? [...p.querySelectorAll('.fx-word > i')] : [];
+        if (!ls.length || ls.map((e) => e.textContent).join('') !== p.textContent || ls.some((e, n) => +e.style.getPropertyValue('--d') !== n)) letters = false;
         size[k] = p ? parseFloat(w.getComputedStyle(p).fontSize) : 0; await wait(30);
       }
-      ok(letters && plain && size.open > size.defi && size.placement > size.open && /Chakra Petch/.test(w.getComputedStyle(lastPop()).fontFamily), 'enseigne néon : le mot écrit lettre à lettre, sans bulle ni inclinaison, plus gros pour les gros moments (' + JSON.stringify(size) + ', « ' + wordOf(lastPop()) + ' »)');
-      // a phone: the LCD right above the stage — the sign goes under it, never over it
+      const p = last(), cs = p && w.getComputedStyle(p, '::before');
+      ok(plain && letters && /Chakra Petch/.test(w.getComputedStyle(p).fontFamily) && size.open > size.defi && size.placement > size.open && cs.content === 'none', 'le mot du moment, enseigne néon écrite lettre à lettre (sans bulle ni « ! »), plus gros pour les gros moments (' + JSON.stringify(size) + ', « ' + (p && p.textContent) + ' »)');
+      // a phone: the LCD right above the stage — the word goes under it, never over it
       const lcd = d.getElementById('lcd'), sr = d.querySelector('.stage').getBoundingClientRect(), css0 = lcd.style.cssText;
       lcd.style.cssText = 'position:fixed;left:0;right:0;top:' + Math.round(sr.top + sr.height * 0.25) + 'px;z-index:1'; const lb = lcd.getBoundingClientRect().bottom;
-      G._pop = null; G.fx('end', {}); await tick(); const pe = lastPop(), top = parseFloat(pe.style.top) - pe.offsetHeight / 2;
-      ok(top >= lb - 1, 'jamais par-dessus le LCD (haut de l\'enseigne ' + Math.round(top) + ' px ≥ bas du LCD ' + Math.round(lb) + ' px)'); lcd.style.cssText = css0;
-      const J0 = GV.JUICE; GV.JUICE = 0; d.querySelectorAll('.fx-pop').forEach((x) => x.remove()); G._pop = null; G.fx('defi', {}); await tick();
-      ok(!G.fxLast.did.includes('boom'), 'JUICE 0 : pas d\'onomatopée'); GV.JUICE = J0; await wait(200);
-      { d.querySelectorAll('.fx-pop').forEach((x) => x.remove()); G._pop = null; const words = () => [...d.querySelectorAll('.fx-pop')].map(wordOf);
+      G._pop = null; G.fx('end', {}); await tick(); const pe = last(), top = parseFloat(pe.style.top) - pe.offsetHeight / 2;
+      ok(top >= lb - 1, 'jamais par-dessus le LCD (haut du mot ' + Math.round(top) + ' px ≥ bas du LCD ' + Math.round(lb) + ' px)'); lcd.style.cssText = css0;
+      // S6.7: two words never overlap — a bigger moment replaces the one up, a smaller one is dropped, after it ends: shown
+      { d.querySelectorAll('.fx-pop').forEach((x) => x.remove()); G._pop = null; const words = () => [...d.querySelectorAll('.fx-pop')].map((x) => x.textContent);
         G.fx('defi', {}); await tick(); const a = words(); G.fx('open', {}); await tick(); const b = words(); G.fx('bien', { n: 1 }); await tick(); const c = words();
         G._pop.until = 0; G.fx('bien', { n: 1 }); await tick(); const e = words();
-        ok([a, b, c, e].every((x) => x.length === 1) && a[0] !== b[0] && c[0] === b[0] && e[0] !== b[0], 'S6.7 enseignes : une seule à la fois, la plus grosse gagne (' + [a, b, c, e].map((x) => x.join('+')).join(' → ') + ')');
+        ok(a.join() === 'RÉUSSI' && b.join() === 'OUVERT' && c.join() === 'OUVERT' && e.join() === 'BIEN', 'S6.7 : un mot à la fois, le plus gros gagne (' + [a, b, c, e].map((x) => x.join('+')).join(' → ') + ')');
         d.querySelectorAll('.fx-pop').forEach((x) => x.remove()); G._pop = null; } }
 
     // --- 2. the bus moments go through the table; same tick = the biggest alone

@@ -578,7 +578,7 @@
       g.fillRect(Math.round(x0 + i * (sw + 2 * dpr)), y0, Math.max(1, Math.round(sw)), bh);
     }
     g.font = `${fs}px "Chakra Petch", sans-serif`; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
-    const txt = `${sup ? 'SUPER !' : 'COMBO ×' + k.n} · ${C.shown(c).toUpperCase()}`, ty = y0 - Math.round(fs * 0.35);
+    const txt = `${sup ? 'SUPER' : 'COMBO ×' + k.n} · ${C.shown(c).toUpperCase()}`, ty = y0 - Math.round(fs * 0.35);
     g.globalAlpha = 0.9; g.fillStyle = rgba(col, 1); g.fillText(txt, W / 2 + dpr, ty + dpr);
     g.globalAlpha = 1; g.fillStyle = sup && blink > 0.5 ? '#fff36b' : '#ffffff'; g.fillText(txt, W / 2, ty);
     if (!sup) { g.globalAlpha = 0.85; g.font = `${Math.round(fs * 0.7)}px "Chakra Petch", sans-serif`; g.fillStyle = '#d8c8ff'; g.fillText(k.charge >= 1 ? 'SUR LE TEMPS…' : 'TIENS LA POSITION · JOUE DES NOTES', W / 2, y0 + bh + Math.round(fs * 0.85)); }

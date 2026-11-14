@@ -19,15 +19,17 @@
 <script>
 document.getElementById('f').addEventListener('load', () => {
   const A = document.getElementById('f').contentWindow.AMB, doc = document.getElementById('f').contentDocument, h = location.hash;
-  if (h.includes('s8=')) { // S8.3: full-screen layout, #s8=<listen|sculpt|compose>[,path][,tree][,full] (path: most of the tree open, a challenge on the LCD)
+  if (h.includes('s8=')) { // S8.3: full-screen layout, #s8=<sculpt|compose>[,path][,early][,tree][,full][,strike][,motion] (path: most of the tree open, a challenge on the LCD)
     const o = h.split('s8=')[1].split(','), m = o[0];
     if (!o.includes('motion')) A.motion.set({ reduced: true }); // (headless captures freeze animations: ghosts and wipes would stay over the view)
     if (o.includes('path')) { A.game.setMode('path'); A.garden.welcome(false); doc.body.classList.add('coined');
-      for (let k = 0; k < 6; k++) A.tree.NODES.forEach((n) => { if (A.tree.status(n.id) === 'available' && !/^c\.morceau/.test(n.id)) A.game.unlock(n.id); }); }
+      if (o.includes('early')) ['m.bells', 'h.pad', 't.son', 'e.reverb', 'h.key'].forEach((id) => A.game.unlock(id)); else for (let k = 0; k < 6; k++) A.tree.NODES.forEach((n) => { if (A.tree.status(n.id) === 'available' && !/^c\.morceau/.test(n.id)) A.game.unlock(n.id); }); }
     else { A.game.setMode('free'); A.garden.welcome(false); }
     if (m === 'compose') { A.store.setMany({ 'seq.on': true, 'seq.pattern': '0.7.4,4.9.2,8.b.4,g.a.8' }, 'user'); A.song.add(); A.song.add(); A.song.render(); }
     setTimeout(() => { A.garden.showTree(o.includes('tree')); A.tree.release && A.tree.release(); doc.querySelectorAll('.is-new').forEach((e) => e.classList.remove('is-new', 'is-new-first'));
-      A.perform.setMode(m); if (o.includes('full')) doc.getElementById('listen').click(); A.visual.gardenSync && A.visual.gardenSync(); }, 1200);
+      A.perform.setMode(m); if (o.includes('full')) doc.getElementById('listen').click(); A.visual.gardenSync && A.visual.gardenSync();
+      // S9.1 strike: the computer key D held down — its on-screen key is struck like a finger would (play.js strike)
+      if (o.includes('strike')) setTimeout(() => { doc.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyD', bubbles: true })); }, 1500); }, 1200);
     setInterval(() => A.visual.draw(), 40);
     const L = ['pad', 'bells', 'seq', 'bass', 'grains']; let i = 0; setInterval(() => A.bus.emit('note', { layer: L[i++ % L.length], midi: 60, time: 0, vel: 0.8 }), 220);
     return;
@@ -78,7 +80,7 @@ document.getElementById('f').addEventListener('load', () => {
     ['m.bells', 'h.key', 'm.grains', 'e.texture'].forEach((i) => A.game.unlock(i));
     w.requestAnimationFrame = (fn) => w.setTimeout(() => fn(w.performance.now()), 16); // headless barely runs rAF
     setTimeout(() => {
-      G.showTree(false); A.perform.setMode('listen'); A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none';
+      G.showTree(false); A.perform.setMode('sculpt'); A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none';
       A.gardenVisual.sig = null; A.gardenVisual.grow = {}; setInterval(() => A.visual.draw(), 40);
       const fc = G.fxClass; G.fxClass = function (el, c) { return fc.call(this, el, c, 6e5); }; // the effects stay on
       if (h.includes('open')) A.game.unlock('h.pad');
@@ -95,7 +97,7 @@ document.getElementById('f').addEventListener('load', () => {
     ['m.bells', 'h.pad'].forEach((i) => A.game.unlock(i));
     w.requestAnimationFrame = (fn) => w.setTimeout(() => fn(w.performance.now()), 16);
     setTimeout(() => {
-      G.showTree(false); A.perform.setMode('listen'); A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none';
+      G.showTree(false); A.perform.setMode('sculpt'); A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none';
       A.gardenVisual.sig = null; A.gardenVisual.grow = {}; setInterval(() => A.visual.draw(), 40);
       const fc = G.fxClass; G.fxClass = function (el, c) { return fc.call(this, el, c, 6e5); };
       const sd = A.seq.stepDur(); D.now = () => 100; D.at = () => 100;
@@ -121,7 +123,7 @@ document.getElementById('f').addEventListener('load', () => {
     ['m.bells', 't.son', 'e.reverb'].forEach((i) => A.game.unlock(i));
     w.requestAnimationFrame = (fn) => w.setTimeout(() => fn(w.performance.now()), 16);
     setTimeout(() => {
-      G.showTree(false); A.perform.setMode('listen'); A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none';
+      G.showTree(false); A.perform.setMode('sculpt'); A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none';
       A.gardenVisual.sig = null; A.gardenVisual.grow = {}; setInterval(() => A.visual.draw(), 40);
       const fc = G.fxClass; G.fxClass = function (el, c) { return fc.call(this, el, c, 6e5); };
       A.bus.emit('resp:place', A.puzzles.place(0));
@@ -135,7 +137,7 @@ document.getElementById('f').addEventListener('load', () => {
     const burst0 = G.confetti.burst; D.run = () => {}; G.confetti.burst = () => {}; // (the notes played below must not find a gesture; the openings' confetti would hide the scene)
     const ids = ((/(?:combo|discovery)=([\w,]+)/.exec(h) || [])[1] || 'brume').split(',');
     setTimeout(() => {
-      G.showTree(false); A.perform.setMode('listen'); A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none';
+      G.showTree(false); A.perform.setMode('sculpt'); A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none';
       GV.sig = null; GV.grow = {}; setInterval(() => A.visual.draw(), 40);
       { const c = A.cityCombos.byId[D.RENAMED[ids[0]] || ids[0]]; // S8.7: the knobs of its zone turned by hand (the combo charges, then its SUPER)
         if (c && h.includes('#combo')) for (const k of c.knobs) { const key = k.includes('.') ? k : 'macro.' + k; A.store.set(key, c.zone[k] === 'hi' ? 0.95 : 0.05, 'user'); } }
@@ -158,7 +160,7 @@ document.getElementById('f').addEventListener('load', () => {
     // headless captures freeze CSS animations at their first frame: show the end of the arrivals (the pulses at rest)
     const st = doc.createElement('style'); st.textContent = '.is-appearing, .open-dlg .open-card { animation: none !important; }'; doc.head.append(st);
     setTimeout(() => {
-      A.garden.showTree(false); A.perform.setMode('listen'); A.tree.clearNew();
+      A.garden.showTree(false); A.perform.setMode('sculpt'); A.tree.clearNew();
       A.game.ready('h.pad', 'm.notes'); A.game.ready('t.son', 'k.couleur');
       if (h.includes('ready-card')) A.garden.ask('h.pad');
       if (h.includes('new')) { A.garden.openNode('h.pad'); setTimeout(() => { const e = doc.querySelector('.is-new-first'); if (e) e.scrollIntoView({ block: 'center' }); }, 3000); }
@@ -205,7 +207,7 @@ document.getElementById('f').addEventListener('load', () => {
     const GV = A.gardenVisual; A.garden.showTree(false); A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none';
     ['h.key', 'm.grains', 'c.seq', 'c.rythme', 'e.texture', 'h.pad2'].forEach((i) => A.game.unlock(i));
     setTimeout(() => {
-      A.garden.showTree(false); A.perform.setMode('listen'); GV.sig = null;
+      A.garden.showTree(false); A.perform.setMode('sculpt'); GV.sig = null;
       if (h.includes('grow')) { GV.growAt(null); A.game.s.nodes = A.game.s.nodes.filter((n) => n !== 'c.seq'); GV.sig = null; setTimeout(() => { A.game.s.nodes.push('c.seq'); GV.sig = null; }, 200); setInterval(() => { if (GV.grow.seq) GV.grow.seq.start = GV.clock() - 0.45; }, 16); }
       const deg = +((/sky=(\d)/.exec(h) || [])[1] || 0);
       setInterval(() => { if (!GV.replay) A.bus.emit('chord', { time: 0, deg }); GV.skyT = -99; }, 120);
@@ -222,7 +224,7 @@ document.getElementById('f').addEventListener('load', () => {
     const GV = A.gardenVisual; A.garden.showTree(false); A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none';
     ['m.bells', 'h.key', 'm.grains', 'c.seq', 'c.rythme', 'e.texture'].forEach((i) => A.game.unlock(i));
     setTimeout(() => {
-      A.garden.showTree(false); A.perform.setMode('listen'); GV.sig = null; GV.grow = {};
+      A.garden.showTree(false); A.perform.setMode('sculpt'); GV.sig = null; GV.grow = {};
       setInterval(() => A.visual.draw(), 40); // headless captures barely run requestAnimationFrame: draw on a timer
       const T = A.theory, S = A.seq, dm = (d, o) => T.degreeToMidi(d, S.root, S.scale, o); let id = 900, k = 0;
       A.bus.emit('live', { midi: dm(6, 5), time: GV.clock(), vel: 0.9, raw: 0.9, id: 1 }); // held all along

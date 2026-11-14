@@ -460,6 +460,22 @@
       });
     },
 
+    // ---- S9.1 ONE press, whatever the input (pointer, finger, a keyboard shortcut, MIDI): sinks while held (css
+    // .is-pressed), springs back with sparks when let go. tap() = a shortcut that presses and lets go at once.
+    press(el, down) {
+      if (!el || !el.isConnected) return false;
+      if (down) { this.unpop(el, 'is-released'); el.classList.add('is-pressed'); return true; }
+      el.classList.remove('is-pressed');
+      this.pop(el, 'is-released', { ms: this.ms('slow') + 40 });
+      if (!el.classList.contains('knob') && el.offsetWidth) this.burst(el, { n: el.matches(SPARKY) ? 16 : 10 }); // let go: it sparks (toggles, chips: more)
+      return true;
+    },
+    tap(el) {
+      if (!el || !el.isConnected || !el.offsetWidth || el.closest('.is-locked')) return false;
+      this.press(el, true); setTimeout(() => this.press(el, false), Math.max(60, this.ms('fast')));
+      return true;
+    },
+
     // ---- base controls, once (global listeners only)
     installed: false,
     init() {
@@ -472,14 +488,12 @@
       const up = () => {
         clearTimeout(safety); if (!held) return;
         const e = held; held = null;
-        e.classList.remove('is-pressed');
-        this.pop(e, 'is-released', { ms: this.ms('slow') + 40 });
-        if (!e.classList.contains('knob') && e.isConnected) this.burst(e, { n: e.matches(SPARKY) ? 16 : 10 }); // let go: it sparks (toggles, chips: more)
+        this.press(e, false);
       };
       document.addEventListener('pointerdown', (ev) => {
         const t = ev.target && ev.target.closest && ev.target.closest(PRESS);
-        if (!t || t.disabled) return;
-        up(); held = t; this.unpop(t, 'is-released'); t.classList.add('is-pressed');
+        if (!t || t.disabled || t.matches('.pad')) return; // (the keys strike themselves: play.js strike, any input)
+        up(); held = t; this.press(t, true);
         if (!t.classList.contains('knob')) safety = setTimeout(up, 1500); // a native list (select) may swallow the release
       }, true);
       ['pointerup', 'pointercancel'].forEach((k) => window.addEventListener(k, up, true));

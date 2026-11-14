@@ -41,11 +41,11 @@ f.addEventListener('load', async () => {
 
     // --- 7. at 19 nodes the bar grows: the pads stay in sight (they stick to the bottom of the window)
     ['m.bells', 'h.pad', 't.son', 't.viz', 't.journal', 't.rec', 't.share', 'h.key', 'h.drone', 'h.pad2', 'e.reverb', 'e.salle', 'e.echo', 'm.tempo', 'm.phrase', 't.macros', 't.dice', 'm.grains'].forEach((i) => G.unlock(i));
-    for (let t = 0; t < 60 && Gd.seq; t++) await wait(40); Gd.showTree(false); A.perform.setMode('listen'); w.scrollTo(0, 0); await wait(80);
+    for (let t = 0; t < 60 && Gd.seq; t++) await wait(40); Gd.showTree(false); A.perform.setMode('sculpt'); w.scrollTo(0, 0); await wait(80);
     const pr = d.getElementById('pads').getBoundingClientRect();
     const hit = d.elementFromPoint(pr.left + pr.width / 2, pr.top + pr.height / 4); // S8.3: the pads float over the city, at the bottom of the window
-    ok(G.s.nodes.length === 19 && !!hit && !!hit.closest('#pads') && pr.top < w.innerHeight - 100 && pr.bottom <= w.innerHeight + 8, // (a party's hop may lift them a few px)
-        'S5.7 : 19 nœuds à 390 px, les pastilles restent visibles (' + Math.round(pr.top) + '–' + Math.round(pr.bottom) + ' / ' + w.innerHeight + ')');
+    ok(G.s.nodes.length === 19 && !!hit && !!hit.closest('#pads') && pr.height >= 44 && pr.top < w.innerHeight - 44 && pr.bottom <= w.innerHeight + 8, // (a party's hop may lift them a few px)
+        'S5.7 : 19 nœuds à 390 px, les touches restent visibles (' + Math.round(pr.top) + '–' + Math.round(pr.bottom) + ' / ' + w.innerHeight + ')');
 
     // --- 1. an ask only when the LCD is seen (an opening scrolls to what it opened)
     // S6.7: the rule stays (an ask waits for a visible LCD); S8.3: the LCD never leaves the window: the page does not scroll, the panels scroll inside their drawer
@@ -56,7 +56,7 @@ f.addEventListener('load', async () => {
       dr.scrollTop = 0;
       lcd.style.display = 'none'; const hid = D.seen(); lcd.style.display = '';
       ok(!hid, 'la règle reste : un LCD invisible → aucune demande'); }
-    A.perform.setMode('listen');
+    A.perform.setMode('sculpt');
 
     // --- 2. the countdown: « prêt ? », 3, 2, 1, « MAINTENANT ! » on the 1 (never « sur le 1 » in the texts)
     { const SD = 0.25, BEAT = 1; let now = 100; const n0 = D.now; D.now = () => now;
@@ -152,7 +152,7 @@ f.addEventListener('load', async () => {
     { G.reset(); await wait(30); G.ready('m.bells'); await wait(30); Gd.showTree(true); Gd.select('h.pad'); await wait(30);
       const t = d.querySelector('#treeDlg .tree-info').textContent; Gd.showTree(false);
       G.reset(); await wait(30); Gd.showTree(true); Gd.select('h.pad'); await wait(30); const t2 = d.querySelector('#treeDlg .tree-info').textContent; Gd.showTree(false);
-      ok(/Pour l'ouvrir : Ouvre d'abord tes nœuds prêts \(1\)/.test(t) && !/Joue 6 notes/.test(t) && /Pour l'ouvrir : ◇ Joue 6 notes/.test(t2), 'S6.7 fiche de l\'Arbre : un nœud prêt → « Ouvre d\'abord tes nœuds prêts (1) » ; sinon le défi (« ' + t2.replace(/.*Pour l'ouvrir : /, '').slice(0, 40) + ' »)'); }
+      ok(/Pour l'ouvrir : Ouvre d'abord ce qui est prêt \(1\)/.test(t) && !/Joue 6 notes/.test(t) && /Pour l'ouvrir : ◇ Joue 6 notes/.test(t2), 'S6.7 fiche de l\'Arbre : un nœud prêt → « Ouvre d\'abord ce qui est prêt (1) » ; sinon le défi (« ' + t2.replace(/.*Pour l'ouvrir : /, '').slice(0, 40) + ' »)'); }
 
     // 1. « Enregistre ton morceau » with the bar's ● Rec: the take ends the path (kept for the finale, no download)
     { G.reset(); await wait(30); Gd.END_MS = 30000; // (the finale itself is tested by gameui-end)

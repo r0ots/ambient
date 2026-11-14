@@ -34,11 +34,11 @@
   const DEFS = [
     // Tronc
     // S5.7: the first challenge is a note (a pad, a key or a MIDI keyboard: they all play from the Graine)
-    C('k.note', ['racine'], 'Joue une note{ (pastille, touche A à L ou MIDI)| : touche une pastille}', 1, {
+    C('k.note', ['racine'], 'Joue une note{ (touche à l\'écran, A à L ou MIDI)| : appuie sur une touche}', 1, {
       note(st) { st.n = 1; },
-    }, '{Touche une pastille sous l\'écran, une touche de A à L ou ton clavier MIDI : le son démarre.|Touche une pastille de couleur sous l\'écran : le son démarre.}'),
+    }, '{Appuie sur une touche de couleur sous l\'écran, sur une lettre de A à L ou sur ton clavier MIDI : le son démarre.|Appuie sur une touche de couleur sous l\'écran : le son démarre.}'),
     Dm('k.couleur', ['racine'], 'Tourne la lumière du drone sur MAINTENANT', { how: 'hit', param: 'drone.tone', src: ['user', 'cc'] },
-      ON1 + 'Sculpter > Drone > Lumière{ (ou la molette CC74 du clavier MIDI)|} : le son s\'ouvre et se ferme.'),
+      ON1 + 'Sculpter > Drone > Lumière{ (ou le bouton CC74 de ton clavier MIDI)|} : le son s\'ouvre et se ferme.'),
     Dm('k.timbre', ['t.son'], 'Change le son du drone sur MAINTENANT', { how: 'hit', param: 'drone.wave' },
       ON1 + 'Sculpter > Drone > Timbre : choisis-en un autre.'),
     Dm('k.moments', ['t.journal'], 'Garde ce moment (♥) sur MAINTENANT', { how: 'hit', act: 'keep' },
@@ -47,40 +47,40 @@
       rec(st, secs) { if (secs >= 30) st.n = 1; }, // real duration of the finished recording
     }, '● Rec, joue au moins 30 s, puis ● Rec à nouveau pour arrêter (ou choisis une durée fixe dans ▾).'),
     Dm('k.macros', ['t.macros'], 'Tourne un grand réglage avant la fin de la mesure', { how: 'by', param: 'macro.*', src: ['user', 'sync'] },
-      BY + 'Écouter : Lumière, Densité, Espace, Nostalgie ou Nature.'),
+      BY + 'Sculpter > Grands réglages : Lumière, Densité, Espace, Nostalgie ou Nature.'),
 
     // Harmonie
-    C('h.forcer', ['h.pad'], 'Force 3 accords ({Z à M, ou appui long sur une pastille|appui long sur une pastille})', 3, {
+    C('h.forcer', ['h.pad'], 'Joue 3 accords ({Z à M, ou garde le doigt sur une touche|garde le doigt sur une touche})', 3, {
       act(st, id) { if (id === 'chord' && gesture(st, 'chord', 600)) st.n = (st.n || 0) + 1; },
-    }, '{Pendant la lecture, les touches Z, X, C, V, B, N, M jouent les accords I à VII ; au doigt, un appui long sur une pastille force l\'accord de son degré (au clavier MIDI : les notes graves).|Pendant la lecture, garde le doigt appuyé sur une pastille : elle joue tout un accord.}'),
+    }, '{Pendant la lecture, les lettres Z, X, C, V, B, N, M jouent les accords I à VII ; au doigt, garde une touche appuyée : elle joue tout son accord (au clavier MIDI : les notes graves).|Pendant la lecture, garde le doigt appuyé sur une touche : elle joue tout un accord.}'),
     Dm('h.son', ['h.pad'], 'Change le son du Pad sur MAINTENANT', { how: 'hit', param: 'pad.wave' },
       ON1 + 'Sculpter > Pad > Timbre : choisis-en un autre.'),
     Dm('h.suivre', ['h.drone'], 'Fais suivre les accords au drone sur MAINTENANT', { how: 'hit', param: 'drone.follow', v: (v) => !!v },
       ON1 + 'Sculpter > Drone > Suit accords : écoute ensuite le drone changer de note avec les accords.'),
-    Dm('h.tonalite', ['h.key'], 'Module : change de tonalité sur MAINTENANT', { how: 'hit', param: 'global.key' },
+    Dm('h.tonalite', ['h.key'], 'Change de tonalité sur MAINTENANT', { how: 'hit', param: 'global.key' },
       ON1 + 'Sculpter > Global > Tonalité : tout le paysage monte ou descend.'),
 
     // Effets
     Dm('e.resonne', ['e.reverb'], 'Ouvre l\'espace (Reverb au-dessus de 60) avant la fin de la mesure', { how: 'by', param: 'fx.space', v: (v) => v >= 0.6 },
-      BY + 'Sculpter > Effets > Reverb au-dessus de 60 : les notes se prolongent.'),
+      BY + 'Sculpter > Effets > Reverb au-dessus de 60 : les notes résonnent plus longtemps.'),
     C('m.respire', ['e.reverb', 'm.bells'], 'Laisse respirer : 3 notes, une seconde et demie entre chacune', 3, run((p, n) => n.time - p.time >= 1.5 && n.time - p.time <= 6),
       'Joue une note, laisse-la s\'éteindre dans l\'espace (au moins une seconde et demie), puis la suivante : trois fois.'),
-    Dm('e.noyer', ['e.reverb', 'h.pad'], 'Noie le Pad (Distance au-dessus de 70) avant la fin de la mesure', { how: 'by', param: 'pad.send', v: (v) => v >= 0.7 },
+    Dm('e.noyer', ['e.reverb', 'h.pad'], 'Éloigne le Pad (Distance au-dessus de 70) avant la fin de la mesure', { how: 'by', param: 'pad.send', v: (v) => v >= 0.7 },
       BY + 'Sculpter > Pad > Distance au-dessus de 70 : ses accords flottent dans la salle.'),
     Dm('e.grande', ['e.salle'], 'Agrandis la salle (Taille au-dessus de 80) avant la fin de la mesure', { how: 'by', param: 'fx.size', v: (v) => v >= 0.8 },
       BY + 'Sculpter > Effets > Taille au-dessus de 80.'),
     C('e.echo', ['e.echo', 'm.bells'], 'Joue 4 notes dans l\'écho', 4, {
       note(st) { if (store.get('fx.echo') >= 0.4) st.n = (st.n || 0) + 1; },
-    }, 'Monte l\'Écho au-dessus de 40 (Sculpter > Effets), puis joue des notes (pastilles{, A à L ou MIDI|}) et écoute-les se répéter.'),
+    }, 'Monte l\'Écho au-dessus de 40 (Sculpter > Effets), puis joue des notes (touches à l\'écran{, A à L ou MIDI|}) et écoute-les se répéter.'),
 
     // Mouvement
-    C('m.notes', ['m.bells'], 'Joue 6 notes (pastilles{, A à L ou MIDI|})', 6, {
+    C('m.notes', ['m.bells'], 'Joue 6 notes (touches à l\'écran{, A à L ou MIDI|})', 6, {
       note(st) { st.n = (st.n || 0) + 1; },
-    }, '{Les pastilles sous l\'écran ou les touches A à L jouent la gamme (Q à P une octave au-dessus), ou ton clavier MIDI.|Les pastilles de couleur sous l\'écran jouent la gamme : touche-les une par une.}'),
+    }, '{Les touches de couleur sous l\'écran ou les lettres A à L jouent la gamme (Q à P une octave au-dessus), ou ton clavier MIDI.|Les touches de couleur sous l\'écran jouent la gamme : appuie dessus une par une.}'),
     C('m.monte', ['m.bells'], 'Joue 4 notes qui montent', 4, run((p, n) => n.midi > p.midi),
-      'Quatre notes de suite, chacune plus aiguë que la précédente : des pastilles violettes (les plus graves) vers les orange (les plus aiguës){, ou A, S, D, F|}.'),
+      'Quatre notes de suite, chacune plus aiguë que la précédente : des touches violettes (les plus graves) vers les orange (les plus aiguës){, ou A, S, D, F|}.'),
     C('m.descend', ['m.bells'], 'Joue 4 notes qui descendent', 4, run((p, n) => n.midi < p.midi),
-      'Quatre notes de suite, chacune plus grave que la précédente : des pastilles orange (les plus aiguës) vers les violettes (les plus graves){, ou L, K, J, H|}.'),
+      'Quatre notes de suite, chacune plus grave que la précédente : des touches orange (les plus aiguës) vers les violettes (les plus graves){, ou L, K, J, H|}.'),
     C('m.pas', ['m.bells'], 'Marche : 4 notes régulières, comme des pas', 4, {
       note(st, n) { // each gap 0.25–1.5 s and within a quarter of the previous one: a steady walk
         const g = st.p ? n.time - st.p.time : null, fine = g != null && g >= 0.25 && g <= 1.5;
@@ -93,22 +93,22 @@
     Dm('m.phrase', ['m.phrase'], 'Passe la Mélodie auto en Phrase sur MAINTENANT', { how: 'hit', param: 'bells.mode', v: (v) => v === 'Phrase' },
       ON1 + 'Sculpter > Mélodie auto > Jeu : Phrase. Le motif se répète et varie un peu à chaque tour.'),
     Dm('m.nuage', ['m.grains'], 'Épaissis les grains (Densité au-dessus de 60) avant la fin de la mesure', { how: 'by', param: 'grains.density', src: ['user', 'macro', 'cc'], v: (v) => v >= 0.6 },
-      BY + 'Sculpter > Grains > Densité au-dessus de 60 (ou Densité dans Écouter{, ou la molette de modulation MIDI|}).'),
+      BY + 'Sculpter > Grains > Densité au-dessus de 60 (ou Sculpter > Grands réglages > Densité{, ou la molette de modulation MIDI|}).'),
     Dm('m.figer', ['m.grains2'], 'Fige le son sur MAINTENANT (❄{ ou Entrée|})', { how: 'hit', act: 'freeze' },
       ON1 + '❄ Figer{ (ou Entrée)|} capture les 4 dernières secondes : les grains les rejouent.'),
 
     // Composer (S3.5: played, not drawn — the notes, the groove and the song come from playing them)
     C('c.reclive', ['c.seq'], 'Enregistre 6 notes en Rec live', 6, {
       note(st) { const r = AMB.pianoRoll && AMB.pianoRoll.roll; if (r && r.recording) st.n = (st.n || 0) + 1; },
-    }, 'Composer > Mélodie écrite > ● Rec live, puis joue sur les pastilles{, au clavier (A à L) ou au clavier MIDI|} : tes notes s\'écrivent dans le piano roll.'),
-    C('c.groove', ['c.rythme'], 'Change ta ligne de basse, puis fais tourner le groove 4 mesures', 4, {
+    }, 'Composer > Mélodie écrite > ● Rec live, puis joue sur les touches{ (à l\'écran, A à L ou MIDI)|} : tes notes s\'écrivent dans le piano roll.'),
+    C('c.groove', ['c.rythme'], 'Change ta ligne de basse, puis laisse-la jouer 4 mesures', 4, {
       param(st, k, v, src) { if (k === 'bass.pattern' && src === 'user') st.on = 1; },
       bass(st) { // one count per bar where the bass plays, once the player has made the line his own
         const S = AMB.seq; if (!st.on || !playing() || !S) return;
         const bar = Math.floor((S.step - (S.origin || 0)) / 16);
         if (bar !== st.bar) { st.bar = bar; st.n = (st.n || 0) + 1; }
       },
-    }, 'Composer > Basse : allume ou éteins des pas de la grille, puis laisse jouer 4 mesures avec les pulsations.'),
+    }, 'Composer > Basse : allume ou éteins des cases de la grille, puis laisse jouer 4 mesures.'),
     // the path's last challenge (`first`): proposed once the whole tree is open (S5.7); it opens no node, it ends the path
     // S6.7: the bar's ● Rec counts too (a child could not find Composer > Morceau > + Section ×2 > ● Rec): a take of 3 s
     // or more, stopped by ■; rec.js then hands its WAV to the finale instead of downloading it
@@ -146,7 +146,7 @@
   for (const d of DEFS) if (d.kind === 'reponse') {
     d.d = Math.max(0, Math.min(1, (depth(d.node) - 3) / 3));
     const n = 3 + Math.round(d.d * 3); // AMB.puzzles.respLen
-    d.hint = `Pendant la lecture, l'enseigne Mélodie auto s'allume et l'écran dit « ↺ À toi » : rejoue la phrase juste après (pastilles{, A à L ou MIDI|}). ${n} notes justes ouvrent la suite.`;
+    d.hint = `Pendant la lecture, l'enseigne Mélodie auto s'allume et l'écran dit « ↺ À toi » : rejoue la phrase juste après (touches à l\'écran{, A à L ou MIDI|}). ${n} notes justes ouvrent la suite.`;
   }
 
   const contracts = {

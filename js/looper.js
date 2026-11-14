@@ -249,9 +249,9 @@
       row.className = 'looper';
       row.innerHTML = `<span class="loop-label">Boucles</span>
         <select class="loop-len" aria-label="Longueur de la boucle">${LENS.map((b) => `<option value="${b}">${b} mes.</option>`).join('')}</select>
-        <button class="btn small rec-btn" data-l="rec" title="Touche 0 · CC 80 : décompte jusqu'au prochain 1, enregistre ce que tu joues (pastilles, clavier, MIDI) sur la longueur choisie, puis le rejoue en boucle">● Boucle</button>
-        <button class="btn small" data-l="dub" title="Touche 9 · CC 81 : ajoute ce que tu joues à la dernière couche, tour après tour, jusqu'au prochain appui">⊕ Overdub</button>
-        <button class="btn small" data-l="keep" title="Garde les dernières mesures que tu viens de jouer (sans avoir appuyé sur ●) comme nouvelle couche ; sans note jouée, celles de la Mélodie auto">⤓ Garder</button>
+        <button class="btn small rec-btn" data-l="rec" title="Touche 0 · CC 80 : décompte jusqu'au prochain 1, enregistre ce que tu joues (touches, clavier, MIDI) sur la longueur choisie, puis le rejoue en boucle">● Boucle</button>
+        <button class="btn small" data-l="dub" title="Touche 9 · CC 81 : ajoute ce que tu joues à la dernière boucle, tour après tour, jusqu'au prochain appui">⊕ Overdub</button>
+        <button class="btn small" data-l="keep" title="Garde les dernières mesures que tu viens de jouer (sans avoir appuyé sur ●) comme nouvelle boucle ; sans note jouée, celles de la Mélodie auto">⤓ Garder</button>
         <button class="btn small" data-l="undo" title="Annuler la dernière prise" aria-label="Annuler la dernière prise">↶</button>
         <label class="btn small" title="Rapproche légèrement chaque note de la double croche la plus proche"><input type="checkbox" data-l="q"> Caler</label>
         <span class="loop-chips" aria-label="Couches de boucle"></span>`;
@@ -296,7 +296,7 @@
       const fill = () => { this.chips.innerHTML = ls.map((l, i) => {
         const notes = l.notes.filter((n) => n.c == null).length, ch = l.notes.length - notes;
         const what = [notes && `${notes} ♪`, ch && `${ch} acc.`].filter(Boolean).join(' ') || 'vide';
-        return `<span class="loop-chip${l.mute ? ' mute' : ''}${l === cur ? ' rec' : ''}" data-k="${keyOf(l)}"><button data-k="${i}" aria-pressed="${!l.mute}" title="${l.mute ? 'Remettre' : 'Couper'} la couche ${i + 1}"><b>${i + 1}</b> ${l.bars} mes. · ${what}</button><button data-x="${i}" title="Effacer la couche ${i + 1}" aria-label="Effacer la couche ${i + 1}">✕</button></span>`;
+        return `<span class="loop-chip${l.mute ? ' mute' : ''}${l === cur ? ' rec' : ''}" data-k="${keyOf(l)}"><button data-k="${i}" aria-pressed="${!l.mute}" title="${l.mute ? 'Remettre' : 'Couper'} la boucle ${i + 1}"><b>${i + 1}</b> ${l.bars} mes. · ${what}</button><button data-x="${i}" title="Effacer la couche ${i + 1}" aria-label="Effacer la couche ${i + 1}">✕</button></span>`;
       }).join('') || '<span class="loop-empty">Joue, puis ● ou ⤓</span>'; };
       if (seen) m.flip(this.chips, fill, { key: (el) => el.dataset.k || el.className }); else fill();
       if (cur) this.row.style.setProperty('--beat-ph', AMB.seq.beatPhase()); // the take pulses red on the beat heard
@@ -350,6 +350,7 @@
     if (e.code !== 'Digit0' && e.code !== 'Digit9') return;
     if (!AMB.engine.ctx || (AMB.tree && !AMB.tree.uiUnlocked('song'))) return;
     e.preventDefault();
+    if (AMB.motion) AMB.motion.tap(document.querySelector(`.seqrow [data-l="${e.code === 'Digit0' ? 'rec' : 'dub'}"]`)); // (the same press as a click)
     if (e.code === 'Digit0') looper.rec(); else looper.dub();
   });
 

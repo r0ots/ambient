@@ -41,11 +41,11 @@
       params: {
         on: { label: 'On', type: 'toggle', def: true },
         wave: { label: 'Timbre', hint: 'Timbre de la note tenue de fond.', type: 'select', options: ['Chaud', 'Creux', 'Orgue', 'Sub', 'Abîmé'], def: 'Chaud' },
-        vol: { label: 'Niveau', hint: 'Volume de la couche.', min: 0, max: 1, def: 0.5 },
+        vol: { label: 'Niveau', hint: 'Volume de ce son.', min: 0, max: 1, def: 0.5 },
         tone: { label: 'Lumière', hint: 'Sombre ↔ brillant.', min: 0, max: 1, def: 0.35, evolve: true },
         motion: { label: 'Mouvement', hint: 'Lent mouvement du filtre, du volume et de la position stéréo.', min: 0, max: 1, def: 0.4, evolve: true },
         follow: { label: 'Suit accords', hint: 'La note de fond change avec les accords (sinon elle reste sur la tonalité).', type: 'toggle', def: true },
-        send: { label: 'Distance', hint: 'Proche et sec ↔ lointain : part de cette couche envoyée dans la réverbération et l\'écho.', min: 0, max: 1, def: 0.5 },
+        send: { label: 'Distance', hint: 'Proche ↔ lointain : la part de ce son qui part dans la réverbération et l\'écho.', min: 0, max: 1, def: 0.5 },
       },
     },
     pad: {
@@ -54,7 +54,7 @@
       params: {
         on: { label: 'On', type: 'toggle', def: true },
         wave: { label: 'Timbre', hint: 'Timbre des accords tenus.', type: 'select', options: ['Nappe', 'Verre', 'Chœur', 'Cordes', 'Onde', 'FM', 'Cuivres', 'Cendre'], def: 'Nappe' },
-        vol: { label: 'Niveau', hint: 'Volume de la couche.', min: 0, max: 1, def: 0.55 },
+        vol: { label: 'Niveau', hint: 'Volume de ce son.', min: 0, max: 1, def: 0.55 },
         tone: { label: 'Lumière', hint: 'Sombre ↔ brillant.', min: 0, max: 1, def: 0.4, evolve: true },
         attack: { label: 'Attaque', hint: 'Les accords arrivent doucement (haut) ou directement (bas).', min: 0, max: 1, def: 0.6 },
         length: { label: 'Durée accord', hint: 'Combien de mesures dure chaque accord.', min: 1, max: 8, def: 4, step: 1, unit: 'mes.' },
@@ -62,7 +62,7 @@
         custom: { label: 'Degrés perso', hidden: true, hint: 'Suite de degrés 1–7 (ex. 1 6 4 5). Plus simple : Composer > Progression.', type: 'text', def: '1 6 4 5', placeholder: 'ex. 1 6 4 5' },
         voicing: { label: 'Accords riches', hint: 'Accords à 3 notes (bas) jusqu\'à 5 notes ouvertes (haut).', min: 0, max: 1, def: 0.5, evolve: true },
         counter: { label: 'Voix intérieure', hint: 'Une voix lente qui tient des notes de l\'accord et avance pas à pas.', min: 0, max: 1, def: 0.25, evolve: true },
-        send: { label: 'Distance', hint: 'Proche et sec ↔ lointain : part de cette couche envoyée dans la réverbération et l\'écho.', min: 0, max: 1, def: 0.7 },
+        send: { label: 'Distance', hint: 'Proche ↔ lointain : la part de ce son qui part dans la réverbération et l\'écho.', min: 0, max: 1, def: 0.7 },
       },
     },
     bells: {
@@ -71,7 +71,7 @@
       params: {
         on: { label: 'On', type: 'toggle', def: true },
         wave: { label: 'Timbre', hint: 'Timbre des notes de mélodie.', type: 'select', options: ['Cloche', 'Kalimba', 'Verre', 'Pluck', 'Doux', 'Lame'], def: 'Kalimba' },
-        vol: { label: 'Niveau', hint: 'Volume de la couche.', min: 0, max: 1, def: 0.45 },
+        vol: { label: 'Niveau', hint: 'Volume de ce son.', min: 0, max: 1, def: 0.45 },
         mode: { label: 'Jeu', hint: 'Aléatoire : improvise. Phrase : répète un motif qui varie lentement.', type: 'select', options: ['Aléatoire', 'Phrase'], def: 'Aléatoire' },
         phraseLen: { label: 'Phrase', hint: 'Longueur du motif répété en mode Phrase.', type: 'select', options: ['1 mes.', '2 mes.', '4 mes.'], def: '2 mes.' },
         density: { label: 'Densité', hint: 'Nombre de notes jouées.', min: 0, max: 1, def: 0.3, evolve: true },
@@ -79,7 +79,7 @@
         tone: { label: 'Lumière', hint: 'Sombre ↔ brillant.', min: 0, max: 1, def: 0.5, evolve: true },
         decay: { label: 'Résonance', hint: 'Durée pendant laquelle chaque note résonne.', min: 0, max: 1, def: 0.5 },
         range: { label: 'Registre', hint: 'Grave ↔ aigu.', min: 0, max: 1, def: 0.5 },
-        send: { label: 'Distance', hint: 'Proche et sec ↔ lointain : part de cette couche envoyée dans la réverbération et l\'écho.', min: 0, max: 1, def: 0.75 },
+        send: { label: 'Distance', hint: 'Proche ↔ lointain : la part de ce son qui part dans la réverbération et l\'écho.', min: 0, max: 1, def: 0.75 },
       },
     },
     seq: {
@@ -100,7 +100,7 @@
         decay: { label: 'Résonance', min: 0, max: 1, def: 0.45 },
         swing: { label: 'Swing +', hint: 'Swing en plus du swing général, pour cette piste seulement.', min: 0, max: 1, def: 0 },
         mutate: { label: 'Variation', hint: 'Le motif change un peu à chaque tour (↺ Original pour revenir).', min: 0, max: 1, def: 0 },
-        send: { label: 'Distance', hint: 'Proche et sec ↔ lointain : part de cette couche envoyée dans la réverbération et l\'écho.', min: 0, max: 1, def: 0.6 },
+        send: { label: 'Distance', hint: 'Proche ↔ lointain : la part de ce son qui part dans la réverbération et l\'écho.', min: 0, max: 1, def: 0.6 },
         // notes as "step.row.len" (base36), comma separated; part of the patch so presets/links/undo include it
         pattern: { label: 'Motif', type: 'text', def: '', maxLen: 4000, hidden: true },
         // pattern chain: slots A–D (A is `pattern` for backward compatibility)
@@ -121,7 +121,7 @@
         tone: { label: 'Lumière', min: 0, max: 1, def: 0.3 },
         decay: { label: 'Tenue', hint: 'Notes courtes ↔ notes liées.', min: 0, max: 1, def: 0.6 },
         octave: { label: 'Octave', type: 'select', options: ['-1', '0', '+1'], def: '0' },
-        send: { label: 'Distance', hint: 'Proche et sec ↔ lointain : part de cette couche envoyée dans la réverbération et l\'écho.', min: 0, max: 1, def: 0.15 },
+        send: { label: 'Distance', hint: 'Proche ↔ lointain : la part de ce son qui part dans la réverbération et l\'écho.', min: 0, max: 1, def: 0.15 },
         // 4 rows (fondamentale, quinte, octave, approche) × 16 steps, "1"/"0" per step
         pattern: { label: 'Motif', type: 'text', def: '1000000010000000.0000000000001000.0000000000000000.0000000000000000', maxLen: 80, hidden: true },
       },
@@ -135,7 +135,7 @@
         prob: { label: 'Présence', hint: 'Chance que chaque coup soit joué : moins = plus aéré et imprévisible.', min: 0, max: 1, def: 0.85, evolve: true },
         tone: { label: 'Lumière', min: 0, max: 1, def: 0.4 },
         swing: { label: 'Swing +', hint: 'Swing en plus du swing général, pour cette piste seulement.', min: 0, max: 1, def: 0 },
-        send: { label: 'Distance', hint: 'Proche et sec ↔ lointain : part de cette couche envoyée dans la réverbération et l\'écho.', min: 0, max: 1, def: 0.35 },
+        send: { label: 'Distance', hint: 'Proche ↔ lointain : la part de ce son qui part dans la réverbération et l\'écho.', min: 0, max: 1, def: 0.35 },
         kit: { label: 'Kit', hint: 'Feutré : sons doux électroniques. Organique : tambour, bâton de pluie, gouttes, kalimba. Métal : impact, ferraille, tôle, cloche de fer.', type: 'select', options: ['Feutré', 'Organique', 'Métal'], def: 'Feutré' },
         steps: { label: 'Pas', type: 'select', options: ['16', '32'], def: '16' },
         // 4 tracks "kick.shaker.wood.bell"; each a string of levels 0–3 per step (legacy: 4-char hex bitmask)
@@ -156,7 +156,7 @@
         pitch: { label: 'Hauteurs', hint: 'Hauteurs des grains : notes de l\'accord, octaves, ou libres.', type: 'select', options: ['Accord', 'Octaves', 'Libre'], def: 'Accord' },
         reverse: { label: 'À l\'envers', hint: 'Proportion de grains joués à l\'envers.', min: 0, max: 1, def: 0.15 },
         glide: { label: 'Glissando', hint: 'Les grains glissent vers leur note.', min: 0, max: 1, def: 0, evolve: true },
-        send: { label: 'Distance', hint: 'Proche et sec ↔ lointain : part de cette couche envoyée dans la réverbération et l\'écho.', min: 0, max: 1, def: 0.8 },
+        send: { label: 'Distance', hint: 'Proche ↔ lointain : la part de ce son qui part dans la réverbération et l\'écho.', min: 0, max: 1, def: 0.8 },
       },
     },
     texture: {
@@ -168,7 +168,7 @@
         vol: { label: 'Niveau', min: 0, max: 1, def: 0.25 },
         tone: { label: 'Lumière', hint: 'Étouffé ↔ clair.', min: 0, max: 1, def: 0.5 },
         motion: { label: 'Mouvement', hint: 'Variations lentes de volume, de filtre et de stéréo.', min: 0, max: 1, def: 0.5 },
-        send: { label: 'Distance', hint: 'Proche et sec ↔ lointain : part de cette couche envoyée dans la réverbération et l\'écho.', min: 0, max: 1, def: 0.3 },
+        send: { label: 'Distance', hint: 'Proche ↔ lointain : la part de ce son qui part dans la réverbération et l\'écho.', min: 0, max: 1, def: 0.3 },
       },
     },
   };

@@ -6,7 +6,7 @@
   const SVGNS = 'http://www.w3.org/2000/svg';
   // fan order, left to right: the trunk in the middle, Composer between its two parents
   const FAN = ['espace', 'harmonie', 'tronc', 'composer', 'mouvement'];
-  const STATE_TXT = { owned: 'ouvert', ready: 'prêt', available: 'peut s\'ouvrir', locked: 'fermé' };
+  const STATE_TXT = { owned: 'ouvert', ready: 'prêt', available: 'à ouvrir', locked: 'encore dans le noir' };
   const L = { W: 1220, ROW: 98, TOP: 60, BOT: 66, MIN: 94, GAP: 94, A: 46, B: 50, M: 50 };
   const SEQ = { link: 380, end: 1700, reduced: 650 }; // unlock sequence timing (ms; S4.6: a bit longer, to see it)
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -136,8 +136,9 @@
     renderTree() {
       const map = $('#treeDlg .tree-map'); if (!map) return;
       const T = AMB.tree, g = AMB.game;
-      const cnt = $('#treeDlg .tree-count'), rdy = $('#treeDlg .tree-ready'), nr = T.NODES.filter((n) => T.status(n.id) === 'ready').length;
-      cnt.textContent = g.s.ended ? '✦ L\'instrument est à toi' : `${T.NODES.filter((n) => g.has(n.id)).length}/${T.NODES.length}`;
+      const n = T.NODES.filter((x) => g.has(x.id)).length; // S9.1: no total, what is left is still in the dark
+      $('#treeDlg .tree-count').textContent = g.s.ended ? '✦ L\'instrument est à toi' : `${n} ouvert${n > 1 ? 's' : ''}`;
+      const cnt = $('#treeDlg .tree-count'), rdy = $('#treeDlg .tree-ready'), nr = T.NODES.filter((x) => T.status(x.id) === 'ready').length;
       cnt.classList.toggle('done', !!g.s.ended);
       if (rdy) { rdy.hidden = !nr || !!g.s.ended; rdy.textContent = `${nr} ${nr > 1 ? 'prêts' : 'prêt'}`; } // (S9.2: the neon counters)
       if (!map.querySelector('.tree-stage') || map.dataset.n !== T.NODES.length + (this.narrowTree() ? 'n' : '')) this.buildMap(map);
@@ -174,13 +175,19 @@
         const top = Math.min(...ps.map((p) => p.y)), xs = ps.filter((p) => p.y === top).map((p) => p.x);
         const t = document.createElementNS(SVGNS, 'text'), up = lay.nar && bid !== 'tronc' && (tops[top] = (tops[top] || 0) + 1) % 2 === 0 ? 26 : 0;
         t.setAttribute('class', 'tree-bname'); t.setAttribute('x', xs.reduce((a, b) => a + b, 0) / xs.length); t.setAttribute('y', top - 30 - up);
-        t.setAttribute('text-anchor', 'middle'); t.style.setProperty('--c', T.BRANCHES[bid].color); t.textContent = T.BRANCHES[bid].name;
+        t.setAttribute('text-anchor', 'middle'); t.style.setProperty('--c', T.BRANCHES[bid].color); t.textContent = T.BRANCHES[bid].name; t.dataset.b = bid;
         if (bid !== 'tronc') svg.append(t);
       }
-      const gl = document.createElementNS(SVGNS, 'g');
+      const gl = document.createElementNS(SVGNS, 'g'), defs = document.createElementNS(SVGNS, 'defs');
+      svg.append(defs);
       for (const n of T.NODES) for (const r of n.req) {
         const d = this.linkPath(lay.pos[r], lay.pos[n.id]);
         const cross = T.byId[r].branch !== n.branch;
+        // S9.1: a link towards a node still in the dark fades out from the visible end (its gradient, oriented by paintTree)
+        const lg = document.createElementNS(SVGNS, 'linearGradient');
+        lg.id = `tl-${r}-${n.id}`.replace(/\./g, '_'); lg.setAttribute('gradientUnits', 'userSpaceOnUse');
+        lg.innerHTML = `<stop offset="0" stop-color="${T.BRANCHES[n.branch].color}" stop-opacity=".9"/><stop offset=".5" stop-color="${T.BRANCHES[n.branch].color}" stop-opacity="0"/>`;
+        defs.append(lg);
         for (const glow of [false, true]) {
           const p = document.createElementNS(SVGNS, 'path');
           p.setAttribute('d', d); if (glow) p.setAttribute('pathLength', '1');
@@ -202,7 +209,7 @@
         b.style.left = p.x + 'px'; b.style.top = p.y + 'px'; b.style.setProperty('--c', T.BRANCHES[n.branch].color);
         b.innerHTML = `<i class="led" aria-hidden="true"></i><b>${n.name}</b><span></span>`;
         b.title = `${n.desc}\n\nOuvre : ${T.grantsText(n.id) || '—'}`
-          + (n.req.length ? `\nDemande : ${n.req.map((r) => T.byId[r].name).join(', ')}` : '')
+          + (n.req.length ? `\nIl faut d'abord : ${n.req.map((r) => T.byId[r].name).join(', ')}` : '')
           + this.openers(n.id).map((o) => `\n${o.text}`).join('');
         stage.append(b);
       }
@@ -220,12 +227,30 @@
         const ext = n.req.filter((r) => T.byId[r].branch !== n.branch);
         b.setAttribute('aria-label', `${n.name}, ${T.BRANCHES[n.branch].name}, ${STATE_TXT[st]}`
           + (st === 'ready' ? ', réussi : à toi de l\'ouvrir' : st !== 'owned' && op ? `, s'ouvre par : ${op.text.slice(2)}` : '')
-          + (n.req.length && st !== 'owned' ? `, demande ${n.req.map((r) => T.byId[r].name).join(', ')}` : '')
+          + (n.req.length && st !== 'owned' ? `, il faut d'abord ${n.req.map((r) => T.status(r) === 'locked' ? 'une pièce cachée' : T.byId[r].name).join(', ')}` : '')
           + (ext.length && st === 'owned' ? `, relié à ${ext.map((r) => T.byId[r].name).join(', ')}` : ''));
       });
-      map.querySelectorAll('.tree-link').forEach((p) => {
-        const st = g.has(p.dataset.to) ? 'owned' : g.has(p.dataset.from) ? 'available' : 'locked';
-        p.classList.toggle('owned', st === 'owned'); p.classList.toggle('available', st === 'available'); p.classList.toggle('locked', st === 'locked');
+      // S9.1: only what is open or can open now is drawn; a link to the dark leaves in fading dots, two dark ends: nothing
+      const seen = (id) => T.status(id) !== 'locked', lay = this.treeLayout();
+      map.querySelectorAll('.tree-link, .tree-glow').forEach((p) => {
+        const f = seen(p.dataset.from), t = seen(p.dataset.to), glow = p.classList.contains('tree-glow');
+        const st = !f && !t ? 'gone' : !f || !t ? 'dark' : g.has(p.dataset.to) ? 'owned' : 'available';
+        for (const c of ['owned', 'available', 'dark', 'gone']) p.classList.toggle(c, c === st && !(glow && c !== 'gone' && c !== 'dark'));
+        if (glow) return;
+        const id = `tl-${p.dataset.from}-${p.dataset.to}`.replace(/\./g, '_'), lg = map.querySelector('#' + id);
+        if (st === 'dark' && lg) {
+          const a = lay.pos[f ? p.dataset.from : p.dataset.to], b = lay.pos[f ? p.dataset.to : p.dataset.from];
+          lg.setAttribute('x1', a.x); lg.setAttribute('y1', a.y); lg.setAttribute('x2', b.x); lg.setAttribute('y2', b.y);
+          p.style.stroke = `url(#${id})`;
+        } else p.style.stroke = '';
+      });
+      // a branch's name shows once one of its nodes is open
+      // (S9.2: right above its highest node in sight, not at the tip of a band still in the dark)
+      map.querySelectorAll('.tree-bname').forEach((t) => {
+        t.classList.toggle('gone', !T.NODES.some((n) => n.branch === t.dataset.b && g.has(n.id)));
+        const ps = T.NODES.filter((n) => n.branch === t.dataset.b && T.status(n.id) !== 'locked').map((n) => lay.pos[n.id]).filter(Boolean); if (!ps.length) return;
+        const top = Math.min(...ps.map((q) => q.y)), xs = ps.filter((q) => q.y === top).map((q) => q.x);
+        t.setAttribute('x', xs.reduce((u, v) => u + v, 0) / xs.length); t.setAttribute('y', top - 40);
       });
       if (this.sel) this.showInfo(this.sel);
     },
@@ -301,23 +326,24 @@
       const T = AMB.tree, g = AMB.game, K = AMB.contracts, n = id && T.byId[id];
       if (!n) { box.hidden = true; box.dataset.id = ''; return; }
       const st = T.status(id), br = T.BRANCHES[n.branch], ops = st === 'owned' || st === 'ready' ? [] : this.openers(id);
-      const req = n.req.map((r) => `<span class="${g.has(r) ? 'ok' : ''}">${g.has(r) ? '✓' : '·'} ${T.byId[r].name}</span>`).join(' ');
+      const nm = (r) => (T.status(r) === 'locked' ? '???' : T.byId[r].name); // (S9.1: what is still in the dark keeps its name)
+      const req = n.req.map((r) => `<span class="${g.has(r) ? 'ok' : ''}">${g.has(r) ? '✓' : '·'} ${nm(r)}</span>`).join(' ');
       const now = ops.find((o) => o.d && K.state().active[0] === o.d.id);
       // S6.7: while nodes wait on « ✦ Ouvrir » no challenge runs (contracts.refill): its card says so, not a challenge
       // that cannot come yet
       const wait = g.path && !g.s.ended ? (g.s.ready || []).filter((r) => g.canOpen(r.id)).length : 0;
-      const opTxt = (wait && ops.some((o) => o.d) ? [`Ouvre d'abord tes nœuds prêts (${wait})`] : []).concat(ops.filter((o) => !(wait && o.d)).map((o) => o.text));
+      const opTxt = (wait && ops.some((o) => o.d) ? [`Ouvre d'abord ce qui est prêt (${wait})`] : []).concat(ops.filter((o) => !(wait && o.d)).map((o) => o.text));
       box.style.setProperty('--c', br.color);
       const fresh = box.hidden || box.dataset.id !== id; // S7.3: a new card slides in (the same one repainted does not)
       box.dataset.id = id; box.className = `tree-info st-${st}`;
       box.innerHTML = `<p class="ti-h"><b>${n.name}</b> <small>${br.name} · ${STATE_TXT[st]}</small></p>`
-        + `<p class="ti-d">${n.desc}</p>`
+        + `<p class="ti-d">${st === 'ready' ? g.txt(n.why) : n.desc}</p>`
         + `<p class="ti-g">Ouvre : ${T.grantsText(id) || '—'}</p>`
-        + (n.req.length ? `<p class="ti-r">Demande : ${req}</p>` : '')
+        + (n.req.length ? `<p class="ti-r">Il faut d'abord : ${req}</p>` : '')
         + (ops.length ? `<p class="ti-o">Pour l'ouvrir : ${opTxt.map((t) => `<span>${t}</span>`).join(' · ou ')}${now && !wait ? ' <em>(le défi en cours)</em>' : ''}</p>` : '')
         // S4.6: won, waiting for the player: the same « ✦ Ouvrir » as on the LCD (after its prerequisites, for a secret's chain)
         + (st === 'ready' ? (n.req.every((r) => g.has(r)) ? '<p class="ti-o">✓ Réussi : à toi de l\'ouvrir. <button type="button" class="btn primary small ti-open">✦ Ouvrir</button></p>'
-          : `<p class="ti-o">✓ Réussi : s'ouvre après ${n.req.filter((r) => !g.has(r)).map((r) => T.byId[r].name).join(', ')}.</p>`) : '');
+          : `<p class="ti-o">✓ Réussi : s'ouvre après ${n.req.filter((r) => !g.has(r)).map(nm).join(', ')}.</p>`) : '');
       // the card sits in the empty corner opposite to the node (the fan leaves both bottom corners free)
       const map = $('#treeDlg .tree-map'), el = map && map.querySelector(`.tree-node[data-id="${id}"]`);
       if (el && map) { const r = map.getBoundingClientRect(), e = el.getBoundingClientRect(); box.classList.toggle('right', e.left + e.width / 2 < r.left + r.width / 2); }
@@ -377,7 +403,8 @@
       map.addEventListener('focusin', (e) => { const b = e.target.closest('.tree-node'); if (!b) return; this.mark(b.dataset.id); this.showInfo(b.dataset.id); this.panToNode(b.dataset.id); });
       // click (mouse, finger or keyboard): select the node, its card says what opens it
       const info = $('#treeDlg .tree-info');
-      if (info) info.addEventListener('click', (e) => { if (e.target.closest('.ti-open')) { const id = info.dataset.id; this.showTree(false); this.ask(id); } });
+      // S9.1: ✦ Ouvrir in the Arbre opens right there (its card already says what it gives): the sequence plays on the map
+      if (info) info.addEventListener('click', (e) => { if (e.target.closest('.ti-open')) this.openNode(info.dataset.id); });
       map.addEventListener('click', (e) => {
         const b = e.target.closest('.tree-node');
         if (!b) { this.select(null); return; }
@@ -398,13 +425,12 @@
     },
 
     // ---- unlock sequence (G8.5): a challenge just opened a node ----
-    // ~1.2 s on the map: the parent→node links light up, the node is born (chime), newly reachable children blink, then the
+    // (S9.1: only when the Arbre is already open) ~1.2 s on the map: the parent→node links light up, the node is born (chime), newly reachable children blink, then the
     // tree closes and reveal() shows what opened. Reduced motion: final state + chime at once, short pause, close.
     seq: null,
     unlockSeq(id) {
       if (this.seq) this.seqFinish();
-      const dlg = $('#treeDlg');
-      if (dlg && dlg.hidden && !this.reduced) this.showTree(true);
+      const dlg = $('#treeDlg'); // S9.1: the Arbre opens by its button only; an opening elsewhere plays on the instrument
       const el = document.querySelector(`#treeDlg .tree-node[data-id="${id}"]`);
       const still = this.reduced || !el || !dlg || dlg.hidden;
       const s = (this.seq = { id, t: [], hit: false });
@@ -458,10 +484,10 @@
     },
     reveal(id) {
       const els = this.revealTargets(id), nf = AMB.tree.newFirst;
-      // the control tagged « Nouveau », else the full panel rather than the Écouter shortcuts (layer chips, macros)
-      const first = nf && els.includes(nf) ? nf : els.find((e) => !e.closest('.macros')) || els[0];
+      // the control tagged « Nouveau », else the first one
+      const first = nf && els.includes(nf) ? nf : els[0];
       if (!first) return;
-      const want = first.closest('.seqrow') ? 'compose' : first.closest('.globals, .layers, #scenes, #journal') ? 'sculpt' : first.closest('.macros') ? 'listen' : null;
+      const want = first.closest('.seqrow') ? 'compose' : first.closest('.drawer') ? 'sculpt' : null;
       if (want && AMB.mode !== want && AMB.perform) AMB.perform.setMode(want);
       try { first.scrollIntoView({ behavior: this.reduced ? 'auto' : 'smooth', block: 'center' }); } catch (e) { first.scrollIntoView(); }
     },

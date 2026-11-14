@@ -37,7 +37,7 @@ window.addEventListener('load', async ()=>{
   g.reset(); ok(g.has('racine'), 'reset en parcours rend la racine'); ok(!T.paramUnlocked('fx.echo') && T.paramUnlocked('drone.vol') && T.status('h.pad')==='available' && T.status('h.scale')==='locked', 'statuts au départ');
   ok(!('xy' in T.UI_SEL) && !T.byId.racine.ui.includes('xy') && !T.paramUnlocked('macro.light'), 'S6.2 : plus de glissé sur l\'écran dans l\'arbre ; les grands réglages restent fermés à la Graine');
   const gr=T.grantsText('c.seq'); ok(/Mélodie écrite/.test(gr) && /Piano roll/.test(gr) && !/Motif( ·|$)/.test(gr), 'ce qu\'ouvre un nœud : '+gr);
-  ok(/chaque couche/.test(T.grantsText('e.reverb')) && T.dependents('h.pad').includes('c.seq'), 'grantsText *.send, dépendants');
+  ok(/chaque son/.test(T.grantsText('e.reverb')) && T.dependents('h.pad').includes('c.seq'), 'grantsText *.send, dépendants');
   // --- S4.6 what each node gives, in plain words (the « ✦ Ouvrir » card): one table, every node but the root, short, the lexicon's words
   { const E=T.EXPLAIN, miss=ids.filter(id=>id!=='racine' && !E[id]), sentences=(t)=>t.split(/[.!?](?:\s|$)/).filter(x=>x.trim()).length;
     const bad=Object.entries(E).filter(([id,t])=>!T.byId[id] || T.byId[id].why!==t || t.length>160 || sentences(t)>2 || /débloqu|macro|preset|patch|contrat|brillance|acquis/i.test(t));
