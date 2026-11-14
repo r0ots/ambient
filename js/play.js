@@ -252,7 +252,7 @@
   const NOTE_FR = ['DO', 'DO♯', 'RÉ', 'RÉ♯', 'MI', 'FA', 'FA♯', 'SOL', 'SOL♯', 'LA', 'LA♯', 'SI'];
   function padNames() {
     const bar = document.getElementById('pads'), S = AMB.seq, T = AMB.theory; if (!bar || !S || !S.scale || !T) return;
-    [...bar.children].forEach((b, i) => { const sm = b.querySelector('small'), n = NOTE_FR[((T.degreeToMidi(i, S.root, S.scale, 4) % 12) + 12) % 12]; if (sm) sm.textContent = n; b.setAttribute('aria-label', `Note ${n}`); });
+    [...bar.children].forEach((b, i) => { const sm = b.querySelector('small'), n = NOTE_FR[((T.degreeToMidi(i, S.root, S.scale, 4) % 12) + 12) % 12]; if (sm) sm.innerHTML = n.replace(/([♯♭])/, '<i>$1</i>'); b.setAttribute('aria-label', `Note ${n}`); });
   }
   const SRC = { k: 'key', m: 'midi', p: 'mouse' };
   const machineT = new WeakMap();

@@ -158,7 +158,7 @@ f.addEventListener('load', async () => {
     { G.reset(); await wait(30); Gd.END_MS = 30000; // (the finale itself is tested by gameui-end)
       for (let k = 0; k < 40; k++) T.NODES.forEach((n) => { if (T.status(n.id) === 'available') G.unlock(n.id); });
       for (let t = 0; t < 80 && Gd.seq; t++) await wait(40); Gd.showTree(false); Gd.checkEnd();
-      const files = [], dl0 = A.rec.download; A.rec.download = (b, e) => files.push(e); d.getElementById('recFmt').value = 'wav';
+      const files = [], dl0 = A.rec.download; A.rec.download = (b, e) => files.push(e);
       const btn = d.getElementById('rec'); await A.rec.toggleRec(btn); await wait(100); const dn = w.Date.now; w.Date.now = () => dn.call(w.Date) + 4000;
       await A.rec.toggleRec(btn); w.Date.now = dn; await wait(30);
       ok(K.state().active[0] !== 'c.morceau' && G.s.contracts.includes('c.morceau') && G.s.ended && Gd.song && !files.length,

@@ -23,7 +23,7 @@ window.addEventListener('load', async () => {
     V.c = cv; V.g = cv.getContext('2d'); V.dpr = 1; V.mode = 'Jardin'; GV.visible = true;
     let T = 100, fake = 1000; GV.clock = () => T; GV.now = () => fake;
     const step = (s, dt = 0.016) => { const n = Math.max(1, Math.round(s / dt)); for (let i = 0; i < n; i++) { T += dt; fake += dt * 1000; V.draw(); } };
-    const ALL = ['racine', 't.son', 'h.drone', 'h.pad', 'h.pad2', 'h.prog', 'm.bells', 'm.phrase', 'm.grains', 'c.seq', 'c.rythme', 'e.texture', 'e.reverb'];
+    const ALL = ['racine', 't.son', 't.macros', 'h.drone', 'h.pad', 'h.pad2', 'h.prog', 'm.bells', 'm.phrase', 'm.grains', 'c.seq', 'c.rythme', 'e.texture', 'e.reverb'];
     G.setMode('path'); G.s.nodes = ALL.slice(); GV.sig = null;
     AMB.seq = { playing: true };
     // a gesture: the knob turned from its value to `to` in `dur` s (sources user, one move per frame)

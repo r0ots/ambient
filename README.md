@@ -34,7 +34,7 @@ Look : façade de synthé japonais fin 80 (version nuit), écran LCD d'état en 
 | **Jouer** | Clavier (A–L notes, même lecture arrêtée ; Z–M accords), MIDI ; dans le Parcours, 9 pastilles au doigt (appui long = accord) ; **Boucles** (panneau Morceau) : ● Boucle (touche 0, CC80) = décompte puis 1–8 mesures jouées qui tournent, ⊕ Overdub (9, CC81), « ⤓ Garder » = ce que tu viens de jouer (ou la Mélodie auto) en boucle ; 4 couches par section |
 | **Composer** | Progression d'accords en cases (I–VII), Séquenceur piano roll (vélocité, probabilité, mutation, sélection/copier-coller, motifs A–D + chaîne, arpégiateur, Rec live avec métronome, import/export MIDI), Basse en grille qui suit les accords, Pulsations (4 pistes, 16/32 pas, kits Feutré/Organique, euclidien), Automation dessinée, mode Morceau (sections nommées, chacune avec son son, ses motifs et ses accords, enchaînées sur la mesure avec fondus ; touches 1–8 ou Program Change MIDI), réglage « Humain » |
 | **Vues** | Écouter (5 grands réglages : Lumière, Densité, Espace, Nostalgie, Nature), Sculpter, Composer ; visuels Ville néon (par défaut ; toujours elle dans le Parcours), Orbes, Horizon, Spectre ; ⤢ Plein écran |
-| **Garder** | Paysages prêts + ✦ Nouveau paysage par humeur, Mes paysages (sauver, exporter, importer), journal des moments, ⌘Z/⇧⌘Z, partage par lien, Rec WAV/compressé à durée fixe, minuteur de sommeil |
+| **Garder** | Paysages prêts + ✦ Nouveau paysage par humeur, Mes paysages (sauver, exporter, importer), journal des moments, ⌘Z/⇧⌘Z, partage par lien, Rec WAV à durée fixe |
 
 Lien « kiosque » : `?mood=Contemplatif&viz=Horizon&listen=1&autoplay=1`
 

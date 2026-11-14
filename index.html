@@ -35,7 +35,7 @@
         <div class="tgrp"><small>Paysage</small>
           <div class="tgrp-row">
             <select id="preset" title="Choisir un paysage prêt ou un des tiens" aria-label="Paysage"></select>
-            <button id="dice" class="btn" title="Créer un nouveau paysage cohérent selon l'humeur choisie"><i class="m-die">✦</i> Nouveau paysage</button>
+            <button id="dice" class="btn" title="Créer un nouveau paysage cohérent selon l'humeur choisie"><i class="m-die">✦</i> Nouveau<span class="dl-long"> paysage</span></button>
             <select id="mood" title="Humeur du prochain paysage" aria-label="Humeur">
               <option value="">toutes humeurs</option><option value="__day">☀ du jour</option><option>Lumineux</option><option>Mélancolique</option><option>Mystérieux</option>
               <option>Contemplatif</option><option>Nocturne</option><option>Aquatique</option>
@@ -46,9 +46,8 @@
           <div class="tgrp-row recgrp">
             <button id="rec" class="btn" title="Enregistrer ce que tu entends dans un fichier">● Rec</button>
             <details class="rec-opts">
-              <summary class="btn" title="Format et durée de l'enregistrement">▾</summary>
+              <summary class="btn" title="Durée de l'enregistrement">▾</summary>
               <div class="menu">
-                <label class="menu-row">Format <select id="recFmt"><option value="wav">WAV (sans perte)</option><option value="comp">Compressé (léger)</option></select></label>
                 <label class="menu-row">Durée <select id="recDur"><option value="0">libre (j'arrête moi-même)</option><option value="1">1 min</option><option value="3">3 min</option><option value="10">10 min</option><option value="20">20 min</option></select></label>
                 <p class="menu-note">Avec une durée fixe, le son fait un fondu et le fichier se télécharge tout seul.</p>
               </div>
@@ -64,7 +63,6 @@
         <div class="tgrp tree-grp"><small>Parcours</small>
           <div class="tgrp-row"><button id="treeBtn" class="btn tree-btn" title="L'arbre du Parcours : ce qui est ouvert et ce qui t'attend">🕹 Arbre</button></div>
         </div>
-        <span id="sleepLeft" class="sleep-left" title="Minuteur de sommeil"></span>
         <details class="more">
           <summary class="btn" title="Plus d'options">⋯</summary>
           <div class="menu">
@@ -75,15 +73,6 @@
             <label class="btn" title="Importer un fichier exporté">⬆ Importer des paysages<input id="importFile" type="file" accept="application/json,.json" hidden></label>
             <button id="exportMidi" class="btn" title="Progression, séquenceur et pulsations en fichier .mid">🎼 Exporter en MIDI</button>
             <button id="share" class="btn" title="Copier un lien vers ce paysage">🔗 Partager (lien)</button>
-            <label class="sleep" title="Minuteur de sommeil : fondu puis arrêt">☾ Sommeil
-              <select id="sleep">
-                <option value="0">off</option>
-                <option value="15">15 min</option>
-                <option value="30">30 min</option>
-                <option value="60">60 min</option>
-                <option value="120">2 h</option>
-              </select>
-            </label>
             <button id="gameMode" class="btn" title="Parcours (ouvrir l'instrument pièce par pièce) ou mode libre (tout ouvert)">🕹 Parcours</button>
             <button id="help" class="btn" title="Aide et raccourcis (?)">? Aide &amp; raccourcis</button>
           </div>
@@ -94,7 +83,7 @@
     <div class="stage">
       <canvas id="viz"></canvas>
       <div class="hud">
-        <div id="chordName" class="chord">—</div>
+        <div id="chordName" class="chord"></div>
         <div id="hudInfo" class="hud-info"></div>
       </div>
       <button id="bigPlay" class="big-play" aria-label="Lecture">▶<span>Lancer le paysage</span></button>
@@ -127,7 +116,7 @@
         <p>Une machine à paysages sonores qui joue toute seule. Comment veux-tu la découvrir ?</p>
         <div class="welcome-choices">
           <button class="welcome-choice" data-choose="path"><b>🕹 Parcours</b><span>Commence avec une seule note. Relève des défis musicaux, rejoue des phrases à l'oreille : chaque réussite ouvre une pièce de l'instrument.</span></button>
-          <button class="welcome-choice" data-choose="free"><b>◎ Mode libre</b><span>Tout est ouvert tout de suite : couches, effets, composition. Tu pourras commencer le parcours plus tard (menu ⋯).</span></button>
+          <button class="welcome-choice" data-choose="free"><b>◎ Mode libre</b><span>Tout est ouvert tout de suite : tous les sons, les effets, la composition. Tu pourras commencer le parcours plus tard (menu ⋯).</span></button>
         </div>
       </div>
     </div>
@@ -147,10 +136,12 @@
       <div class="modal-card tree-card" role="dialog" aria-label="Arbre du Parcours">
         <button class="modal-x" data-close>✕</button>
         <h3>Arbre du Parcours <span class="tree-counts"><span class="tree-count"></span><span class="tree-ready" hidden></span></span></h3>
-        <p class="tree-legend"><span><i class="st-owned"></i>ouvert<em class="lg-long">&nbsp;(couleur de sa branche)</em></span><span><i class="st-ready"></i>prêt</span><span><i class="st-available"></i><em class="lg-long">peut s'ouvrir maintenant</em><em class="lg-short">à ouvrir</em></span><span><i class="lg-dark"></i><em class="lg-long">la suite, encore dans le noir</em><em class="lg-short">à découvrir</em></span><span class="tree-tip"><em class="tip-long">Survole ou touche une pièce : trait plein = ce qu'il faut avant, pointillés = ce qui vient après · glisse pour te déplacer, pince ou molette pour zoomer</em><em class="tip-short">Touche une pièce pour sa fiche · glisse, pince pour zoomer</em></span></p>
-        <div class="tree-view">
-          <div class="tree-map" role="group" aria-label="L'Arbre : glisse pour te déplacer, pince ou molette pour zoomer"></div>
-          <div class="tree-zoom"><button type="button" class="btn small" data-zoom="in" aria-label="Zoomer">+</button><button type="button" class="btn small" data-zoom="out" aria-label="Dézoomer">−</button><button type="button" class="btn small" data-zoom="fit" aria-label="Voir tout l'arbre">⤢</button></div>
+        <p class="tree-legend"><span><i class="st-owned"></i>ouvert</span><span><i class="st-ready"></i>prêt à ouvrir</span><span><i class="lg-dark"></i>encore dans le noir</span><span class="tree-tip"><em class="tip-long">Survole ou touche une pièce pour sa fiche · glisse pour te déplacer, molette pour zoomer</em><em class="tip-short">Touche une pièce pour sa fiche · glisse, pince pour zoomer</em></span></p>
+        <div class="tree-body">
+          <div class="tree-view">
+            <div class="tree-map" role="group" aria-label="L'Arbre : glisse pour te déplacer, pince ou molette pour zoomer"></div>
+            <div class="tree-zoom"><button type="button" class="btn small" data-zoom="in" aria-label="Zoomer">+</button><button type="button" class="btn small" data-zoom="out" aria-label="Dézoomer">−</button><button type="button" class="btn small" data-zoom="fit" aria-label="Voir tout l'arbre">⤢</button></div>
+          </div>
           <div class="tree-info" aria-live="polite" hidden></div>
         </div>
       </div>
@@ -188,7 +179,7 @@
           <div><h4>Démarrer</h4><ul>
             <li><b>✦ Nouveau paysage</b> : en génère un, cohérent, selon une humeur</li>
             <li><b>Paysage</b> (le menu) : des points de départ soignés, et les tiens (⋯ Sauver le paysage)</li>
-            <li><b>Scènes A/B</b> : mémorise deux états et glisse de l'un à l'autre (Auto = fondu lent)</li></ul></div>
+            <li><b>Scènes A/B</b> : mémorise deux états et glisse de l'un à l'autre (Va-et-vient : il glisse tout seul, lentement)</li></ul></div>
           <div><h4>Jouer</h4><ul>
             <li><kbd>A</kbd>…<kbd>L</kbd> notes · <kbd>Q</kbd>…<kbd>P</kbd> octave au-dessus · <kbd>Z</kbd>…<kbd>M</kbd> accords</li>
             <li><b>MIDI</b> : notes graves = accords (tenus tant que les touches ou la pédale le sont), au-dessus = notes, même à l'arrêt ; vélocité = force et éclat · CC1 Densité, CC74 Lumière, CC91 Espace, CC93 Nostalgie, CC64 pédale</li></ul></div>
@@ -208,7 +199,7 @@
           <div><h4>Garder</h4><ul>
             <li><b>Rec</b> WAV ou compressé, durée fixe avec fondu</li>
             <li><b>Partager</b> : lien qui contient tout le paysage</li>
-            <li><b>☾</b> minuteur de sommeil · <b>⤢ Plein écran</b></li></ul></div>
+            <li><b>⤢ Plein écran</b></li></ul></div>
         </div>
         </div>
         <p class="muted"><kbd>Barre d'espace</kbd> lecture/stop · <kbd>⌘Z</kbd> annuler · <kbd>⇧⌘Z</kbd> rétablir · <kbd>?</kbd> cette aide · <kbd>Échap</kbd> fermer</p>

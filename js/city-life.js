@@ -110,7 +110,7 @@
   function sprites(v, gd) {
     const px = v.px || 3, W = v.W || 1, key = px * 1e6 + Math.round(W / 100);
     if (L.cache.key === key) return L.cache;
-    const cs = Math.max(1, Math.round(Math.min(px * 1.1, W / 150))), zc = Math.max(1, Math.round(Math.min(px * 1.3, W / 110))); // sizes: the city's cell, never too big for a narrow screen
+    const cs = Math.max(1, Math.round(Math.min(px * 1.1, W / 150))), zc = Math.max(1, Math.round(Math.min(px * 0.8, W / 170))); // sizes: the city's cell, never too big for a narrow screen (S9.4: the airships smaller, they stay in the sky)
     L.cache = {
       key, cs, people: peopleSheet(cs),
       dog: [0, 1].map((f) => [false, true].map((fl) => pix(DOG[f], cs, { d: '#9aa2c8', e: '#ff3348' }, fl))),
@@ -397,7 +397,7 @@
       g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = z.a; g.drawImage(S.zep, x, y, Math.round(zw), Math.round(zh));
       // its screen: the text scrolls, brighter on the looper's notes; red beacons blink
       const zc = S.zcs * k, sx = x + 10 * zc, sy = y + 4 * zc, sw = 23 * zc, src = S.ztext, srcW = sw / k, off = (((T + i * 3) * 6 * S.zcs) % (src.width - srcW) + (src.width - srcW)) % (src.width - srcW);
-      g.globalCompositeOperation = 'lighter'; g.globalAlpha = z.a * Math.min(1, 0.45 + 0.3 * (w.power || 0) + 0.6 * L.zepBlink);
+      g.globalCompositeOperation = 'lighter'; g.globalAlpha = z.a * Math.min(1, 0.22 + 0.15 * (w.power || 0) + 0.45 * L.zepBlink); // (S9.4: a dim screen, lit on the loop's notes)
       g.drawImage(src, Math.round(off), 0, Math.round(srcW), src.height, Math.round(sx), Math.round(sy), Math.round(sw), Math.round(src.height * k));
       if (v.reduced || L.zepBlink > 0.3 || Math.floor(T * 1.5) % 2) { g.fillStyle = '#ff3348'; g.fillRect(x + Math.round(2 * zc), y + Math.round(6 * zc), Math.ceil(zc), Math.ceil(zc)); g.fillRect(x + Math.round(41 * zc), y + Math.round(6 * zc), Math.ceil(zc), Math.ceil(zc)); }
       g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;

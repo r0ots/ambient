@@ -153,6 +153,8 @@
     looper: { node: 'c.song', on: (get, app) => app.loops > 0, el: 'le mât d\'amarrage ; un dirigeable par boucle' },
     song: { node: 'c.song', on: (get, app) => app.sections > 0, el: 'un quartier par section, celui qui joue s\'allume' },
     people: { node: null, on: (get, app) => app.found > 0, el: 'un habitant par découverte, dehors quand ça joue' },
+    // S9.4: the weather is Nature's (a grand réglage): no rain, wind or starry clear sky before it is open
+    weather: { node: 't.macros', on: () => true, el: 'la météo (Nature) : pluie, vent, orage, ciel clair' },
   };
   // Densité → how many of each moving thing per event (1 up to the default, ×3 at the top)
   const mult = (d) => 1 + Math.floor(Math.max(0, (+d || 0) - 0.5) * 4.01);
@@ -164,7 +166,7 @@
   // (js/city-dims.js reads them). S8.7: Cassette has no layer of its own any more (its tape band doubled the WebGL VHS and
   // the S8.4 `vhs` dimension); Usure keeps its grain, drawn only without WebGL (one grain, never two).
   const SCENE = {
-    hue: { at: 'ciel : teinte', keys: ['global.key', 'global.tuning'] },
+    hue: { at: 'ciel : teinte', keys: ['global.key'] },
     clouds: { at: 'ciel : nuages qui dérivent', keys: ['global.evolve'] },
     twinkle: { at: 'ciel : étoiles qui scintillent', keys: ['mod.l1target', 'mod.l1shape', 'mod.l1rate', 'mod.l1depth', 'mod.l2target', 'mod.l2shape', 'mod.l2rate', 'mod.l2depth', 'auto.on', 'auto.target', 'auto.bars', 'auto.curve'] },
     aurora: { at: 'lumières : aurores néon', keys: ['fx.shimmer'], of: ['reverb'] },
@@ -606,6 +608,41 @@
       this.glows.set(key, cv);
       if (this.glows.size > 120) this.glows.delete(this.glows.keys().next().value);
       return cv;
+    },
+    // S9.4 the captions under the buildings that stand: html tags (.city-tags, Chakra Petch, small and sharp) laid over the
+    // canvas, out of the WebGL pass; « MÉLODIE AUTO », « MÉLO » when it does not fit its room, never over another one
+    tags(cam) {
+      const cv = this.observed; if (!cv || !cv.parentElement || typeof document === 'undefined') return;
+      let box = this._tagBox;
+      if (!box || box.parentElement !== cv.parentElement) {
+        if (box) box.remove();
+        box = this._tagBox = document.createElement('div'); box.className = 'city-tags'; box.setAttribute('aria-hidden', 'true'); this._tag = {};
+        cv.parentElement.append(box);
+      }
+      const bs = box.style, L = cv.offsetLeft + 'px', T = cv.offsetTop + 'px', Wc = cv.offsetWidth + 'px', Hc = cv.offsetHeight + 'px';
+      if (bs.left !== L || bs.top !== T || bs.width !== Wc || bs.height !== Hc) Object.assign(bs, { left: L, top: T, width: Wc, height: Hc });
+      const k = (cv.clientWidth || 1) / (cv.width || 1), px = cam.px, used = [], fr = (AMB.layout && AMB.layout.free) || { l: 0, r: 0 };
+      const list = this.plants.filter((p) => p.vis > px * 0.5).sort((a, b) => (a.row || 0) - (b.row || 0) || a.sx - b.sx);
+      const on = new Set();
+      for (const p of list) {
+        let el = this._tag[p.id];
+        if (!el) { el = this._tag[p.id] = document.createElement('span'); el.style.setProperty('--c', rgb(p.col)); el._w = {}; box.append(el); }
+        const room = Math.max(24, 2 * Math.min(p.roomL, p.roomR) * k * (p.row ? 1.4 : 1) - 4);
+        const wOf = (t) => { if (el._w[t] == null) { el.textContent = t; el._w[t] = el.offsetWidth; } return el._w[t]; };
+        const lo = fr.l + 2, hi = cv.clientWidth - fr.r - 2, cx = p.sx * k;
+        if (cx < lo || cx > hi) continue; // (under the drawer: no caption)
+        const fits = (t) => wOf(t) <= room && cx - wOf(t) / 2 >= lo - 8 && cx + wOf(t) / 2 <= hi + 8;
+        let t = p.label.toUpperCase(); if (!fits(t)) t = p.short.toUpperCase();
+        const w = wOf(t); if (el.textContent !== t) el.textContent = t;
+        const x = Math.round(Math.max(lo, Math.min(hi - w, cx - w / 2)));
+        let y = p.row ? Math.round((p.sy - Math.max(p.vis, 6 * px) * p.k) * k) - 18 : Math.round(p.sy * k + 4);
+        for (let n = 0; n < 3 && used.some((u) => x < u.x1 + 4 && x + w > u.x0 - 4 && Math.abs(y - u.y) < 13); n++) y += 13; // (no overlap: one line lower)
+        used.push({ x0: x, x1: x + w, y });
+        const hot = p.hot || 0, off = p.look ? 1 - p.look.on : 0;
+        el.style.transform = `translate(${x}px, ${y}px)`; el.style.opacity = (Math.min(1, 0.8 + 0.2 * hot) * (1 - 0.5 * off) * (p.row ? 0.8 : 1)).toFixed(2);
+        el.classList.toggle('hot', hot > 0.3); el.hidden = false; on.add(p.id);
+      }
+      for (const id in this._tag) if (!on.has(id)) this._tag[id].hidden = true;
     },
     // « MÉLODIE AUTO » under its building, a neon caption; « MÉLO » when it does not fit its slot (phone)
     label(p, fs, maxW) {
@@ -1512,13 +1549,7 @@
   // the tier marks (S9.3: an empty city says nothing: it is night)
   addLayer({ id: 'hud', z: 90, draw(g, w, cam, v) {
     const px = cam.px, fs = Math.round(Math.max(11 * (v.dpr || 1), px * 2.6));
-    for (const p of v.plants) {
-      if (!(p.vis > px * 0.5)) continue; // S9.3: nothing built, no caption
-      const lb = v.label(p, fs, Math.min(v.slotW * 0.96, 2 * Math.min(p.roomL, p.roomR) - 2) * (p.row ? 1.4 : 1)), hot = p.hot || 0, off = p.look ? 1 - p.look.on : 0;
-      const y = p.row ? Math.round(p.sy - Math.max(p.vis, 6 * px) * p.k - lb.height - px) : Math.round(p.sy + px * 1.5);
-      g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = Math.min(1, 0.85 + 0.15 * hot) * (1 - 0.5 * off) * (p.row ? 0.8 : 1); g.drawImage(lb, Math.round(p.sx - lb.width / 2), y);
-      if (hot > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = hot; g.drawImage(lb, Math.round(p.sx - lb.width / 2), y); g.globalCompositeOperation = 'source-over'; }
-    }
+    v.tags(cam); // S9.4: the captions are small html tags over the canvas (sharp, never blurred by the WebGL pass)
     g.globalAlpha = 1;
     if (v.ans) v.drawAnswer(g, v.ans);
     v.drawMark(g, fs);
