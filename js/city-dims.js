@@ -102,7 +102,7 @@
     seen: {},
     // the cost of the heavy layers (trails, grading), watched over 40 frames: above SLOW_MS, that layer goes (or simpler)
     // for the session — a software canvas (no GPU) cannot afford them
-    slow: {}, costs: {}, SLOW_MS: 2.5,
+    slow: {}, costs: {}, SLOW_MS: 2.5, // (the grading is two plain fills: not watched)
     cost(name, ms) { const c = this.costs[name] || (this.costs[name] = { n: 0, s: 0 }); if (++c.n > 5) c.s += ms; if (c.n >= 45) { if (c.s / 40 > this.SLOW_MS && !this.noSlow) this.slow[name] = true; c.n = 0; c.s = 0; } },
     // ---- Lumière: a wave sweeps the power field from the left, at the gesture's speed (screen widths / s)
     wave(G, dv) {
@@ -258,7 +258,7 @@
   };
   gv.addLayer({ id: 'dims-mid', z: 25, draw(g, w, cam, v) {
     const W = cam.W, gd = cam.gd, px = cam.px, M = D.midInit(W, gd, px), m = M.m, dens = w.skyline || 0, dt = D.dt || 0, red = v.reduced, T = v.st;
-    const k = cam.k(MID_D), base = cam.y(MID_D, gd), Gd = D.gest.density, speed = 7 * (1 + 2 * (Gd && v.now() / 1000 - Gd.last < 1 ? clamp(Gd.rate, 0, 3) : 0)) * (1 + 2 * sur('density')); // floors / s: faster with a faster gesture
+    const k = cam.k(MID_D), base = cam.y(MID_D, gd), Gd = D.gest.density, speed = 6 * (1 + 1.5 * (Gd && v.now() / 1000 - Gd.last < 1 ? clamp(Gd.rate, 0, 2) : 0)) * (1 + sur('density')); // floors / s: faster with a faster gesture (≤ ×8)
     let n = 0;
     for (const s of M.slots) {
       const want = dens > s.th ? Math.round(s.hmax * (0.35 + 0.65 * clamp((dens - s.th) / 0.3))) : 0;
@@ -323,7 +323,12 @@
     if (!D.cols) return;
     const W = cam.W, H = cam.H, cw = W / NC;
     g.fillStyle = '#030108';
-    for (let i = 0; i < NC; i++) { const d = clamp((0.5 - D.cols[i]) / 0.5); if (d < 0.02) continue; g.globalAlpha = 0.72 * d * d; g.fillRect(Math.floor(i * cw), 0, Math.ceil(cw) + 1, H); }
+    for (let i = 0; i < NC;) { // runs of columns at the same darkness: one rect each
+      const d = Math.round(clamp((0.42 - D.cols[i]) / 0.42) * 12) / 12; let j = i + 1;
+      while (j < NC && Math.round(clamp((0.42 - D.cols[j]) / 0.42) * 12) / 12 === d) j++;
+      if (d > 0.02) { g.globalAlpha = 0.75 * d; g.fillRect(Math.floor(i * cw), 0, Math.ceil((j - i) * cw) + 1, H); }
+      i = j;
+    }
   } });
   gv.addLayer({ id: 'dims-power', z: 41, draw(g, w, cam, v) {
     const W = cam.W, px = cam.px, P = w.power || 0, applied = clamp((0.45 - P) / 0.45) * 0.7; // garden-visual's own cut
@@ -375,13 +380,10 @@
   // VHS grading and tracking (z 79): magenta-sepia colour, washed blacks; tracking bands jump with the gesture
   gv.addLayer({ id: 'dims-vhs', z: 79, draw(g, w, cam, v) {
     const a = clamp(((w.vhs || 0) - 0.3) / 0.7), W = cam.W, H = cam.H, px = cam.px; // the default Nostalgie: no grading
-    if (a > 0.02) { // magenta-sepia: warm multiply, washed blacks (screen); the hue shift ('color') unless too slow
-      const t0 = performance.now();
+    if (a > 0.02) { // magenta-sepia: a warm magenta multiply, then washed blacks (two plain fills: cheap on any canvas)
       g.setTransform(1, 0, 0, 1, 0, 0);
-      if (!D.slow.grade) { g.globalCompositeOperation = 'color'; g.globalAlpha = 0.4 * a; g.fillStyle = '#b8607e'; g.fillRect(0, 0, W, H); }
-      g.globalCompositeOperation = 'multiply'; g.globalAlpha = 0.55 * a; g.fillStyle = '#ffc4a8'; g.fillRect(0, 0, W, H);
-      g.globalCompositeOperation = 'screen'; g.globalAlpha = 0.55 * a; g.fillStyle = '#2c1226'; g.fillRect(0, 0, W, H);
-      D.cost('grade', performance.now() - t0);
+      g.globalCompositeOperation = 'multiply'; g.globalAlpha = 0.6 * a; g.fillStyle = '#ffa8c0'; g.fillRect(0, 0, W, H);
+      g.globalCompositeOperation = 'source-over'; g.globalAlpha = 0.3 * a; g.fillStyle = '#4a2440'; g.fillRect(0, 0, W, H);
     }
     const tk = D.track; if (tk < 0.03 || v.reduced || !g.canvas) return;
     g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;

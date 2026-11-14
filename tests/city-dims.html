@@ -1,0 +1,151 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
+<!-- S8.4 « Un réglage = une dimension du monde » (js/city-dims.js): every row of the TABLE (setting → dimension) moves its
+     dimension; each grand réglage changes the whole screen; Lumière's wave crosses the city at the speed of the gesture;
+     Densité builds the background city floor by floor; Espace / Nostalgie / Nature; overload when turned fast; JUICE 0
+     and reduced motion; Parcours and free mode; cost per frame. No audio, a fake clock, cityGL stubbed (records). -->
+<script src="lib.js"></script>
+<script>
+window.AMB_GAME_KEY = 'ambient.game.test-dims';
+[window.AMB_GAME_KEY, 'ambient.vizMode'].forEach((k) => localStorage.removeItem(k));
+testBus(); AMB.engine = {};
+AMB.tree = { NODES: [['racine', 'drone.on'], ['t.son', 'drone.wave'], ['h.drone', 'drone.follow'], ['h.pad', 'pad.on'], ['h.pad2', 'pad.attack'], ['h.prog', 'pad.prog'],
+  ['m.bells', 'bells.on'], ['m.phrase', 'bells.mode'], ['m.grains', 'grains.on'], ['c.seq', 'seq.on'], ['c.rythme', 'bass.*'], ['c.rythme', 'perc.*'], ['e.texture', 'texture.*'], ['e.reverb', '*.send']].map(([id, p]) => ({ id, params: [p] })) };
+// the WebGL pass, stubbed: its base levels and impulses are recorded
+AMB.cityGL = { base: {}, pulses: [], set(n, v) { this.base[n] = v; return true; }, pulse(n, a, ms) { this.pulses.push({ n, a, ms }); return true; } };
+</script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script>
+<script src="../js/city-dims.js"></script><script src="../js/widgets.js"></script><script src="../js/perform.js"></script>
+<canvas id="c" width="640" height="400" style="width:640px;height:400px;display:block"></canvas>
+<script>
+window.addEventListener('load', async () => {
+  try {
+    const G = AMB.game, V = AMB.visual, GV = AMB.gardenVisual, D = AMB.cityDims, St = AMB.store, GL = AMB.cityGL, cv = document.getElementById('c');
+    V.c = cv; V.g = cv.getContext('2d'); V.dpr = 1; V.mode = 'Jardin'; GV.visible = true;
+    let T = 100, fake = 1000; GV.clock = () => T; GV.now = () => fake;
+    const step = (s, dt = 0.016) => { const n = Math.max(1, Math.round(s / dt)); for (let i = 0; i < n; i++) { T += dt; fake += dt * 1000; V.draw(); } };
+    const ALL = ['racine', 't.son', 'h.drone', 'h.pad', 'h.pad2', 'h.prog', 'm.bells', 'm.phrase', 'm.grains', 'c.seq', 'c.rythme', 'e.texture', 'e.reverb'];
+    G.setMode('path'); G.s.nodes = ALL.slice(); GV.sig = null;
+    AMB.seq = { playing: true };
+    // a gesture: the knob turned from its value to `to` in `dur` s (sources user, one move per frame)
+    const turn = (m, to, dur) => { const k = 'macro.' + m, v0 = St.get(k), n = Math.max(1, Math.round(dur / 0.016)); for (let i = 1; i <= n; i++) { St.set(k, v0 + (to - v0) * i / n, 'user'); step(0.016); } };
+    const settle = (m, v) => { St.set('macro.' + m, v, 'preset'); AMB.perform.applyMacro('macro.' + m, v, 'preset'); step(4, 0.05); }; // settled: big frames (dt 50 ms) are enough
+    const shot = () => { const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data, out = new Float32Array(d.length / 16); for (let i = 0, j = 0; i < d.length; i += 16, j++) out[j] = d[i] + d[i + 1] + d[i + 2]; return out; };
+    // share of the screen (sampled pixels, by blocks of 8 rows) that changed by more than a threshold; and the luminance
+    const diff = (a, b) => { let n = 0; for (let i = 0; i < a.length; i++) if (Math.abs(a[i] - b[i]) > 18) n++; return n / a.length; };
+    const lum = (a) => a.reduce((s, v) => s + v, 0) / a.length;
+    step(1);
+    ok(GV.active && GV.plants.length === 8 && D && D.cols && D.cols.length === D.NC, 'la ville tourne avec js/city-dims.js (8 bâtiments, champ de courant de ' + D.NC + ' colonnes)');
+
+    await wait(0);
+    // --- 1. the table: each setting, from one end to the other, moves its dimension
+    { const ends = (k) => { const sp = St.spec(k); if (sp.type === 'select') return [sp.options[0], sp.options[sp.options.length - 1]]; if (sp.type === 'toggle') return [false, true]; return [sp.min, sp.max]; };
+      const still = [], seen = [];
+      for (const row of D.TABLE) {
+        const lo = {}, hi = {}; row.keys.forEach((k) => { const [a, b] = ends(k); lo[k] = a; hi[k] = b; });
+        await wait(0); St.setMany(lo, 'preset'); step(4, 0.05); const a = D.read(row.dim);
+        St.setMany(hi, 'preset'); step(4, 0.05); const b = D.read(row.dim);
+        if (Math.abs(b - a) < 0.05) still.push(row.name + ' (' + row.dim + ' ' + a.toFixed(2) + ' → ' + b.toFixed(2) + ')'); else seen.push(row.name + ' → ' + row.dim + ' ' + a.toFixed(2) + '→' + b.toFixed(2));
+      }
+      ok(!still.length && D.TABLE.length >= 12, 'table réglage → dimension (' + D.TABLE.length + ' lignes) : chaque réglage bouge sa dimension' + (still.length ? ' — immobiles : ' + still.join(', ') : ''));
+      log(seen.join(' · '));
+      ok(!GV.SCENE.haze && D.TABLE.some((r) => r.keys.includes('fx.revType') && r.dim === 'trails'), 'doublon supprimé : le calque SCENE « smog » (Reverb) est remplacé par les traînées et le brouillard d\'Espace');
+      St.setMany({ 'fx.space': 0.55, 'fx.size': 0.75, 'fx.revType': 'Hall', 'fx.predelay': 0.3, 'fx.tape': 0.35, 'fx.lofi': 0.15, 'fx.echo': 0.3, 'fx.shimmer': 0.15, 'global.tempo': 0.5, 'global.time': 'Pulsé', 'global.key': 'C' }, 'preset');
+      for (const id of ['drone', 'pad', 'bells', 'texture', 'grains', 'seq', 'bass', 'perc']) St.setMany({ [id + '.on']: true, [id + '.vol']: 0.6 }, 'preset');
+      St.set('global.volume', 0.8, 'preset'); step(3); }
+
+    await wait(0);
+    // --- 2. each grand réglage changes the whole screen (0 → 1, settled)
+    { const res = [];
+      for (const m of D.MAC) { settle(m, 0); const a = shot(); settle(m, 1); const b = shot(); res.push([m, diff(a, b), lum(b) / Math.max(1, lum(a))]); settle(m, St.spec('macro.' + m).def); }
+      log('écran changé 0 → 1 : ' + res.map(([m, d, l]) => m + ' ' + Math.round(d * 100) + ' % (lum ×' + l.toFixed(2) + ')').join(', '));
+      ok(res.every(([, d]) => d > 0.25), 'chaque grand réglage se voit sur tout l\'écran : > 25 % des pixels changent de 0 à 1 (' + res.map(([m, d]) => m + ' ' + Math.round(d * 100) + ' %').join(', ') + ')');
+      const L = res.find((r) => r[0] === 'light'); ok(L[2] > 1.6, 'Lumière 0 → 1 : la ville passe de la panne au plein courant (luminance ×' + L[2].toFixed(2) + ')'); }
+
+    await wait(0);
+    // --- 3. Lumière: the wave crosses the city at the gesture's speed, left to right
+    { settle('light', 0); GV.parts.length = 0;
+      ok(GV.world.power < 0.1 && GV.world.lamps < 0.1, 'Lumière 0 : panne (courant ' + GV.world.power.toFixed(2) + ', lampadaires morts ' + GV.world.lamps.toFixed(2) + ')');
+      turn('light', 1, 0.5); const w0 = D.waves.length, left = D.cols[2], right = D.cols[D.NC - 3], sp = Math.max(...D.waves.map((w) => w.speed));
+      ok(w0 > 0 && left > right + 0.3, 'geste : une vague d\'allumage traverse la ville de gauche à droite (' + w0 + ' vague(s), gauche ' + left.toFixed(2) + ' / droite ' + right.toFixed(2) + ')');
+      step(2); ok(!D.waves.length && Math.min(...D.cols) > 0.9 && GV.world.power > 0.9, 'la vague passée : toute la ville au courant plein (' + GV.world.power.toFixed(2) + ')');
+      settle('light', 0); turn('light', 1, 2.5); const slow = Math.max(...D.waves.map((w) => w.speed));
+      ok(sp > slow * 1.5, 'la vague va à la vitesse du geste (geste de 0,5 s : ' + sp.toFixed(2) + ' écran/s, geste de 2,5 s : ' + slow.toFixed(2) + ')');
+      step(2); turn('light', 0, 0.6); ok(D.waves.length && D.waves[D.waves.length - 1].dir < 0 && D.cols[2] < D.cols[D.NC - 3] - 0.2, 'dans l\'autre sens : une vague d\'extinction');
+      step(2); settle('light', 0.45); }
+
+    await wait(0);
+    // --- 4. overload: turned fast, the dimension overshoots (shake, flash, sparks) then comes back
+    { GL.pulses.length = 0; GV.parts.length = 0; D.surge.light = 0;
+      turn('light', 0.55, 1.2); const calm = (D.surge.light || 0) < 0.01 && !GL.pulses.some((p) => p.n === 'shake');
+      GL.pulses.length = 0; St.set('macro.light', 0.95, 'user'); step(0.05);
+      ok(calm && D.surge.light > 0.8 && GL.pulses.some((p) => p.n === 'shake') && GL.pulses.some((p) => p.n === 'flash') && GV.parts.length > 10 && GV.shake, 'tourner vite = surcharge (secousse, éclair, ' + GV.parts.length + ' étincelles) ; un geste lent n\'en fait pas');
+      step(1); ok(D.surge.light < 0.01, 'la surcharge retombe en moins d\'1 s'); settle('light', 0.45); }
+
+    await wait(0);
+    // --- 5. Densité: traffic, and the background city built floor by floor (and taken down)
+    { settle('density', 0); const t0 = GV.world.traffic, f0 = D.mid.slots.reduce((s, x) => s + (x.f || 0), 0);
+      St.set('macro.density', 1, 'user'); step(0.15); const f1 = D.mid.slots.reduce((s, x) => s + x.f, 0); step(5); const f2 = D.mid.slots.reduce((s, x) => s + x.f, 0), built = D.midBuilt;
+      ok(GV.world.traffic > t0 + 0.6 && built >= 18 && f0 < f2 * 0.05 && f1 > f0 && f1 < f2 * 0.5, 'Densité 0 → 1 : trafic ' + t0.toFixed(2) + ' → ' + GV.world.traffic.toFixed(2) + ', ville de fond ' + built + ' immeubles construits étage par étage (' + Math.round(f0) + ' → ' + Math.round(f1) + ' → ' + Math.round(f2) + ' étages)');
+      St.set('macro.density', 0.2, 'user'); step(0.15); const f3 = D.mid.slots.reduce((s, x) => s + x.f, 0); step(4); const f4 = D.mid.slots.reduce((s, x) => s + x.f, 0);
+      ok(f3 < f2 && f3 > f4 && f4 < f2 * 0.4, 'Densité redescend : les immeubles de fond se déconstruisent (' + Math.round(f2) + ' → ' + Math.round(f3) + ' → ' + Math.round(f4) + ')');
+      ok(GV.world.population > 0 && typeof GV.world.traffic === 'number', 'dimensions lues par S8.6 : traffic ' + GV.world.traffic.toFixed(2) + ', population ' + GV.world.population.toFixed(2));
+      settle('density', 0.35); }
+
+    await wait(0);
+    // --- 6. Espace: recul, parallax, fog, trails
+    { settle('space', 0); const z0 = GV.cam.zoom, fog0 = GL.base.fog, tr0 = GV.world.trails; settle('space', 1); const z1 = GV.cam.zoom;
+      ok(z1 < z0 * 0.85 && GV.world.cam.depth > 1.5 && GL.base.fog > fog0 + 0.4 && GV.world.trails > tr0 + 0.3, 'Espace 0 → 1 : recul (zoom ' + z0.toFixed(2) + ' → ' + z1.toFixed(2) + '), parallaxe ' + GV.world.cam.depth.toFixed(2) + ', brouillard WebGL ' + (fog0 || 0).toFixed(2) + ' → ' + GL.base.fog.toFixed(2) + ', traînées ' + tr0.toFixed(2) + ' → ' + GV.world.trails.toFixed(2));
+      const x0 = GV.world.cam.x; step(6); ok(Math.abs(GV.world.cam.x - x0) > 0.01, 'Espace haut : la caméra glisse (parallaxe des plans)'); settle('space', 0.55); }
+
+    await wait(0);
+    // --- 7. Nostalgie: VHS, grading, tracking at the gesture
+    { settle('nostalgia', 0); const v0 = GL.base.vhs, c0 = GL.base.chroma; GL.pulses.length = 0; turn('nostalgia', 1, 0.6);
+      const tk = D.track; step(3);
+      ok(GL.base.vhs > v0 + 0.8 && GL.base.chroma > c0 + 0.5 && GV.world.vhs > 0.8 && tk > 0.3 && GL.pulses.some((p) => p.n === 'vhs'), 'Nostalgie 0 → 1 : VHS ' + v0.toFixed(2) + ' → ' + GL.base.vhs.toFixed(2) + ', chroma, bandes de tracking au geste (' + tk.toFixed(2) + ')');
+      settle('nostalgia', 0.25); }
+
+    await wait(0);
+    // --- 8. Nature: clear sky → drizzle → storm; lightning then thunder
+    { settle('nature', 0); const W = GV.world.weather;
+      ok(W.rain < 0.02 && W.clear > 0.8 && W.storm < 0.01, 'Nature 0 : ciel clair étoilé, pas de pluie (pluie ' + W.rain.toFixed(3) + ', ciel clair ' + W.clear.toFixed(2) + ')');
+      settle('nature', 0.3); const drizzle = W.rain; settle('nature', 1);
+      ok(drizzle > 0.2 && drizzle < 0.5 && W.rain > 0.95 && W.storm > 0.9 && W.wind > 0.8, 'bruine (' + drizzle.toFixed(2) + ') → averse et orage (pluie ' + W.rain.toFixed(2) + ', orage ' + W.storm.toFixed(2) + ', vent ' + W.wind.toFixed(2) + ')');
+      GL.pulses.length = 0; let shook = 0; for (let i = 0; i < 400 && !shook; i++) { step(0.016); if (GL.pulses.some((p) => p.n === 'shake')) shook = 1; }
+      ok(GL.pulses.some((p) => p.n === 'flash') && shook, 'orage : éclair (flash WebGL) puis tonnerre visuel (secousse)');
+      settle('nature', 0.4); }
+
+    await wait(0);
+    // --- 9. JUICE 0 and reduced motion
+    { GV.JUICE = 0; settle('light', 0); GL.pulses.length = 0; D.surge.light = 0; St.set('macro.light', 1, 'user'); step(0.05);
+      ok(D.waves.length && !(D.surge.light > 0) && !GL.pulses.some((p) => ['shake', 'flash', 'bloom'].includes(p.n)), 'JUICE 0 : la vague reste (le contenu), sans claquement, sans surcharge ni flash');
+      step(2); GV.JUICE = 1;
+      GV.reduced = true; settle('light', 0); St.set('macro.light', 1, 'user'); step(0.05);
+      ok(!D.waves.length && Math.min(...D.cols) > 0.9, 'mouvement réduit : pas de vague, le courant suit tout de suite');
+      settle('density', 0); St.set('macro.density', 1, 'user'); step(0.05); const full = D.mid.slots.every((x) => x.f === 0 || x.f === Math.round(x.f));
+      GL.pulses.length = 0; St.set('macro.nostalgia', 1, 'user'); step(0.05);
+      ok(full && D.midBuilt >= 18 && !D.track && !D.trail && !GL.pulses.length, 'mouvement réduit : immeubles construits d\'un coup, ni tracking, ni traînées, ni impulsion');
+      GV.reduced = false; settle('density', 0.35); settle('nostalgia', 0.25); settle('light', 0.45); }
+
+    await wait(0);
+    // --- 10. free mode: the same dimensions
+    { G.setMode('free'); step(0.5); settle('nature', 0); const c = GV.world.weather.clear; settle('nature', 1);
+      ok(GV.free && c > 0.8 && GV.world.weather.storm > 0.9, 'mode libre : mêmes dimensions (Nature 0 → 1 : ciel clair → orage)');
+      settle('nature', 0.4); G.setMode('path'); step(0.5); }
+
+    await wait(0);
+    // --- 11. cost per frame, 1280×800, everything on (storm, fog, trails, VHS grading, full background city); the same
+    // without the S8.4 layers (its own share); then while Lumière is turned (waves; the buildings' sprites of S8.1 rebuild)
+    { cv.width = 1280; cv.height = 800; GV.sig = null; D.slow = {};
+      St.setMany({ 'macro.density': 1, 'macro.space': 1, 'macro.nostalgia': 1, 'macro.nature': 1 }, 'preset'); ['macro.density', 'macro.space', 'macro.nostalgia', 'macro.nature'].forEach((k) => AMB.perform.applyMacro(k, 1, 'preset'));
+      step(4);
+      const run = (n, every) => { const ms = []; for (let i = 0; i < n; i++) { if (every && i % every === 0) St.set('macro.light', i % (2 * every) ? 1 : 0.1, 'user'); T += 0.016; fake += 16; const t0 = performance.now(); V.draw(); ms.push(performance.now() - t0); } ms.sort((a, b) => a - b); return { avg: ms.reduce((a, b) => a + b, 0) / n, p95: ms[Math.floor(n * 0.95)], med: ms[n >> 1] }; };
+      const f = (s) => 'moyenne ' + s.avg.toFixed(2) + ' ms, médiane ' + s.med.toFixed(2) + ', p95 ' + s.p95.toFixed(2);
+      const all = run(240), mine = GV.STACK.filter((L) => L.id.startsWith('dims-')); mine.forEach((L) => GV.STACK.splice(GV.STACK.indexOf(L), 1));
+      const base = run(240); mine.forEach((L) => GV.addLayer(L));
+      log('PERF S8.4 1280×800 tout au maximum (canvas sans GPU) : ' + f(all) + ' ; sans les calques S8.4 : ' + f(base) + ' ; coupé car trop lent : ' + (Object.keys(D.slow).join(', ') || 'rien'));
+      ok(all.med < 2 && all.avg < base.avg + 8, 'coût par image, tout au maximum : JS médiane ' + all.med.toFixed(2) + ' ms (< 2) ; avec la rastérisation logicielle de ce test, + ' + (all.avg - base.avg).toFixed(1) + ' ms au plus (< 8 ; mesure GPU : voir ARCHITECTURE.md)');
+      const turning = run(240, 40); log('PERF en tournant Lumière (vagues ; les sprites S8.1 des bâtiments se refont à chaque palier de Lumière) : ' + f(turning)); }
+    done();
+  } catch (e) { fail(e); }
+});
+</script></body></html>
