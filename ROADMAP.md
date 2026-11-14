@@ -464,3 +464,4 @@ Retour de l'utilisateur (2026-11-14) : le LCD du milieu est trop petit et s'effa
 - [x] S11.7 Le timbre du Pad s'entend tout de suite : l'accord tenu bascule en fondu vers le nouveau son.
 - [x] S11.5 Plus de mini-jeux temporels (demandes en direct supprimées : leurs objectifs se font quand on veut pendant la lecture) ; « Joue pendant » plafonné à 1 min (rythme gardé par d'autres objectifs : neveu 85–90 min).
 - [x] S11.10 Panneau Mélodie : le son en haut (partagé avec les touches), sous-cadre « Mélodie auto » avec Auto et les réglages de l'improvisation ; le tiroir ne défile plus tout seul quand une pièce s'ouvre.
+- [x] S11.8 L'Arbre redessiné : vrai arbre calculé depuis les prérequis, un couloir par branche, enfants au-dessus du parent principal, aucun chevauchement, liens à angle droit (plein vers le parent, pointillé fin pour les autres). Point ouvert : presque complet, il ne tient pas en entier au bureau à taille lisible (⤢ pour tout voir).
