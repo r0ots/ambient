@@ -1300,7 +1300,8 @@
     g.globalCompositeOperation = 'lighter';
     if (w.dawn > 0) { g.fillStyle = `rgba(255,122,79,${(w.dawn * 0.12).toFixed(3)})`; g.fillRect(0, sgd, W, H - sgd); }
     const bp = red || R ? null : w.beat.on ? w.beat : null;
-    if (bp) { const a = (bp.strong ? 0.3 : 0.16) * Math.exp(-bp.ph * 5); g.fillStyle = rgb(TOK.pink, 1, Math.min(1, a * 2.2)); g.fillRect(0, sgd, W, Math.max(2, px)); g.fillStyle = rgb(TOK.pink, 1, a * 0.16); g.fillRect(0, sgd, W, H - sgd); }
+    if (!bp && (red || R)) v.pulse = 0; // (v.pulse: the street's beat, read by the tests)
+    if (bp) { const a = (bp.strong ? 0.3 : 0.16) * Math.exp(-bp.ph * 5); v.pulse = a; g.fillStyle = rgb(TOK.pink, 1, Math.min(1, a * 2.2)); g.fillRect(0, sgd, W, Math.max(2, px)); g.fillStyle = rgb(TOK.pink, 1, a * 0.16); g.fillRect(0, sgd, W, H - sgd); }
     const a = v.amt('ripple'); // the ground ondulates (rhythm feel): two wavy lines of light along its edge
     if (a >= 0.03) {
       const A = px * (0.5 + 3 * a), stp = px * 2, s = Math.max(1, px >> 1);

@@ -68,7 +68,7 @@
   // its world — or, owned already, the next node of the path)
   const OPENS = {
     tons: 'm.phrase', dim: 'h.pad2', jazz: 'h.prog', lent: 'm.evolve', pulse: 'm.tempo', silence: 'e.salle', velo: 'c.seq', chroma: 'h.scale', cinq: 't.rec',
-    orage: 'e.texture', hyper: 'm.tempo', wire: 't.viz', bouchon: 'm.grains', aurore: 'e.halo', kaiju: 'e.salle', disco: 'c.seq', miroir: 'e.tape',
+    orage: 'e.texture', hyper: 'm.lfo', wire: 't.viz', bouchon: 'm.grains', aurore: 'e.halo', kaiju: 'h.drone', disco: 'c.rythme', miroir: 'e.tape',
   };
   const HINT2 = { found: 2 }; // the clear hint of a gesture opens after this many discoveries (no time)
 

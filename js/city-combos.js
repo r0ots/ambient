@@ -171,7 +171,7 @@
       if (!first) this.fx('super', { name: c.name, n: c.n });
       if (this.live()) {
         const G = AMB.cityGL, J = Math.min(2, this.juice());
-        if (G) { G.pulse('flash', 0.55 * J, 260); G.pulse('shake', 0.9 * J, 700); G.pulse('bloom', 1.4, 900); }
+        if (G) { G.pulse('flash', 0.55 * J, 260); G.pulse('shake', 0.9 * J, 700); G.pulse('bloom', 0.9, 700); }
         gv.shake = { t0: gv.t || 0, amp: 1.2 * J };
       }
       this.emit('combo', { id: c.id, on: true, n: c.n, super: true });
@@ -249,7 +249,7 @@
     G.set('wire', wire);
     G.set('warp', 1.5 * C.L('hyper') * (k && k.id === 'hyper' && k.phase === 'super' ? 1 : 0.25));
     G.set('shake', 0.22 * ch);
-    if (C.any) { G.set('bloom', (G.get('bloom') || 0) + 0.9 * ch + 0.5 * sup); G.set('fog', (G.get('fog') || 0) + 0.7 * C.L('kaiju')); }
+    if (C.any) { G.set('bloom', (G.get('bloom') || 0) + 0.45 * ch + 0.3 * sup); G.set('fog', (G.get('fog') || 0) + 0.7 * C.L('kaiju')); }
   });
   gv.afterDraw(() => { if (C.any || C.cost_) { C.times.push(C.cost_); if (C.times.length > 240) C.times.shift(); } C.cost_ = 0; });
 
