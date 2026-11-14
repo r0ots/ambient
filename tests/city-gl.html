@@ -1,0 +1,120 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
+<!-- S8.2 the WebGL pass (js/city-gl.js): creation over the scene canvas, named inputs and pulses, bloom / flash / warp /
+     wire / vhs visible in the pixels, JUICE 0 and reduced motion (a still image, no flash), forced fallback, lost context
+     (WEBGL_lose_context) and restore, budget fallback, any canvas size. No audio, no app: a stub AMB.visual draws neons.
+     tests/run.sh launches this page with --enable-unsafe-swiftshader (headless has no GPU). -->
+<script src="lib.js"></script>
+<script>testBus();</script>
+<script src="../js/motion.js"></script>
+<div class="stage" style="position:relative;width:640px;height:400px"><canvas id="viz" width="640" height="400" style="width:640px;height:400px;display:block"></canvas></div>
+<script>
+// the stub scene: a dark city with a pink neon bar and a cyan line (what garden-visual.js would have drawn)
+AMB.visual = { c: document.getElementById('viz'), dpr: 1, n: 0,
+  draw() { const g = this.c.getContext('2d'), W = this.c.width, H = this.c.height; this.n++;
+    g.fillStyle = '#07040f'; g.fillRect(0, 0, W, H); g.fillStyle = '#1a1030'; g.fillRect(W * 0.1, H * 0.3, W * 0.15, H * 0.7);
+    g.fillStyle = '#ff3fa4'; g.fillRect(W * 0.44, H * 0.45, W * 0.12, H * 0.1); g.fillStyle = '#3ff0ff'; g.fillRect(0, H * 0.8, W, 3); } };
+</script>
+<script src="../js/city-gl.js"></script>
+<script>
+window.addEventListener('load', async () => {
+  try {
+    const G = AMB.cityGL, V = AMB.visual, viz = V.c, M = AMB.motion;
+    M.set({ juice: 1, reduced: false });
+    // average RGB of a box of the GL output (x, y from the top-left, in output pixels); read right after a render
+    const px = (x, y, r = 2) => { const gl = G.gl, w = G.cv.width, h = G.cv.height, n = (2 * r + 1) ** 2, b = new Uint8Array(4 * n);
+      gl.readPixels(Math.round(x * w) - r, h - Math.round(y * h) - r, 2 * r + 1, 2 * r + 1, gl.RGBA, gl.UNSIGNED_BYTE, b);
+      const s = [0, 0, 0]; for (let i = 0; i < n; i++) for (let c = 0; c < 3; c++) s[c] += b[4 * i + c]; return s.map((v) => v / n); };
+    const lum = (c) => c[0] + c[1] + c[2];
+    const frame = () => V.draw();
+    const reset = () => { G.NAMES.forEach((n) => G.set(n, G.BASE[n] || 0)); G.pulses.length = 0; };
+
+    frame();
+    ok(G.mode === 'gl', 'WebGL actif (' + G.mode + (G.reason ? ', ' + G.reason : '') + (G.err ? ', ' + G.err : '') + ')');
+    if (G.mode !== 'gl') { done(); return; }
+    const r = G.gl.getExtension('WEBGL_debug_renderer_info'); log('rendu : ' + (r ? G.gl.getParameter(r.UNMASKED_RENDERER_WEBGL) : '?'));
+    ok(G.cv && G.cv.previousElementSibling === viz && G.cv.className.startsWith('city-gl') && !G.cv.hidden && viz.style.opacity === '0' && viz.parentNode.classList.contains('gl'),
+      'création : canvas WebGL posé sur #viz (transparent), .stage.gl (le CRT css se retire)');
+    ok(G.cv.style.width === '640px' && G.cv.style.height === '400px' && G.cv.width === 640 && G.cv.height === 400, 'même boîte que #viz, sortie ' + G.cv.width + '×' + G.cv.height);
+
+    // --- uniforms
+    ok(G.set('bloom', 1) && !G.set('nope', 1) && G.pulse('flash', 1, 100) && !G.pulse('nope', 1, 100), 'set / pulse : noms connus seulement');
+    G.set('crt', 5); ok(G.get('crt') === 2, 'set borné à 0..2'); reset();
+    ok(G.NAMES.join() === 'bloom,chroma,crt,fog,vhs,flash,shake,warp,wire,grain,mask', 'entrées nommées : ' + G.NAMES.join(', '));
+    // bloom: the halo next to the pink bar
+    const halo = [0.42, 0.5];
+    G.set('bloom', 0); frame(); const h0 = lum(px(...halo)), center = px(0.5, 0.5);
+    G.set('bloom', 1.5); frame(); const h1 = lum(px(...halo));
+    ok(center[0] > 150 && center[2] > 80, 'la scène passe dans la texture (néon rose au centre : ' + center.map(Math.round) + ')');
+    ok(h1 > h0 + 30, 'bloom : halo autour du néon (' + Math.round(h0) + ' → ' + Math.round(h1) + ')');
+    reset();
+    // flash pulse: bright, then gone
+    frame(); const dark = lum(px(0.8, 0.2));
+    G.pulse('flash', 1, 300 * S / 0.4 + 200); frame(); const fl = lum(px(0.8, 0.2));
+    ok(fl > dark + 300 && G.value('flash') > 0.5, 'flash : éclair plein écran (' + Math.round(dark) + ' → ' + Math.round(fl) + ')');
+    await wait(400 * S / 0.4 + 300); frame();
+    ok(G.value('flash') === 0 && G.pulses.length === 0 && lum(px(0.8, 0.2)) < dark + 20, 'pulse : l\'impulsion retombe à 0');
+    // warp: the neon smeared towards the edge (radial blur)
+    const out = [0.62, 0.5];
+    frame(); const w0 = lum(px(...out)); G.set('bloom', 0); frame(); const w0b = lum(px(...out));
+    G.set('warp', 1.5); frame(); const w1 = lum(px(...out));
+    ok(w1 > w0b + 20, 'warp : traînées radiales (' + Math.round(w0b) + ' → ' + Math.round(w1) + ')'); reset();
+    // wire: inside the bar = dark, on its edge = bright
+    G.set('bloom', 0); G.set('wire', 1); frame(); const inside = lum(px(0.5, 0.5, 1));
+    ok(inside < lum(center) * 0.3, 'wire : intérieur des formes éteint, contours seuls (' + Math.round(inside) + ' vs ' + Math.round(lum(center)) + ')'); reset();
+    // vhs: the image changes from frame to frame (tracking, noise)
+    G.set('vhs', 1.5); frame(); const v1 = px(0.5, 0.55, 3); await wait(80); frame(); const v2 = px(0.5, 0.55, 3);
+    const dif = (a, b) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
+    ok(G.value('vhs') > 1, 'vhs actif (' + G.value('vhs').toFixed(2) + ')'); reset();
+
+    // --- JUICE 0: a still image, no flash / shake / warp / vhs / grain
+    M.set({ juice: 0 });
+    G.pulse('flash', 1, 2000); G.pulse('shake', 1, 2000); G.set('vhs', 1); G.set('warp', 1);
+    ok(['flash', 'shake', 'warp', 'vhs', 'grain'].every((n) => G.value(n) === 0) && G.value('bloom') > 0, 'JUICE 0 : aucun effet de mouvement (flash, secousse, warp, vhs, grain), bloom sobre ' + G.value('bloom').toFixed(2));
+    frame(); const s1 = px(0.3, 0.7, 4); await wait(60); frame(); const s2 = px(0.3, 0.7, 4);
+    ok(dif(s1, s2) < 1, 'JUICE 0 : image immobile d\'une image à l\'autre');
+    M.set({ juice: 1, reduced: true }); G.pulse('flash', 1, 2000);
+    ok(G.value('flash') === 0 && G.value('shake') === 0 && Math.abs(G.value('crt') - (G.BASE.crt * 0.5)) < 1e-9, 'mouvement réduit : pas de flash ni de secousse, CRT à moitié');
+    M.set({ juice: 1, reduced: false }); reset();
+    M.set({ juice: 2 }); ok(G.value('bloom') > G.BASE.bloom * 1.5, 'JUICE 2 : bloom plus fort (' + G.value('bloom').toFixed(2) + ')'); M.set({ juice: 1 });
+
+    // --- forced fallback and back
+    G.fallback('test');
+    ok(G.mode === '2d' && G.cv.hidden && viz.style.opacity === '' && !viz.parentNode.classList.contains('gl') && G.render() === false, 'repli forcé : canvas 2D visible, CRT css de retour, plus de rendu GL');
+    ok(G.enable() && G.mode === 'gl' && !G.cv.hidden, 'retour WebGL');
+
+    // --- any size (S8.3: full screen)
+    viz.width = 390; viz.height = 780; viz.style.width = '390px'; viz.style.height = '780px'; viz.parentNode.style.height = '780px'; G.place(); frame();
+    ok(G.cv.width === 390 && G.cv.height === 780 && G.cv.style.height === '780px' && G.fw === 390, 'suit la taille du canvas (390×780)');
+    AMB.visual.dpr = 3; viz.width = 1170; viz.height = 2340; frame();
+    ok(G.cv.width === 585 && G.cv.height === 1170, 'devicePixelRatio 3 : sortie plafonnée à 1,5 (' + G.cv.width + '×' + G.cv.height + ')');
+    AMB.visual.dpr = 1; viz.width = 640; viz.height = 400; viz.style.width = '640px'; viz.style.height = '400px'; viz.parentNode.style.height = '400px'; frame();
+
+    // --- cost (swiftshader: CPU; on a GPU the pass is mostly asynchronous)
+    { const t = []; for (let i = 0; i < 20; i++) { const a = performance.now(); frame(); G.gl.finish(); t.push(performance.now() - a); } t.sort((a, b) => a - b);
+      log('coût d\'une image 640×400 avec finish() (swiftshader, CPU) : médiane ' + t[10].toFixed(2) + ' ms'); }
+
+    // --- budget: slow frames → steps down, then 2D
+    { const st = G.frames; G.frames = G.BUDGET.warm + 1; G.last = 0; let n = 0, t = 1000;
+      while (G.mode === 'gl' && n < 1000) { t += 70; G.measure(t, 1); n++; }
+      ok(G.mode === '2d' && G.reason === 'budget' && G.level === G.LEVELS.length - 1, 'budget dépassé (70 ms / image) : qualité réduite pas à pas puis repli 2D après ' + n + ' images');
+      G.enable(); ok(G.mode === 'gl' && G.level === 0, 'réactivable'); }
+
+    // --- lost context (WEBGL_lose_context) → 2D, restored → WebGL
+    const ext = G.gl.getExtension('WEBGL_lose_context');
+    ok(!!ext, 'extension WEBGL_lose_context');
+    if (ext) {
+      ext.loseContext(); await wait(100); frame();
+      ok(G.mode === '2d' && G.reason === 'lost' && G.cv.hidden && viz.style.opacity === '', 'contexte perdu : repli 2D automatique');
+      ext.restoreContext(); for (let i = 0; i < 30 && G.mode !== 'gl'; i++) await wait(50);
+      frame();
+      ok(G.mode === 'gl' && !G.cv.hidden && lum(px(0.5, 0.5)) > 200, 'contexte rendu : WebGL revient et redessine');
+    }
+
+    // --- no WebGL
+    G.forceNoGL = true; G.dropGL(); G.enable();
+    ok(G.mode === '2d' && viz.style.opacity === '', 'sans WebGL : repli 2D'); G.forceNoGL = false;
+    done();
+  } catch (e) { fail(e); }
+});
+</script>
+</body></html>

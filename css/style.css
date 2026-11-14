@@ -389,6 +389,11 @@ body.city .stage::after { opacity: var(--crt, .8); /* S6.5 the city's CRT: scanl
 kbd { background: linear-gradient(#3a3936, #2c2b29); box-shadow: var(--bevel); border: 1px solid #000; font-family: var(--f-num); color: var(--text); }
 footer { color: #6e6757; font-family: var(--f-num); letter-spacing: .08em; text-transform: uppercase; font-size: 10px; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* S8.2 the WebGL pass (js/city-gl.js): a click-through canvas over #viz (its box copied by js), which then goes transparent;
+   its CRT (scanlines, curvature, vignette) replaces the css one above, kept for the 2D fallback */
+.city-gl { position: absolute; display: block; pointer-events: none; }
+.city-gl[hidden] { display: none; }
+.stage.gl::after { display: none; }
 @media (prefers-reduced-motion: reduce) { .stage::after { display: none; } } /* (every loop stops: .m-still, end of the S7.1 block) */
 
 /* retro: compact LCD selects inside panels, scenes/journal accents */
@@ -510,8 +515,8 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 @keyframes fx-shake { 10% { translate: -7px 3px; } 25% { translate: 6px -4px; } 40% { translate: -5px 2px; } 60% { translate: 3px -2px; } 80% { translate: -1px 1px; } 100% { translate: 0 0; } }
 .app.fx-quake > :not(.modal) { animation: fx-quake .6s linear; } /* (not .app itself: a transform would pull the fixed dialogs inside it) */
 @keyframes fx-quake { 10% { translate: -6px 3px; rotate: -.5deg; } 25% { translate: 7px -3px; rotate: .6deg; } 40% { translate: -5px 2px; rotate: -.35deg; } 60% { translate: 3px -1px; rotate: .2deg; } 80% { translate: -1px 1px; rotate: 0deg; } 100% { translate: 0 0; rotate: 0deg; } }
-#viz.fx-punch { animation: fx-punch .45s cubic-bezier(.2, 1.6, .4, 1); }
-#viz.fx-punch-big { animation: fx-punch-big .6s cubic-bezier(.2, 1.6, .4, 1); }
+#viz.fx-punch, .city-gl.fx-punch { animation: fx-punch .45s cubic-bezier(.2, 1.6, .4, 1); }
+#viz.fx-punch-big, .city-gl.fx-punch-big { animation: fx-punch-big .6s cubic-bezier(.2, 1.6, .4, 1); }
 @keyframes fx-punch { 30% { scale: 1.06; } 100% { scale: 1; } }
 @keyframes fx-punch-big { 25% { scale: 1.14; rotate: -1.2deg; } 55% { scale: .97; rotate: .6deg; } 100% { scale: 1; rotate: 0deg; } }
 .fx-bounce .top .btn, .fx-bounce .mode-btn, .fx-bounce .pad, .fx-bounce .chip, .fx-hop { animation: fx-hop .5s cubic-bezier(.3, 1.8, .5, 1) both; }
