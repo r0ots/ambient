@@ -280,7 +280,7 @@ body { background: var(--bg); }
 .k-body { fill: var(--bg); stroke: color-mix(in srgb, var(--c) 45%, transparent); stroke-width: 1.5; }
 .k-dot { fill: #fff; filter: drop-shadow(0 0 2px var(--c)); }
 .k-val { font: 600 12px var(--f); color: var(--text); }
-.k-lab { font: 600 10.5px var(--f); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.k-lab { font: 600 10px var(--f); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); max-width: 100%; overflow-wrap: anywhere; }
 
 /* buttons: tubes (rest = dim, .on / primary = lit; hover and press: S7.1 block) */
 .btn, select { font: 600 13px/1.15 var(--f); letter-spacing: .08em; background: transparent; color: #e9e1ff; border: 1.5px solid var(--line-hi); border-radius: var(--radius-btn); box-shadow: none; }
@@ -1372,3 +1372,5 @@ body.listen .app > .stage { height: auto; }
   .btn, .tog, .chip, .nsel-btn, .mode-btn, .song-chip, .slot-tab, .sc-slot, .song-btns button, .loop-chip button, .chord-slot, kbd + .btn { min-height: 44px; }
   .slot-tab, .sc-slot, .song-btns button { min-width: 44px; }
 }
+/* a phone: the bar's first row (▶ · MIDI · ● · ▾ · ARBRE · ⋯) holds in 390 px */
+@media (max-width: 560px) { .top .btn, .top summary.btn { padding-inline: 8px; letter-spacing: .04em; font-size: 12px; } .top .mode-btn { padding-inline: 8px; letter-spacing: .06em; } }

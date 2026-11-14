@@ -112,7 +112,7 @@ document.getElementById('f').addEventListener('load', () => {
         const st = doc.createElement('style'); st.textContent = `.fx-flash.on, .stage.fx-shake, .app.fx-quake > *, #viz.fx-punch, #viz.fx-punch-big, .fx-bounce .btn, .fx-bounce .pad, .fx-bounce .chip, .fx-hop, .lcd.lcd-arcade #lcdTop, .lcd.lcd-glitch-big, .fx-pop { animation: none !important; }
           .fx-flash.on { opacity: .4; } .app.fx-quake > .top { translate: -5px 2px; rotate: -.4deg; } .stage.fx-shake { translate: 6px -3px; } #viz.fx-punch, #viz.fx-punch-big { scale: 1.1; rotate: -1deg; }
           .fx-bounce .btn:nth-child(odd), .fx-bounce .pad:nth-child(odd), .fx-bounce .chip, .fx-hop { translate: 0 -8px; scale: 1.08 .92; } .fx-bounce .pad:nth-child(even) { scale: .94 1.06; }
-          .fx-pop { opacity: 1; scale: 1.2; rotate: -4deg; }`; // (headless captures freeze CSS animations at their first frame: a mid-flight still instead)
+          .fx-pop { opacity: 1; } .fx-pop .fx-word i { opacity: 1; animation: none; }`; // (headless captures freeze CSS animations at their first frame: a mid-flight still instead)
         doc.head.append(st);
     }
   }

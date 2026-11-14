@@ -243,6 +243,11 @@ Règle de produit (v1.05) : le jeu se joue SUR l'instrument (ses commandes, son 
 - « ✦ Tout ouvrir (n) » dans la carte quand plus de 3 nœuds attendent (`garden.openAll`, `OPEN_ALL`) : un par temps (une croche au-delà de 8), chacun sa fête sur son temps, ni carte ni défilement ; la carte nomme les 3 suivants.
 - Une fête (`garden.fx`) ne passe jamais par-dessus une fenêtre (`modalUp`) : elle attend sa fermeture (6 s au plus). Un message du LCD n'est plus coupé : trop long, il rapetisse (ui.js). Demandes : IV après Tonalité ; « Épaissis les grains » compte le grand réglage et le CC1. Carnet : indices de Funambule, Entre les touches, Petite phrase réécrits. Test : `tests/regards.html` (390 px).
 
+## Néon (S9.2)
+- Une seule police, Chakra Petch (`--f`), Monoton pour le logo seul (`--f-logo`) ; palette en jetons `:root` (nuit `#07040f`, magenta, cyan, ambre, phosphore) : noir autour, couleur seulement dans les tubes.
+- Plus aucun `<select>` système : `AMB.widgets.neonSelect` (widgets.js) garde le select natif caché comme source de vérité et l'habille d'un bouton + liste néon (clavier, aria, aperçu sonore pour un timbre) ; tout select ajouté plus tard est habillé automatiquement.
+- Une frappe de touche = `AMB.keys.hit(i, {source})` / `AMB.keys.lift(i)` (play.js) : écrasée, anneau, laser vers la ville, étincelles ; « machine » = douce, sans écrasement. Mot de fête = enseigne néon (`garden.fxPop`).
+
 ## Mode libre intact
 - En libre : aucun verrou, aucune interface de jeu (la 2e ligne du LCD redevient l'état du son), aucun gain ni détection, pas de carillon. Son, journal, annulation et liens partagés sans trace du jeu. `AMB.game.counts()` = Parcours et instrument pas encore remis.
 - Changements admis en libre : le MIDI (S4.1 : bouton dans la barre, notes audibles lecture arrêtée) ; et, par le même chemin `engine.liveInput`, A–L (déjà promis par la doc) et l'aperçu des notes du piano roll sonnent lecture arrêtée, une fois l'audio démarré. Les pastilles n'existent pas en libre.
