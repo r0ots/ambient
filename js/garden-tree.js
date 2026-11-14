@@ -136,7 +136,8 @@
     renderTree() {
       const map = $('#treeDlg .tree-map'); if (!map) return;
       const T = AMB.tree, g = AMB.game;
-      $('#treeDlg .tree-count').textContent = g.s.ended ? '✦ L\'instrument est à toi' : `${T.NODES.filter((n) => g.has(n.id)).length}/${T.NODES.length}`;
+      const n = T.NODES.filter((x) => g.has(x.id)).length; // S9.1: no total, what is left is still in the dark
+      $('#treeDlg .tree-count').textContent = g.s.ended ? '✦ L\'instrument est à toi' : `${n} ouvert${n > 1 ? 's' : ''}`;
       if (!map.querySelector('.tree-stage') || map.dataset.n !== T.NODES.length + (this.narrowTree() ? 'n' : '')) this.buildMap(map);
       this.paintTree();
     },
@@ -163,14 +164,20 @@
         const top = Math.min(...ps.map((p) => p.y)), xs = ps.filter((p) => p.y === top).map((p) => p.x);
         const t = document.createElementNS(SVGNS, 'text'), up = lay.nar && bid !== 'tronc' && (tops[top] = (tops[top] || 0) + 1) % 2 === 0 ? 26 : 0;
         t.setAttribute('class', 'tree-bname'); t.setAttribute('x', xs.reduce((a, b) => a + b, 0) / xs.length); t.setAttribute('y', top - 30 - up);
-        t.setAttribute('text-anchor', 'middle'); t.style.setProperty('--c', T.BRANCHES[bid].color); t.textContent = T.BRANCHES[bid].name;
+        t.setAttribute('text-anchor', 'middle'); t.style.setProperty('--c', T.BRANCHES[bid].color); t.textContent = T.BRANCHES[bid].name; t.dataset.b = bid;
         if (bid !== 'tronc') svg.append(t);
       }
-      const gl = document.createElementNS(SVGNS, 'g');
+      const gl = document.createElementNS(SVGNS, 'g'), defs = document.createElementNS(SVGNS, 'defs');
+      svg.append(defs);
       for (const n of T.NODES) for (const r of n.req) {
         const a = lay.pos[r], b = lay.pos[n.id], dy = a.y - b.y;
         const d = `M${a.x} ${a.y}C${a.x} ${a.y - dy * 0.55} ${b.x} ${b.y + dy * 0.45} ${b.x} ${b.y}`;
         const cross = T.byId[r].branch !== n.branch;
+        // S9.1: a link towards a node still in the dark fades out from the visible end (its gradient, oriented by paintTree)
+        const lg = document.createElementNS(SVGNS, 'linearGradient');
+        lg.id = `tl-${r}-${n.id}`.replace(/\./g, '_'); lg.setAttribute('gradientUnits', 'userSpaceOnUse');
+        lg.innerHTML = `<stop offset="0" stop-color="${T.BRANCHES[n.branch].color}" stop-opacity=".9"/><stop offset=".5" stop-color="${T.BRANCHES[n.branch].color}" stop-opacity="0"/>`;
+        defs.append(lg);
         for (const glow of [false, true]) {
           const p = document.createElementNS(SVGNS, 'path');
           p.setAttribute('d', d); if (glow) p.setAttribute('pathLength', '1');
@@ -213,10 +220,22 @@
           + (n.req.length && st !== 'owned' ? `, demande ${n.req.map((r) => T.byId[r].name).join(', ')}` : '')
           + (ext.length && st === 'owned' ? `, relié à ${ext.map((r) => T.byId[r].name).join(', ')}` : ''));
       });
-      map.querySelectorAll('.tree-link').forEach((p) => {
-        const st = g.has(p.dataset.to) ? 'owned' : g.has(p.dataset.from) ? 'available' : 'locked';
-        p.classList.toggle('owned', st === 'owned'); p.classList.toggle('available', st === 'available'); p.classList.toggle('locked', st === 'locked');
+      // S9.1: only what is open or can open now is drawn; a link to the dark leaves in fading dots, two dark ends: nothing
+      const seen = (id) => T.status(id) !== 'locked', lay = this.treeLayout();
+      map.querySelectorAll('.tree-link, .tree-glow').forEach((p) => {
+        const f = seen(p.dataset.from), t = seen(p.dataset.to), glow = p.classList.contains('tree-glow');
+        const st = !f && !t ? 'gone' : !f || !t ? 'dark' : g.has(p.dataset.to) ? 'owned' : 'available';
+        for (const c of ['owned', 'available', 'dark', 'gone']) p.classList.toggle(c, c === st && !(glow && c !== 'gone' && c !== 'dark'));
+        if (glow) return;
+        const id = `tl-${p.dataset.from}-${p.dataset.to}`.replace(/\./g, '_'), lg = map.querySelector('#' + id);
+        if (st === 'dark' && lg) {
+          const a = lay.pos[f ? p.dataset.from : p.dataset.to], b = lay.pos[f ? p.dataset.to : p.dataset.from];
+          lg.setAttribute('x1', a.x); lg.setAttribute('y1', a.y); lg.setAttribute('x2', b.x); lg.setAttribute('y2', b.y);
+          p.style.stroke = `url(#${id})`;
+        } else p.style.stroke = '';
       });
+      // a branch's name shows once one of its nodes is open
+      map.querySelectorAll('.tree-bname').forEach((t) => t.classList.toggle('gone', !T.NODES.some((n) => n.branch === t.dataset.b && g.has(n.id))));
       if (this.sel) this.showInfo(this.sel);
     },
 
@@ -291,7 +310,8 @@
       const T = AMB.tree, g = AMB.game, K = AMB.contracts, n = id && T.byId[id];
       if (!n) { box.hidden = true; box.dataset.id = ''; return; }
       const st = T.status(id), br = T.BRANCHES[n.branch], ops = st === 'owned' || st === 'ready' ? [] : this.openers(id);
-      const req = n.req.map((r) => `<span class="${g.has(r) ? 'ok' : ''}">${g.has(r) ? '✓' : '·'} ${T.byId[r].name}</span>`).join(' ');
+      const nm = (r) => (T.status(r) === 'locked' ? '???' : T.byId[r].name); // (S9.1: what is still in the dark keeps its name)
+      const req = n.req.map((r) => `<span class="${g.has(r) ? 'ok' : ''}">${g.has(r) ? '✓' : '·'} ${nm(r)}</span>`).join(' ');
       const now = ops.find((o) => o.d && K.state().active[0] === o.d.id);
       // S6.7: while nodes wait on « ✦ Ouvrir » no challenge runs (contracts.refill): its card says so, not a challenge
       // that cannot come yet
@@ -307,7 +327,7 @@
         + (ops.length ? `<p class="ti-o">Pour l'ouvrir : ${opTxt.map((t) => `<span>${t}</span>`).join(' · ou ')}${now && !wait ? ' <em>(le défi en cours)</em>' : ''}</p>` : '')
         // S4.6: won, waiting for the player: the same « ✦ Ouvrir » as on the LCD (after its prerequisites, for a secret's chain)
         + (st === 'ready' ? (n.req.every((r) => g.has(r)) ? '<p class="ti-o">✓ Réussi : à toi de l\'ouvrir. <button type="button" class="btn primary small ti-open">✦ Ouvrir</button></p>'
-          : `<p class="ti-o">✓ Réussi : s'ouvre après ${n.req.filter((r) => !g.has(r)).map((r) => T.byId[r].name).join(', ')}.</p>`) : '');
+          : `<p class="ti-o">✓ Réussi : s'ouvre après ${n.req.filter((r) => !g.has(r)).map(nm).join(', ')}.</p>`) : '');
       // the card sits in the empty corner opposite to the node (the fan leaves both bottom corners free)
       const map = $('#treeDlg .tree-map'), el = map && map.querySelector(`.tree-node[data-id="${id}"]`);
       if (el && map) { const r = map.getBoundingClientRect(), e = el.getBoundingClientRect(); box.classList.toggle('right', e.left + e.width / 2 < r.left + r.width / 2); }
@@ -388,13 +408,12 @@
     },
 
     // ---- unlock sequence (G8.5): a challenge just opened a node ----
-    // ~1.2 s on the map: the parent→node links light up, the node is born (chime), newly reachable children blink, then the
+    // (S9.1: only when the Arbre is already open) ~1.2 s on the map: the parent→node links light up, the node is born (chime), newly reachable children blink, then the
     // tree closes and reveal() shows what opened. Reduced motion: final state + chime at once, short pause, close.
     seq: null,
     unlockSeq(id) {
       if (this.seq) this.seqFinish();
-      const dlg = $('#treeDlg');
-      if (dlg && dlg.hidden && !this.reduced) this.showTree(true);
+      const dlg = $('#treeDlg'); // S9.1: the Arbre opens by its button only; an opening elsewhere plays on the instrument
       const el = document.querySelector(`#treeDlg .tree-node[data-id="${id}"]`);
       const still = this.reduced || !el || !dlg || dlg.hidden;
       const s = (this.seq = { id, t: [], hit: false });

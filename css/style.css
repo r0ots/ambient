@@ -553,6 +553,7 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 /* S5.7: an open node wears its branch's colour: the dot shows the five */
 .tree-legend i.st-owned { background: conic-gradient(#e8d9b0 0 20%, #b58cff 0 40%, #7fd6ff 0 60%, #8fe3a0 0 80%, #ffb36b 0); box-shadow: 0 0 6px #fff3c466; }
 .tree-legend i.st-available { background: var(--lcd-fg); box-shadow: 0 0 6px var(--lcd-fg); }
+.tree-legend i.lg-dark { width: 18px; height: 0; border-radius: 0; background: none; box-shadow: none; border-top: 2px dashed var(--muted); -webkit-mask: linear-gradient(90deg, #000, transparent); mask: linear-gradient(90deg, #000, transparent); }
 .tree-legend i.st-ready { background: #fff3c4; box-shadow: 0 0 0 2px var(--lcd-fg), 0 0 8px var(--lcd-fg); }
 .tree-legend > .tree-tip { flex-basis: 100%; font-size: 11px; white-space: normal; display: block; }
 .tree-tip .tip-short { display: none; }
@@ -564,11 +565,12 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .tree-bname { font: 600 13px var(--f-ui); letter-spacing: .22em; text-transform: uppercase; fill: var(--c); opacity: .75; }
 /* links: locked = dotted grey, available = amber flowing dashes, owned = branch colour */
 .tree-link { fill: none; stroke: #4a4844; stroke-width: 2.5; stroke-linecap: round; transition: stroke .3s, opacity .3s, stroke-width .2s; }
-.tree-link.locked { stroke: #45433f; stroke-dasharray: 2 6; }
+/* S9.1: the dark — nodes not reachable yet are not drawn; their links leave in dots that fade out (gradient set by js) */
+.tree-node.st-locked, .tree-link.gone, .tree-glow.gone, .tree-glow.dark, .tree-bname.gone { display: none; }
+.tree-link.dark { stroke-dasharray: 3 7; opacity: 1; }
 .tree-link.available { stroke: var(--lcd-fg); opacity: .6; stroke-dasharray: 7 6; animation: tree-flow 1.4s linear infinite; }
 .tree-link.owned { stroke: var(--c); opacity: .8; stroke-width: 3; }
 .tree-link.x { stroke-width: 2; }
-.tree-link.x.locked { opacity: .7; }
 .tree-link.is-hl { stroke-width: 4.5; opacity: 1; }
 .tree-map:has(.is-focus) .tree-link:not(.is-hl) { opacity: .18; }
 @keyframes tree-flow { to { stroke-dashoffset: -13; } }
@@ -582,7 +584,6 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .tree-node b, .tree-node span { background: #191816e6; border-radius: 3px; padding: 0 4px; max-width: 92px; }
 .tree-node b { font-weight: 600; font-size: 12.5px; line-height: 1.1; padding-top: 1px; }
 .tree-node span { font: 11px var(--f-num, monospace); }
-.tree-node.st-locked b, .tree-node.st-locked span { opacity: .6; }
 .tree-node.st-available { color: var(--lcd-fg); }
 .tree-node.st-available .led { background: radial-gradient(circle at 35% 30%, #fff0c8, var(--lcd-fg) 45%, #8a4d10); animation: led-breathe 2.6s ease-in-out infinite; }
 .tree-node.st-ready { color: #fff3c4; }
