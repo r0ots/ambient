@@ -321,7 +321,7 @@
     if (e.metaKey || e.ctrlKey || e.altKey || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
     const n = parseInt(e.key, 10);
     if (!(n >= 1 && n <= 8) || !song.sections[n - 1]) return;
-    if (song.jump(n - 1)) e.preventDefault();
+    if (song.jump(n - 1)) { e.preventDefault(); if (AMB.motion) AMB.motion.tap(song.strip && song.strip.querySelector(`.song-chip[data-i="${n - 1}"]`)); }
   });
   if (AMB.bus) {
     // another mode brings its own sound: the song lets go of it (pick a section to hear it again)

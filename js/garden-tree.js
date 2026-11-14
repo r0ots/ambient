@@ -448,10 +448,10 @@
     },
     reveal(id) {
       const els = this.revealTargets(id), nf = AMB.tree.newFirst;
-      // the control tagged « Nouveau », else the full panel rather than the Écouter shortcuts (layer chips, macros)
-      const first = nf && els.includes(nf) ? nf : els.find((e) => !e.closest('.macros')) || els[0];
+      // the control tagged « Nouveau », else the first one
+      const first = nf && els.includes(nf) ? nf : els[0];
       if (!first) return;
-      const want = first.closest('.seqrow') ? 'compose' : first.closest('.globals, .layers, #scenes, #journal') ? 'sculpt' : first.closest('.macros') ? 'listen' : null;
+      const want = first.closest('.seqrow') ? 'compose' : first.closest('.drawer') ? 'sculpt' : null;
       if (want && AMB.mode !== want && AMB.perform) AMB.perform.setMode(want);
       try { first.scrollIntoView({ behavior: this.reduced ? 'auto' : 'smooth', block: 'center' }); } catch (e) { first.scrollIntoView(); }
     },

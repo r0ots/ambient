@@ -350,6 +350,7 @@
     if (e.code !== 'Digit0' && e.code !== 'Digit9') return;
     if (!AMB.engine.ctx || (AMB.tree && !AMB.tree.uiUnlocked('song'))) return;
     e.preventDefault();
+    if (AMB.motion) AMB.motion.tap(document.querySelector(`.seqrow [data-l="${e.code === 'Digit0' ? 'rec' : 'dub'}"]`)); // (the same press as a click)
     if (e.code === 'Digit0') looper.rec(); else looper.dub();
   });
 

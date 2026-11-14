@@ -17,7 +17,7 @@
   const N = (id, branch, name, req, params, ui, desc) => ({ id, branch, name, req, params, ui, desc });
   const NODES = [
     // Tronc — the starting point and the tools to keep / share a sound
-    N('racine', 'tronc', 'Allumage', [], ['drone.on', 'drone.vol', 'drone.tone', 'global.volume'], ['play', 'mode-sculpt', 'keys', 'midi'], 'Une note tenue et sa lumière ; tes premières notes (pastilles, A–L, MIDI). Tout part de là.'),
+    N('racine', 'tronc', 'Allumage', [], ['drone.on', 'drone.vol', 'drone.tone', 'global.volume'], ['play', 'keys', 'midi'], 'Une note tenue et sa lumière ; tes premières notes (pastilles, A–L, MIDI). Tout part de là.'),
     N('t.son', 'tronc', 'Timbre du drone', ['racine'], ['drone.wave', 'drone.motion'], [], 'Choisir le son du drone et le faire respirer.'),
     N('t.viz', 'tronc', 'Écran', ['racine'], [], ['listen'], 'Passer en plein écran : juste regarder la ville et écouter.'),
     N('t.journal', 'tronc', 'Journal', ['t.son'], [], ['journal', 'save'], 'Revenir à un moment passé, garder un paysage.'),
@@ -120,7 +120,7 @@
     motifs: '.slot-tabs, .roll-wrap [data-act=dup]',
     reclive: '.roll-wrap [data-act=liverec], .roll-wrap label:has([data-metro])',
     keys: '.stage .hint', midi: '#midi', midiFile: '#exportMidi, .roll-wrap label:has([data-midi-in]), .roll-wrap [data-act=midi]',
-    'mode-sculpt': '[data-mode=sculpt]', 'mode-compose': '[data-mode=compose]',
+    'mode-compose': '[data-mode=compose]',
   };
 
   const UI_LABEL = {
@@ -128,7 +128,7 @@
     rec: 'Enregistrement', share: 'Lien de partage', patches: 'Export / import des paysages', dice: '✦ Nouveau paysage',
     preset: 'Paysages prêts', freeze: 'Échantillon, micro, Figer', scenes: 'Scènes A/B', automation: 'Automation',
     chords: 'Panneau Progression', song: 'Morceau', pianoroll: 'Piano roll', motifs: 'Motifs A–D', reclive: 'Rec live',
-    keys: 'Jouer au clavier (A–L)', midi: 'Clavier MIDI', midiFile: 'Import / export .mid', 'mode-sculpt': 'Mode Sculpter', 'mode-compose': 'Mode Composer',
+    keys: 'Jouer au clavier (A–L)', midi: 'Clavier MIDI', midiFile: 'Import / export .mid', 'mode-compose': 'Mode Composer',
   };
 
   const tree = {
@@ -215,9 +215,9 @@
     });
     this.solo(g);
     if (live && on && fresh.length) this.appear(fresh);
-    // never stay in a mode that is locked
+    // never stay in a mode that is locked (Sculpter is always there)
     const cur = AMB.mode;
-    if (on && cur && cur !== 'listen' && !this.uiUnlocked('mode-' + cur, g) && AMB.perform) AMB.perform.setMode('listen');
+    if (on && cur && cur !== 'sculpt' && !this.uiUnlocked('mode-' + cur, g) && AMB.perform) AMB.perform.setMode('sculpt');
   };
 
   // S5.6: the On of a layer that is the only one open is hidden in the path: muting it would silence everything. Shown
@@ -227,7 +227,7 @@
     if (typeof document === 'undefined') return;
     const tg = this.SOLO.map((l) => document.querySelector(`.panel[data-sec="${l}"] > header .tog[data-key="${l}.on"]`)).filter((b) => b && !b.closest('.is-locked'));
     document.querySelectorAll('.tog.is-solo').forEach((b) => b.classList.remove('is-solo'));
-    if (g && g.path && tg.length === 1 && AMB.store.get(tg[0].dataset.key)) document.querySelectorAll(`.tog[data-key="${tg[0].dataset.key}"]`).forEach((b) => b.classList.add('is-solo')); // (its panel header and its chip in Écouter)
+    if (g && g.path && tg.length === 1 && AMB.store.get(tg[0].dataset.key)) document.querySelectorAll(`.tog[data-key="${tg[0].dataset.key}"]`).forEach((b) => b.classList.add('is-solo')); // (its panel header)
   };
   if (AMB.store) AMB.store.on((k) => { if (/\.on$/.test(k) && tree.SOLO.includes(k.split('.')[0])) tree.solo(); });
 
@@ -260,10 +260,10 @@
     const hl = els.filter((e) => e.dataset.node && !e.matches('.stage .hint')); // (the keys line just appears)
     if (!hl.length) return hl;
     hl.forEach((e) => e.classList.add('is-new'));
-    // the tag: on the first full control in reading order (not an Écouter shortcut nor a panel's on/off switch in its
-    // corner), never on a form field (no ::after there)
+    // the tag: on the first full control in reading order (not a panel's on/off switch in its corner), never on a form
+    // field (no ::after there)
     const tagOk = (e) => !e.matches('select, input, textarea, canvas, img');
-    const first = hl.find((e) => tagOk(e) && !e.closest('.macros, .panel header')) || hl.find(tagOk) || null;
+    const first = hl.find((e) => tagOk(e) && !e.closest('.panel header')) || hl.find(tagOk) || null;
     document.querySelectorAll('.is-new-first').forEach((e) => e.classList.remove('is-new-first', 'is-new-rel'));
     if (first) { first.classList.add('is-new-first'); if (getComputedStyle(first).position === 'static') first.classList.add('is-new-rel'); }
     this.newFirst = first || hl[0];
