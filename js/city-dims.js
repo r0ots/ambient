@@ -96,7 +96,7 @@
       if (!gv.running || !gv.running()) return;
       if (m === 'light') this.wave(G, dv);
       if (m === 'nostalgia' && !gv.reduced) { this.track = Math.max(this.track, clamp(0.35 + G.rate / 3)); this.gl('pulse', 'vhs', 0.6 * clamp(G.rate / 2, 0.3, 1.2), 380); }
-      if (m === 'space' && this.live()) this.camKick = (this.camKick || 0) + 0.02 * G.dir * clamp(G.rate, 0.3, 3);
+      if (m === 'space' && this.live()) this.camKick = clamp((this.camKick || 0) + 0.006 * G.dir * clamp(G.rate, 0.3, 3), -0.035, 0.035); // the camera leans with the gesture
       if (G.rate > HOT && this.live()) this.overload(m, G);
     },
     seen: {},
@@ -164,7 +164,7 @@
   gv.addDim('traffic', { tau: 0.8, at: 'trafic (Densité) : voitures volantes et files (dessin S8.6)', aim: (c) => clamp((0.04 + 0.96 * Math.pow(D.mac('density'), 0.9)) * (0.5 + 0.5 * c.L.play) + 0.35 * sur('density'), 0, 1.3) });
   gv.addDim('population', { tau: 1.5, at: 'habitants (Densité × couches ouvertes × lecture ; aube = tous)', aim: (c) => Math.max(c.dawn, clamp((0.08 + 0.92 * D.mac('density')) * (0.4 + 0.6 * Math.min(1, c.plants.length / 4)) * (0.5 + 0.5 * c.L.play))) });
   gv.addDim('skyline', { tau: 0, at: 'ville de fond construite (Densité) 0..1', aim: () => D.mac('density') });
-  gv.addDim('cam.back', { tau: 0.9, at: 'caméra : recul (Espace)', aim: () => clamp(D.mac('space') + 0.5 * sur('space'), 0, 1.5) });
+  gv.addDim('cam.back', { tau: 0.9, at: 'caméra : recul (Espace ; 1,6 = zoom ×0,74)', aim: () => 1.6 * D.mac('space') + 0.6 * sur('space') });
   gv.addDim('cam.depth', { tau: 0.9, at: 'caméra : profondeur, parallaxe (Espace)', aim: () => 0.1 + 1.9 * D.mac('space') });
   gv.addDim('cam.fog', { tau: 1, at: 'caméra : brouillard (Espace)', aim: () => 0.04 + 0.9 * Math.pow(D.mac('space'), 1.3) });
   // a slow dolly, wider with Espace (parallax by depth), plus the push of an Espace gesture (S8.4 hook in updateWorld)
@@ -229,14 +229,14 @@
   fogBand(22, 0.4, 0.34, 0.75, 'dims-fog-far'); fogBand(27, 0.6, 0.3, 0.6, 'dims-fog-mid'); fogBand(36, 1, 0.22, 0.45, 'dims-fog-near');
 
   // the background city (z 25, depth 0.6): Densité builds it, slot by slot (each a threshold), floor by floor
-  const MID_N = 16, MID_D = 0.6;
+  const MID_N = 22, MID_D = 0.6;
   D.midInit = function (W, gd, px) {
     const key = W + '|' + gd + '|' + px;
     if (this.mid && this.mid.key === key) return this.mid;
     const r = mulberry(515), m = Math.max(2, Math.round(px * 0.8)), FW = W * 1.3, slots = [];
     const order = Array.from({ length: MID_N }, (_, i) => i).sort(() => r() - 0.5);
     for (let i = 0; i < MID_N; i++) {
-      const wc = 7 + Math.floor(r() * 8), hmax = Math.round((gd * (0.2 + 0.26 * r())) / (2 * m)); // floors of 2 cells
+      const wc = 7 + Math.floor(r() * 9), hmax = Math.round((gd * (0.22 + 0.42 * r() * r() + 0.08 * r())) / (2 * m)); // floors of 2 cells; a few very tall
       slots.push({ x: -W * 0.15 + FW * (i + 0.5) / MID_N + (r() - 0.5) * FW / MID_N * 0.4, wc, hmax, th: order[i] / MID_N * 0.92, f: null, col: [[255, 196, 110], [120, 230, 255], [255, 110, 200]][Math.floor(r() * 3)], seed: Math.floor(r() * 1e6), sprites: {} });
     }
     const old = this.mid; if (old) slots.forEach((s, i) => { s.f = old.slots[i] ? Math.min(old.slots[i].f, s.hmax) : null; });
@@ -247,13 +247,13 @@
   D.midSprite = function (s, m, q) {
     if (s.sprites[q]) return s.sprites[q];
     const w = s.wc * m, h = s.hmax * 2 * m + m, c = gv.canvas(w, h), x = c.getContext('2d'), r = mulberry(s.seed);
-    x.fillStyle = 'rgb(22,14,38)'; x.fillRect(0, 0, w, h);
-    x.fillStyle = 'rgba(80,50,120,0.6)'; x.fillRect(0, 0, m, h);
+    x.fillStyle = 'rgb(26,16,46)'; x.fillRect(0, 0, w, h);
+    x.fillStyle = rgba(s.col, 0.35); x.fillRect(0, 0, m, h); x.fillRect(w - m, 0, m, h); // neon edges
     for (let fl = 0; fl < s.hmax; fl++) for (let i = 1; i < s.wc - 1; i += 2) {
       const th = ih(s.seed + i, fl), lit = th < q / LV && (q > 0 || th < 0.04), y = h - (fl + 1) * 2 * m;
       x.fillStyle = lit ? rgba(r() < 0.7 ? s.col : [255, 240, 200], 0.9) : 'rgb(36,24,56)'; x.fillRect(i * m, y, m - (m > 2 ? 1 : 0), m - (m > 2 ? 1 : 0));
     }
-    x.fillStyle = rgba(s.col, 0.85); x.fillRect(0, 0, w, Math.max(1, m >> 1)); // the roof's neon line
+    x.fillStyle = rgba(s.col, 0.95); x.fillRect(0, 0, w, Math.max(1, m >> 1)); if (s.wc > 10) { x.fillStyle = rgba(s.col, 0.8); x.fillRect(Math.round(w * 0.2), Math.round(h * 0.12), Math.max(m, Math.round(w * 0.12)), Math.round(h * 0.18)); } // the roof's neon line, a vertical sign on the wide ones
     return (s.sprites[q] = c);
   };
   gv.addLayer({ id: 'dims-mid', z: 25, draw(g, w, cam, v) {
@@ -284,6 +284,18 @@
     }
     D.midBuilt = n;
   } });
+  // the downpour (z 61, over the S8.1 rain): long streaks, slanted by the wind, when Nature is past the drizzle
+  gv.addLayer({ id: 'dims-rain', z: 61, draw(g, w, cam, v) {
+    const k = clamp(((w.weather.rain || 0) - 0.4) / 0.6); if (k < 0.03) return;
+    const W = cam.W, H = cam.H, px = cam.px, T = v.st, n = Math.round(k * 160 * clamp(W / (v.dpr || 1) / 1000, 0.5, 2.2)), slant = 0.1 + 0.6 * (w.weather.wind || 0), r = mulberry(717);
+    g.setTransform(1, 0, 0, 1, cam.ox, cam.oy); g.lineWidth = Math.max(1, Math.round(px * 0.4)); g.strokeStyle = 'rgba(190,200,255,0.32)'; g.globalAlpha = Math.min(1, 0.4 + 0.6 * k);
+    g.beginPath();
+    for (let i = 0; i < n; i++) {
+      const x0 = r() * W, y0 = r() * H, L = px * (8 + 10 * r()), vv = H * (1.1 + 0.6 * r()), d = y0 + T * vv, y = (d % (H + L)) - L, x = ((x0 - d * slant) % W + W) % W;
+      g.moveTo(x, y); g.lineTo(x - L * slant, y + L);
+    }
+    g.stroke();
+  } });
   // puddles and stronger reflections (z 31, on the wet street): Nature
   gv.addLayer({ id: 'dims-puddles', z: 31, draw(g, w, cam, v) {
     const wet = clamp((w.weather.rain || 0) * 1.1); if (wet < 0.05) return;
@@ -305,15 +317,29 @@
     }
   } });
   // the power wave (z 41, over the towers): each building as the power where it stands (the field), the front's snap
+  // the blackout veil (z 39, behind the towers): the whole background goes dark with the current (sky glow, far city,
+  // fog, street), column by column with the wave
+  gv.addLayer({ id: 'dims-dark', z: 39, draw(g, w, cam) {
+    if (!D.cols) return;
+    const W = cam.W, H = cam.H, cw = W / NC;
+    g.fillStyle = '#030108';
+    for (let i = 0; i < NC; i++) { const d = clamp((0.5 - D.cols[i]) / 0.5); if (d < 0.02) continue; g.globalAlpha = 0.72 * d * d; g.fillRect(Math.floor(i * cw), 0, Math.ceil(cw) + 1, H); }
+  } });
   gv.addLayer({ id: 'dims-power', z: 41, draw(g, w, cam, v) {
-    const W = cam.W, px = cam.px, P = w.power || 0;
+    const W = cam.W, px = cam.px, P = w.power || 0, applied = clamp((0.45 - P) / 0.45) * 0.7; // garden-visual's own cut
     for (const p of v.plants) {
       if (!p.vis || !p.k) continue;
-      const loc = D.colAt(clamp(p.sx / W)), d = loc - P; if (Math.abs(d) < 0.03) continue;
+      const loc = D.colAt(clamp(p.sx / W)), want = Math.pow(clamp((0.55 - loc) / 0.5), 0.8) * 0.96, dark = want > applied ? 1 - (1 - want) / (1 - applied) : 0, lift = loc - P;
+      if (dark < 0.03 && lift < 0.03) continue;
       const s = v.sprite(p, px), sy0 = s.h - p.vis;
       g.setTransform(p.k, 0, 0, p.k, p.sx, p.sy);
-      if (d < 0) { g.globalAlpha = Math.min(1, -d * 1.6); g.drawImage(s.dk, 0, sy0, s.w, p.vis, -s.w / 2, -p.vis, s.w, p.vis); }
-      else { g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, d * 1.3); g.drawImage(s.em, 0, sy0, s.w, p.vis, -s.w / 2, -p.vis, s.w, p.vis); g.globalCompositeOperation = 'source-over'; }
+      if (dark >= 0.03) {
+        g.globalAlpha = Math.min(1, dark); g.drawImage(s.dk, 0, sy0, s.w, p.vis, -s.w / 2, -p.vis, s.w, p.vis);
+        if (want > 0.5) { // a blackout: only a few windows still lit (always the same ones), the red beacons
+          g.globalAlpha = Math.min(1, 1.2 * want); g.fillStyle = rgba(p.col.map((c) => c + (255 - c) * 0.5), 0.9); const gap = px >= 4 ? 1 : 0;
+          for (const [x, y] of s.wins) if (y >= sy0 && ih(x * 7 + 3, y) < 0.07) g.fillRect(x - s.w / 2, y - s.h, px - gap, px - gap);
+        }
+      } else { g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, lift * 1.3); g.drawImage(s.em, 0, sy0, s.w, p.vis, -s.w / 2, -p.vis, s.w, p.vis); g.globalCompositeOperation = 'source-over'; }
     }
     g.globalAlpha = 1;
     if (!D.waves.length || D.juice() <= 0) return;
@@ -330,19 +356,19 @@
     }
   } });
   // trails (z 78, before the post filters): the light of the last frames, kept where it is brighter than now (reverb of
-  // the light). A tiny buffer (1/8, nearest sampling: cheap) multiplied by itself every frame: dim things (sky, walls)
+  // the light). A small buffer (1/4) multiplied by itself every frame: dim things (sky, walls)
   // vanish at once, bright neon fades over a few frames — only the lights leave trails. Its cost is watched: too slow
   // (software canvas) → off for the session (D.slow).
   gv.addLayer({ id: 'dims-trails', z: 78, draw(g, w, cam, v) {
     const a = w.trails || 0, cv = g.canvas;
     if (a < 0.04 || v.reduced || !cv || D.slow.trails) { D.trail = null; return; }
-    const t0 = performance.now(), tw = Math.max(1, Math.round(cv.width / 8)), th = Math.max(1, Math.round(cv.height / 8));
+    const t0 = performance.now(), tw = Math.max(1, Math.round(cv.width / 4)), th = Math.max(1, Math.round(cv.height / 4));
     if (!D.trail || D.trail.width !== tw || D.trail.height !== th) D.trail = gv.canvas(tw, th);
     const T = D.trail, x = T.getContext('2d');
-    g.setTransform(1, 0, 0, 1, 0, 0); g.imageSmoothingEnabled = true; g.globalCompositeOperation = 'lighten'; g.globalAlpha = Math.min(1, 0.4 + 0.6 * a);
+    g.setTransform(1, 0, 0, 1, 0, 0); g.imageSmoothingEnabled = true; g.globalCompositeOperation = 'lighten'; g.globalAlpha = Math.min(1, 0.2 + 0.5 * a);
     g.drawImage(T, 0, 0, cv.width, cv.height);
     x.imageSmoothingEnabled = false; x.globalCompositeOperation = 'multiply'; x.globalAlpha = Math.min(1, (1.15 - a) * (D.dt || 1 / 60) * 60); x.drawImage(T, 0, 0);
-    x.globalCompositeOperation = 'lighten'; x.globalAlpha = 1; x.drawImage(cv, 0, 0, cv.width, cv.height, 0, 0, tw, th);
+    x.globalCompositeOperation = 'lighten'; x.globalAlpha = 1; x.imageSmoothingEnabled = true; x.drawImage(cv, 0, 0, cv.width, cv.height, 0, 0, tw, th);
     g.imageSmoothingEnabled = false;
     D.cost('trails', performance.now() - t0);
   } });
@@ -378,9 +404,10 @@
     if (G && G.set) {
       const P = clamp(w.power || 0, 0, 1.3), vh = w.vhs || 0;
       G.set('bloom', 0.35 + 1.25 * P + 0.6 * sur('light') + 0.3 * (w.weather.storm || 0));
-      G.set('chroma', 0.25 + 1.1 * Math.min(1, vh));
-      G.set('vhs', 1.4 * vh);
-      G.set('grain', 0.12 + 0.8 * Math.min(1, vh));
+      const old = clamp((vh - 0.3) / 0.7, 0, 1.3); // the default Nostalgie (~0.3) = the clean S8.2 look
+      G.set('chroma', 0.35 + 1.1 * old);
+      G.set('vhs', 1.5 * old);
+      G.set('grain', 0.2 + 0.7 * old);
       G.set('fog', 0.85 * (w.cam.fog || 0) + 0.15 * (w.weather.rain || 0));
     }
     D.ms.push(performance.now() - t0); if (D.ms.length > 120) D.ms.shift();
