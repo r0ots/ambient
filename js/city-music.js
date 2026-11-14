@@ -148,7 +148,7 @@
     elevOf(midi) { return 6 + 84 * clamp(((midi == null ? 60 : +midi) - 48) / 36); }, // degrees above the horizon
     laser(layer, midi, vel, who, t0, t1, held, spread = 0) {
       const W = WHO[who] || WHO.machine, cap = Math.max(4, Math.round(CAPS.lasers * this.q));
-      if (this.lasers.length >= cap) { // the machine never pushes out the player
+      while (this.lasers.length >= cap) { // the machine never pushes out the player
         let i = this.lasers.findIndex((L) => L.who !== 'player');
         if (i < 0) { if (who !== 'player') return null; i = 0; }
         this.lasers.splice(i, 1);
