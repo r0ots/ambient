@@ -419,7 +419,7 @@ Demande de l'utilisateur (après v1.34) : « l'écran de la ville réagisse beau
 
 Vague 1 (en parallèle)
 - [ ] S8.1 Moteur de ville : modèle du monde (courant, trafic, caméra, météo, usure VHS, population, chantiers) séparé du dessin, bâtiments immobiles qui se construisent / se déconstruisent, plus aucune déformation ; même interface d'événements que le Jardin (notes, réglages, FX, découvertes)
-- [ ] S8.2 Passe de rendu WebGL : bloom néon, aberration chromatique, écran cathodique, brouillard, réglés par `JUICE` ; repli 2D propre si WebGL manque ou si le téléphone peine
+- [x] S8.2 (v1.35) Passe de rendu WebGL : bloom néon, aberration chromatique, écran cathodique, brouillard, réglés par `JUICE` ; repli 2D propre si WebGL manque ou si le téléphone peine Décision : `js/city-gl.js` (`AMB.cityGL` : set, pulse, value) enveloppe `AMB.visual.draw`, donc Ville, Orbes, Horizon et Spectre ; entrées bloom, chroma, crt, fog, vhs, flash, shake, warp, wire, grain, mask ; à JUICE 0 un look sobre et immobile ; repli 2D (pas de WebGL, contexte perdu, budget dépassé sur 90 images après deux crans de qualité) ; sortie ≤ 1,5× la taille CSS ; `?gl=0` / `?gl=1` ; le CRT CSS reste pour le repli.
 - [ ] S8.3 Plein écran responsive : la ville occupe tout l'écran (bureau, tablette, téléphone, portrait et paysage), l'instrument flotte par-dessus sans la cacher inutilement
 
 Vague 2 (en parallèle, sur le moteur S8.1)
