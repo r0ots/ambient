@@ -122,7 +122,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
   // --- the challenge on the LCD (v1.06): one at a time on the 2nd line, ↷ = next, a tap = how to do it
   // S5.7: the first one is « Joue une note »; no jargon yet. S6.2: no glide on the screen, a MIDI CC still reaches the drone's colour
   A.game.reset(); A.perform.setMode('sculpt'); A.lcdMsg=null; await wait(400);
-  ok(!d.getElementById('contracts') && shown('#lcdTask') && lline.hidden && /Joue une note/.test(task.textContent) && /·/.test(task.querySelector('.lcd-task-n').textContent) && !/✧/.test(task.textContent), 'premier défi sur la 2e ligne du LCD, sans ✧ : '+task.textContent);
+  ok(!d.getElementById('contracts') && shown('#lcdTask') && lline.hidden && /Joue une note/.test(task.textContent) && task.querySelector('.lcd-task-n').textContent.trim()==='' && !/✧/.test(task.textContent), 'premier défi sur la 2e ligne du LCD, sans ✧ ni point (S9.4) : '+task.textContent);
   ok(d.body.classList.contains('jargon-off') && d.getElementById('lcdTop').textContent==='JUNOJUNO' && w.getComputedStyle(d.getElementById('hudInfo')).visibility==='hidden' && w.getComputedStyle(d.getElementById('chordName')).visibility==='hidden', 'début : ni nom de paysage, ni tonalité, gamme, tempo ou accord à l\'écran (« '+d.getElementById('lcdTop').textContent+' »)');
   ok(!d.getElementById('xyTip') && !d.querySelector('.xy-label'), 'S6.2 : plus de bulle ni de libellés du glissé sur l\'écran');
   A.seq.playing=true; const tone0=A.store.get('drone.tone'), mac0=A.store.get('macro.light');
