@@ -755,32 +755,25 @@ body.game .lcd-task.help .lcd-task-txt { position: absolute; inset: 0; z-index: 
   font-size: 15px; line-height: 1.05; display: flex; align-items: center; }
 body.game .lcd-task.help .lcd-task-n { visibility: hidden; }
 body.game .lcd-task.help .lcd-skip { position: relative; z-index: 3; }
-/* the LCD pinned on top while the page scrolls (garden.js pinLcd): compact (no score line), above the panels */
-.lcd-ph { display: none; }
-.lcd-ph.on { display: block; }
-@media (max-width: 760px) { .lcd-ph { order: 3; } }
-body.game .lcd.lcd-pin { position: fixed; top: 0; z-index: 40; margin: 0; border-radius: 0 0 var(--radius-btn) var(--radius-btn); box-shadow: var(--bevel-in), 0 6px 18px #000c; }
-body.game .lcd.lcd-pin .lcd-score { display: none; }
-.app.fx-quake > .top:has(.lcd-pin) { animation: none; } /* (a transform would carry the pinned LCD away) */
-/* phones: a compact bar (no brand, no captions, fixed rows: a control that appears never moves the others), the LCD,
+/* phones (S8.3: free mode too): a compact bar (no brand, no captions, fixed rows: a control that appears never moves the others), the LCD,
    then the city and the pads together in the window; no chord / tempo / bar over the city */
 @media (max-width: 560px) {
-  body.game .top { padding: 8px 10px; gap: 8px; }
-  body.game .brand, body.game .transport .tgrp > small, body.game #mood { display: none; }
-  body.game .transport { display: grid; grid-template-columns: auto auto auto 1fr auto auto; grid-template-areas: "play midi rec . tree more" "mode mode mode mode mode mode" "land land land land land land"; gap: 6px; width: 100%; }
-  body.game .transport .tgrp { padding: 0; border: 0; }
-  body.game .transport .tgrp:has(#play), body.game .transport .tgrp:has(#play) > .tgrp-row { display: contents; }
-  body.game #play { grid-area: play; min-width: 0; }
-  body.game #midi { grid-area: midi; }
-  body.game .transport .tgrp:has(#rec) { grid-area: rec; }
-  body.game .transport .tgrp:has(.modes) { grid-area: mode; }
-  body.game .transport .tgrp:has(#preset) { grid-area: land; }
-  body.game .transport .tree-grp { grid-area: tree; }
-  body.game .transport .more { grid-area: more; }
-  body.game .transport #sleepLeft { display: none; }
-  body.game .transport .tgrp-row { flex-wrap: nowrap; }
-  body.game .transport .btn, body.game .transport summary { white-space: nowrap; padding: 7px 9px; }
-  body.game .lcd { align-content: start; }
+  .top { padding: 8px 10px; gap: 8px; }
+  .brand, .transport .tgrp > small, body.game #mood { display: none; }
+  .transport { display: grid; grid-template-columns: auto auto auto 1fr auto auto; grid-template-areas: "play midi rec . tree more" "mode mode mode mode mode mode" "land land land land land land"; gap: 6px; width: 100%; }
+  .transport .tgrp { padding: 0; border: 0; }
+  .transport .tgrp:has(#play), .transport .tgrp:has(#play) > .tgrp-row { display: contents; }
+  #play { grid-area: play; min-width: 0; }
+  #midi { grid-area: midi; }
+  .transport .tgrp:has(#rec) { grid-area: rec; }
+  .transport .tgrp:has(.modes) { grid-area: mode; }
+  .transport .tgrp:has(#preset) { grid-area: land; }
+  .transport .tree-grp { grid-area: tree; }
+  .transport .more { grid-area: more; }
+  .transport #sleepLeft { display: none; }
+  .transport .tgrp-row { flex-wrap: nowrap; }
+  .transport .btn, .transport summary { white-space: nowrap; padding: 7px 9px; }
+  .lcd { align-content: start; }
   body.game .lcd-task { min-height: 44px; } /* two lines kept for the challenge (a short one does not shrink the LCD) */
   body.game .stage { margin: 10px 0; }
   body.game .stage .hud { display: none; }
@@ -1242,4 +1235,130 @@ body.playing #play::after { content: ""; position: absolute; inset: -2px; border
 
 /* a ghost (motion.shatter: a section, a loop layer that goes) plays only its own squash */
 .m-ghost, .m-ghost::after, .m-ghost * { animation: none !important; transition: none !important; }
+
+/* =====================================================================
+   S8.3 « Plein écran responsive » — the CITY fills the window on every screen, the instrument floats over it (Parcours
+   and free mode alike; sound and controls unchanged). Size rules (ARCHITECTURE.md « Mise en page S8.3 »): .stage is
+   fixed over the whole window, #viz = 100 % of it (visual.js resize × devicePixelRatio): the canvas size follows the
+   window only, never a mode, a drawer or a panel. The page never scrolls: .app is a fixed grid of floating pieces —
+   bar + LCD on top (smoked glass), Écouter's knobs and the pads at the bottom, Sculpter / Composer in .drawer (right
+   side; a bottom sheet on a portrait screen) that scrolls inside itself. ui.js layoutWatch measures what is left of
+   the city (--free-t / -r / -b / -l, AMB.gardenVisual.safe); the stage's own overlays sit inside that free window.
+   ===================================================================== */
+:root { --glass: color-mix(in srgb, #08070d 64%, transparent); --glass-hi: color-mix(in srgb, #08070d 80%, transparent); --glass-line: #ffffff1a;
+  --glass-blur: blur(14px) saturate(1.35); --free-t: 0px; --free-r: 0px; --free-b: 0px; --free-l: 0px; }
+html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+.app { position: fixed; inset: 0; max-width: none; margin: 0; overflow: clip; pointer-events: none;
+  padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr) auto auto; gap: 8px 10px;
+  grid-template-areas: "top top" "free drawer" "macros drawer" "pads drawer"; }
+.app > * { pointer-events: auto; }
+/* the city: behind everything, edge to edge (no bezel; its CRT scanlines and vignette stay) */
+.app > .stage { position: fixed; inset: 0; z-index: 0; height: auto; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+.app > .top, .app > .macros, .app > .pads, .app > .drawer { position: relative; z-index: 2; }
+/* the bar: compact smoked glass; the LCD keeps its own screen */
+.app > .top { grid-area: top; background: var(--glass); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-line); border-radius: 6px; box-shadow: 0 8px 28px #0009, inset 0 1px 0 #ffffff10; padding: 6px 10px; gap: 8px 12px; }
+.brand p { display: none; }
+.brand .logo { width: 30px; height: 30px; }
+.lcd { box-shadow: var(--bevel-in), 0 0 18px #000a; }
+/* Écouter: the five knobs and the layer chips, one glass console at the bottom centre */
+.app > .macros { grid-area: macros; justify-self: center; width: min(100%, 880px); margin: 0; }
+.macros > .panel { background: var(--glass); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-line); box-shadow: 0 8px 28px #0009; padding: 8px 12px 10px; }
+.macros .layer-chips { margin-top: 6px; }
+/* the pads: the bottom row (thumbs), over the city */
+.app > .pads { grid-area: pads; margin: 0; }
+body.game .app > .pads { position: relative; bottom: auto; padding: 0; background: none; border-radius: 0; } /* (was sticky under the page) */
+.pad { box-shadow: 0 4px 14px #0008; }
+/* the drawer: Sculpter / Composer panels on glass; the city shows through and beside it */
+.drawer { grid-area: drawer; display: none; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; container-type: inline-size; scrollbar-width: thin;
+  padding: 10px; border-radius: 6px; background: var(--glass); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-line); box-shadow: 0 10px 34px #000a; }
+body.mode-sculpt .drawer, body.mode-compose .drawer { display: block; animation: s8-in-side var(--m-slow) var(--m-spring) both; }
+body.mode-sculpt .drawer { width: clamp(330px, 40vw, 640px); }
+body.mode-compose .drawer { width: clamp(340px, 56vw, 940px); }
+.drawer > * { margin: 0 0 10px; }
+.drawer > :last-child { margin-bottom: 0; }
+.drawer .panel, .drawer .scenes { background: color-mix(in srgb, var(--panel) 84%, transparent); }
+.drawer footer { padding: 4px 2px 0; }
+@container (max-width: 720px) { .drawer .globals { grid-template-columns: minmax(0, 1fr); } }
+@keyframes s8-in-side { from { translate: calc(70px * var(--m-amp)) 0; opacity: 0; } }
+@keyframes s8-in-sheet { from { translate: 0 calc(90px * var(--m-amp)); opacity: 0; } }
+.s8-drawer-ghost { border-radius: 6px; background: var(--glass-hi); border: 1px solid var(--glass-line); box-shadow: 0 10px 34px #000a; z-index: 2; }
+/* the stage's overlays live in the free window (what the floating pieces leave of the city) */
+.stage .hud { top: calc(var(--free-t) + 10px); left: calc(var(--free-l) + 16px); }
+.stage-tools { top: calc(var(--free-t) + 10px); right: calc(var(--free-r) + 12px); }
+.stage .toast { top: calc(var(--free-t) + 12px); left: calc(var(--free-l) + (100% - var(--free-l) - var(--free-r)) / 2); }
+.stage .hint { bottom: calc(var(--free-b) + 8px); left: calc(var(--free-l) + 12px); }
+.stage .big-play { inset: var(--free-t) var(--free-r) var(--free-b) var(--free-l); }
+body.game:not(.playing):not(.coined) .coin { inset: var(--free-t) var(--free-r) var(--free-b) var(--free-l); width: auto; background: radial-gradient(ellipse at 50% 55%, #1a0730aa 0, #07040fcc 75%); }
+/* Plein écran: only the city (the instrument hides; Échap or ✕ Quitter brings it back) */
+body.listen .app { padding: 0; }
+body.listen .app > .stage { height: auto; }
+/* below a wide screen: no brand (the LCD says JUNOJUNO) and no group captions, the LCD heads the bar's first row */
+@media (max-width: 1239px) { .brand, .transport .tgrp > small { display: none; } }
+/* (tablet, phone on its side) two fixed rows: LCD · play · rec · tree · ⋯ / landscape · modes */
+@media (min-width: 561px) and (max-width: 1239px) {
+  .app > .top { display: grid; grid-template-columns: minmax(0, 1fr) repeat(5, auto); align-items: center;
+    grid-template-areas: "lcd play rec sleep tree more" "land mode mode mode mode mode"; }
+  .transport { display: contents; }
+  .transport .tgrp { padding: 0; border: 0; }
+  .lcd { grid-area: lcd; min-width: 0; }
+  .transport .tgrp:has(#play) { grid-area: play; } .transport .tgrp:has(#rec) { grid-area: rec; } #sleepLeft { grid-area: sleep; }
+  .transport .tree-grp { grid-area: tree; } .transport .more { grid-area: more; }
+  .transport .tgrp:has(#preset) { grid-area: land; min-width: 0; } .transport .tgrp:has(#preset) > .tgrp-row { min-width: 0; }
+  #preset, #mood { min-width: 0; flex: 1 1 120px; }
+  .transport .tgrp:has(.modes) { grid-area: mode; justify-self: end; }
+}
+/* a portrait screen (phone, tablet upright): the drawer is a bottom sheet over the pads, the city above it */
+@media (orientation: portrait) and (max-width: 900px) {
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto auto; grid-template-areas: "top" "free" "drawer" "macros" "pads"; }
+  body.mode-sculpt .drawer, body.mode-compose .drawer { width: auto; height: 40dvh; animation-name: s8-in-sheet; border-radius: 12px 12px 6px 6px; }
+  body.mode-compose .drawer { height: 46dvh; }
+}
+/* a phone with a sheet open: the pads on one row (thumb-wide), the city keeps a window above the sheet */
+@media (orientation: portrait) and (max-width: 560px) {
+  body.mode-sculpt .drawer { height: 36dvh; } body.mode-compose .drawer { height: 42dvh; }
+  body:not(.mode-listen) .pads { grid-template-columns: repeat(9, 1fr); }
+  body:not(.mode-listen) .pad, body:not(.mode-listen) .pad:nth-child(6) { grid-column: auto; height: 48px; }
+}
+/* phones: smaller knobs (the five on one row), tighter glass */
+@media (max-width: 560px) {
+  .app { gap: 6px; padding-left: max(6px, env(safe-area-inset-left)); padding-right: max(6px, env(safe-area-inset-right)); }
+  .app > .top { padding: 6px 8px; }
+  .macros > .panel { padding: 6px 6px 8px; }
+  .macros .ctls { flex-wrap: nowrap; gap: 0; }
+  .macros .ctl { width: auto; flex: 1 1 0; min-width: 0; }
+  .macros .knob svg { width: 54px; height: 54px; }
+  .macros .k-lab { font-size: 10px; letter-spacing: .02em; }
+  .macros .layer-chips { gap: 4px; }
+  .macros .layer-chips .tog { padding: 4px 8px; font-size: 11px; }
+  .modes { display: flex; width: 100%; } .modes .mode-btn { flex: 1; }
+  .rec-opts { position: static; } .rec-opts > .menu { left: 0; right: 0; min-width: 0; } /* (like ⋯: across the bar, inside the screen) */
+  .drawer { padding: 8px; }
+}
+/* a short screen (phone on its side): the bar on two rows at most, small knobs, the drawer on the side */
+@media (max-height: 520px) {
+  .app { gap: 6px; padding-top: max(4px, env(safe-area-inset-top)); padding-bottom: max(4px, env(safe-area-inset-bottom)); }
+  .app > .top { padding: 4px 8px; gap: 4px 8px; }
+  .brand, .transport .tgrp > small { display: none; }
+  .transport { gap: 4px; }
+  .transport .tgrp { padding: 0 4px; }
+  .transport .btn, .transport summary, .transport select, .mode-btn { padding-top: 5px; padding-bottom: 5px; }
+  .transport .btn.primary { min-width: 0; } /* (the LCD keeps the width: a challenge stays on one line) */
+  #dice { font-size: 0; white-space: nowrap; } #dice .m-die { font-size: 16px; } /* ✦ alone (its name stays for screen readers and in its title) */
+  .lcd { font-size: 18px; padding: 2px 10px; }
+  .lcd #lcdLine { font-size: 16px; }
+  /* Écouter: one strip, no title — the knobs left, the layer chips beside them */
+  .macros > .panel { padding: 4px 10px; display: flex; align-items: center; gap: 10px; }
+  .macros > .panel > header { display: none; }
+  .macros .ctls { flex: 1 1 auto; flex-wrap: nowrap; }
+  .macros .ctl { width: 60px; }
+  .macros .knob svg { width: 46px; height: 46px; }
+  .macros .k-lab { font-size: 10px; }
+  .macros .layer-chips { margin: 0; flex: 0 1 300px; gap: 4px; }
+  .macros .layer-chips .tog { padding: 3px 8px; font-size: 11px; }
+  .pad { height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) { .drawer { animation: none !important; } }
 

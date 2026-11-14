@@ -312,6 +312,7 @@
     let saved = null;
     try { saved = localStorage.getItem('ambient.mode') || ({ simple: 'listen', expert: 'sculpt' })[localStorage.getItem('ambient.view')]; } catch (e) {}
     setMode(saved || 'listen');
+    layoutWatch(); // S8.3
 
     store.on((key) => { const w = widgets[key]; if (w) w.render(); });
     const showCustom = () => { if (widgets['pad.custom']) widgets['pad.custom'].el.style.display = store.get('pad.prog') === 'Perso' ? '' : 'none'; };
@@ -401,6 +402,34 @@
     const path = !!(AMB.game && AMB.game.path), hp = d.querySelector('.help-path'), fr = d.querySelector('.help-free');
     if (hp) hp.hidden = !path;
     if (path) helpTab(d, 'path'); else if (fr) fr.hidden = false;
+  }
+
+  // ---------- S8.3 layout: the city fills the window, the instrument floats over it ----------
+  // The canvas #viz is the whole window (css « S8.3 »: .stage fixed, inset 0); its size changes only with the window
+  // (visual.js resize, devicePixelRatio), never with a mode or a drawer. `free` = the part of the city that no floating
+  // piece covers (bar, Écouter knobs, pads, drawer), in css px from each edge: --free-t / -r / -b / -l on <html> (the
+  // stage's own overlays sit inside it) and AMB.gardenVisual.safe {top, right, bottom, left} = fractions of the window
+  // (the city keeps what matters there). A piece taller than half the window is a side drawer, the others are bands.
+  function layoutWatch() {
+    const de = document.documentElement, P = ['.top', '#macros', '#pads', '.drawer'].map((q) => $(q)).filter(Boolean);
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
+      const W = window.innerWidth || 1, H = window.innerHeight || 1, f = { t: 0, r: 0, b: 0, l: 0 };
+      for (const e of P) {
+        const r = e.getBoundingClientRect(); if (!r.width || !r.height) continue;
+        if (r.height > H / 2) { if (r.left + r.width / 2 > W / 2) f.r = Math.max(f.r, W - r.left); else f.l = Math.max(f.l, r.right); }
+        else if (r.top + r.height / 2 < H / 2) f.t = Math.max(f.t, r.bottom); else f.b = Math.max(f.b, H - r.top);
+      }
+      for (const k in f) { f[k] = Math.max(0, Math.round(f[k])); de.style.setProperty('--free-' + k, f[k] + 'px'); }
+      AMB.layout.free = f;
+      if (AMB.gardenVisual) AMB.gardenVisual.safe = { top: f.t / H, right: f.r / W, bottom: f.b / H, left: f.l / W };
+    };
+    const later = () => { if (!raf) raf = requestAnimationFrame(measure); };
+    AMB.layout = { free: { t: 0, r: 0, b: 0, l: 0 }, measure };
+    if (window.ResizeObserver) { const ro = new ResizeObserver(later); P.forEach((e) => ro.observe(e)); }
+    window.addEventListener('resize', later);
+    measure();
   }
 
   // ---------- listening mode ----------

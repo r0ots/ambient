@@ -145,8 +145,9 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
   // 390 px: the contract stays in the LCD, nothing floats over the macros
   { f.style.width='390px'; f.style.height='844px'; await wait(250); A.perform.setMode('listen'); A.game.unlock('t.son'); A.game.unlock('t.macros'); await wait(100);
     const R=(e)=>e.getBoundingClientRect(), mac=d.getElementById('macros'), lr=R(d.getElementById('lcd')), de=d.documentElement;
-    const over=[...d.querySelectorAll('body *')].filter(e=>{ const cs=w.getComputedStyle(e); return (cs.position==='fixed') && e.getClientRects().length && !e.hidden && cs.display!=='none' && cs.visibility!=='hidden' && cs.pointerEvents!=='none' && e.id!=='toast'; }).filter(e=>{ const a=R(e), m=R(mac); return a.width && a.height && a.left<m.right && a.right>m.left && a.top<m.bottom && a.bottom>m.top; });
-    ok(shown('#macros') && lr.right<=de.clientWidth+1 && task.getBoundingClientRect().bottom<=lr.bottom+1 && !over.length, '390 px : contrat dans le LCD, rien ne recouvre les macros '+over.map(e=>e.id||e.className).join());
+    const over=[...d.querySelectorAll('body *')].filter(e=>{ const cs=w.getComputedStyle(e); return (cs.position==='fixed') && e.getClientRects().length && !e.hidden && cs.display!=='none' && cs.visibility!=='hidden' && cs.pointerEvents!=='none' && e.id!=='toast' && !e.closest('.stage'); /* (S8.3: the city is the fixed background, under everything; checked below) */ }).filter(e=>{ const a=R(e), m=R(mac); return a.width && a.height && a.left<m.right && a.right>m.left && a.top<m.bottom && a.bottom>m.top; });
+    const kr=R(mac.querySelector('.knob')), top=d.elementFromPoint(kr.left+kr.width/2, kr.top+kr.height/2);
+    ok(shown('#macros') && !!top && !!top.closest('#macros') && lr.right<=de.clientWidth+1 && task.getBoundingClientRect().bottom<=lr.bottom+1 && !over.length, '390 px : contrat dans le LCD, rien ne recouvre les macros '+over.map(e=>e.id||e.className).join());
     f.style.width='1300px'; f.style.height='900px'; await wait(200); }
 }, { choose: false });
 </script></body></html>

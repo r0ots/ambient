@@ -19,6 +19,19 @@
 <script>
 document.getElementById('f').addEventListener('load', () => {
   const A = document.getElementById('f').contentWindow.AMB, doc = document.getElementById('f').contentDocument, h = location.hash;
+  if (h.includes('s8=')) { // S8.3: full-screen layout, #s8=<listen|sculpt|compose>[,path][,tree][,full] (path: most of the tree open, a challenge on the LCD)
+    const o = h.split('s8=')[1].split(','), m = o[0];
+    if (!o.includes('motion')) A.motion.set({ reduced: true }); // (headless captures freeze animations: ghosts and wipes would stay over the view)
+    if (o.includes('path')) { A.game.setMode('path'); A.garden.welcome(false); doc.body.classList.add('coined');
+      for (let k = 0; k < 6; k++) A.tree.NODES.forEach((n) => { if (A.tree.status(n.id) === 'available' && !/^c\.morceau/.test(n.id)) A.game.unlock(n.id); }); }
+    else { A.game.setMode('free'); A.garden.welcome(false); }
+    if (m === 'compose') { A.store.setMany({ 'seq.on': true, 'seq.pattern': '0.7.4,4.9.2,8.b.4,g.a.8' }, 'user'); A.song.add(); A.song.add(); A.song.render(); }
+    setTimeout(() => { A.garden.showTree(o.includes('tree')); A.tree.release && A.tree.release(); doc.querySelectorAll('.is-new').forEach((e) => e.classList.remove('is-new', 'is-new-first'));
+      A.perform.setMode(m); if (o.includes('full')) doc.getElementById('listen').click(); A.visual.gardenSync && A.visual.gardenSync(); }, 1200);
+    setInterval(() => A.visual.draw(), 40);
+    const L = ['pad', 'bells', 'seq', 'bass', 'grains']; let i = 0; setInterval(() => A.bus.emit('note', { layer: L[i++ % L.length], midi: 60, time: 0, vel: 0.8 }), 220);
+    return;
+  }
   if (h.includes('help-free')) { A.game.setMode('free'); A.garden.welcome(false); doc.getElementById('help').click(); return; }
   if (h.includes('song')) {
     A.game.setMode('free'); A.garden.welcome(false); doc.querySelector('[data-mode=compose]').click();
@@ -182,7 +195,7 @@ document.getElementById('f').addEventListener('load', () => {
       setInterval(() => A.visual.draw(), 40);
       const L = ['pad', 'bells', 'seq', 'bass', 'grains']; let i = 0;
       setInterval(() => { const l = L[i++ % L.length]; A.bus.emit('note', { layer: l, midi: 60, time: 0, vel: 0.8 }); }, 220);
-      const s = /down=(\d+)/.exec(h); w.scrollTo(0, s ? +s[1] : 0); setTimeout(() => A.garden._pin.check(), 100);
+      const s = /down=(\d+)/.exec(h); w.scrollTo(0, s ? +s[1] : 0); 
     }, 1600);
   } else if (h.includes('handover')) { // S3.7: whole tree, last contract done: the instrument handed over (LCD message, no challenge)
     for (let k = 0; k < 40; k++) A.tree.NODES.forEach((n) => { if (A.tree.status(n.id) === 'available') A.game.unlock(n.id); });
