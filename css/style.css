@@ -831,7 +831,8 @@ body.game .lcd.lcd-pin .lcd-score { display: none; }
     box-shadow: var(--bevel-in), var(--m-drop), 0 0 var(--m-glow) calc(2px * var(--m-amp)) var(--lcd-glow), inset 0 0 0 1px color-mix(in srgb, var(--lcd-fg) 60%, transparent); }
   /* S7.5: text fields (motif chain, initials, names) light up like an LCD under the pointer */
   :where(input[type=text], input[type=number], input:not([type]), textarea):is(:hover, :focus):not(:disabled) { filter: brightness(var(--m-bright));
-    box-shadow: var(--bevel-in), 0 0 calc(var(--m-glow) / 2.5) var(--lcd-glow), inset 0 0 0 1px color-mix(in srgb, var(--lcd-fg) 60%, transparent); }
+    border-color: var(--lcd-fg);
+    box-shadow: var(--bevel-in), 0 0 calc(var(--m-glow) / 2) color-mix(in srgb, var(--lcd-fg) 70%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--lcd-fg) 70%, transparent); }
   /* S7.5: the × of a window spins a quarter turn and glows (it does not lean: css only) */
   .modal-x { transition: rotate var(--m-med) var(--m-spring), scale var(--m-med) var(--m-spring), color var(--m-fast) var(--m-out), text-shadow var(--m-fast) var(--m-out); }
   .modal-x:hover { color: #fff; rotate: calc(90deg * min(1, var(--m-amp))); scale: calc(1 + .35 * var(--m-amp)); text-shadow: 0 0 calc(var(--m-glow) / 3) var(--accent), 0 0 4px #fff; }
