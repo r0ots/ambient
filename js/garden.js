@@ -68,7 +68,7 @@
     },
     // ---- S11.1 the Objectifs widget (#goals, top of the right column, above the drawer; Parcours only): the piece being
     // worked on and ALL its objectives (a bar or a counter each, a tap = how to do it, ↷ = this piece later), the ask in
-    // progress with its countdown, the piece won (« ✦ Pad est prêt : ouvre-le dans l'Arbre » → the Arbre on it, never
+    // progress with its countdown, the piece won (« ✦ Pièce prête : Pad — ouvre-la dans l'Arbre » → the Arbre on it, never
     // the piece itself), the history (objectives done, struck, → what they opened; the last GW_SHOW, the rest behind
     // « voir tout »), the game's short messages (garden.lcd) and the Réponse's score. Nothing goes away on a timer but
     // the messages. On a portrait phone (and a phone on its side) it is a compact card under the bar (the current
@@ -109,7 +109,7 @@
       // the piece won (or the song offered after the finale)
       const rb = box.querySelector('.gw-ready'), no = box.querySelector('.gw-no'), offer = !!this.offer && this.handedOver();
       rb.hidden = !rn && !offer; no.hidden = !offer;
-      const rTxt = rn ? `✦ ${rn.name} est prêt : ouvre-le dans l'Arbre${nReady > 1 ? ` (+${nReady - 1})` : ''}` : offer ? '⤓ Garde ton morceau (WAV)' : '';
+      const rTxt = rn ? `✦ Pièce prête : ${rn.name} — ouvre-la dans l'Arbre${nReady > 1 ? ` (+${nReady - 1})` : ''}` : offer ? '⤓ Garde ton morceau (WAV)' : '';
       if (rb.textContent !== rTxt) { const was = rb.textContent; rb.textContent = rTxt; rb.dataset.id = rn ? rn.id : offer ? 'wav' : ''; if (rTxt && M && M.on() && was !== rTxt) { M.pop(rb, 'type'); if (rn) M.burst(rb, { n: 16, spread: Math.PI * 2, color: '#ffb347' }); } }
       // the objectives of the piece
       const now = box.querySelector('.gw-now'); now.hidden = !objs.length;
@@ -179,7 +179,7 @@
       if (!on && (this.compact() || !box.classList.contains('open'))) { // the peek: the ask, the piece ready, or the first objective left
         const dm = AMB.demands && AMB.demands.view(), rn = g.nextReady() && AMB.tree.byId[g.nextReady().id], s = K.state(g);
         const d = s.active.map((id) => K.byId[id]).find(Boolean), objs = d && d.node ? K.forNode(d.node) : [];
-        txt = dm ? `♪ ${g.txt(dm.text)} · ${dm.n}` : rn ? `✦ ${rn.name} est prêt` : d ? `${this.goalTxt(d)} · ${this.goalN(d, K.progress(d.id)) || '…'}${objs.length > 1 ? ` · ${objs.length - K.left(d.node).length}/${objs.length}` : ''}` : this.offer ? '⤓ Ton morceau' : '';
+        txt = dm ? `♪ ${g.txt(dm.text)} · ${dm.n}` : rn ? `✦ Pièce prête : ${rn.name}` : d ? `${this.goalTxt(d)}${this.goalN(d, K.progress(d.id)) ? ' · ' + this.goalN(d, K.progress(d.id)) : ''}${objs.length > 1 ? ` · ${objs.length - K.left(d.node).length}/${objs.length}` : ''}` : this.offer ? '⤓ Ton morceau' : '';
       }
       if (el.textContent === txt) return;
       const was = el.textContent; el.textContent = txt;
@@ -497,8 +497,8 @@
       'game:ready': (d) => {
         const c = d.by && AMB.contracts.byId[d.by], n = AMB.tree.byId[d.id];
         if (c && c.kind === 'demande') return null; // S5.5: the ask's own PARFAIT / BIEN already said it
-        if (c && AMB.puzzles && AMB.puzzles.outGate === c.id) return ['consolation', { say: '✦ Prêt quand même', ms: 3000, toast: `Pas cette fois, mais ${n ? n.name : 'la suite'} est prêt à ouvrir quand même.` }];
-        return c ? ['defi', { say: c.kind === 'reponse' ? `↺ ✓ Juste ! ${n ? n.name + ' est prêt' : ''}` : `✓ ${n ? n.name + ' est prêt' : 'Réussi'}` }] : ['ready'];
+        if (c && AMB.puzzles && AMB.puzzles.outGate === c.id) return ['consolation', { say: '✦ Prêt quand même', ms: 3000, toast: `Pas cette fois, mais ${n ? 'la pièce ' + n.name : 'la suite'} est prête à ouvrir quand même.` }];
+        return c ? ['defi', { say: c.kind === 'reponse' ? `↺ ✓ Juste ! ${n ? 'Pièce prête : ' + n.name : ''}` : `✓ ${n ? 'Pièce prête : ' + n.name : 'Réussi'}` }] : ['ready'];
       },
       // S11.1 one objective of a piece checked, others left (the last one is game:ready's; an ask's PARFAIT, a Réponse's
       // JUSTE and a placement say it themselves)

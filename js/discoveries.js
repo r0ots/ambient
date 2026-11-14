@@ -220,7 +220,7 @@
     },
     celebrate(d, node) {
       const GD = AMB.garden, gift = d.reward && d.reward.gift; // the juice table (S5.9 FX.discovery); its node waits on « ✦ Ouvrir »
-      if (GD && GD.fx) GD.fx('discovery', { name: d.name, ms: 6000, boom: d.kind === 'combo' ? 'SUPER' : undefined, toast: `✦ Découverte : ${d.name}${node ? ` · ${node.name} est prêt : ouvre-le dans l'Arbre` : ''}${gift ? ' · ' + gift.label : ''}` });
+      if (GD && GD.fx) GD.fx('discovery', { name: d.name, ms: 6000, boom: d.kind === 'combo' ? 'SUPER' : undefined, toast: `✦ Découverte : ${d.name}${node ? ` · pièce prête : ${node.name}, ouvre-la dans l'Arbre` : ''}${gift ? ' · ' + gift.label : ''}` });
       this.render(true);
     },
     giveGift(gift) {

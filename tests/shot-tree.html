@@ -7,7 +7,7 @@
   S6.7 : #chords (Progression en la mineur, noms d'accords, Couplet de 8 mes.), #free-play (mode libre en Ville, lecture) ;
   #roll (piano roll, mode libre : notes ♯ hors gamme ; S6.4 : « ⤓ Garder » est passé dans le looper du Morceau) ;
   S4.6 : #ready (« ✦ Ouvrir : Pad » qui pulse, 2 prêts), #ready-card (la carte qui dit ce que le Pad apporte), #new (le Pad vient de s'ouvrir : panneau, halo, « Nouveau ») ;
-  S5.9 : #juice-defi / #juice-open / #juice-tier (un moment du juice central en plein effet, figé) ; S6.6 : #juice-end (la fin, KA-BOOM!), #coin (« INSERT COIN » avant le premier son), #hiscores (HIGH SCORES dans l'Arbre, initiales en cours) ;
+  S5.9 : #juice-defi / #juice-open / #juice-tier (un moment du juice central en plein effet, figé) ; S6.6 : #juice-end (la fin, KA-BOOM!), #coin (S11.1 : la machine éteinte, poussiéreuse, le bouton ⏻ qui clignote), #wake=<ms> (le réveil figé à ms), #goals / #goals-ready / #goals-open (S11.1 : le widget Objectifs), #hiscores (HIGH SCORES dans l'Arbre, initiales en cours) ;
   S5.4 : #placement (« ⚡ Musicien détecté » en pleine fête, la file « ✦ Ouvrir · n prêts ») ;
   S5.5 : #demande (une demande en direct sur le LCD, son compte à rebours), #demande-parfait (« PARFAIT !!! ×3 », figé) ;
   S5.10/S8.7 : #combo=<id> (le combo énorme tenu : ses réglages tournés à la main dans sa zone ; anciens ids renommés), #discovery=<id> (la fête d'une découverte, figée), #carnet (le carnet des découvertes dans l'Arbre : trouvées, puis silhouettes) ;
@@ -61,8 +61,23 @@ document.getElementById('f').addEventListener('load', () => {
   }
   if (h.includes('free')) { A.game.setMode('free'); A.garden.welcome(false); return; }
   A.game.setMode('path'); A.garden.welcome(false);
-  if (!h.includes('coin')) doc.body.classList.add('coined'); // S6.6: past « INSERT COIN » (#coin = the title screen itself)
-  if (h.includes('coin')) return;
+  if (h.includes('wake=')) { // S11.1: the wake-up frozen at <ms> (the button pressed, every animation paused there)
+    const ms = +h.split('wake=')[1]; A.quality.auto = false; A.quality.set(0, 'shot'); setTimeout(() => { A.quality.auto = false; A.quality.set(0, 'shot'); doc.querySelectorAll('.m-ghost').forEach((e) => e.remove()); A.garden.coin(); clearTimeout(A.garden._wakeT); const st = doc.createElement('style'); st.textContent = `body.waking .app > *, body.waking .stage > *, body.waking .dust { animation-play-state: paused !important; animation-delay: -${ms}ms !important; }`; doc.head.append(st); }, 1200); return; // (the class that drives the cascade stays: frozen)
+  }
+  if (!h.includes('coin')) doc.body.classList.add('coined'); // S6.6: past the power button (#coin = the machine asleep itself, S11.1)
+  if (h.includes('coin')) { setTimeout(() => doc.querySelectorAll('.m-ghost').forEach((e) => e.remove()), 1000); return; } // (the welcome's closing ghost stays frozen in a headless capture)
+  // S11.1 #goals (the Objectifs widget: a piece of 3 objectives, one done and struck, one going, history struck below),
+  // #goals-ready (the same piece won: « ✦ … est prêt »), #wake=<ms> (the wake-up frozen at ms: contact sheet)
+  if (h.includes('goals')) {
+    const K = A.contracts, g = A.game; A.motion.set({ reduced: true });
+    for (const n of ['m.bells', 'k.piano', 'h.pad', 'e.reverb']) { K.forNode(n).forEach((o) => K.finish(o.id)); g.open(); }
+    K.finish('m.respire'); K.state().active = K.left('e.salle').map((o) => o.id); K.state().prog['e.salle8'] = { n: 6 }; A.store.set('fx.space', 0.8, 'user');
+    if (h.includes('ready')) { K.forNode('e.salle').forEach((o) => K.finish(o.id)); }
+    setTimeout(() => { A.garden.showTree(false); A.tree.release && A.tree.release(); doc.querySelectorAll('.is-new').forEach((e) => e.classList.remove('is-new', 'is-new-first')); A.perform.setMode('sculpt'); A.garden.renderContracts();
+      if (h.includes('open')) A.garden.toggleGoals(true); }, 1500);
+    return;
+  }
+
   if (h.includes('hiscores')) { // S6.6: the HIGH SCORES of the Réponse in the Arbre, a series waiting for its initials (2nd letter)
     const HS = A.garden.hiscores; HS.d = { list: [{ n: 'ROM', s: 17, t: 1, run: 'a' }, { n: 'LEO', s: 11, t: 2, run: 'b' }, { n: 'NEV', s: 6, t: 3, run: 'c' }], last: 'NEV', pend: { run: 'z', s: 9 } };
     HS.run = { id: 'z', s: 9 }; A.garden.showTree(true); HS.ent = { l: ['B', 'O', 'A'], cur: 1 }; HS.render(); return;

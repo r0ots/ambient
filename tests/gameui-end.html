@@ -104,7 +104,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, goals, buyAll, sdiff, KEY, settle
     localStorage.setItem('ambient.game.uitest', JSON.stringify({v:1,mode:'path',nodes:['racine','m.bells'],contracts:['k.xy','m.notes'],active:['k.couleur'],prog:{},skipped:[],ended:false}));
     await new Promise(r=>{ f.addEventListener('load',r,{once:true}); w2.location.reload(); }); await wait(300);
     const d3=f.contentDocument, A3=f.contentWindow.AMB, t3=d3.querySelector('#goals .gw-ready');
-    ok(A3.game.isReady('h.pad') && !A3.game.has('h.pad') && A3.game.has('m.bells') && !t3.hidden && t3.textContent==='✦ Pad est prêt : ouvre-le dans l\'Arbre' && A3.game.has('k.piano') && !A3.contracts.state().active.length, 'ancienne sauvegarde (réussite sans ouverture) : chargée, Pad prêt, Piano ouvert, « '+t3.textContent+' »');
+    ok(A3.game.isReady('h.pad') && !A3.game.has('h.pad') && A3.game.has('m.bells') && !t3.hidden && t3.textContent==='✦ Pièce prête : Pad — ouvre-la dans l\'Arbre' && A3.game.has('k.piano') && !A3.contracts.state().active.length, 'ancienne sauvegarde (réussite sans ouverture) : chargée, Pad prêt, Piano ouvert, « '+t3.textContent+' »');
     A3.game.reset(); }
 });
 </script></body></html>

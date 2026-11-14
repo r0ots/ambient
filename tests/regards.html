@@ -109,7 +109,7 @@ f.addEventListener('load', async () => {
     // --- 12. S11.1 no « ✦ Tout ouvrir » nor its card: a queue of 5 says the first and how many more; each opens in the Arbre
     { G.reset(); await wait(30); w.scrollTo(0, 0); const q = ['m.bells', 'h.pad', 't.son', 'e.reverb', 't.viz']; q.forEach((i) => G.ready(i)); Gd.renderContracts(); await wait(30);
       const rb = d.querySelector('#goals .gw-ready');
-      ok(!d.getElementById('openDlg') && !Gd.ask && !Gd.openAll && rb.textContent === '✦ Mélodie auto est prêt : ouvre-le dans l\'Arbre (+4)', 'S11.1 : file de 5 → « ' + rb.textContent + ' », ni carte ni « Tout ouvrir »');
+      ok(!d.getElementById('openDlg') && !Gd.ask && !Gd.openAll && rb.textContent === '✦ Pièce prête : Mélodie auto — ouvre-la dans l\'Arbre (+4)', 'S11.1 : file de 5 → « ' + rb.textContent + ' », ni carte ni « Tout ouvrir »');
       G.reset(); await wait(30); }
 
     // --- 15. the notebook's hints say what is judged

@@ -155,7 +155,9 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, goals, buyAll, sdiff, KEY, settle
     A.bus.emit('live',{midi:62,time:0,vel:0.8,raw:null}); ok(!A.seq.playing && !A.game.s.contracts.includes('k.allume'), 'une note MIDI ne réveille rien');
     coin.dispatchEvent(new w.PointerEvent('pointerdown',{bubbles:true})); await wait(300);
     ok(A.seq.playing && d.body.classList.contains('coined') && !shown('#coin') && A.game.s.contracts.includes('k.allume') && (d.body.classList.contains('waking') || !A.motion.on()) && pads.hidden, 'le bouton ⏻ : la machine se réveille (cascade), la musique part, « Allume la machine » coché ; toujours pas de touches');
-    await wait(200); ok(!/grayscale/.test(w.getComputedStyle(d.querySelector('.app > .top')).filter) || d.body.classList.contains('waking'), 'réveillée : plus de gris');
+    { const an=(sel)=>w.getComputedStyle(d.querySelector(sel)).animationName, on=A.motion.on() && !d.documentElement.classList.contains('q-bas');
+      ok(!on || (an('.app > .top')==='m-wake' && an('.dust')==='dust-off' && an('.app > .drawer')==='m-wake' && an('#viz')==='m-wake-city' && d.querySelector('.coin-fx .cf-crt')), 'le réveil : la poussière s\'envole (dust-off), les néons grésillent en cascade (m-wake), la ville s\'éclaire, ligne CRT'); }
+    for (let i=0;i<60 && d.body.classList.contains('waking');i++) await wait(50); ok(!d.body.classList.contains('waking') && !/grayscale/.test(w.getComputedStyle(d.querySelector('.app > .top')).filter), 'réveillée : plus de gris, la cascade finie');
     A.ui.stop(); await wait(100); A.game.reset(); d.body.classList.remove('coined'); await wait(30);
     w.dispatchEvent(new w.KeyboardEvent('keydown',{code:'Space',key:' ',bubbles:true})); await wait(200);
     ok(A.seq.playing && A.game.s.contracts.includes('k.allume'), 'la barre d\'espace l\'allume aussi');

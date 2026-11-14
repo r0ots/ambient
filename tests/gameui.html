@@ -55,9 +55,9 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, buyAll, sdiff, KEY, settle }) => 
   ok(li(padO[0]).classList.contains('done') && li(padO[0]).querySelector('.gw-box').textContent==='☑' && /line-through/.test(w.getComputedStyle(li(padO[0]).querySelector('.gw-t')).textDecorationLine) && li(padO[0]).classList.contains('gw-strike') && !A.game.isReady('h.pad') && K.state().active.length===padO.length-1, 'un objectif fait : coché, barré au laser, reste dans la liste ; la pièce attend les autres');
   padO.slice(1).forEach(id=>K.finish(id)); await wait(60);
   ok(!A.game.has('h.pad') && A.game.isReady('h.pad') && !A.garden.seq && d.getElementById('treeDlg').hidden && !K.state().active.length, 'S4.6 : le dernier objectif → le Pad est prêt, rien ne s\'ouvre seul, pas d\'objectif suivant');
-  ok(!rb.hidden && rb.textContent==='✦ Pad est prêt : ouvre-le dans l\'Arbre' && w.getComputedStyle(rb).animationName==='m-breathe' && d.getElementById('treeBtn').classList.contains('has-ready') && gb.querySelector('.gw-now').hidden, '« '+rb.textContent+' », qui pulse, ✦ sur le bouton Arbre');
+  ok(!rb.hidden && rb.textContent==='✦ Pièce prête : Pad — ouvre-la dans l\'Arbre' && w.getComputedStyle(rb).animationName==='m-breathe' && d.getElementById('treeBtn').classList.contains('has-ready') && gb.querySelector('.gw-now').hidden, '« '+rb.textContent+' », qui pulse, ✦ sur le bouton Arbre');
   { const h=[...gb.querySelectorAll('.gw-hist .gw-h')]; ok(!gb.querySelector('.gw-past').hidden && h.length===padO.length && h.every(x=>x.querySelector('s') && /→ Pad/.test(x.querySelector('.gw-to').textContent)), 'faits : barrés, gardés, « → Pad » ('+h.map(x=>x.textContent).join(' | ')+')'); }
-  await wait(1200); ok(rb.textContent==='✦ Pad est prêt : ouvre-le dans l\'Arbre' && !A.game.has('h.pad'), 'S4.6 : le temps passe, rien ne disparaît ni ne s\'ouvre tant que le joueur n\'a pas agi');
+  await wait(1200); ok(rb.textContent==='✦ Pièce prête : Pad — ouvre-la dans l\'Arbre' && !A.game.has('h.pad'), 'S4.6 : le temps passe, rien ne disparaît ni ne s\'ouvre tant que le joueur n\'a pas agi');
   rb.click(); await wait(40);
   ok(!d.getElementById('treeDlg').hidden && A.garden.sel==='h.pad' && tn('h.pad').classList.contains('st-ready') && /✦ prêt/.test(tn('h.pad').textContent) && d.querySelector('#treeDlg .tree-info .ti-open') && d.querySelector('.tree-legend .st-ready') && !A.game.has('h.pad'), 'toucher « est prêt » → l\'Arbre, sur le Pad (« ✦ prêt », fiche avec ✦ Ouvrir), rien d\'ouvert');
   ok(/plusieurs notes tenues ensemble/.test(d.querySelector('#treeDlg .tree-info .ti-d').textContent), 'S9.1 : la fiche d\'un nœud prêt dit ce qu\'il apporte, en mots simples');
@@ -90,12 +90,12 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, buyAll, sdiff, KEY, settle }) => 
     await wait(450); ok(!d.querySelector('.is-new'), 'surbrillance terminée après NEW_MS (8 s au plus, ici 0,3 s) sans toucher'); A.tree.NEW_MS=8000;
     // the queue: two pieces ready, the widget says how many more; they open one after the other, in the Arbre
     K.forNode('h.pad2').forEach(o=>K.finish(o.id)); A.game.ready('e.reverb', 'm.monte'); await wait(30);
-    ok(rb.textContent==='✦ Accords riches est prêt : ouvre-le dans l\'Arbre (+1)' && !K.state().active.length, 'file : « '+rb.textContent+' »');
+    ok(rb.textContent==='✦ Pièce prête : Accords riches — ouvre-la dans l\'Arbre (+1)' && !K.state().active.length, 'file : « '+rb.textContent+' »');
     rb.click(); await wait(30); ok(A.garden.sel==='h.pad2' && !d.getElementById('treeDlg').hidden, 'l\'Arbre sur la première de la file');
     A.garden.reduced=true; d.querySelector('#treeDlg .tree-info .ti-open').click();
     ok(A.game.has('h.pad2') && tn('h.pad2').classList.contains('st-owned') && !tn('h.pad2').classList.contains('is-born') && !d.querySelector('#treeDlg .tree-glow.lit') && !d.getElementById('treeDlg').hidden, 'mouvement réduit : état final tout de suite, sans animation');
     await wait(800); ok(d.getElementById('treeDlg').hidden && !A.garden.seq, 'mouvement réduit : puis fermeture'); A.garden.reduced=false;
-    ok(rb.textContent==='✦ Reverb est prêt : ouvre-le dans l\'Arbre' && !K.state().active.length, 'puis la suivante de la file : « '+rb.textContent+' », toujours pas d\'objectif');
+    ok(rb.textContent==='✦ Pièce prête : Reverb — ouvre-la dans l\'Arbre' && !K.state().active.length, 'puis la suivante de la file : « '+rb.textContent+' », toujours pas d\'objectif');
     A.garden.openNode('e.reverb'); await wait(20); for (let i=0;i<60 && A.garden.seq;i++) await wait(40);
     ok(A.game.has('e.reverb') && rb.hidden && K.state().active.length>=1, 'file vide : les objectifs reviennent');
     A.game.reset(); A.game.unlock('h.pad'); }

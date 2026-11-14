@@ -1457,7 +1457,7 @@ body.game .dust { display: block; position: absolute; inset: 0; z-index: 5; poin
     radial-gradient(ellipse at 50% 45%, #2a221a33 0, #000b 100%); }
 body.game:not(.playing):not(.coined) .dust { opacity: .9; }
 body.game:not(.playing):not(.coined) .app > :is(.top, .goals, .drawer, .pads),
-body.game:not(.playing):not(.coined) .stage > :is(canvas, .city-gl, .hud, .stage-tools) { filter: grayscale(.92) brightness(.42) contrast(.9) sepia(.15); }
+body.game:not(.playing):not(.coined) .stage > :not(.dust, .coin, .toast, .coin-fx) { filter: grayscale(.92) brightness(.42) contrast(.9) sepia(.15); }
 body.game:not(.playing):not(.coined) .app > :is(.top, .goals, .drawer) { box-shadow: none; }
 /* the wake-up: the dust blows away, the city lights up, the pieces' neons crackle on one after the other */
 body.waking .dust { display: block; animation: dust-off calc(var(--m-slow) * 3) var(--m-in) both; }

@@ -248,7 +248,7 @@
       this.wait = c.gate && !res.open ? RETRY : this.gap();
       const n = res.open && AMB.tree.byId[res.open];
       if (AMB.garden) {
-        if (res.out) AMB.garden.fx('consolation', { say: '✦ Prêt quand même', ms: 3000, toast: `Pas cette fois, mais ${n ? n.name : 'la suite'} est prêt à ouvrir quand même.` });
+        if (res.out) AMB.garden.fx('consolation', { say: '✦ Prêt quand même', ms: 3000, toast: `Pas cette fois, mais ${n ? 'la pièce ' + n.name : 'la suite'} est prête à ouvrir quand même.` });
         else AMB.garden.fx(grade, { n: s.combo, why: res.why, node: n ? n.name : null });
       }
       if (res.open) K.finish(c.gate, g); // its node ready (game:ready: the juice above already said it)
