@@ -36,7 +36,7 @@ html, body { margin: 0; background: var(--bg); color: var(--text); }
 .menu-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; color: var(--text); }
 .menu-note { font-size: 11px; color: var(--muted); margin: 2px 0 0; }
 .recgrp { display: flex; gap: 4px; }
-.recgrp select { padding: 8px 6px; }
+.recgrp .nsel-btn { padding: 8px 6px; }
 .more { position: relative; }
 .more summary { list-style: none; min-width: 40px; text-align: center; }
 .more summary::-webkit-details-marker { display: none; }
@@ -51,7 +51,7 @@ html, body { margin: 0; background: var(--bg); color: var(--text); }
   .transport { flex-wrap: nowrap; min-width: 0; }
   .transport .btn, .transport summary { white-space: nowrap; flex-shrink: 0; }
   .transport .tgrp:has(#preset), .transport .tgrp-row:has(#preset) { min-width: 0; }
-  #preset { min-width: 110px; flex: 0 1 auto; text-overflow: ellipsis; }
+  [data-for=preset] { min-width: 110px; flex: 0 1 auto; text-overflow: ellipsis; }
 }
 .sleep { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 16px; }
 #sleepLeft { font-size: 12px; min-width: 40px; }
@@ -96,7 +96,7 @@ body.listen .hud { top: 28px; left: 32px; }
 .k-lab { text-align: center; margin-top: 2px; line-height: 1.15; }
 .sel { width: auto; min-width: 84px; padding-top: 12px; }
 .txt input { width: 92px; padding: 6px 8px; font: inherit; font-size: 13px; }
-.sel select { padding: 6px 8px; font-size: 12px; max-width: 140px; }
+.sel .nsel-btn { max-width: 150px; }
 
 .tog { padding: 5px 10px; cursor: pointer; align-self: center; margin-top: 12px; }
 .panel:has(header .tog:not(.on)) .ctls { opacity: 0.4; }
@@ -354,7 +354,7 @@ footer { color: var(--muted); font: 500 10px var(--f); letter-spacing: .14em; te
 .stage.gl::after { display: none; }
 @media (prefers-reduced-motion: reduce) { .stage::after { display: none; } } /* (every loop stops: .m-still, end of the S7.1 block) */
 
-.sel select { font-size: 13px; padding: 4px 22px 4px 8px; min-width: 64px; background-position: right 7px center; }
+.sel .nsel-btn { font-size: 12.5px; padding: 6px 8px 6px 10px; min-width: 76px; min-height: 34px; }
 .sc-slot { border-radius: var(--radius-btn); border: 1.5px dashed var(--line-hi); color: var(--muted); font-family: var(--f); }
 .sc-slot.filled { border-style: solid; background: transparent; color: var(--text); }
 .sc-slot.near { border-color: var(--cyan); box-shadow: 0 0 12px #22e6ff66; color: #fff; }
@@ -394,7 +394,7 @@ body.game .macros .panel:not(:has(.ctls > :not(.is-locked))):not(:has(.layer-chi
   box-shadow: 0 0 16px color-mix(in srgb, var(--c) 45%, transparent), inset 0 0 12px color-mix(in srgb, var(--c) 18%, transparent); }
 @media (max-width: 560px) { .welcome-choices { grid-template-columns: 1fr; } }
 /* phones: the bar's groups wrap inside the width (sound picker and mood shrink), never past the screen's edge */
-@media (max-width: 560px) { .transport .tgrp { max-width: 100%; min-width: 0; } .transport .tgrp-row { flex-wrap: wrap; min-width: 0; } #preset, #mood { min-width: 0; max-width: 100%; flex: 1 1 110px; }
+@media (max-width: 560px) { .transport .tgrp { max-width: 100%; min-width: 0; } .transport .tgrp-row { flex-wrap: wrap; min-width: 0; } [data-for=preset], [data-for=mood] { min-width: 0; max-width: 100%; flex: 1 1 110px; }
   /* the ⋯ menu opens across the bar, inside the screen (the ⋯ button wraps to the left there) */
   .transport { position: relative; } .more { position: static; } .more > .menu { left: 0; right: 0; } }
 .tree-grp { display: none !important; }
@@ -734,7 +734,7 @@ body.game .lcd-task.help .lcd-skip { position: relative; z-index: 3; }
    then the city and the pads together in the window; no chord / tempo / bar over the city */
 @media (max-width: 560px) {
   .top { padding: 8px 10px; gap: 8px; }
-  .brand, .transport .tgrp > small, body.game #mood { display: none; }
+  .brand, .transport .tgrp > small, body.game [data-for=mood] { display: none; }
   .transport { display: grid; grid-template-columns: auto auto auto 1fr auto auto; grid-template-areas: "play midi rec . tree more" "mode mode mode mode mode mode" "land land land land land land"; gap: 6px; width: 100%; }
   .transport .tgrp { padding: 0; border: 0; }
   .transport .tgrp:has(#play), .transport .tgrp:has(#play) > .tgrp-row { display: contents; }
@@ -1281,7 +1281,7 @@ body.listen .app > .stage { height: auto; }
   .transport .tgrp:has(#play) { grid-area: play; } .transport .tgrp:has(#rec) { grid-area: rec; } #sleepLeft { grid-area: sleep; }
   .transport .tree-grp { grid-area: tree; } .transport .more { grid-area: more; }
   .transport .tgrp:has(#preset) { grid-area: land; min-width: 0; } .transport .tgrp:has(#preset) > .tgrp-row { min-width: 0; }
-  #preset, #mood { min-width: 0; flex: 1 1 120px; }
+  [data-for=preset], [data-for=mood] { min-width: 0; flex: 1 1 120px; }
   .transport .tgrp:has(.modes) { grid-area: mode; justify-self: end; }
 }
 /* a portrait screen (phone, tablet upright): the drawer is a bottom sheet over the pads, the city above it */
@@ -1318,7 +1318,7 @@ body.listen .app > .stage { height: auto; }
   .brand, .transport .tgrp > small { display: none; }
   .transport { gap: 4px; }
   .transport .tgrp { padding: 0 4px; }
-  .transport .btn, .transport summary, .transport select, .mode-btn { padding-top: 5px; padding-bottom: 5px; }
+  .transport .btn, .transport summary, .transport .nsel-btn, .mode-btn { padding-top: 5px; padding-bottom: 5px; }
   .transport .btn.primary { min-width: 0; } /* (the LCD keeps the width: a challenge stays on one line) */
   #dice { font-size: 0; white-space: nowrap; } #dice .m-die { font-size: 16px; } /* ✦ alone (its name stays for screen readers and in its title) */
   .lcd { font-size: 18px; padding: 2px 10px; }
@@ -1339,3 +1339,43 @@ body.listen .app > .stage { height: auto; }
 
 /* S8.8: a short window (phone on its side) keeps the city for the city: no keyboard hint over it */
 @media (max-height: 520px) { .stage .hint { display: none; } }
+
+/* =====================================================================
+   S9.2 « Néon » — the pieces the skin above does not cover: the neon list (widgets.js neonSelect, in place of every
+   <select>), the bar (Header.dc.html: 44 px tubes, the logo that crackles on), the 44 px targets under a finger.
+   ===================================================================== */
+/* the native select stays in the page, hidden (the source of truth); its button shows it */
+.nsel-native { position: absolute !important; width: 1px !important; height: 1px !important; min-width: 0 !important; padding: 0 !important; margin: 0 !important; border: 0 !important;
+  opacity: 0 !important; pointer-events: none !important; clip-path: inset(50%) !important; }
+.nsel-btn { display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; max-width: 100%; min-height: 36px; padding: 6px 10px 6px 12px; cursor: pointer;
+  font: 600 13px/1.15 var(--f); letter-spacing: .08em; color: #fff; background: transparent; border: 1.5px solid var(--line-hi); border-radius: var(--radius-btn); text-align: left; }
+.nsel-val { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.nsel-car { font-style: normal; color: var(--c, var(--cyan)); text-shadow: 0 0 6px var(--c, var(--cyan)); flex: none; transition: rotate var(--m-fast) var(--m-spring); }
+.nsel-btn.open { --c: var(--cyan); border-color: var(--c); background: color-mix(in srgb, var(--c) 8%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--c) 40%, transparent); }
+.nsel-btn.open .nsel-car { rotate: 180deg; }
+.nsel-btn:disabled { opacity: .45; cursor: default; }
+.nsel-list { --c: var(--cyan); position: fixed; z-index: 80; margin: 0; padding: 0; list-style: none; overflow: hidden auto; overscroll-behavior: contain; scrollbar-width: thin;
+  background: #05030c; border: 1.5px solid var(--c); border-radius: var(--radius-btn); box-shadow: 0 0 24px color-mix(in srgb, var(--c) 33%, transparent), 0 16px 40px #000d; font-family: var(--f); outline: none; }
+.nsel-opt { min-height: 42px; display: flex; align-items: center; padding: 9px 14px; font: 500 14.5px/1.2 var(--f); letter-spacing: .06em; color: #c9bde6; cursor: pointer; white-space: nowrap; }
+.nsel-opt.act { color: #fff; background: #ff2bd614; box-shadow: inset 3px 0 0 color-mix(in srgb, var(--magenta) 70%, transparent); }
+.nsel-opt[aria-selected=true] { color: #fff; font-weight: 700; background: linear-gradient(90deg, color-mix(in srgb, var(--c) 22%, transparent), transparent); box-shadow: inset 3px 0 0 var(--c); text-shadow: 0 0 8px var(--c); }
+.nsel-opt[aria-disabled=true] { opacity: .45; cursor: default; }
+.nsel-grp { padding: 10px 14px 4px; font: 700 11px var(--f); letter-spacing: .26em; text-transform: uppercase; color: var(--muted); }
+.nsel-grp:not(:first-child) { border-top: 1px solid var(--line); margin-top: 4px; }
+.menu-row .nsel-btn, .sleep .nsel-btn { min-width: 120px; }
+
+/* the bar (Header.dc.html): Chakra Petch tubes, 44 px high; ▶ LECTURE lit in magenta; the Arbre's count in phosphor */
+.top .btn, .top summary.btn, .top .nsel-btn, .top .mode-btn { min-height: 44px; }
+.top .btn, .top summary.btn { text-transform: uppercase; letter-spacing: .12em; }
+.tree-btn { --c: var(--green); }
+.modes { min-height: 44px; }
+.menu .btn { text-transform: none; letter-spacing: .06em; min-height: 40px; }
+/* the logo: a Monoton tube that crackles as it switches on (once; still in reduced motion / JUICE 0) */
+.logo { animation: logo-on calc(900ms * var(--m-t) + 1ms) steps(1, end) calc(200ms * var(--m-t)) both; }
+@keyframes logo-on { 0% { opacity: .15; text-shadow: none; } 8% { opacity: 1; } 14% { opacity: .2; text-shadow: none; } 22% { opacity: .9; } 30% { opacity: .35; text-shadow: 0 0 3px #fff; }
+  46% { opacity: 1; } 52% { opacity: .5; } 60%, 100% { opacity: 1; } }
+/* a finger: every target at least 44 px */
+@media (pointer: coarse) {
+  .btn, .tog, .chip, .nsel-btn, .mode-btn, .song-chip, .slot-tab, .sc-slot, .song-btns button, .loop-chip button, .chord-slot, kbd + .btn { min-height: 44px; }
+  .slot-tab, .sc-slot, .song-btns button { min-width: 44px; }
+}
