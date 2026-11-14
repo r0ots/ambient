@@ -47,6 +47,9 @@ window.addEventListener('load', async () => {
     ok(center[0] > 150 && center[2] > 80, 'la scène passe dans la texture (néon rose au centre : ' + center.map(Math.round) + ')');
     ok(h1 > h0 + 12, 'bloom : halo autour du néon (' + Math.round(h0) + ' → ' + Math.round(h1) + ')');
     reset();
+    // S8.8: everything pushed (bloom, fog, a flash): the blacks stay dark, the neon keeps its colour — no milky veil
+    G.set('bloom', 2); G.set('fog', 2); G.pulse('flash', 0.5, 2000); frame(); const vc = lum(px(0.8, 0.2)), vf = lum(px(0.5, 0.92)), vn = px(0.5, 0.5);
+    ok(vc < 150 && vf < 260 && Math.max(...vn) - Math.min(...vn) > 70, 'S8.8 : tout poussé (bloom 2, brouillard 2, éclair) : noirs gardés (ciel ' + Math.round(vc) + ', brume ' + Math.round(vf) + '), néon saturé (' + vn.map(Math.round) + ')'); reset();
     // flash pulse: bright, then gone
     frame(); const dark = lum(px(0.8, 0.2));
     G.pulse('flash', 1, 300 * S / 0.4 + 200); frame(); const fl = lum(px(0.8, 0.2));
