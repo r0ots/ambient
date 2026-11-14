@@ -443,7 +443,7 @@
       // discovery: the `discovery` recipe, its word « SUPER » (o.boom)
       combo: { free: 1, rank: 3, confetti: 30, pop: (o) => `COMBO ×${o.n || 2}`, say: (o) => `⚡ Combo ×${o.n || 2}${o.name ? ' · ' + o.name : ''} : garde les réglages là !` },
       super: { free: 1, city: 'stars', rank: 8, confetti: 300, shake: 2, bounce: 1, punch: 2, beats: 3, pop: (o) => `SUPER · ${String(o.name || 'combo').toUpperCase()}`, say: (o) => `⚡ SUPER ! ${o.name || ''}` },
-      discovery: { city: 'stars', rank: 9, flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => o.boom || 'DÉCOUVERTE', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `✦ Découverte${o.name ? ' : ' + o.name : ' !'}` },
+      discovery: { city: 'stars', rank: 9, flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => [o.boom, o.name && String(o.name).toUpperCase()].filter(Boolean).join(' · ') || 'DÉCOUVERTE', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `✦ Découverte${o.name ? ' : ' + o.name : ' !'}` },
     },
     // the bus events that are moments (the others call fx() where they happen: an opening, a discovery, the end, a first touch)
     FX_ON: {

@@ -57,7 +57,7 @@ f.addEventListener('load', async () => {
     const tS = 2 + toSuper();
     ok(C.cur && C.cur.phase === 'super' && tS >= 5 && tS <= 7.5, 'pleine : SUPER ! après ' + tS.toFixed(1) + ' s (8 temps), sur un temps');
     const disc = fxs.find(([k]) => k === 'discovery');
-    ok(D.has('orage') && disc && disc[1].boom === 'SUPER!' && disc[1].name === 'Orage électrique' && !fxs.some(([k]) => k === 'super'), '1er SUPER = découverte (sauvée, fête « SUPER! · ' + (disc && disc[1].name) + ' »)');
+    ok(D.has('orage') && disc && disc[1].boom === 'SUPER' && disc[1].name === 'Orage électrique' && !fxs.some(([k]) => k === 'super'), '1er SUPER = découverte (sauvée, fête « SUPER · ' + (disc && disc[1].name) + ' »)');
     step(4); ok(C.cur.phase === 'super' && C.L('orage') > 0.95 && C.cur.beats >= 4, 'SUPER : l\'effet en grand, calé sur les temps (temps ' + C.cur.beats + ')');
     step(9.5); ok(C.cur && C.cur.phase === 'charge' && C.cur.rounds === 1 && C.L('orage') >= 0.29, 'après ' + C.SUPER_BEATS + ' temps, tenu : la charge repart (effet soutenu ' + C.L('orage').toFixed(2) + ')');
     fxs.length = 0; toSuper(); ok(fxs.some(([k]) => k === 'super') && !fxs.some(([k]) => k === 'discovery'), '2e SUPER : la fête SUPER, pas de 2e découverte');
@@ -88,7 +88,7 @@ f.addEventListener('load', async () => {
       base(); const near = { ...POSE[c.id] }; const k0 = Object.keys(near)[0]; near[k0] = POSE[c.id][k0] > 0.5 ? 0.7 : 0.3; turn(near); step(1);
       const nearOn = C.cur && C.cur.id === c.id;
       base(); turn(POSE[c.id]); step(0.1); const on = C.cur && C.cur.id === c.id; fxs.length = 0; toSuper();
-      const found = D.has(c.id), party = fxs.some(([k, o]) => k === 'discovery' && o.name === c.name && o.boom === 'SUPER!'), ready = G.isReady(op) || (D.state().opened || {})[c.id];
+      const found = D.has(c.id), party = fxs.some(([k, o]) => k === 'discovery' && o.name === c.name && o.boom === 'SUPER'), ready = G.isReady(op) || (D.state().opened || {})[c.id];
       const miss = [nearOn && 'raté-proche', !on && 'pas ON', !found && 'non trouvé', !party && 'pas de fête', !ready && 'nœud pas prêt'].filter(Boolean);
       if (miss.length) bad.push(c.id + ':' + miss.join('+')); else rep.push(c.id + '→' + ((D.state().opened || {})[c.id] || op));
     }

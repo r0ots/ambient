@@ -25,8 +25,7 @@ window.addEventListener('load', async ()=>{
   log('after Cassette: nostalgia='+AMB.store.get('macro.nostalgia').toFixed(2)+' space='+AMB.store.get('macro.space').toFixed(2));
   AMB.ui.applyPatch(AMB.PRESETS['Cathédrale']); await new Promise(r=>setTimeout(r,200));
   log('after Cathédrale: nostalgia='+AMB.store.get('macro.nostalgia').toFixed(2)+' space='+AMB.store.get('macro.space').toFixed(2)+' histSteps='+(AMB.history?AMB.history.past.length:'-'));
-  const chips=document.querySelectorAll('.layer-chips .tog'); chips[0].click();
-  log('chips='+chips.length+' droneOn='+AMB.store.get('drone.on')+' chipOn='+chips[0].classList.contains('on'));
+  log('chips='+document.querySelectorAll('.layer-chips').length+' (S9.1: the layers are switched in their own panels)');
   AMB.store.set('global.tuning','432 Hz','user'); log('A4='+AMB.theory.A4+' mtof69='+AMB.theory.mtof(69));
   document.querySelector('[data-mode=sculpt]').click();
   log('DONE');

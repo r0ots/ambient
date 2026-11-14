@@ -65,7 +65,7 @@ f.addEventListener('load', async () => {
     st.combo = 0; fxs.length = 0;
     for (let i = 0; i < 3; i++) judge('accord', 0, chordIn(1));
     const last = fxs.filter(([kk]) => kk === 'parfait').pop();
-    ok(st.combo === 3 && last && last[1].n === 3 && A.garden.FX.parfait.pop(last[1]) === 'PARFAIT !!! ×3' && /×3/.test(A.garden.FX.parfait.say(last[1])), '3 PARFAIT d\'affilée : combo ×3, « ' + A.garden.FX.parfait.pop(last[1]) + ' » (juice garden.fx)');
+    ok(st.combo === 3 && last && last[1].n === 3 && A.garden.FX.parfait.pop(last[1]) === 'PARFAIT ×3' && /×3/.test(A.garden.FX.parfait.say(last[1])), '3 PARFAIT d\'affilée : combo ×3, « ' + A.garden.FX.parfait.pop(last[1]) + ' » (juice garden.fx)');
     ok(st.best >= 3 && JSON.parse(localStorage.getItem('ambient.game.demtest')).dem.combo === 3, 'combo et record sauvegardés');
 
     // --- an interface challenge, asked in the music, makes its node « prêt » (the player opens it)

@@ -317,15 +317,15 @@ window.addEventListener('load', async () => {
       // app state outside the store: mode, playback, song sections
       const saved = [AMB.mode, AMB.seq, AMB.song];
       AMB.mode = 'compose'; AMB.seq = { playing: true }; AMB.song = { playing: true, sections: [1, 2, 3, 4], idx: 1 };
-      const on = GV.scene(() => undefined); AMB.mode = 'listen'; AMB.seq = { playing: false }; AMB.song = { playing: false, sections: [] }; const off = GV.scene(() => undefined);
-      ok(on.lens === 1 && off.lens === 0 && on.play === 1 && off.play === 0 && on.song === 0.5 && off.song === 0, 'modes (Écouter 0 → Composer 1), lecture / arrêt, section du Morceau : leur calque bouge');
+      const on = GV.scene(() => undefined); AMB.mode = 'sculpt'; AMB.seq = { playing: false }; AMB.song = { playing: false, sections: [] }; const off = GV.scene(() => undefined);
+      ok(on.lens === 1 && off.lens === 0 && on.play === 1 && off.play === 0 && on.song === 0.5 && off.song === 0, 'modes (Sculpter 0 → Composer 1), lecture / arrêt, section du Morceau : leur calque bouge');
       ok(Object.keys(GV.layers()).length === Object.keys(GV.SCENE).length && Object.values(GV.layers()).every((v) => v >= 0 && v <= 1), 'AMB.gardenVisual.layers() : ' + Object.keys(GV.SCENE).length + ' intensités entre 0 et 1, lisibles par le code');
       // a touched control kicks its layer (visible), a drift does not; a mode change, Gel, a section kick theirs
       step(80); GV.kick = {};
       St.set('fx.echo', 0.9, 'lfo'); step(1); const noKick = !GV.kick.echo;
       St.set('fx.lofi', 0.3, 'user'); step(1); const k1 = GV.kick.grain;
       ok(noKick && k1 > 0.9 && GV.amt('grain') > (GV.sc.grain || 0) + 0.6 && !GV.kick.echo, 'toucher Usure : impulsion sur le calque grain (' + k1.toFixed(2) + ') ; un mouvement lent n\'en donne pas');
-      AMB.mode = 'sculpt'; step(1); const kl = GV.kick.lens; AMB.bus.emit('freeze', {}); AMB.bus.emit('section', { index: 1, name: 'A' });
+      AMB.mode = 'compose'; step(1); const kl = GV.kick.lens; AMB.bus.emit('freeze', {}); AMB.bus.emit('section', { index: 1, name: 'A' });
       ok(kl > 0.9 && GV.kick.frost === 1 && GV.kick.song === 1, 'changer de mode, Gel, nouvelle section : impulsion sur leur calque');
       step(60); ok(!Object.keys(GV.kick).length, 'les impulsions retombent en moins d\'1 s');
       { const lumSky = () => { const d = cv.getContext('2d').getImageData(0, 0, 1280, GV.ground).data; let t = 0; for (let i = 0; i < d.length; i += 16) t += d[i] + d[i + 1] + d[i + 2]; return t; };

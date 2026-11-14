@@ -11,7 +11,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
     g.reset(); A.tree.applyLocks(); A.perform.setMode('sculpt'); await wait(30);
     const dOn=d.querySelector('.panel[data-sec=drone] > header .tog[data-key="drone.on"]');
     ok(css('#bigPlay','display')==='none' && shown('#play'), 'Parcours : pas de « ▶ Lancer le paysage » sur l\'écran, ▶ Lecture dans la barre');
-    ok(A.store.get('drone.on') && dOn.classList.contains('is-solo') && w.getComputedStyle(dOn).display==='none' && d.querySelector('.layer-chips .tog[data-key="drone.on"]').classList.contains('is-solo'), 'Graine : le drone, seule couche ouverte, n\'a pas de coupure (ni dans Sculpter ni dans Écouter)');
+    ok(A.store.get('drone.on') && dOn.classList.contains('is-solo') && w.getComputedStyle(dOn).display==='none' && !d.querySelector('.layer-chips'), 'Graine : le drone, seule couche ouverte, n\'a pas de coupure (S9.1 : plus de raccourcis de couche à part)');
     A.store.set('drone.on', false, 'game'); ok(!dOn.classList.contains('is-solo'), 'drone coupé (paysage, ancienne sauvegarde) : sa coupure revient pour le rallumer'); A.store.set('drone.on', true, 'game');
     g.unlock('m.bells'); await wait(30);
     const bOn=d.querySelector('.panel[data-sec=bells] > header .tog[data-key="bells.on"]');
@@ -27,7 +27,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
     ok(flying && L.hidden && !A.garden.confetti.n && !L.querySelector('.fx-pop'), 'fenêtre ouverte (Arbre, carnet) : les confettis d\'une fête précédente disparaissent');
     A.garden.showTree(false);
     { const say=A.garden.FX_ON['resp:place']({ id:'musicien', name:'Musicien', nodes:['h.pad','h.drone','h.key'] })[1];
-      ok(say.toast==='Tu joues déjà : 3 nœuds prêts → ✦ Ouvrir sur l\'écran du haut', 'placement : le toast résume la file (« '+say.toast+' »)'); }
+      ok(say.toast==='Tu joues déjà bien : 3 pièces prêtes → touche ✦ Ouvrir sur l\'écran du haut', 'placement : le toast résume la file (« '+say.toast+' »)'); }
     await wait(500); g.setMode('free'); await wait(30);
     ok(css('#bigPlay','display')!=='none' && !d.querySelector('.tog.is-solo'), 'mode libre : « ▶ Lancer le paysage » et toutes les coupures, comme avant');
     PE('pointerdown',b); const fp=b.classList.contains('is-pressed'); PE('pointerup',b);
