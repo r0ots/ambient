@@ -92,14 +92,13 @@
     GW_SHOW: 6,
     compact() { return !!(window.matchMedia && matchMedia('(orientation: portrait) and (max-width: 900px), (max-height: 520px)').matches); },
     goalsShown() { const g = AMB.game; return !!(g && g.path && (!this.handedOver() || this.offer)); },
-    // what an objective's counter says: n/goal (+ unit), the notes of a Réponse, when an ask comes, or ✓
+    // what an objective's counter says: n/goal (+ unit), the notes of a Réponse, or ✓
     goalN(d, n) {
       if (AMB.contracts.done(d.id)) return '✓';
       if (d.kind === 'reponse') return `${AMB.puzzles.need(d)} ♪`;
-      if (d.kind === 'demande') return AMB.seq && AMB.seq.playing ? '♪ bientôt' : '▶ lecture';
       return d.goal > 1 ? `${n}/${d.goal}${d.unit ? ' ' + d.unit : ''}` : '';
     },
-    goalTxt(d) { const g = AMB.game; return g.txt(d.kind === 'reponse' ? `↺ Réponse : ${d.title} (${AMB.puzzles.need(d)} notes)` : d.kind === 'demande' ? `♪ ${d.title}` : d.title); },
+    goalTxt(d) { const g = AMB.game; return g.txt(d.kind === 'reponse' ? `↺ Réponse : ${d.title} (${AMB.puzzles.need(d)} notes)` : d.title); },
     pieceName(id) { const n = id && AMB.tree.byId[id]; return n ? n.name : ''; },
     renderContracts(flashId) {
       const box = $('#goals'); if (!box || !AMB.contracts) return;
@@ -109,19 +108,10 @@
       const nr = live && g.nextReady(), rn = nr && AMB.tree.byId[nr.id], nReady = live ? (g.s.ready || []).length : 0;
       const tb = $('#treeBtn'); if (tb) tb.classList.toggle('has-ready', !!rn);
       if (!shown) return;
-      const s = K.state(g), dm = live && !rn && AMB.demands ? AMB.demands.view() : null;
+      const s = K.state(g);
       const act = live && !rn ? s.active.map((id) => K.byId[id]).filter(Boolean) : [];
       const piece = act.length ? act[0].node : null, fin = act.length && !piece;
       const objs = piece ? K.forNode(piece) : act; // the piece's objectives, done ones struck in place
-      // the demand in progress, in big with its countdown
-      const db = box.querySelector('.gw-demand'); db.hidden = !dm; box.classList.toggle('demand', !!dm); db.classList.toggle('hot', !!(dm && dm.hot));
-      if (dm) {
-        const t = db.querySelector('.gw-dtxt'), help = db.classList.contains('help');
-        if (box.dataset.dem !== dm.text) { db.classList.remove('help'); box.dataset.dem = dm.text; }
-        t.textContent = db.classList.contains('help') ? g.txt(dm.hint) : `♪ ${g.txt(dm.text)}`;
-        db.title = help ? 'Toucher : revenir à la demande' : `${g.txt(dm.hint)}\n(Toucher : comment faire)`;
-        this.slam(db.querySelector('.gw-dn'), dm.n);
-      } else box.dataset.dem = '';
       // the piece won (or the song offered after the finale)
       const rb = box.querySelector('.gw-ready'), no = box.querySelector('.gw-no'), offer = !!this.offer && this.handedOver();
       rb.hidden = !rn && !offer; no.hidden = !offer;
@@ -145,14 +135,14 @@
       for (const li of ul.children) {
         const d = K.byId[li.dataset.id]; if (!d) continue;
         const dn = K.done(d.id), n = K.progress(d.id), was = li.classList.contains('done');
-        li.classList.toggle('done', dn); li.classList.toggle('asked', !!(dm && dm.gate === d.id));
+        li.classList.toggle('done', dn);
         li.querySelector('.gw-box').textContent = dn ? '☑' : '☐';
         const t = li.querySelector('.gw-t'), tx = this.goalTxt(d); if (t.textContent !== tx) t.textContent = tx;
         li.querySelector('.gw-txt').title = dn ? 'Fait' : `${g.txt(d.hint)}\n(Toucher : comment faire)`;
         const hint = li.querySelector('.gw-hint'); hint.textContent = g.txt(d.hint); if (dn) hint.hidden = true;
         li.querySelector('.gw-skip').hidden = dn || fin;
         const nEl = li.querySelector('.gw-n'), nTxt = this.goalN(d, n); if (nEl.textContent !== nTxt) this.rollN(nEl, nTxt);
-        const bar = li.querySelector('.gw-bar'); bar.hidden = d.goal <= 1 || d.kind === 'reponse' || d.kind === 'demande';
+        const bar = li.querySelector('.gw-bar'); bar.hidden = d.goal <= 1 || d.kind === 'reponse';
         bar.style.setProperty('--p', (dn ? 1 : n / d.goal).toFixed(3));
         if (dn && !was && ul.dataset.seen === key && M && M.on()) { M.pop(li, 'gw-strike', { ms: M.ms('slow') + M.ms('med') }); M.burst(li.querySelector('.gw-box'), { n: 12, spread: Math.PI * 2, color: '#39ff88' }); } // a laser strikes it through
         if (flashId === d.id && !dn && M) M.pop(nEl, 'pop');
@@ -175,7 +165,7 @@
       for (const e of vis) {
         const li = document.createElement('li'); li.className = 'gw-h'; li.dataset.k = (e.id || e.disc) + e.t;
         const d = e.id && K.byId[e.id], disc = e.disc && AMB.discoveries && AMB.discoveries.byId[e.disc];
-        const what = d ? (d.kind === 'reponse' ? `↺ Réponse : ${d.title}` : d.kind === 'demande' ? `♪ ${d.title}` : d.title) : disc ? `✦ Découverte : ${disc.name}` : '';
+        const what = d ? (d.kind === 'reponse' ? `↺ Réponse : ${d.title}` : d.title) : disc ? `✦ Découverte : ${disc.name}` : '';
         const s1 = document.createElement('s'); s1.textContent = g.txt(what);
         const to = document.createElement('span'); to.className = 'gw-to';
         to.textContent = e.node ? `→ ${this.pieceName(e.node)}${e.by === 'place' ? ' ⚡' : ''}` : d && d.first ? '→ le Parcours' : '';
@@ -185,17 +175,17 @@
       const M = AMB.motion, f = ul.firstElementChild;
       if (f && top && f.dataset.k !== top && M && M.on()) M.pop(f, 'gw-in', { ms: M.ms('slow') });
     },
-    // the short messages of the game (garden.lcd: PARFAIT / BIEN / RATÉ stamped, « 3, 2, 1 », the Réponse's « À toi »)
+    // the short messages of the game (garden.lcd: RATÉ stamped, the Réponse's « À toi »)
     // on the widget's head; compact, the head also shows the current objective when no message is up
     renderMsg() {
       const box = $('#goals'); if (!box || box.hidden) return;
       const el = box.querySelector('.gw-line'), m = AMB.lcdMsg, on = !!(m && Date.now() < m.until), K = AMB.contracts, g = AMB.game;
       let txt = on ? m.text : '';
       box.classList.toggle('msg', on);
-      if (!on && (this.compact() || !box.classList.contains('open'))) { // the peek: the ask, the piece ready, or the first objective left
-        const dm = AMB.demands && AMB.demands.view(), rn = g.nextReady() && AMB.tree.byId[g.nextReady().id], s = K.state(g);
+      if (!on && (this.compact() || !box.classList.contains('open'))) { // the peek: the piece ready, or the first objective left
+        const rn = g.nextReady() && AMB.tree.byId[g.nextReady().id], s = K.state(g);
         const d = s.active.map((id) => K.byId[id]).find(Boolean), objs = d && d.node ? K.forNode(d.node) : [];
-        txt = dm ? `♪ ${g.txt(dm.text)} · ${dm.n}` : rn ? `✦ Pièce prête : ${rn.name}` : d ? `${this.goalTxt(d)}${this.goalN(d, K.progress(d.id)) ? ' · ' + this.goalN(d, K.progress(d.id)) : ''}${objs.length > 1 ? ` · ${objs.length - K.left(d.node).length}/${objs.length}` : ''}` : this.offer ? '⤓ Ton morceau' : '';
+        txt = rn ? `✦ Pièce prête : ${rn.name}` : d ? `${this.goalTxt(d)}${this.goalN(d, K.progress(d.id)) ? ' · ' + this.goalN(d, K.progress(d.id)) : ''}${objs.length > 1 ? ` · ${objs.length - K.left(d.node).length}/${objs.length}` : ''}` : this.offer ? '⤓ Ton morceau' : '';
       }
       if (el.textContent === txt) return;
       const was = el.textContent; el.textContent = txt;
@@ -213,7 +203,7 @@
       if (!this.compact()) box.classList.add('open'); // (desktop: the full panel; a phone: the compact card)
       box.querySelector('.gw-head').setAttribute('aria-expanded', String(box.classList.contains('open')));
       box.addEventListener('click', (e) => {
-        const t = e.target.closest('button, .gw-demand'); if (!t) return;
+        const t = e.target.closest('button'); if (!t) return;
         if (t.matches('.gw-head')) return this.toggleGoals();
         if (t.matches('.gw-all')) { box.classList.toggle('all'); return this.renderHistory(box, AMB.contracts.current()); }
         if (t.matches('.gw-ready')) {
@@ -223,26 +213,19 @@
           return;
         }
         if (t.matches('.gw-no')) { this.offer = null; return this.renderContracts(); }
-        if (t.matches('.gw-demand')) { t.classList.toggle('help'); return this.renderContracts(); }
         const li = t.closest('.gw-obj'); if (!li) return;
         if (t.matches('.gw-skip')) return AMB.contracts.skip(li.dataset.id);
         if (t.matches('.gw-txt') && !li.classList.contains('done')) { const h = li.querySelector('.gw-hint'); h.hidden = !h.hidden; li.classList.toggle('help', !h.hidden); } // (S4.6: the help stays until touched again)
       });
       setInterval(() => this.renderMsg(), 300);
     },
-    // S7.3: the widget's counter — a count rolls in (motion.roll), the countdown of an ask slams in (« MAINTENANT ! » harder)
+    // S7.3: the widget's counter — a count rolls in (motion.roll)
     rollN(el, v) { if (!el) return; if (AMB.motion) AMB.motion.roll(el, v); else el.textContent = v; },
-    slam(el, v) {
-      if (!el || el.textContent === String(v)) return;
-      const was = el.textContent; el.textContent = v;
-      const M = AMB.motion; if (!was || !M) return;
-      M.pop(el, /MAINTENANT/.test(v) ? 'm-slam-now' : 'm-slam', { ms: M.ms('slow') + 60 });
-    },
     // clicks that always succeed go on the bus as actions (contracts count them); actions that can fail or be
     // cancelled (save, journal, chords, freeze) are emitted by their own code once they really happened
     CLICKS: [['#dice', 'dice'], ['.sc-store', 'sceneStore']],
     // S6.7 → S8.3 → S11.1: in the Parcours the Objectifs widget never leaves the window (a fixed piece over the city, css
-    // « S8.3 »); the panels scroll inside their drawer (demands.seen still checks)
+    // « S8.3 »); the panels scroll inside their drawer
     hookActions() {
       const emit = (id) => AMB.bus.emit('act', id);
       document.addEventListener('click', (e) => {
@@ -332,7 +315,7 @@
     },
     beats: {}, // node id -> {id, at, deg}
     beatOf(id) { return this.beats[id] || {}; },
-    lcd(text, ms = 3500, stamp = false) { AMB.lcdMsg = { text, until: Date.now() + ms, stamp }; this.renderMsg(); }, // S7.3 stamp: PARFAIT / BIEN / RATÉ land like a rubber stamp; S11.1 on the Objectifs widget
+    lcd(text, ms = 3500, stamp = false) { AMB.lcdMsg = { text, until: Date.now() + ms, stamp }; this.renderMsg(); }, // S7.3 stamp: RATÉ lands like a rubber stamp; S11.1 on the Objectifs widget
     // ---- S4.6 → S11.1: opening is the player's move, in the Arbre only: a piece's card says in plain words what it gives
     // (tree.EXPLAIN), its « ✦ Ouvrir » (garden-tree.js .ti-open) plays the opening (chime on the beat, the layer comes in,
     // the building grows, the map's sequence) and what it opens comes in animated (tree.appear). Nothing else opens a
@@ -477,7 +460,7 @@
     //   'arcade' = the message scrolls in and blinks) · bounce (the buttons hop) · hop (one element hops) · punch (the scene
     //   zooms in, 1 | 1.5 | 2) · jingle (garden.chime kind, in the key) · pop (text that jumps out, arcade combo) · splash
     //   (S5.2 splashes of a plant) · beats (confetti again on the next beats) · say (the widget message) · kick (S5.8 scene
-    //   layers of the Jardin that flare up: gardenVisual.flare, same JUICE). S9.1: the pop is one short word (PARFAIT,
+    //   layers of the Jardin that flare up: gardenVisual.flare, same JUICE). S9.1: the pop is one short word (JUSTE,
     //   RATÉ, COMBO…), written plainly; the comic onomatopoeias (POW!, BZZT!…) and their bubbles are gone.
     // Moments fired in the same tick merge: the biggest (rank) plays alone (a gate answered = a challenge won, not also a
     // series). Reduced motion: a soft flash only (plus the jingle and the widget message). S5.10 (combos, discoveries) reuses
@@ -495,11 +478,6 @@
       open: { city: 'stars', rank: 7, flash: 0.75, confetti: 260, shake: 2, lcd: 'arcade', bounce: 1, punch: 1.5, jingle: 'unlock', pop: 'OUVERT', splash: 'tier', kick: ['rays', 'aurora', 'ripple', 'hue'] },
       end: { city: 'stars', rank: 8, flash: 1, confetti: 380, shake: 2, lcd: 'arcade', bounce: 1, punch: 2, jingle: 'end', pop: 'À TOI', beats: 3, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'hue'] },
       placement: { city: 'stars', rank: 10, flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => String(o.name || 'musicien').toUpperCase(), hop: '#treeBtn', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `⚡ ${o.name || 'Musicien'} détecté` }, // S5.4 a Réponse placement (the queue « n prêts » is on the LCD's 2nd line)
-      // S5.5 the live asks (js/demands.js), judged on the time; n = the combo of successes in a row
-      parfait: { city: 'salvo', rank: 4, stamp: 1, flash: 0.5, confetti: 130, shake: 1, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'streak', pop: (o) => o.n > 1 ? `PARFAIT ×${o.n}` : 'PARFAIT', splash: 'streak', kick: ['rays', 'twinkle', 'ripple'],
-        say: (o) => `★ Parfait !${o.n > 1 ? ' ×' + o.n : ''}${o.node ? ' · ✦ ' + o.node : ''}` },
-      bien: { rank: 3, stamp: 1, flash: 0.25, confetti: 50, shake: 1, lcd: 'glitch', jingle: 'streak', pop: (o) => o.n > 1 ? `BIEN ×${o.n}` : 'BIEN', kick: ['twinkle'],
-        say: (o) => `✓ Bien !${o.n > 1 ? ' ×' + o.n : ''}${o.node ? ' · ✦ ' + o.node : ''}` },
       rate: { city: 'blackout', rank: 1, stamp: 1, lcd: 'glitch', pop: 'RATÉ', say: (o) => `✗ Raté${o.why ? ' · ' + o.why : ''} : la musique continue` },
       // S8.7 the huge combos (js/city-combos.js), the instrument's: they play in free mode too (`free`), silent (no
       // jingle: the music is the player's), never a flash (the city flashes itself, × JUICE). A combo's first SUPER is a
@@ -512,12 +490,11 @@
     FX_ON: {
       'game:ready': (d) => {
         const c = d.by && AMB.contracts.byId[d.by], n = AMB.tree.byId[d.id];
-        if (c && c.kind === 'demande') return null; // S5.5: the ask's own PARFAIT / BIEN already said it
         if (c && AMB.puzzles && AMB.puzzles.outGate === c.id) return ['consolation', { say: '✦ Prêt quand même', ms: 3000, toast: `Pas cette fois, mais ${n ? 'la pièce ' + n.name : 'la suite'} est prête à ouvrir quand même.` }];
         return c ? ['defi', { say: c.kind === 'reponse' ? `↺ ✓ Juste ! ${n ? 'Pièce prête : ' + n.name : ''}` : `✓ ${n ? 'Pièce prête : ' + n.name : 'Réussi'}` }] : ['ready'];
       },
-      // S11.1 one objective of a piece checked, others left (the last one is game:ready's; an ask's PARFAIT, a Réponse's
-      // JUSTE and a placement say it themselves)
+      // S11.1 one objective of a piece checked, others left (the last one is game:ready's; a Réponse's JUSTE and a
+      // placement say it themselves)
       'game:objective': (d) => { const c = AMB.contracts.byId[d.id]; return c && d.left > 0 && !d.by && !c.kind ? ['obj', { say: `✓ ${AMB.game.txt(c.title)}` }] : null; },
       'game:contracts': (d) => { const c = AMB.contracts.byId[d.id]; return c && !c.node ? ['defi', { say: '✓ Défi réussi', ms: 2500 }] : null; }, // the last one
       'resp:streak': (d) => [d.streak > 1 ? 'streak' : 'juste', { n: d.streak }],
@@ -558,7 +535,7 @@
         if (this.modalUp()) { if (++waits < 40) setTimeout(fire, 150); return; }
         const stage = $('.stage');
         if (R.flash) this.fxFlash(stage, red ? 0.22 : Math.min(1, R.flash * J), red);
-        if (R.city && AMB.cityMusic) AMB.cityMusic.fx(R.city); // S8.5 the city's light: salvo of lasers, power cut, shooting stars
+        if (R.city && AMB.cityMusic) AMB.cityMusic.fx(R.city); // S8.5 the city's light: power cut, shooting stars
         if (red) return;
         if (R.shake) { this.fxClass(stage, 'fx-shake', 500); if (R.shake > 1) this.fxClass($('.app'), 'fx-quake', 650); }
         if (R.punch) this.fxClass($('#viz'), R.punch >= 2 ? 'fx-punch-big' : 'fx-punch', 650);
@@ -591,9 +568,9 @@
       this.fxClass(f, 'on', soft ? 950 : 600);
     },
     // S9.2 the party's word as a neon sign: written by a laser letter by letter, held, then it crackles and goes out
-    // (css .fx-pop; no bubble, no comic font). The word = the moment's one short word (S9.1: RATÉ, PARFAIT, COMBO…). Colour by moment (phosphor = success, magenta = missed, cyan =
+    // (css .fx-pop; no bubble, no comic font). The word = the moment's one short word (S9.1: RATÉ, JUSTE, COMBO…). Colour by moment (phosphor = success, magenta = missed, cyan =
     // combo / discovery, amber = what opens); size by rank × JUICE; never over the Objectifs widget (it stays readable during an ask)
-    SIGN_COL: { obj: '#39ff88', rate: '#ff2bd6', parfait: '#39ff88', bien: '#39ff88', juste: '#39ff88', streak: '#39ff88', defi: '#39ff88', record: '#39ff88', tier: '#39ff88',
+    SIGN_COL: { obj: '#39ff88', rate: '#ff2bd6', juste: '#39ff88', streak: '#39ff88', defi: '#39ff88', record: '#39ff88', tier: '#39ff88',
       combo: '#22e6ff', super: '#22e6ff', discovery: '#22e6ff', placement: '#22e6ff', open: '#ffb347', end: '#ffb347', ready: '#ffb347', first: '#ffb347' },
     // S6.7: two never overlap — while one is up, a bigger (or equal) moment replaces it, a smaller one is dropped
     fxPop(text, stage, rank, J = 1, kind = null) {

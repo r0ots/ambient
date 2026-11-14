@@ -109,9 +109,9 @@
       return out;
     },
     // a screen that closes: a ghost of its frame collapses to a line, then a dot (under the windows: never over one;
-    // not while an ask runs, the widget stays clear)
+    // )
     crtOff(card) {
-      const M = AMB.motion; if (!M || !M.on() || !card || (AMB.demands && AMB.demands.cur)) return null;
+      const M = AMB.motion; if (!M || !M.on() || !card) return null;
       const r = card.getBoundingClientRect(); if (!r.width) return null;
       const g = document.createElement('div'); g.className = 'm-crt-off'; g.setAttribute('aria-hidden', 'true');
       Object.assign(g.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
@@ -153,7 +153,7 @@
     },
     // what opens a node: its objectives (S11.1: all of them, ✓ = done), or a discovery (S4.3, S5.10) — « ◇ Joue 16 notes
     // + ✓ Laisse jouer 8 mesures… », « ↺ Réponse « Premier reflet » (4 notes) », « ✦ Découverte : ??? »
-    objText(d) { return d.kind === 'reponse' ? `↺ Réponse « ${d.title} » (${AMB.puzzles.need(d)} notes)` : AMB.game.txt(d.kind === 'demande' ? `♪ Demande : ${d.title}` : `◇ ${d.title}`); },
+    objText(d) { return d.kind === 'reponse' ? `↺ Réponse « ${d.title} » (${AMB.puzzles.need(d)} notes)` : AMB.game.txt(`◇ ${d.title}`); },
     openers(id) {
       const K = AMB.contracts, S = AMB.discoveries, objs = K ? K.forNode(id) : [], out = [];
       if (objs.length) {

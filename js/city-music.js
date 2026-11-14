@@ -14,7 +14,7 @@
 //   - BASS: a synthwave GRID on the ground (lines running to the horizon) scrolling towards us on the tempo (one line a
 //     beat), lit on each bass note.
 //   - SHOOTING STARS on accents, phrase ends and very high notes (rare); a shower on a party of garden.FX.
-//   - garden.FX: `city` ingredient — 'salvo' (PARFAIT: every roof fires), 'blackout' (RATÉ: half a second of power cut),
+//   - garden.FX: `city` ingredient — 'blackout' (RATÉ: half a second of power cut),
 //     'stars' (a party: a shower of shooting stars). No second juice system: garden.fxPlay calls `cityMusic.fx` on its beat.
 // Every event waits for the moment it is HEARD (audio clock minus the output latency), not the scheduler's lookahead.
 // Caps (LASERS, STARS, WAVES) × the quality `q` (0.3..1: S10.1, from the app's quality level, AMB.quality, end of js/motion.js).
@@ -212,12 +212,6 @@
     // ---- garden.FX ingredient `city` (garden.fxPlay calls it on the beat of the moment)
     fx(kind) {
       const now = this.heard();
-      if (kind === 'salvo') { // PARFAIT: every roof fires a fan, one building after the other
-        GV.plants.filter((p) => p.vis > 0).forEach((p, i) => { for (const s of [-1, 0, 1]) this.laser(p.id, 60 + 12 * (1 - Math.abs(s)) + 6 * i % 12, 1, 'player', now + i * 0.04, now + i * 0.04 + 0.7, null, s * 18 || 0.001); });
-        if (AMB.cityGL && AMB.cityGL.pulse) AMB.cityGL.pulse('bloom', 1, 500);
-        this.star('player', now, true);
-        return true;
-      }
       if (kind === 'blackout') { this.blackout = { t0: now, t1: now + 0.5 }; return true; } // RATÉ: half a second of power cut
       if (kind === 'stars') { for (let i = 0; i < 7; i++) this.star('player', now + i * 0.22 * (0.6 + 0.8 * this.rand()), true); return true; }
       return false;

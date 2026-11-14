@@ -43,12 +43,6 @@ f.addEventListener('load', async () => {
     await wait(400);
     const hist = [...d.querySelectorAll('#goals .gw-h .gw-to')].filter((e) => /⚡/.test(e.textContent));
     ok(fxs.includes('placement') && hist.length > 0 && st.place === 0, `grosse fête fx('placement'), les objectifs cochés d'avance marqués ⚡ dans le widget (${hist.length} visibles) ; placement sauvegardé`);
-    // S5.5 cohabitation: a live ask in progress clears for the placement party, the next one waits
-    { const D = A.demands, pl0 = S.playing; S.playing = true;
-      D.launch({ d: D.byId.notes, text: 'x' }, step, now, sd); A.bus.emit('resp:place', { id: 'musicien', name: 'Musicien', nodes: [] });
-      ok(!D.cur && D.wait >= 2, 'une demande en cours s\'efface devant la fête de placement, et la suivante attend ' + D.wait + ' barres');
-      places.pop(); D.wait = 0; S.playing = pl0; } // (the fake party above is not a placement)
-
     // 2. higher: Quinte ×2 = Virtuose (composition, classic effects), at any time
     k = 0; while (places.length < 2 && k++ < 10) { r = phrase(virtuoso); if (!r || !r.ok) break; }
     ok(places.join() === 'musicien,virtuose' && P.level(st.lvl - 1).id === 'quinte' && !r.place.objs.length && !g.readyIds().length,

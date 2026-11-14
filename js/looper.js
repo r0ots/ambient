@@ -9,7 +9,7 @@
 // ⊕ Overdub: adds to the last layer, loop after loop, until pressed again. ⤓ Garder (moved from the piano roll): the last
 // bars played, without having pressed anything (or, nothing played, the Mélodie auto's) become a layer. ↶: the last take
 // undone. A chip = a layer: tap = mute, ✕ = erase. Keys 0 (● Boucle) and 9 (⊕ Overdub); MIDI CC 80 / 81 (value ≥ 64).
-// Never a Demande or a Réponse during a take (busy()).
+// Never a Réponse during a take (busy()).
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const store = AMB.store;
@@ -78,7 +78,6 @@
       const sec = this.sec(), S = seq();
       this.pushUndo(sec);
       // nothing else asks for the player's notes during a take
-      if (AMB.demands && AMB.demands.busy()) AMB.demands.cancel();
       if (AMB.puzzles && AMB.puzzles.cur) AMB.puzzles.cancel();
       let layer;
       if (state === 'dub') layer = sec.loops[sec.loops.length - 1];

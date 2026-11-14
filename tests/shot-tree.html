@@ -7,9 +7,8 @@
   S6.7 : #chords (Progression en la mineur, noms d'accords, Couplet de 8 mes.), #free-play (mode libre en Ville, lecture) ;
   #roll (piano roll, mode libre : notes ♯ hors gamme ; S6.4 : « ⤓ Garder » est passé dans le looper du Morceau) ;
   S4.6 : #ready (« ✦ Ouvrir : Pad » qui pulse, 2 prêts), #ready-card (la carte qui dit ce que le Pad apporte), #new (le Pad vient de s'ouvrir : panneau, halo, « Nouveau ») ;
-  S5.9 : #juice-defi / #juice-open / #juice-tier (un moment du juice central en plein effet, figé) ; S6.6 : #juice-end (la fin, KA-BOOM!), #coin (S11.1 : la machine éteinte, poussiéreuse, le bouton ⏻ qui clignote), #wake=<ms> (le réveil figé à ms), #goals / #goals-ready / #goals-open (S11.1 : le widget Objectifs), #hiscores (HIGH SCORES dans l'Arbre, initiales en cours) ;
+  S5.9 : #juice-defi / #juice-open / #juice-tier (un moment du juice central en plein effet, figé) ; S6.6 : #juice-end (la fin, KA-BOOM!), #coin (S11.1 : la machine éteinte, poussiéreuse, le bouton ⏻ qui clignote), #wake=<ms> (le réveil figé à ms), #goals / #goals-ready / #goals-open / #goals-dm (S11.1 : le widget Objectifs ; S11.5 : une ancienne demande devenue objectif simple), #hiscores (HIGH SCORES dans l'Arbre, initiales en cours) ;
   S5.4 : #placement (« ⚡ Musicien détecté » en pleine fête, la file « ✦ Ouvrir · n prêts ») ;
-  S5.5 : #demande (une demande en direct sur le LCD, son compte à rebours), #demande-parfait (« PARFAIT !!! ×3 », figé) ;
   S5.10/S8.7 : #combo=<id> (le combo énorme tenu : ses réglages tournés à la main dans sa zone ; anciens ids renommés), #discovery=<id> (la fête d'une découverte, figée), #carnet (le carnet des découvertes dans l'Arbre : trouvées, puis silhouettes) ;
   S5.2 : #splash (notes jouées sur la Mélodie, une tenue ; une pastille allumée par la Mélodie auto) ;
   S4.5w : #grow (plante à mi-croissance), #sky=<degré> (ciel d'un accord), #dawn (fin : relecture, aube), #dawn-end (remis, WAV proposé). --><meta charset="utf-8"><style>body{margin:0}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body>
@@ -84,6 +83,7 @@ document.getElementById('f').addEventListener('load', () => {
     for (const n of ['m.bells', 'k.piano', 'h.pad', 'e.reverb']) { K.forNode(n).forEach((o) => K.finish(o.id)); g.open(); }
     K.finish('m.respire'); K.state().active = K.left('e.salle').map((o) => o.id); K.state().prog['e.salle8'] = { n: 6 }; A.store.set('fx.space', 0.8, 'user');
     if (h.includes('ready')) { K.forNode('e.salle').forEach((o) => K.finish(o.id)); }
+    if (h.includes('dm')) { K.state().active = K.left('e.echo').map((o) => o.id); K.state().prog['e.loin'] = { n: 22 }; } // S11.5 #goals-dm: a former live ask (Reverb au-dessus de 60), now a plain objective
     setTimeout(() => { A.garden.showTree(false); A.tree.release && A.tree.release(); doc.querySelectorAll('.is-new').forEach((e) => e.classList.remove('is-new', 'is-new-first')); A.perform.setMode('sculpt'); A.garden.renderContracts();
       if (h.includes('open')) A.garden.toggleGoals(true); }, 1500);
     return;
@@ -114,22 +114,6 @@ document.getElementById('f').addEventListener('load', () => {
       else if (h.includes('end')) { A.game.s.ended = true; G.fx('end', { say: '✦ L\'instrument est à toi', ms: 60000 }); } // S6.6 #juice-end: the handover (KA-BOOM!)
       else if (h.includes('rate')) G.fx('rate', { say: '✗ RATÉ ! Réécoute…', ms: 60000 }); // S6.7 #juice-rate: a wrong Réponse (BZZT!), replayed next
       else A.contracts.finish('m.notes');
-      setTimeout(() => freeze(C), 300);
-    }, 1600);
-    return;
-  }
-  if (h.includes('demande')) { // S5.5: a live ask and its countdown (#demande), then « PARFAIT !!! ×3 » (#demande-parfait); clock fixed
-    const w = document.getElementById('f').contentWindow, G = A.garden, C = G.confetti, D = A.demands, K = A.contracts;
-    ['m.bells', 'h.pad'].forEach((i) => A.game.unlock(i));
-    w.requestAnimationFrame = (fn) => w.setTimeout(() => fn(w.performance.now()), 16);
-    setTimeout(() => {
-      G.showTree(false); A.perform.setMode('sculpt'); A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none';
-      A.gardenVisual.sig = null; A.gardenVisual.grow = {}; setInterval(() => A.visual.draw(), 40);
-      const fc = G.fxClass; G.fxClass = function (el, c) { return fc.call(this, el, c, 6e5); };
-      const sd = A.seq.stepDur(); D.now = () => 100; D.at = () => 100;
-      if (!h.includes('parfait')) { const d = K.byId[K.state().active[0]]; D.launch(d && d.kind === 'demande' ? { d, gate: d.id, text: d.title } : { d: D.byId.accord, text: D.byId.accord.title }, 0, 100, sd); return; }
-      D.st().combo = 2; D.launch({ d: D.byId.accord, text: D.byId.accord.title }, 0, 100 - 32 * sd, sd);
-      D.input('chord', [{ deg: 0, forced: true }], 100);
       setTimeout(() => freeze(C), 300);
     }, 1600);
     return;

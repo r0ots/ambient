@@ -14,7 +14,7 @@ const f = document.getElementById('f');
 f.addEventListener('load', async () => {
   if (f.dataset.ran) return; f.dataset.ran = 1;
   try {
-    const w = f.contentWindow, d = f.contentDocument, A = w.AMB, G = A.game, Gd = A.garden, D = A.demands, K = A.contracts, Pz = A.puzzles, T = A.tree;
+    const w = f.contentWindow, d = f.contentDocument, A = w.AMB, G = A.game, Gd = A.garden, K = A.contracts, Pz = A.puzzles, T = A.tree;
     w.addEventListener('error', (e) => log('ERROR ' + e.message + ' @' + e.filename + ':' + e.lineno));
     G.setMode('path'); Gd.welcome(false); await wait(50);
     const css = (sel, p) => w.getComputedStyle(d.querySelector(sel))[p];
@@ -22,7 +22,7 @@ f.addEventListener('load', async () => {
     // --- 3. a touch screen: no MIDI button, no keyboard words (free mode unchanged)
     G.touchOverride = true; Gd.applyTouch();
     const KB = /A à L|Z à M|touche V|Entrée|clavier/;
-    const texts = K.DEFS.flatMap((x) => [x.title, x.hint]).concat(D.FREE.flatMap((x) => [x.title, x.hint, x.intro || '']), Object.values(T.EXPLAIN));
+    const texts = K.DEFS.flatMap((x) => [x.title, x.hint]).concat(Object.values(T.EXPLAIN));
     const bad = texts.map((s) => G.txt(s)).filter((s) => KB.test(s));
     ok(d.body.classList.contains('touch') && css('#midi', 'display') === 'none' && !bad.length, 'S5.7 écran tactile : bouton MIDI caché, aucun texte ne parle du clavier' + (bad.length ? ' — ' + bad[0] : ''));
     const midiFree = () => { G.setMode('free'); const v = css('#midi', 'display'); G.setMode('path'); Gd.welcome(false); return v; };
@@ -30,8 +30,8 @@ f.addEventListener('load', async () => {
     G.touchOverride = false; Gd.applyTouch();
     ok(/A à L/.test(G.txt(K.byId['m.notes'].title)) && !/\{|\|/.test(G.txt(K.byId['m.notes'].title)), 'au clavier, les touches restent dites : ' + G.txt(K.byId['m.notes'].title));
 
-    // --- 5. IV only once the key is open; « 4 notes qui descendent » says it with the pads' colours
-    ok(D.byId.iv.need.includes('h.key') && /orange.*violettes/.test(K.byId['m.descend'].hint) && !/droite à gauche/.test(K.byId['m.descend'].hint), 'S5.7 : « Force l\'accord IV » après Tonalité ; les notes qui descendent : « ' + G.txt(K.byId['m.descend'].hint) + ' »');
+    // --- 5. « 4 notes qui descendent » says it with the pads' colours
+    ok(/orange.*violettes/.test(K.byId['m.descend'].hint) && !/droite à gauche/.test(K.byId['m.descend'].hint), 'S5.7 : les notes qui descendent : « ' + G.txt(K.byId['m.descend'].hint) + ' »');
 
     // --- 6. the score line waits for a first series
     G.s.resp = { lvl: 0, len: 3, streak: 0, best: 0, miss: {} }; G.s.nodes = ['racine', 'm.bells', 'k.piano']; Gd.renderScore();
@@ -47,36 +47,28 @@ f.addEventListener('load', async () => {
     ok(G.s.nodes.length === 20 && !!hit && !!hit.closest('#pads') && pr.height >= 44 && pr.top < w.innerHeight - 44 && pr.bottom <= w.innerHeight + 8, // (a party's hop may lift them a few px)
         'S5.7 : 20 nœuds à 390 px, les touches restent visibles (' + Math.round(pr.top) + '–' + Math.round(pr.bottom) + ' / ' + w.innerHeight + ')');
 
-    // --- 1. an ask only when the LCD is seen (an opening scrolls to what it opened)
-    // S6.7: the rule stays (an ask waits for a visible LCD); S8.3: the LCD never leaves the window: the page does not scroll, the panels scroll inside their drawer
+    // --- 1. S8.3: the Objectifs widget never leaves the window: the page does not scroll, the panels scroll inside their drawer
     { A.perform.setMode('sculpt'); await wait(200); const lcd = d.getElementById('goals'), dr = d.querySelector('.drawer'), y0 = lcd.getBoundingClientRect().top;
-      w.scrollTo(0, 3000); dr.scrollTop = 1e5; await wait(60); const r = lcd.getBoundingClientRect(), seen = D.seen(), y1 = r.top;
-      ok(w.scrollY === 0 && dr.scrollTop > 0 && seen && Math.abs(y1 - y0) < 2 && r.bottom <= w.innerHeight && r.width > 300,
-        'S8.3 : panneaux défilés dans le tiroir (' + Math.round(dr.scrollTop) + ' px), page immobile, widget Objectifs en vue à sa place (' + Math.round(y0) + ' → ' + Math.round(y1) + ' px, ' + Math.round(r.width) + ' px de large, seen ' + seen + ')');
-      dr.scrollTop = 0;
-      lcd.style.display = 'none'; const hid = D.seen(); lcd.style.display = '';
-      ok(!hid, 'la règle reste : un widget Objectifs invisible → aucune demande'); }
+      w.scrollTo(0, 3000); dr.scrollTop = 1e5; await wait(60); const r = lcd.getBoundingClientRect(), y1 = r.top;
+      ok(w.scrollY === 0 && dr.scrollTop > 0 && Math.abs(y1 - y0) < 2 && r.bottom <= w.innerHeight && r.width > 300,
+        'S8.3 : panneaux défilés dans le tiroir (' + Math.round(dr.scrollTop) + ' px), page immobile, widget Objectifs en vue à sa place (' + Math.round(y0) + ' → ' + Math.round(y1) + ' px, ' + Math.round(r.width) + ' px de large)');
+      dr.scrollTop = 0; }
     A.perform.setMode('sculpt');
 
-    // --- 2. the countdown: « prêt ? », 3, 2, 1, « MAINTENANT ! » on the 1 (never « sur le 1 » in the texts)
-    { const SD = 0.25, BEAT = 1; let now = 100; const n0 = D.now; D.now = () => now;
-      D.cur = null; D.launch({ d: D.byId.accord, text: D.byId.accord.title }, 0, now, SD); const c = D.cur;
-      const at = (r) => { now = c.tT - r; return D.view(now).n; };
-      const seq = [3.5, 2.5, 1.5, 0.5, 0.1].map((r) => at(r * BEAT));
-      const all = K.DEFS.concat(D.FREE).flatMap((x) => [x.title, x.hint || '', x.intro || '']).join(' ');
-      ok(seq.join('|') === 'prêt ?|3|2|1|MAINTENANT !' && !/sur le 1\b/.test(all) && /MAINTENANT/.test(c.text), 'S5.7 compte à rebours : ' + seq.join(' · ') + ' ; « ' + c.text + ' »');
-      D.cancel(); D.now = n0; }
+    // --- 2. S11.5: no live ask any more: no countdown, no « MAINTENANT » in the objectives
+    { const all = K.DEFS.flatMap((x) => [x.title, x.hint || '']).join(' ');
+      ok(!A.demands && !/MAINTENANT|compte à rebours/.test(all) && !d.querySelector('.gw-demand') && !K.DEFS.some((x) => x.kind === 'demande'), 'S11.5 : plus de demande en direct (ni compte à rebours, ni « MAINTENANT »)'); }
 
-    // --- 10. the song's ● Rec: no Réponse phrase, no ask
+    // --- 10. the song's ● Rec: no Réponse phrase
     { const sr = A.rec.songRecording; A.rec.songRecording = () => true; A.seq.playing = true;
-      const n0 = D.now; let now = 200; D.now = () => now; D.cur = null; D.launch({ d: D.byId.accord, text: 'x' }, 0, now, 0.25);
-      D.onStep(1, now, 0.25); const dGone = !D.cur; const can = D.can(); Pz.wait = 0; const pz = Pz.onStep(16, now, 0.25);
-      A.rec.songRecording = sr; A.seq.playing = false; D.now = n0;
-      ok(dGone && !can && pz === false && !Pz.cur, 'S5.7 : pendant le ● Rec du morceau, la demande en cours s\'en va, aucune nouvelle, aucune phrase de Réponse'); }
+      Pz.wait = 0; const pz = Pz.onStep(16, 200, 0.25);
+      A.rec.songRecording = sr; A.seq.playing = false;
+      ok(pz === false && !Pz.cur, 'S5.7 : pendant le ● Rec du morceau, aucune phrase de Réponse'); }
 
     // --- 14. « Épaissis les grains » counts the macro and a MIDI CC too
-    { const a = K.byId['m.nuage'].ask;
-      ok(['user', 'macro', 'cc'].every((src) => D.match(a, 'param', 'grains.density', 0.9, src)) && !D.match(a, 'param', 'grains.density', 0.9, 'lfo'), 'S5.7 : la densité des grains par le bouton, le grand réglage Densité ou le CC1'); }
+    { const f = K.byId['m.nuage'].on.param, hit = (src) => { const st = {}; f(st, 'grains.density', 0.9, src); return st.n === 1; }, pl0 = A.seq.playing; A.seq.playing = true;
+      const r = ['user', 'macro', 'cc'].every(hit) && !hit('lfo'); A.seq.playing = pl0;
+      ok(r, 'S5.7 : la densité des grains par le bouton, le grand réglage Densité ou le CC1'); }
 
     // --- 16. a seventh chord inverted: Amaj7 with C# in the bass is I (A), not iii (C#m)
     { A.store.set('global.key', 'A', 'user'); A.store.set('global.scale', 'Ionien (majeur)', 'user'); await wait(30);
