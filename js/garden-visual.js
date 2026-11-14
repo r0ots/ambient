@@ -1260,9 +1260,10 @@
       const p = this.plants.find((qq) => qq.id === 'bells'); if (!p) return 0;
       const gy = p.gy == null ? 1 : p.gy; if (gy < 0.05) return 0; // a sign still being built carries its lamps up
       const lp = Math.max(this.px, Math.round(4 * (this.dpr || 1))), gap = lp >= 4 ? 1 : 0, k = p.k || 1;
-      const h = (p.vis || 0) * gy / Math.max(0.05, gy) * Math.min(1, gy / Math.max(gy, 0.05)), room = Math.max(h, (p.sy - (this.H || 0) * this.ceilAt(p.sx, 0)) / k - 3 * lp);
+      // in screen pixels (crisp lamps at any camera scale)
+      const h = this.sprite(p, this.px).h * gy * k, room = Math.max(h, p.sy - (this.H || 0) * this.ceilAt(p.sx, 0) - 3 * lp);
       const y0 = Math.max(h * 0.2, 2 * lp), top = Math.min(room, Math.max(h * 0.88, y0 + (v.len - 1) * 2.4 * lp));
-      g.setTransform(k, 0, 0, k, p.sx, p.sy);
+      g.setTransform(1, 0, 0, 1, Math.round(p.sx), Math.round(p.sy));
       if (top > h * 0.9) { g.fillStyle = rgb(p.col, 0.7, 0.6); g.fillRect(-Math.floor(lp / 4), -Math.round(top), Math.max(1, Math.round(lp / 2)), Math.round(top - h * 0.85)); }
       let n = 0;
       for (let i = 0; i < v.len; i++) {
