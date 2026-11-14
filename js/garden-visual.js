@@ -1461,7 +1461,7 @@
     g.globalAlpha = 1;
     if (v.ans) v.drawAnswer(g, v.ans);
     v.drawMark(g, fs);
-    if (!v.plants.length && !v.rares.length) { g.setTransform(1, 0, 0, 1, 0, 0); g.font = `${Math.round(fs * 1.3)}px VT323, monospace`; g.fillStyle = hex(TOK.pink); g.textAlign = 'center'; g.shadowColor = hex(TOK.pink); g.shadowBlur = fs * 0.6; g.fillText('Ouvre une couche pour rallumer la ville', cam.W / 2, cam.H * 0.42); g.shadowBlur = 0; g.textAlign = 'start'; }
+    if (!v.plants.length && !v.rares.length) { g.setTransform(1, 0, 0, 1, 0, 0); g.font = `${Math.round(fs * 1.3)}px VT323, monospace`; g.fillStyle = hex(TOK.pink); g.textAlign = 'center'; g.shadowColor = hex(TOK.pink); g.shadowBlur = fs * 0.6; g.fillText('Ouvre un son pour rallumer la ville', cam.W / 2, cam.H * 0.42); g.shadowBlur = 0; g.textAlign = 'start'; }
   } });
 
   // rain: streaks drawn directly (far and near, slanted by the wind), falling with the scene's time; splashes on the

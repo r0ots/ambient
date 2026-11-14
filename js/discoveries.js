@@ -41,16 +41,16 @@
       'Joue 4 notes d\'un arpège diminué : 3 demi-tons à chaque pas (en montant ou en descendant).', { gift: GIFT.aube },
       { live: (m, D) => !!D.tail(4) && (D.ivs(4).every((i) => i === 3) || D.ivs(4).every((i) => i === -3)) }, 'm.bells'),
     G('jazz', 'Deux, cinq, un', 'Trois accords qui se tiennent par la main et retombent sur leurs pieds.',
-      'Force trois accords à la suite : II, V puis I ({touches X, B puis Z|appui long sur les pastilles 2, 5 puis 1}).', {},
+      'Force trois accords à la suite : II, V puis I ({touches X, B puis Z|garde le doigt sur les touches 2, 5 puis 1}).', {},
       { chord: (c, D) => D.chordsEnd([1, 4, 0]) }, 'h.pad'),
     G('lent', 'Lenteur céleste', 'Plus lent qu\'une marée, plus clair qu\'un matin, sans aucune pulsation.',
-      'Tempo à 36 bpm ou moins, Halo à 95 % ou plus, Rythme en Flottant, tout en même temps.', {},
+      'Tempo à 36 bpm ou moins, Halo à 95 % ou plus, Temps en Flottant, tout en même temps.', {},
       { param: (k) => ['global.tempo', 'fx.shimmer', 'global.time'].includes(k) && store.get('global.tempo') <= 36 && store.get('fx.shimmer') >= 0.95 && store.get('global.time') === 'Flottant' }, 'e.halo'),
     G('pulse', 'Sur le battement', 'Huit pas, et pas un de travers.',
       'Joue 8 notes, une exactement sur chaque temps, pendant que la musique tourne.', {},
       { live: (m, D) => D.onBeat(8) }, 'm.bells'),
-    G('silence', 'Mesure de silence', 'Écouter, c\'est aussi savoir tout éteindre, puis tout rallumer.',
-      'Coupe toutes les couches pendant une mesure entière (la lecture continue), puis rallume-en une.', {},
+    G('silence', 'Mesure de silence', 'Bien jouer, c\'est aussi savoir tout éteindre, puis tout rallumer.',
+      'Coupe tous les sons (leur bouton On) pendant une mesure entière, la lecture continue, puis rallumes-en un.', {},
       { param: (k, v, D) => D.silenceDone(k) }, 'm.bells'),
     G('velo', 'Funambule', 'Fort, presque rien, puis fort encore. Il faut des touches qui sentent la force de la main.',
       'Au clavier MIDI : une note frappée très fort, une effleurée très doucement, puis une très fort, à la suite (la hauteur ne compte pas).', {},
@@ -268,7 +268,7 @@
         const b = document.createElement('b'), s = document.createElement('span');
         b.textContent = it.found ? `✦ ${it.name}` : '???';
         if (it.found) s.textContent = [it.effect, it.reward].filter(Boolean).join(' → ') || 'trouvée';
-        else s.textContent = AMB.game.txt(it.hint) || (it.midi && this.reach({ need: it.need }) ? 'Au clavier MIDI : branche-en un (bouton MIDI de la barre).' : `Plus loin : ${it.need.filter((n) => !g.has(n)).map((n) => AMB.tree.byId[n].name).join(', ')}.`);
+        else s.textContent = AMB.game.txt(it.hint) || (it.midi && this.reach({ need: it.need }) ? 'Il faut un clavier MIDI : branche-le, puis touche MIDI en haut.' : `Plus loin : ${it.need.filter((n) => !g.has(n)).map((n) => AMB.tree.byId[n].name).join(', ')}.`);
         p.append(b, s); body.append(p);
       }
       // S7.3: a discovery found since the notebook was last seen is revealed in a glitch, once it is seen (the Arbre open)

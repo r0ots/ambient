@@ -6,7 +6,7 @@
   const SVGNS = 'http://www.w3.org/2000/svg';
   // fan order, left to right: the trunk in the middle, Composer between its two parents
   const FAN = ['espace', 'harmonie', 'tronc', 'composer', 'mouvement'];
-  const STATE_TXT = { owned: 'ouvert', ready: 'prêt', available: 'peut s\'ouvrir', locked: 'fermé' };
+  const STATE_TXT = { owned: 'ouvert', ready: 'prêt', available: 'à ouvrir', locked: 'encore dans le noir' };
   const L = { W: 1220, ROW: 98, TOP: 60, BOT: 66, MIN: 94, GAP: 94, A: 46, B: 50, M: 50 };
   const SEQ = { link: 380, end: 1700, reduced: 650 }; // unlock sequence timing (ms; S4.6: a bit longer, to see it)
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -199,7 +199,7 @@
         b.style.left = p.x + 'px'; b.style.top = p.y + 'px'; b.style.setProperty('--c', T.BRANCHES[n.branch].color);
         b.innerHTML = `<i class="led" aria-hidden="true"></i><b>${n.name}</b><span></span>`;
         b.title = `${n.desc}\n\nOuvre : ${T.grantsText(n.id) || '—'}`
-          + (n.req.length ? `\nDemande : ${n.req.map((r) => T.byId[r].name).join(', ')}` : '')
+          + (n.req.length ? `\nIl faut d'abord : ${n.req.map((r) => T.byId[r].name).join(', ')}` : '')
           + this.openers(n.id).map((o) => `\n${o.text}`).join('');
         stage.append(b);
       }
@@ -217,7 +217,7 @@
         const ext = n.req.filter((r) => T.byId[r].branch !== n.branch);
         b.setAttribute('aria-label', `${n.name}, ${T.BRANCHES[n.branch].name}, ${STATE_TXT[st]}`
           + (st === 'ready' ? ', réussi : à toi de l\'ouvrir' : st !== 'owned' && op ? `, s'ouvre par : ${op.text.slice(2)}` : '')
-          + (n.req.length && st !== 'owned' ? `, demande ${n.req.map((r) => T.byId[r].name).join(', ')}` : '')
+          + (n.req.length && st !== 'owned' ? `, il faut d'abord ${n.req.map((r) => T.status(r) === 'locked' ? 'une pièce cachée' : T.byId[r].name).join(', ')}` : '')
           + (ext.length && st === 'owned' ? `, relié à ${ext.map((r) => T.byId[r].name).join(', ')}` : ''));
       });
       // S9.1: only what is open or can open now is drawn; a link to the dark leaves in fading dots, two dark ends: nothing
@@ -316,14 +316,14 @@
       // S6.7: while nodes wait on « ✦ Ouvrir » no challenge runs (contracts.refill): its card says so, not a challenge
       // that cannot come yet
       const wait = g.path && !g.s.ended ? (g.s.ready || []).filter((r) => g.canOpen(r.id)).length : 0;
-      const opTxt = (wait && ops.some((o) => o.d) ? [`Ouvre d'abord tes nœuds prêts (${wait})`] : []).concat(ops.filter((o) => !(wait && o.d)).map((o) => o.text));
+      const opTxt = (wait && ops.some((o) => o.d) ? [`Ouvre d'abord ce qui est prêt (${wait})`] : []).concat(ops.filter((o) => !(wait && o.d)).map((o) => o.text));
       box.style.setProperty('--c', br.color);
       const fresh = box.hidden || box.dataset.id !== id; // S7.3: a new card slides in (the same one repainted does not)
       box.dataset.id = id; box.className = `tree-info st-${st}`;
       box.innerHTML = `<p class="ti-h"><b>${n.name}</b> <small>${br.name} · ${STATE_TXT[st]}</small></p>`
         + `<p class="ti-d">${n.desc}</p>`
         + `<p class="ti-g">Ouvre : ${T.grantsText(id) || '—'}</p>`
-        + (n.req.length ? `<p class="ti-r">Demande : ${req}</p>` : '')
+        + (n.req.length ? `<p class="ti-r">Il faut d'abord : ${req}</p>` : '')
         + (ops.length ? `<p class="ti-o">Pour l'ouvrir : ${opTxt.map((t) => `<span>${t}</span>`).join(' · ou ')}${now && !wait ? ' <em>(le défi en cours)</em>' : ''}</p>` : '')
         // S4.6: won, waiting for the player: the same « ✦ Ouvrir » as on the LCD (after its prerequisites, for a secret's chain)
         + (st === 'ready' ? (n.req.every((r) => g.has(r)) ? '<p class="ti-o">✓ Réussi : à toi de l\'ouvrir. <button type="button" class="btn primary small ti-open">✦ Ouvrir</button></p>'

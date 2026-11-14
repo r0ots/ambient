@@ -23,7 +23,7 @@
           <p>machine à paysages sonores génératifs</p>
         </div>
       </div>
-      <div id="lcd" class="lcd" aria-live="polite" title="État du son">
+      <div id="lcd" class="lcd" aria-live="polite" title="L'écran : ce qui joue, et ton défi">
         <span id="lcdTop">JUNOJUNO</span>
         <span id="lcdLine">■ STOP</span>
         <span id="lcdTask" class="lcd-task" hidden><button type="button" class="lcd-task-txt" title="Toucher : comment faire"></button><b class="lcd-task-n"></b><button type="button" class="lcd-skip" title="Passer au défi suivant" aria-label="Passer au défi suivant">↷</button></span>
@@ -111,7 +111,7 @@
       <div class="hint">Barre d'espace : lecture/stop · touches A–L : jouer des notes · ? : aide</div>
     </div>
 
-    <div id="pads" class="pads" role="group" aria-label="Jouer des notes (touches A à L) ; appui long : accord" hidden></div>
+    <div id="pads" class="pads" role="group" aria-label="Les 9 touches de notes (A à L) ; garde le doigt : accord" hidden></div>
 
     <!-- S8.3: Sculpter / Composer panels (S9.1: the five big knobs head Sculpter), a drawer over the city (right side; a bottom sheet on a portrait screen) -->
     <section class="drawer" aria-label="Panneaux de réglage">
@@ -151,9 +151,9 @@
       <div class="modal-card tree-card" role="dialog" aria-label="Arbre du Parcours">
         <button class="modal-x" data-close>✕</button>
         <h3>Arbre du Parcours <span class="tree-count"></span></h3>
-        <p class="tree-legend"><span><i class="st-owned"></i>ouvert<em class="lg-long">&nbsp;(couleur de sa branche)</em></span><span><i class="st-ready"></i>prêt</span><span><i class="st-available"></i><em class="lg-long">peut s'ouvrir maintenant</em><em class="lg-short">à ouvrir</em></span><span><i class="lg-dark"></i><em class="lg-long">la suite, encore dans le noir</em><em class="lg-short">à découvrir</em></span><span class="tree-tip"><em class="tip-long">Survole ou touche un nœud : trait plein = ce qu'il demande, pointillés = ce qu'il ouvre · glisse pour te déplacer, pince ou molette pour zoomer</em><em class="tip-short">Touche un nœud pour sa fiche · glisse, pince pour zoomer</em></span></p>
+        <p class="tree-legend"><span><i class="st-owned"></i>ouvert<em class="lg-long">&nbsp;(couleur de sa branche)</em></span><span><i class="st-ready"></i>prêt</span><span><i class="st-available"></i><em class="lg-long">peut s'ouvrir maintenant</em><em class="lg-short">à ouvrir</em></span><span><i class="lg-dark"></i><em class="lg-long">la suite, encore dans le noir</em><em class="lg-short">à découvrir</em></span><span class="tree-tip"><em class="tip-long">Survole ou touche une pièce : trait plein = ce qu'il faut avant, pointillés = ce qui vient après · glisse pour te déplacer, pince ou molette pour zoomer</em><em class="tip-short">Touche une pièce pour sa fiche · glisse, pince pour zoomer</em></span></p>
         <div class="tree-view">
-          <div class="tree-map" role="group" aria-label="Carte des talents : glisse pour te déplacer, pince ou molette pour zoomer"></div>
+          <div class="tree-map" role="group" aria-label="L'Arbre : glisse pour te déplacer, pince ou molette pour zoomer"></div>
           <div class="tree-zoom"><button type="button" class="btn small" data-zoom="in" aria-label="Zoomer">+</button><button type="button" class="btn small" data-zoom="out" aria-label="Dézoomer">−</button><button type="button" class="btn small" data-zoom="fit" aria-label="Voir tout l'arbre">⤢</button></div>
           <div class="tree-info" aria-live="polite" hidden></div>
         </div>
@@ -169,25 +169,25 @@
           <div class="help-lvl" data-help-lvl="path">
             <div class="help-grid">
               <div><h4>Le principe</h4><ul>
-                <li>Tu pars d'<b>une seule note</b> : touche une <b>pastille</b> sous l'écran (ou A–L, ou ton clavier MIDI). Chaque <b>défi</b> réussi rend un nœud <b>prêt</b> : l'écran dit « <b>✦ Ouvrir</b> », touche-le pour savoir ce qu'il t'apporte, puis <b>Ouvrir</b>. Ce qui arrive brille un moment, avec « Nouveau ». Le défi suivant vient après.</li>
-                <li>L'<b>🕹 Arbre</b> est la carte : touche un nœud pour voir ce qui l'ouvre.</li>
-                <li>Les <b>pastilles</b> (au doigt), les touches A–L et le clavier MIDI jouent dès le début ; avec le Pad, un <b>appui long</b> sur une pastille force son accord. <b>Composer</b> s'ouvre en 3 nœuds : Mélodie écrite, Rythme, Morceau.</li>
-                <li>Arbre complet (« ✦ Tout ouvrir » quand beaucoup de nœuds attendent), puis « Enregistre ton morceau » (● Rec en haut, puis ■) : <b>l'instrument est à toi</b>. La ligne de défi s'efface, le son reste.</li></ul></div>
+                <li>Tu pars d'<b>une seule note</b> : appuie sur une <b>touche</b> de couleur sous l'écran (ou A–L, ou ton clavier MIDI). Chaque <b>défi</b> réussi rend une pièce de l'instrument <b>prête</b> : l'écran dit « <b>✦ Ouvrir</b> », touche-le pour savoir ce qu'elle t'apporte, puis <b>Ouvrir</b>. Ce qui arrive brille un moment, avec « Nouveau ». Le défi suivant vient après.</li>
+                <li>Ouvre l'<b>🕹 Arbre</b> (en haut) : c'est la carte. Touche une pièce pour voir ce qui l'ouvre ; la suite reste dans le noir jusqu'à ce que tu t'en approches.</li>
+                <li>Les <b>touches</b> à l'écran (au doigt), les lettres A–L et le clavier MIDI jouent dès le début ; avec le Pad, <b>garde le doigt</b> sur une touche pour jouer son accord. <b>Composer</b> s'ouvre en 3 pièces : Mélodie écrite, Rythme, Morceau.</li>
+                <li>Arbre complet (« ✦ Tout ouvrir » quand beaucoup de pièces attendent), puis « Enregistre ton morceau » (● Rec en haut, puis ■) : <b>l'instrument est à toi</b>. La ligne de défi s'efface, le son reste.</li></ul></div>
               <div><h4>Les défis</h4><ul>
                 <li>Un à la fois, sur la 2e ligne de l'écran. <b>Touche-le</b> pour savoir comment faire, <b>↷</b> pour passer.</li>
-                <li><b>Réponse</b> : pendant la lecture, l'enseigne Mélodie auto s'allume et l'écran dit « ↺ À toi » : rejoue la phrase juste après (A–L, pastilles ou MIDI). Un voyant par note, rouge s'il est faux. Les réussites allongent les phrases ; à 5 notes, le rythme compte. Tu peux laisser passer : la musique continue.</li>
+                <li><b>Réponse</b> : pendant la lecture, l'enseigne Mélodie auto s'allume et l'écran dit « ↺ À toi » : rejoue la phrase juste après (touches, A–L ou MIDI). Un voyant par note, rouge s'il est faux. Les réussites allongent les phrases ; à 5 notes, le rythme compte. Tu peux laisser passer : la musique continue.</li>
                 <li><b>HIGH SCORES</b> : une belle série de Réponses entre au tableau (Arbre) ; signe de 3 initiales (lettres, ▲ ▼, ou le nom de 3 notes au clavier MIDI).</li></ul></div>
               <div><h4>Découvertes</h4><ul>
-                <li>Des combos (une musique tenue deux mesures : la Ville invente un effet rien que pour elle) et des gestes musicaux cachés. Le carnet est dans l'Arbre : « ??? » et un indice pour chacune.</li>
-                <li>Une découverte allume un hologramme dans la Ville ; certaines rendent un nœud <b>prêt</b> (« ✦ Ouvrir »). L'indice clair des gestes s'ouvre après 2 découvertes ; deux se jouent au clavier MIDI.</li></ul></div>
+                <li>Des combos (deux grands réglages poussés ensemble : la Ville part en grand spectacle, tiens-les pour le SUPER) et des gestes musicaux cachés. Le carnet est dans l'Arbre : « ??? » et un indice pour chacune.</li>
+                <li>Une découverte allume un hologramme dans la Ville ; certaines rendent une pièce <b>prête</b> (« ✦ Ouvrir »). L'indice clair des gestes s'ouvre après 2 découvertes ; deux se jouent au clavier MIDI.</li></ul></div>
               <div><h4>Si tu bloques</h4><ul>
-                <li>Après 6 réponses manquées, le nœud est prêt quand même ; un défi qui ne vient pas : ↷ ; « ✦ Ouvrir » attend que tu le touches.</li>
+                <li>Après 6 réponses manquées, la pièce est prête quand même ; un défi qui ne vient pas : ↷ ; « ✦ Ouvrir » attend que tu le touches.</li>
                 <li><b>Mode libre</b> (menu ⋯) : tout est ouvert, ton parcours est gardé.</li></ul></div>
             </div>
           </div>
         </div>
         <div class="help-free">
-        <p><b>Écouter</b> pour profiter, <b>Sculpter</b> pour régler le son, <b>Composer</b> pour écrire accords, mélodies et morceau. JunoJuno joue tout seul : cinq couches (Drone, Pad, Mélodie auto, Grains, Texture) improvisent dans la gamme choisie, et la <b>Dérive</b> fait bouger lentement les réglages autour des tiens.</p>
+        <p><b>Sculpter</b> pour régler le son (les 5 grands réglages en haut), <b>Composer</b> pour écrire accords, mélodies et morceau, <b>⤢ Plein écran</b> pour juste regarder. JunoJuno joue tout seul : cinq sons (Drone, Pad, Mélodie auto, Grains, Texture) improvisent dans la gamme choisie, et la <b>Dérive</b> fait bouger lentement les réglages autour des tiens.</p>
         <div class="help-grid">
           <div><h4>Démarrer</h4><ul>
             <li><b>✦ Nouveau paysage</b> : en génère un, cohérent, selon une humeur</li>
@@ -199,13 +199,13 @@
           <div><h4>Sculpter</h4><ul>
             <li><kbd>Entrée</kbd> / <b>❄ Figer</b> : capture 4 s du son → nuage de grains</li>
             <li><b>Mouvements lents</b> : 2 réglages qui bougent tout seuls, très lentement</li>
-            <li>Knobs : glisser, molette, <kbd>Maj</kbd> = fin, double-clic = défaut</li></ul></div>
+            <li>Boutons ronds : glisse, ou molette ; <kbd>Maj</kbd> = réglage fin, double-clic = valeur de départ</li></ul></div>
           <div><h4>Composer</h4><ul>
             <li><b>Progression</b> : choisis tes accords I–VII case par case</li>
             <li><b>Mélodie écrite</b> : piano roll (clic, glisser, molette = vélocité, clic droit = probabilité, Alt+glisser = sélection), motifs A–D + chaîne, arpège, ● Rec live</li>
-            <li><b>Basse</b> et <b>Pulsations</b> : grilles 16/32 pas qui suivent l'accord ; ⚄ Euclidien</li>
+            <li><b>Basse</b> et <b>Pulsations</b> : grilles de 16 ou 32 cases qui suivent l'accord ; ⚄ Euclidien remplit la grille régulièrement</li>
             <li><b>Automation</b> : dessine la courbe d'un réglage ; <b>Morceau</b> : des sections (Intro, Couplet…), chacune avec son son, ses motifs et ses accords ; choisis-en une pour l'éditer, touches 1–8 pour y aller ; ● Rec l'enregistre en WAV du début à la fin</li>
-            <li><b>Boucles</b> (Morceau) : <kbd>0</kbd> / ● Boucle = décompte puis 1–8 mesures jouées (pastilles, clavier, MIDI) qui tournent ; <kbd>9</kbd> / ⊕ Overdub = ajouter dessus ; ⤓ Garder = ce que tu viens de jouer ; 4 couches par section (toucher = muet, ✕, ↶) · MIDI CC80 / CC81</li>
+            <li><b>Boucles</b> (Morceau) : <kbd>0</kbd> / ● Boucle = décompte puis 1–8 mesures jouées (touches, clavier, MIDI) qui tournent ; <kbd>9</kbd> / ⊕ Overdub = ajouter dessus ; ⤓ Garder = ce que tu viens de jouer ; 4 boucles par section (toucher = muet, ✕, ↶) · MIDI CC80 / CC81</li>
             <li>⬇/⬆ <b>MIDI</b> pour passer dans ton logiciel de musique</li></ul></div>
           <div><h4>Parcours</h4><ul>
             <li><b>🕹 Parcours</b> (menu ⋯) : commence avec une seule note et ouvre l'instrument pièce par pièce en jouant ; ton mode libre n'est pas touché</li></ul></div>

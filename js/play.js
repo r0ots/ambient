@@ -230,7 +230,7 @@
   const padCall = (e) => { if (e && e.notes) e.notes.forEach((n) => n.midis.forEach((m) => padLight(m, n.time, n.dur * 1000, 'call'))); };
   function padsInit() {
     const bar = document.getElementById('pads'); if (!bar) return;
-    bar.innerHTML = PADS.map((k, i) => `<button type="button" class="pad" data-deg="${i}" style="--i:${i};--c:hsl(${250 - i * 27}, 85%, 64%)" title="Touche ${k} · appui long : accord" aria-label="Note ${i + 1}"><span>${k}</span></button>`).join('');
+    bar.innerHTML = PADS.map((k, i) => `<button type="button" class="pad" data-deg="${i}" style="--i:${i};--c:hsl(${250 - i * 27}, 85%, 64%)" title="Lettre ${k} du clavier · garde le doigt : accord" aria-label="Touche ${k}, note ${i + 1}"><span>${k}</span></button>`).join('');
     bar.addEventListener('pointerdown', padDown);
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((n) => bar.addEventListener(n, (e) => padUp(e.pointerId)));
     bar.addEventListener('contextmenu', (e) => e.preventDefault());

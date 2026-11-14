@@ -16,7 +16,7 @@
       this.renderSwitch();
       // S6.6: stopped, the Parcours starts on « INSERT COIN » (the stage says it, no toast); already playing, the toast
       if (mode === 'free') AMB.ui.toast('◎ Mode libre : tout est ouvert');
-      else if (!this.coinUp()) AMB.ui.toast(AMB.game.txt('🕹 Parcours : une seule note pour commencer. {Touche une pastille, une touche de A à L ou ton clavier MIDI.|Touche une pastille de couleur.}'));
+      else if (!this.coinUp()) AMB.ui.toast(AMB.game.txt('🕹 Parcours : une seule note pour commencer. {Appuie sur une touche de couleur, une lettre de A à L ou ton clavier MIDI.|Appuie sur une touche de couleur.}'));
     },
     // ---- S6.6 « INSERT COIN »: in the Parcours, before the first sound, the stage is a blinking title screen (css
     // body.game:not(.playing):not(.coined) #coin); the first press — a finger on it or on a pad, a key, a MIDI note
@@ -43,7 +43,7 @@
     },
     coinWire() {
       const c = $('#coin'); if (!c) return;
-      const say = () => { const s = c.querySelector('small'); if (s) s.textContent = AMB.game.txt('{une note : pastille, touche A–L ou clavier MIDI|touche l\'écran ou une pastille}'); };
+      const say = () => { const s = c.querySelector('small'); if (s) s.textContent = AMB.game.txt('{une note : touche à l\'écran, A–L ou clavier MIDI|touche l\'écran ou une touche de couleur}'); };
       say(); if (AMB.bus) AMB.bus.on('game:mode', say);
       c.addEventListener('pointerdown', (e) => { e.preventDefault(); this.coin(); });
       c.addEventListener('click', () => this.coin()); // (keyboard: Enter on the focused button)
@@ -88,7 +88,7 @@
       if (rn) {
         box.dataset.id = 'open:' + rn.id; box.classList.remove('help');
         const t = box.querySelector('.lcd-task-txt'); t.textContent = `✦ Ouvrir : ${rn.name}`; t.title = 'Toucher : voir ce qui s\'ouvre';
-        this.rollN(box.querySelector('.lcd-task-n'), ready.length > 1 ? `${ready.length} prêts` : '');
+        this.rollN(box.querySelector('.lcd-task-n'), ready.length > 1 ? `${ready.length} prêtes` : '');
         return;
       }
       if (offer) {
@@ -404,7 +404,7 @@
       const v = AMB.game.path && !this.handedOver() ? P.score() : null;
       el.hidden = !v || !v.best; if (el.hidden) return; // S5.7: not before a first series (« RECORD 0 » said nothing)
       el.textContent = `↺ ${v.name.toUpperCase()} · SÉRIE ${v.streak} · RECORD ${v.best}`;
-      el.title = `Réponse : palier ${v.name}, ${v.streak} réussie${v.streak > 1 ? 's' : ''} d'affilée, record ${v.best}`;
+      el.title = `Réponse : niveau ${v.name}, ${v.streak} réussie${v.streak > 1 ? 's' : ''} d'affilée, record ${v.best}`;
       if (bump) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
     },
     // ---- S5.9 « juice central »: ONE table, a moment of the game → a recipe of effects, all landing on the music's next
@@ -428,7 +428,7 @@
       streak: { rank: 3, flash: 0.25, confetti: 40, shake: 1, lcd: 'glitch', jingle: 'streak', pop: (o) => `SÉRIE ×${o.n}`, splash: 'streak', kick: ['twinkle', 'ripple'], say: (o) => `✓ Juste · série ${o.n}` },
       defi: { city: 'stars', rank: 4, flash: 0.5, confetti: 140, shake: 1, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'defi', pop: 'RÉUSSI', kick: ['rays', 'twinkle', 'ripple'] },
       record: { city: 'stars', rank: 5, flash: 0.55, confetti: 160, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1, jingle: 'record', pop: (o) => `RECORD ×${o.n}`, splash: 'record', kick: ['aurora', 'twinkle', 'song'], say: (o) => `★ Record : série ${o.n} !` },
-      tier: { city: 'stars', rank: 6, flash: 0.65, confetti: 220, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1.5, jingle: 'tier', pop: (o) => String(o.name || 'niveau').toUpperCase(), splash: 'tier', kick: ['aurora', 'rays', 'song', 'ripple'], say: (o) => `↑ Palier : ${o.name}` },
+      tier: { city: 'stars', rank: 6, flash: 0.65, confetti: 220, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1.5, jingle: 'tier', pop: (o) => String(o.name || 'niveau').toUpperCase(), splash: 'tier', kick: ['aurora', 'rays', 'song', 'ripple'], say: (o) => `↑ Niveau : ${o.name}` },
       open: { city: 'stars', rank: 7, flash: 0.75, confetti: 260, shake: 2, lcd: 'arcade', bounce: 1, punch: 1.5, jingle: 'unlock', pop: 'OUVERT', splash: 'tier', kick: ['rays', 'aurora', 'ripple', 'hue'] },
       end: { city: 'stars', rank: 8, flash: 1, confetti: 380, shake: 2, lcd: 'arcade', bounce: 1, punch: 2, jingle: 'end', pop: 'À TOI', beats: 3, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'hue'] },
       placement: { city: 'stars', rank: 10, flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => String(o.name || 'musicien').toUpperCase(), hop: '#treeBtn', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `⚡ ${o.name || 'Musicien'} détecté` }, // S5.4 a Réponse placement (the queue « n prêts » is on the LCD's 2nd line)
@@ -441,7 +441,7 @@
       // S8.7 the huge combos (js/city-combos.js), the instrument's: they play in free mode too (`free`), silent (no
       // jingle: the music is the player's), never a flash (the city flashes itself, × JUICE). A combo's first SUPER is a
       // discovery: the `discovery` recipe, its word « SUPER » (o.boom)
-      combo: { free: 1, rank: 3, confetti: 30, pop: (o) => `COMBO ×${o.n || 2}`, say: (o) => `⚡ Combo ×${o.n || 2}${o.name ? ' · ' + o.name : ''} : tiens la position !` },
+      combo: { free: 1, rank: 3, confetti: 30, pop: (o) => `COMBO ×${o.n || 2}`, say: (o) => `⚡ Combo ×${o.n || 2}${o.name ? ' · ' + o.name : ''} : garde les réglages là !` },
       super: { free: 1, city: 'stars', rank: 8, confetti: 300, shake: 2, bounce: 1, punch: 2, beats: 3, pop: (o) => `SUPER · ${String(o.name || 'combo').toUpperCase()}`, say: (o) => `⚡ SUPER ! ${o.name || ''}` },
       discovery: { city: 'stars', rank: 9, flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => o.boom || 'DÉCOUVERTE', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `✦ Découverte${o.name ? ' : ' + o.name : ' !'}` },
     },
@@ -457,7 +457,7 @@
       'resp:streak': (d) => [d.streak > 1 ? 'streak' : 'juste', { n: d.streak }],
       'resp:record': (d) => ['record', { n: d.best }],
       'resp:tier': (d) => ['tier', { name: d.name }],
-      'resp:place': (d) => ['placement', { name: d.name, n: (d.nodes || []).length, ms: 6000, toast: (d.nodes || []).length ? `Tu joues déjà : ${d.nodes.length} nœud${d.nodes.length > 1 ? 's' : ''} prêt${d.nodes.length > 1 ? 's' : ''} → ✦ Ouvrir sur l'écran du haut` : '' }],
+      'resp:place': (d) => ['placement', { name: d.name, n: (d.nodes || []).length, ms: 6000, toast: (d.nodes || []).length ? `Tu joues déjà bien : ${d.nodes.length} pièce${d.nodes.length > 1 ? 's' : ''} prête${d.nodes.length > 1 ? 's' : ''} → touche ✦ Ouvrir sur l'écran du haut` : '' }],
     },
     juice() { const GV = AMB.gardenVisual; return GV && GV.JUICE != null ? GV.JUICE : 1; },
     // a moment: its message at once (LCD, toast), its effects on the next beat. Returns the queued {kind, o} or null.

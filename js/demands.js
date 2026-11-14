@@ -39,20 +39,20 @@
   const F = (id, need, title, ask, hint, intro) => ({ id, need, title, ask, hint, intro });
   const FREE = [
     F('accord', ['h.pad'], 'Force un accord sur MAINTENANT', { how: 'hit', chord: 'any' },
-      '{Une touche de Z à M, ou un appui long sur une pastille|Garde le doigt sur une pastille}, pile quand l\'écran dit MAINTENANT.', 'Nouveau : essaie le Pad, force un accord sur MAINTENANT'),
+      '{Une lettre de Z à M, ou garde le doigt sur une touche|Garde le doigt sur une touche}, pile quand l\'écran dit MAINTENANT.', 'Nouveau : essaie le Pad, force un accord sur MAINTENANT'),
     F('iv', ['h.pad', 'h.key'], 'Force l\'accord IV sur MAINTENANT', { how: 'hit', chord: 3 }, // (S5.7: once the key and the chords' names are shown)
-      'L\'accord IV : {la touche V, ou un appui long sur la 4e pastille|garde le doigt sur la 4e pastille}, pile quand l\'écran dit MAINTENANT.'),
+      'L\'accord IV : {la lettre V, ou garde le doigt sur la 4e touche|garde le doigt sur la 4e touche}, pile quand l\'écran dit MAINTENANT.'),
     F('notes', ['m.bells'], 'Joue 3 notes dans le temps', { how: 'notes', n: 3 },
-      'À partir de MAINTENANT, trois notes sur les temps (pastilles{, A à L ou MIDI|}), comme on tape du pied.', 'Nouveau : joue 3 notes dans le temps'),
+      'À partir de MAINTENANT, trois notes sur les temps (touches à l\'écran{, A à L ou MIDI|}), comme on tape du pied.', 'Nouveau : joue 3 notes dans le temps'),
     F('melodie', ['m.bells'], 'Fais revenir la Mélodie auto sur MAINTENANT', { how: 'hit', param: 'bells.on', v: (v) => !!v, ok: () => !store.get('bells.on') },
       'Sculpter > Mélodie auto > On, pile sur MAINTENANT.'),
     F('seul', ['h.pad'], 'Coupe tout sauf le drone sur MAINTENANT, pendant 2 mesures', {
       how: 'hold', param: '*.on', bars: 2, hold: () => on('drone') && !LAYERS.some(on), ok: () => on('drone') && LAYERS.some(on),
-    }, 'Éteins les autres couches (On) pour que le drone chante seul à partir de MAINTENANT, puis laisse-le 2 mesures.'),
+    }, 'Éteins tous les autres sons (leur bouton On) pour que le drone chante seul à partir de MAINTENANT, puis laisse-le 2 mesures.'),
     F('lumiere', ['t.macros'], 'Monte la Lumière avant la fin de la mesure', { how: 'by', param: 'macro.light', src: ['user', 'sync'], v: (v) => v >= 0.75, ok: () => store.get('macro.light') < 0.6 },
-      'Écouter > Lumière vers la droite, au-dessus de 75.'),
+      'Sculpter > Grands réglages > Lumière vers la droite, au-dessus de 75.'),
     F('montee', ['t.macros'], 'Fais une montée : Densité au max en 2 mesures', { how: 'by', bars: 2, param: 'macro.density', src: ['user', 'sync'], v: (v) => v >= 0.95, ok: () => store.get('macro.density') < 0.7 },
-      'Écouter > Densité tout en haut (ou la molette de modulation MIDI) avant la fin de la 2e mesure.', 'Nouveau : fais une montée, Densité au max en 2 mesures'),
+      'Sculpter > Grands réglages > Densité tout en haut (ou la molette de modulation MIDI) avant la fin de la 2e mesure.', 'Nouveau : fais une montée, Densité au max en 2 mesures'),
     F('tonalite', ['h.key'], 'Change de tonalité sur MAINTENANT', { how: 'hit', param: 'global.key' },
       'Sculpter > Global > Tonalité, pile sur MAINTENANT : tout le paysage bascule.', 'Nouveau : change de tonalité sur MAINTENANT'),
     F('grains', ['m.grains'], 'Fais entrer les grains sur MAINTENANT', { how: 'hit', param: 'grains.on', v: (v) => !!v, ok: () => !store.get('grains.on') },
