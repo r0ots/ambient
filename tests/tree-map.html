@@ -21,12 +21,12 @@ f.addEventListener('load', async ()=>{
   ok(/conic-gradient/.test(w.getComputedStyle(d.querySelector('.tree-legend i.st-owned')).backgroundImage), 'S5.7 légende : « ouvert » = la couleur de sa branche (pastille aux 5 couleurs), plus « vert »');
   // --- legend on one line, zoom buttons clear of it
   const items=[...d.querySelectorAll('.tree-legend > span:not(.tree-tip)')], tops=new Set(items.map(e=>Math.round(R(e).top)));
-  ok(items.length===4 && tops.size===1, 'légende : 4 états (S4.6 : prêt) sur une seule ligne');
+  ok(items.length===3 && tops.size===1, 'S9.4 légende : ouvert, prêt, dans le noir, sur une seule ligne');
   const lg=R(d.querySelector('.tree-legend')), zb=R(d.querySelector('.tree-zoom'));
   ok(zb.top>=lg.bottom, 'boutons + − ⤢ sous la légende (pas de recouvrement)');
   // --- ⤢ = whole map
   d.querySelector('[data-zoom=fit]').click(); await wait(20);
-  ok(Gd.view.k<=0.5, '⤢ : toute la carte (k='+Gd.view.k.toFixed(2)+')');
+  { const m=R(map), lit=[...map.querySelectorAll('.tree-node:not(.dark) .led')].map(R); ok(lit.length>=5 && lit.every((r)=>r.left>=m.left-1 && r.right<=m.right+1 && r.top>=m.top-1 && r.bottom<=m.bottom+1), 'S9.4 ⤢ : tout ce qui est allumé en vue (k='+Gd.view.k.toFixed(2)+')'); }
   // --- resize: refit only when the width changes
   const resized=(set)=>new Promise(r=>{ w.addEventListener('resize',()=>w.requestAnimationFrame(()=>r()),{once:true}); setTimeout(r,3000); set(); }); // (waits for the resize itself, not a delay)
   Gd.fitTree(); Gd.zoomAt(200,400,1.5); const k1=Gd.view.k;
