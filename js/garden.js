@@ -116,9 +116,9 @@
       const forTxt = piece ? `Pour ouvrir ${this.pieceName(piece)} :` : fin ? 'Pour finir le Parcours :' : '';
       box.querySelector('.gw-for').textContent = forTxt;
       const ul = box.querySelector('.gw-list'), key = objs.map((d) => d.id).join(',');
-      if (ul.dataset.key !== key) { // a new piece: its objectives are written in
-        const fresh = !!ul.dataset.key;
-        ul.dataset.key = key; ul.innerHTML = '';
+      if (ul.dataset.ids !== key) { // a new piece: its objectives are written in
+        const fresh = !!ul.dataset.ids;
+        ul.dataset.ids = key; ul.innerHTML = '';
         for (const d of objs) {
           const li = document.createElement('li'); li.className = 'gw-obj'; li.dataset.id = d.id;
           li.innerHTML = '<button type="button" class="gw-txt"><i class="gw-box" aria-hidden="true"></i><span class="gw-t"></span></button><b class="gw-n"></b><button type="button" class="gw-skip" title="Plus tard : passer à une autre pièce" aria-label="Plus tard : passer à une autre pièce">↷</button><span class="gw-bar" aria-hidden="true"><i></i></span><p class="gw-hint" hidden></p>';
@@ -153,9 +153,9 @@
       past.hidden = !rows.length;
       const vis = all ? rows : rows.slice(0, this.GW_SHOW), key = vis.map((e) => (e.id || e.disc) + e.t).join(',');
       more.hidden = rows.length <= this.GW_SHOW; more.textContent = all ? 'voir moins' : `voir tout (${rows.length})`;
-      if (ul.dataset.key === key) return;
+      if (ul.dataset.ids === key) return;
       const top = ul.firstElementChild && ul.firstElementChild.dataset.k;
-      ul.dataset.key = key; ul.innerHTML = '';
+      ul.dataset.ids = key; ul.innerHTML = '';
       for (const e of vis) {
         const li = document.createElement('li'); li.className = 'gw-h'; li.dataset.k = (e.id || e.disc) + e.t;
         const d = e.id && K.byId[e.id], disc = e.disc && AMB.discoveries && AMB.discoveries.byId[e.disc];
