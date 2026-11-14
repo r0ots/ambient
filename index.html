@@ -19,12 +19,6 @@
       <div class="brand">
         <h1 class="logo" title="JunoJuno, machine à paysages sonores génératifs">JUNOJUNO</h1>
       </div>
-      <div id="lcd" class="lcd" aria-live="polite" title="L'écran : ce qui joue, et ton défi">
-        <span id="lcdTop">JUNOJUNO</span>
-        <span id="lcdLine">■ STOP</span>
-        <span id="lcdTask" class="lcd-task" hidden><button type="button" class="lcd-task-txt" title="Toucher : comment faire"></button><b class="lcd-task-n"></b><button type="button" class="lcd-skip" title="Passer au défi suivant" aria-label="Passer au défi suivant">↷</button></span>
-        <span id="lcdScore" class="lcd-score" hidden></span>
-      </div>
       <div class="transport">
         <div class="tgrp"><small>Lecture</small>
           <div class="tgrp-row">
@@ -89,7 +83,8 @@
         <div id="hudInfo" class="hud-info"></div>
       </div>
       <button id="bigPlay" class="big-play" aria-label="Lecture">▶<span>Lancer le paysage</span></button>
-      <button id="coin" class="coin" type="button" aria-label="Insert coin : appuie pour jouer"><b>INSERT COIN</b><span>APPUIE POUR JOUER</span><small></small></button>
+      <div class="dust" aria-hidden="true"></div>
+      <button id="coin" class="coin" type="button" aria-label="Allumer la machine"><i class="pw-led" aria-hidden="true"></i><b aria-hidden="true">⏻</b><span>ALLUMER</span><small></small></button>
       <div id="toast" class="toast"></div>
       <div class="stage-tools">
         <button id="vizMode" class="chip" title="Changer de visuel">Ville</button>
@@ -99,6 +94,18 @@
     </div>
 
     <div id="pads" class="pads" role="group" aria-label="Les 9 touches de notes (A à L) ; garde le doigt : accord" hidden></div>
+
+    <!-- S11.1: the Objectifs widget (Parcours only): top of the right column, above the drawer; a compact card under the bar on a phone -->
+    <section id="goals" class="goals" aria-label="Objectifs du Parcours" hidden>
+      <button type="button" class="gw-head" aria-controls="goalsBody" aria-expanded="true"><b class="gw-title">Objectifs</b><span class="gw-line" aria-live="polite"></span><i class="gw-car" aria-hidden="true">▾</i></button>
+      <div id="goalsBody" class="gw-body">
+        <div class="gw-demand" role="button" tabindex="0" hidden><span class="gw-dtxt"></span><b class="gw-dn"></b></div>
+        <div class="gw-readyrow"><button type="button" class="gw-ready" hidden></button><button type="button" class="gw-no" hidden>Non merci</button></div>
+        <div class="gw-now" hidden><p class="gw-for"></p><ul class="gw-list"></ul></div>
+        <p class="gw-score" hidden></p>
+        <div class="gw-past" hidden><p class="gw-sub">Déjà fait</p><ul class="gw-hist"></ul><button type="button" class="gw-all" hidden></button></div>
+      </div>
+    </section>
 
     <!-- S8.3: Sculpter / Composer panels (S9.1: the five big knobs head Sculpter), a drawer over the city (right side; a bottom sheet on a portrait screen) -->
     <section class="drawer" aria-label="Panneaux de réglage">
@@ -117,20 +124,9 @@
         <h3>JunoJuno</h3>
         <p>Une machine à paysages sonores qui joue toute seule. Comment veux-tu la découvrir ?</p>
         <div class="welcome-choices">
-          <button class="welcome-choice" data-choose="path"><b>🕹 Parcours</b><span>Commence avec une seule note. Relève des défis musicaux, rejoue des phrases à l'oreille : chaque réussite ouvre une pièce de l'instrument.</span></button>
+          <button class="welcome-choice" data-choose="path"><b>🕹 Parcours</b><span>Commence avec une seule note. Remplis des objectifs musicaux, rejoue des phrases à l'oreille : chaque pièce de l'instrument s'ouvre dans l'Arbre.</span></button>
           <button class="welcome-choice" data-choose="free"><b>◎ Mode libre</b><span>Tout est ouvert tout de suite : tous les sons, les effets, la composition. Tu pourras commencer le parcours plus tard (menu ⋯).</span></button>
         </div>
-      </div>
-    </div>
-
-    <div id="openDlg" class="modal open-dlg" hidden>
-      <div class="modal-card open-card" role="dialog" aria-labelledby="openName">
-        <button class="modal-x" data-close aria-label="Fermer">✕</button>
-        <p class="open-kicker">✦ Prêt à ouvrir</p>
-        <h3 id="openName" class="open-name"></h3>
-        <p class="open-why"></p>
-        <p class="open-more"></p>
-        <div class="open-actions"><button type="button" class="btn primary open-go">✦ Ouvrir</button><button type="button" class="btn open-all" hidden>✦ Tout ouvrir</button><button type="button" class="btn" data-close>Plus tard</button></div>
       </div>
     </div>
 
@@ -158,19 +154,19 @@
           <div class="help-lvl" data-help-lvl="path">
             <div class="help-grid">
               <div><h4>Le principe</h4><ul>
-                <li>Tu pars d'<b>une seule note</b> : appuie sur une <b>touche</b> de couleur sous l'écran (ou A–L, ou ton clavier MIDI). Chaque <b>défi</b> réussi rend une pièce de l'instrument <b>prête</b> : l'écran dit « <b>✦ Ouvrir</b> », touche-le pour savoir ce qu'elle t'apporte, puis <b>Ouvrir</b>. Ce qui arrive brille un moment, avec « Nouveau ». Le défi suivant vient après.</li>
+                <li>Tu pars d'<b>une seule note</b> : appuie sur une <b>touche</b> de couleur sous l'écran (ou A–L, ou ton clavier MIDI). Chaque pièce de l'instrument demande 2 ou 3 <b>objectifs</b> (le panneau <b>Objectifs</b>, à droite) ; quand ils sont tous cochés, la pièce est <b>prête</b> : ouvre-la dans l'<b>🕹 Arbre</b> (sa fiche dit ce qu'elle t'apporte, puis <b>✦ Ouvrir</b>). Ce qui arrive brille un moment, avec « Nouveau ».</li>
                 <li>Ouvre l'<b>🕹 Arbre</b> (en haut) : c'est la carte. Touche une pièce pour voir ce qui l'ouvre ; la suite reste dans le noir jusqu'à ce que tu t'en approches.</li>
                 <li>Les <b>touches</b> à l'écran (au doigt), les lettres A–L et le clavier MIDI jouent dès le début ; avec le Pad, <b>garde le doigt</b> sur une touche pour jouer son accord. <b>Composer</b> s'ouvre en 3 pièces : Mélodie écrite, Rythme, Morceau.</li>
-                <li>Arbre complet (« ✦ Tout ouvrir » quand beaucoup de pièces attendent), puis « Enregistre ton morceau » (● Rec en haut, puis ■) : <b>l'instrument est à toi</b>. La ligne de défi s'efface, le son reste.</li></ul></div>
-              <div><h4>Les défis</h4><ul>
-                <li>Un à la fois, sur la 2e ligne de l'écran. <b>Touche-le</b> pour savoir comment faire, <b>↷</b> pour passer.</li>
-                <li><b>Réponse</b> : pendant la lecture, l'enseigne Mélodie auto s'allume et l'écran dit « ↺ À toi » : rejoue la phrase juste après (touches, A–L ou MIDI). Un voyant par note, rouge s'il est faux. Les réussites allongent les phrases ; à 5 notes, le rythme compte. Tu peux laisser passer : la musique continue.</li>
+                <li>Arbre complet, puis « Enregistre ton morceau » (● Rec en haut, puis ■) : <b>l'instrument est à toi</b>. Le panneau Objectifs s'en va, le son reste.</li></ul></div>
+              <div><h4>Les objectifs</h4><ul>
+                <li>Ceux de la pièce en cours, ensemble dans le panneau <b>Objectifs</b>. <b>Touche-en un</b> pour savoir comment faire, <b>↷</b> pour passer à une autre pièce. Ceux que tu as faits restent, barrés, avec la pièce qu'ils ont ouverte.</li>
+                <li><b>Réponse</b> : pendant la lecture, l'enseigne Mélodie auto s'allume et le panneau dit « ↺ À toi » : rejoue la phrase juste après (touches, A–L ou MIDI). Un voyant par note, rouge s'il est faux. Les réussites allongent les phrases ; à 5 notes, le rythme compte. Tu peux laisser passer : la musique continue.</li>
                 <li><b>HIGH SCORES</b> : une belle série de Réponses entre au tableau (Arbre) ; signe de 3 initiales (lettres, ▲ ▼, ou le nom de 3 notes au clavier MIDI).</li></ul></div>
               <div><h4>Découvertes</h4><ul>
                 <li>Des combos (deux grands réglages poussés ensemble : la Ville part en grand spectacle, tiens-les pour le SUPER) et des gestes musicaux cachés. Le carnet est dans l'Arbre : « ??? » et un indice pour chacune.</li>
-                <li>Une découverte allume un hologramme dans la Ville ; certaines rendent une pièce <b>prête</b> (« ✦ Ouvrir »). L'indice clair des gestes s'ouvre après 2 découvertes ; deux se jouent au clavier MIDI.</li></ul></div>
+                <li>Une découverte allume un hologramme dans la Ville ; certaines rendent une pièce <b>prête</b> (à ouvrir dans l'Arbre). L'indice clair des gestes s'ouvre après 2 découvertes ; deux se jouent au clavier MIDI.</li></ul></div>
               <div><h4>Si tu bloques</h4><ul>
-                <li>Après 6 réponses manquées, la pièce est prête quand même ; un défi qui ne vient pas : ↷ ; « ✦ Ouvrir » attend que tu le touches.</li>
+                <li>Après 6 réponses manquées, l'objectif est coché quand même ; un objectif qui ne vient pas : ↷ ; une pièce prête attend que tu l'ouvres dans l'Arbre.</li>
                 <li><b>Mode libre</b> (menu ⋯) : tout est ouvert, ton parcours est gardé.</li></ul></div>
             </div>
           </div>

@@ -406,7 +406,7 @@
   // stage's own overlays sit inside it) and AMB.gardenVisual.safe {top, right, bottom, left} = fractions of the window
   // (the city keeps what matters there). A piece taller than half the window is a side drawer, the others are bands.
   function layoutWatch() {
-    const de = document.documentElement, P = ['.top', '#pads', '.drawer'].map((q) => $(q)).filter(Boolean);
+    const de = document.documentElement, P = ['.top', '#goals', '#pads', '.drawer'].map((q) => $(q)).filter(Boolean);
     let raf = 0;
     const measure = () => {
       raf = 0;
@@ -415,7 +415,8 @@
         // (S9.4: the layout box, not the painted one — a drawer sliding in was measured 70 px off and hid the stage's buttons)
         const o = e.offsetParent && e.offsetParent.getBoundingClientRect(), r = o ? { left: o.left + e.offsetLeft, top: o.top + e.offsetTop, width: e.offsetWidth, height: e.offsetHeight } : (({ left, top, width, height }) => ({ left, top, width, height }))(e.getBoundingClientRect());
         r.right = r.left + r.width; r.bottom = r.top + r.height; if (!r.width || !r.height) continue;
-        if (r.height > H / 2) { if (r.left + r.width / 2 > W / 2) f.r = Math.max(f.r, W - r.left); else f.l = Math.max(f.l, r.right); }
+        // a side piece: taller than half the window, or (S11.1) a column on the right half (the Objectifs widget above the drawer)
+        if (r.height > H / 2 || (r.left > W * 0.4 && r.width < W * 0.62)) { if (r.left + r.width / 2 > W / 2) f.r = Math.max(f.r, W - r.left); else f.l = Math.max(f.l, r.right); }
         else if (r.top + r.height / 2 < H / 2) f.t = Math.max(f.t, r.bottom); else f.b = Math.max(f.b, H - r.top);
       }
       for (const k in f) { f[k] = Math.max(0, Math.round(f[k])); de.style.setProperty('--free-' + k, f[k] + 'px'); }
@@ -494,45 +495,10 @@
         (started ? ` · mesure ${bar}` : '');
     };
     store.on(upd); setInterval(upd, 500); upd();
-    // LCD status screen in the top bar
-    const top = $('#lcdTop'), line = $('#lcdLine');
-    const abbr = (s) => s.split(' ')[0].slice(0, 4).toUpperCase();
-    // S10.1 the LCD's width, kept by a ResizeObserver (read in its callback, after layout)
-    let lcdWv = -1, lcdRO = null;
-    const lcdW = (el) => {
-      if (!el) return 0;
-      if (!lcdRO && typeof ResizeObserver !== 'undefined') { lcdRO = new ResizeObserver(() => { lcdWv = el.clientWidth; }); lcdRO.observe(el); }
-      return lcdWv >= 0 ? lcdWv : (lcdWv = el.clientWidth);
-    };
-    const lcd = () => {
-      if (!top || !line) return;
-      const sel = $('#preset'), patch = sel && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.replace('✦ ', '') : 'JUNOJUNO';
-      const rec = document.querySelector('#rec.rec');
-      // short game messages (G6.2) take over the top line for a few seconds
-      const m = AMB.lcdMsg, on = m && Date.now() < m.until;
-      // S4.3: in the path, the jargon (landscape name, key, scale, tempo, chord name) waits for the Tonalité node
-      const G = AMB.game, plain = !!(G && G.path && !G.has('h.key'));
-      document.body.classList.toggle('jargon-off', plain);
-      const txt = on ? m.text.toUpperCase().slice(0, 48) : (plain ? 'JUNOJUNO' : patch.toUpperCase().slice(0, 24)) + (rec ? '  ● REC' : '');
-      const lw = lcdW(top.parentElement); // (S10.1: measured by a ResizeObserver, not on every update: no forced layout)
-      if (top.textContent !== txt || lw !== top._lw) {
-        // S7.1: a new text is typed in (a cursor sweeps it, neon), a resize only re-fits it
-        if (top.textContent !== txt && top.textContent && AMB.motion) { if (on && m.stamp) AMB.motion.pop(top, 'm-stamp', { ms: AMB.motion.ms('slow') + 60 }); else AMB.motion.pop(top, 'type'); } // (S7.3: PARFAIT / BIEN / RATÉ stamp in)
-        top.textContent = txt; top._lw = lw;
-        // S5.7: a game message is never cut (« ENTRE LES TOU… »): too long for the screen, it gets smaller
-        top.style.fontSize = '';
-        const lcdEl = top.parentElement, room = lcdEl ? lcdEl.clientWidth - 24 : 0;
-        if (on && room > 0 && top.scrollWidth > room) top.style.fontSize = Math.max(11, Math.floor(parseFloat(getComputedStyle(top).fontSize) * room / top.scrollWidth)) + 'px';
-      }
-      const bar = String(Math.floor(AMB.seq.step / 16) + 1).padStart(3, '0');
-      const was = line.textContent;
-      line.textContent = plain ? (started ? `▶ M${bar}` : '■ STOP') : `${started ? '▶' : '■'} ${store.get('global.key')} ${abbr(store.get('global.scale'))} · ${String(Math.round(store.get('global.tempo'))).padStart(3, '0')} BPM` +
-        (started ? ` · ${name.textContent} · M${bar}` : ' · STOP');
-      // S7.1: the 2nd line glitches when the sound's state changes (play, key, tempo, chord), not at every bar
-      const core = (x) => x.replace(/ ?· ?M\d+$|M\d+$/, '');
-      if (was && AMB.motion && core(was) !== core(line.textContent)) AMB.motion.glitch(line);
-    };
-    setInterval(lcd, 300); lcd();
+    // S4.3: in the path, the jargon (landscape name, key, scale, tempo, chord name) waits for the Tonalité node
+    // (S11.1: the bar's LCD is gone; the HUD and the chord sign say the sound's state, the Objectifs widget the game's)
+    const jargon = () => { const G = AMB.game; document.body.classList.toggle('jargon-off', !!(G && G.path && !G.has('h.key'))); };
+    setInterval(jargon, 500); jargon(); if (AMB.bus) ['unlock', 'mode', 'reset'].forEach((e) => AMB.bus.on('game:' + e, jargon));
   }
 
   AMB.ui = { build, play, stop, ensureStarted, applyPatch, widgets, encodePatch, toast, freezeNow, saveUserPatch, importPatches, exportPatches };

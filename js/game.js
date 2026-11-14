@@ -17,7 +17,9 @@
     contracts: [], // challenges done (contracts and Réponse gates)
     resp: null, // « Réponse » (S4.2, puzzles.js): length reached, successes in a row, misses per gate
     active: [], prog: {}, // the active challenge (one at a time) and its progress (contracts.js)
-    skipped: [], // challenges passed (back of the queue)
+    skipped: [], // objectives passed (↷: their piece goes to the back of the queue)
+    log: [], // S11.1 the history the Objectifs widget shows: [{id (objective) | disc (discovery), node, t, by}], oldest first
+    ob: 2, // S11.1 a piece asks for 2–3 objectives (older saves: 1, contracts.migrate)
     rng: null, // seed of the Réponse phrases (contracts.js)
     dem: null, // S5.5 live asks (demands.js): combo, best, misses per challenge
     secrets: null, // discoveries state (discoveries.js; the field keeps its old name: older saves' secrets are discoveries)
@@ -35,6 +37,10 @@
         if (o && o.v === 1) {
           const f = fresh();
           for (const k of Object.keys(f)) if (k in o) f[k] = o[k];
+          if (!('ob' in o)) { // before S11.1: one challenge per piece, and the keys from the start: a player who owns
+            f.ob = 1; // pieces keeps them (the Piano counts as open)
+            if (f.nodes.some((id) => id !== 'racine') && !f.nodes.includes('k.piano')) f.nodes.push('k.piano');
+          }
           f.nodes = [...new Set((f.nodes || []).map((id) => MERGED[id] || id))];
           f.ready = (Array.isArray(f.ready) ? f.ready : []).filter((r) => r && typeof r.id === 'string' && !f.nodes.includes(r.id));
           this.s = f;
