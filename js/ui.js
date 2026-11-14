@@ -13,20 +13,30 @@
     panel.dataset.sec = secKey;
     if (sec.color) panel.style.setProperty('--c', sec.color);
     const head = h('header');
-    head.append(h('h2', null, sec.label));
+    head.append(h('h2', null, secKey === 'bells' ? 'Mélodie' : sec.label)); // (S11.10: the Melody's sound is the keys' too)
     const ctls = h('div', 'ctls');
+    // S11.10 the Melody: its sound on top (shared with the keys), then a sub-frame « Mélodie auto » — the Auto switch and
+    // what only the improvisation uses
+    const AUTO = secKey === 'bells' ? ['on', 'mode', 'phraseLen', 'density', 'mutate', 'range'] : [];
+    let sub = null, subCtls = null;
+    if (AUTO.length) {
+      sub = h('div', 'sub'); sub.dataset.sub = 'auto';
+      const sh = h('header'); sh.append(h('h3', null, 'Mélodie auto')); subCtls = h('div', 'ctls'); sub.append(sh, subCtls);
+    }
     for (const [k, sp] of Object.entries(sec.params)) {
       const key = `${secKey}.${k}`;
       if (sp.hidden) continue;
+      const into = sub && AUTO.includes(k) ? subCtls : ctls;
       // S11.4: the Melody's voice is also the keys' (Piano): its switch only stops the improvisation, « Auto »
-      if (sp.type === 'toggle' && k === 'on' && secKey === 'bells') head.append(toggle(key, { label: 'Auto', hint: 'La mélodie qui improvise toute seule. Éteinte, les touches gardent ce son et ces réglages.' }, sec.color));
+      if (sp.type === 'toggle' && k === 'on' && sub) sub.firstChild.append(toggle(key, { label: 'Auto', hint: 'La mélodie qui improvise toute seule. Éteinte, les touches gardent le son du dessus.' }, sec.color));
       else if (sp.type === 'toggle' && k === 'on') head.append(toggle(key, { label: '' }, sec.color));
-      else if (sp.type === 'toggle') ctls.append(toggle(key, sp, sec.color));
-      else if (sp.type === 'select') ctls.append(select(key, sp));
-      else if (sp.type === 'text') ctls.append(textField(key, sp));
-      else ctls.append(knob(key, sp, sec.color));
+      else if (sp.type === 'toggle') into.append(toggle(key, sp, sec.color));
+      else if (sp.type === 'select') into.append(select(key, sp));
+      else if (sp.type === 'text') into.append(textField(key, sp));
+      else into.append(knob(key, sp, sec.color));
     }
     panel.append(head, ctls);
+    if (sub) panel.append(sub);
     if (secKey === 'grains') {
       const row = h('div', 'sample-row');
       const lbl = h('label', 'btn small', 'Charger un son…');

@@ -162,7 +162,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, buyAll, sdiff, KEY, settle }) => 
     const over=[...d.querySelectorAll('body *')].filter(e=>{ const cs=w.getComputedStyle(e); return (cs.position==='fixed') && e.getClientRects().length && !e.hidden && cs.display!=='none' && cs.visibility!=='hidden' && cs.pointerEvents!=='none' && e.id!=='toast' && !e.closest('.stage'); });
     const kr=R(mac.querySelector('.knob')), tp=d.elementFromPoint(kr.left+kr.width/2, kr.top+kr.height/2);
     ok(A.garden.compact() && !gb.classList.contains('open') && gr.top>=top.bottom-1 && gr.right<=de.clientWidth+1 && gr.height<=64 && gb.querySelector('.gw-line').textContent.length>0 && de.scrollWidth<=de.clientWidth, '390 px : carte compacte sous la barre ('+Math.round(gr.height)+' px : « '+gb.querySelector('.gw-line').textContent+' »)');
-    ok(shown('#macros') && !!tp && !!tp.closest('#macros') && !over.length, '390 px : rien ne recouvre les macros '+over.map(e=>e.id||e.className).join());
+    ok(shown('#macros') && !!tp && !!tp.closest('#macros') && !over.length, '390 px : rien ne recouvre les macros '+over.map(e=>e.id||e.className).join()+' (sous le doigt : '+(tp&&(tp.id||tp.tagName))+')');
     gb.querySelector('.gw-head').click(); await wait(60); const br=R(gb.querySelector('.gw-body'));
     ok(gb.classList.contains('open') && br.height>40 && br.top>=gr.bottom-1 && R(gb).height<=gr.height+1, '390 px : toucher la carte → la liste se déplie par-dessus la ville, la barre ne bouge pas');
     gb.querySelector('.gw-head').click(); await wait(30); ok(!gb.classList.contains('open'), 'toucher encore : repliée');

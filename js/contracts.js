@@ -4,7 +4,7 @@
 // shown together in the Objectifs widget (garden.js); the piece is READY once they are all done, and only the Arbre
 // opens it. One piece at a time, in the order of OPENS among those that can be reached now; ↷ puts the piece back at the
 // end of the queue. Judged on usage only, never on taste. Progress lives in game.s.prog, completion in game.s.contracts,
-// the history the widget shows in game.s.log. S5.5: the interface objectives are ASKED in the music (kind 'demande').
+// the history the widget shows in game.s.log.
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const store = AMB.store;
@@ -25,12 +25,13 @@
   const E = (id, need, title) => ({ id, kind: 'reponse', need, title, goal: 1, on: {} });
   // counting helper: a run of notes where each one follows `rule` from the previous one
   const run = (rule) => ({ note(st, n) { st.n = st.p && rule(st.p, n) ? (st.n || 1) + 1 : 1; st.p = { midi: n.midi, time: n.time }; } });
-  // S5.5 — a challenge ASKED in the music (js/demands.js, after Fuser): the landscape asks for the gesture with a countdown,
-  // it is judged on its placement (on the 1, or before the end of the bar). They replaced the static interface challenges
-  // (« turn this knob, then play 3 notes », « change the mode »): same nodes, same order. `ask` = the gesture (demands.match)
-  // and its place in time: how 'hit' (on the 1) | 'by' (before the end of the bar); param (key, 'macro.*'), v (test of the
-  // value), src (sources that count, 'user' by default), act (a bus action).
-  const Dm = (id, need, title, ask, hint) => ({ id, kind: 'demande', need, title, goal: 1, on: {}, ask, hint });
+  // a single gesture on a control (S5.5 they were « asked in the music » with a countdown; S11.5 plain objectives again):
+  // counted when it happens during playback. `a` = { param (key, 'macro.*'), v (test of the value), src (sources that
+  // count, 'user' by default) } or { act (a bus action) }
+  const keyIs = (p, k) => p === k || (p.endsWith('*') && k.startsWith(p.slice(0, -1)));
+  const Dm = (id, need, title, a, hint) => Object.assign(C(id, need, title, 1, a.act
+    ? { act(st, x) { if (x === a.act && playing()) st.n = 1; } }
+    : { param(st, k, v, src) { if (keyIs(a.param, k) && (a.src || ['user']).includes(src) && (!a.v || a.v(v)) && playing()) st.n = 1; } }, hint), { gesture: true });
   // S11.1 generic objectives, parametrised (musical: play, listen, let it play — never « turn this knob to min then max »)
   const on = (l) => !!store.get(l + '.on');
   const NOTES = '{Les touches de couleur sous l\'écran, les lettres A à L (Q à P une octave au-dessus) ou ton clavier MIDI : joue ce que tu veux, chaque note compte.|Les touches de couleur sous l\'écran : joue ce que tu veux, chaque note compte.}';
@@ -49,8 +50,7 @@
   const Ch = (id, need, n, title, when) => C(id, need, title || `Joue ${n} accords`, n, {
     act(st, a) { if (a === 'chord' && gesture(st, 'chord', 600) && (!when || when())) st.n = (st.n || 0) + 1; },
   }, CHORDS);
-  const ON1 = 'Pendant la lecture, l\'écran te le demandera avec un compte à rebours (3, 2, 1) : fais-le pile quand il dit MAINTENANT. ';
-  const BY = 'Pendant la lecture, l\'écran te le demandera avec un compte à rebours : fais-le avant la fin de la mesure. ';
+  const ON1 = 'Pendant la lecture : ', BY = ON1; // a gesture counts while the music plays
   const DEFS = [
     // Tronc
     // S11.1: the machine starts asleep with the drone alone; the first gesture is to switch it on (the power button,
@@ -62,37 +62,37 @@
     }, 'Sculpter > Drone > Lumière{ (ou le bouton CC74 de ton clavier MIDI)|}, pendant la lecture : le son s\'ouvre et se ferme.'),
     Br('k.ecoute', ['racine'], 8, 'Laisse jouer 8 mesures avec le drone', () => on('drone'), 'Pendant la lecture, laisse le drone tenir sa note : chaque mesure compte. Écoute-le respirer.'),
     Br('v.regarde', ['racine'], 28, 'Regarde la ville : laisse jouer 28 mesures', null, 'Lance la lecture et laisse tourner : chaque mesure compte. Regarde la ville réagir à la musique.'),
-    Dm('k.couleur', ['racine'], 'Tourne la lumière du drone sur MAINTENANT', { how: 'hit', param: 'drone.tone', src: ['user', 'cc'] },
+    Dm('k.couleur', ['racine'], 'Tourne la Lumière du drone', { how: 'hit', param: 'drone.tone', src: ['user', 'cc'] },
       ON1 + 'Sculpter > Drone > Lumière{ (ou le bouton CC74 de ton clavier MIDI)|} : le son s\'ouvre et se ferme.'),
-    Dm('k.timbre', ['t.son'], 'Change le son du drone sur MAINTENANT', { how: 'hit', param: 'drone.wave' },
+    Dm('k.timbre', ['t.son'], 'Change le son du drone', { how: 'hit', param: 'drone.wave' },
       ON1 + 'Sculpter > Drone > Timbre : choisis-en un autre.'),
-    Dm('k.moments', ['t.journal'], 'Garde ce moment (♥) sur MAINTENANT', { how: 'hit', act: 'keep' },
+    Dm('k.moments', ['t.journal'], 'Garde un moment (♥)', { how: 'hit', act: 'keep' },
       ON1 + 'Sculpter > Journal : ♥ garde le son de l\'instant ; plus tard, un clic sur un moment passé le fait revenir.'),
     C('k.enreg', ['t.rec'], 'Enregistre au moins 45 secondes', 1, {
       rec(st, secs) { if (secs >= 45) st.n = 1; }, // real duration of the finished recording
     }, '● Rec, joue au moins 45 s, puis ● Rec à nouveau pour arrêter (ou choisis une durée fixe dans ▾).'),
-    Dm('k.macros', ['t.macros'], 'Tourne un grand réglage avant la fin de la mesure', { how: 'by', param: 'macro.*', src: ['user', 'sync'] },
+    Dm('k.macros', ['t.macros'], 'Tourne un grand réglage', { how: 'by', param: 'macro.*', src: ['user', 'sync'] },
       BY + 'Sculpter > Grands réglages : Lumière, Densité, Espace, Nostalgie ou Nature.'),
 
     // Harmonie
     C('h.forcer', ['h.pad'], 'Joue 6 accords ({Z à M, ou garde le doigt sur une touche|garde le doigt sur une touche})', 6, {
       act(st, id) { if (id === 'chord' && gesture(st, 'chord', 600)) st.n = (st.n || 0) + 1; },
     }, '{Pendant la lecture, les lettres Z, X, C, V, B, N, M jouent les accords I à VII ; au doigt, garde une touche appuyée : elle joue tout son accord (au clavier MIDI : les notes graves).|Pendant la lecture, garde le doigt appuyé sur une touche : elle joue tout un accord.}'),
-    Dm('h.son', ['h.pad'], 'Change le son du Pad sur MAINTENANT', { how: 'hit', param: 'pad.wave' },
+    Dm('h.son', ['h.pad'], 'Change le son du Pad', { how: 'hit', param: 'pad.wave' },
       ON1 + 'Sculpter > Pad > Timbre : choisis-en un autre.'),
-    Dm('h.suivre', ['h.drone'], 'Fais suivre les accords au drone sur MAINTENANT', { how: 'hit', param: 'drone.follow', v: (v) => !!v },
+    Dm('h.suivre', ['h.drone'], 'Fais suivre les accords au drone', { how: 'hit', param: 'drone.follow', v: (v) => !!v },
       ON1 + 'Sculpter > Drone > Suit accords : écoute ensuite le drone changer de note avec les accords.'),
-    Dm('h.tonalite', ['h.key'], 'Change de tonalité sur MAINTENANT', { how: 'hit', param: 'global.key' },
+    Dm('h.tonalite', ['h.key'], 'Change de tonalité', { how: 'hit', param: 'global.key' },
       ON1 + 'Sculpter > Global > Tonalité : tout le paysage monte ou descend.'),
 
     // Effets
-    Dm('e.resonne', ['e.reverb'], 'Ouvre l\'espace (Reverb au-dessus de 60) avant la fin de la mesure', { how: 'by', param: 'fx.space', v: (v) => v >= 0.6 },
+    Dm('e.resonne', ['e.reverb'], 'Ouvre l\'espace : Reverb au-dessus de 60', { how: 'by', param: 'fx.space', v: (v) => v >= 0.6 },
       BY + 'Sculpter > Effets > Reverb au-dessus de 60 : les notes résonnent plus longtemps.'),
     C('m.respire', ['e.reverb', 'm.bells'], 'Laisse respirer : 4 notes, une seconde et demie entre chacune', 4, run((p, n) => n.time - p.time >= 1.5 && n.time - p.time <= 6),
       'Joue une note, laisse-la s\'éteindre dans l\'espace (au moins une seconde et demie), puis la suivante : quatre fois.'),
-    Dm('e.noyer', ['e.reverb', 'h.pad'], 'Éloigne le Pad (Distance au-dessus de 70) avant la fin de la mesure', { how: 'by', param: 'pad.send', v: (v) => v >= 0.7 },
+    Dm('e.noyer', ['e.reverb', 'h.pad'], 'Éloigne le Pad : Distance au-dessus de 70', { how: 'by', param: 'pad.send', v: (v) => v >= 0.7 },
       BY + 'Sculpter > Pad > Distance au-dessus de 70 : ses accords flottent dans la salle.'),
-    Dm('e.grande', ['e.salle'], 'Agrandis la salle (Taille au-dessus de 80) avant la fin de la mesure', { how: 'by', param: 'fx.size', v: (v) => v >= 0.8 },
+    Dm('e.grande', ['e.salle'], 'Agrandis la salle : Taille au-dessus de 80', { how: 'by', param: 'fx.size', v: (v) => v >= 0.8 },
       BY + 'Sculpter > Effets > Taille au-dessus de 80.'),
     C('e.echo', ['e.echo', 'm.bells'], 'Joue 12 notes dans l\'écho', 12, {
       note(st) { if (store.get('fx.echo') >= 0.4) st.n = (st.n || 0) + 1; },
@@ -113,13 +113,13 @@
         st.g = fine ? g : null; st.p = { time: n.time };
       },
     }, 'Huit notes à intervalles égaux, comme des pas tranquilles (ni trop vite ni trop lent) : c\'est un tempo.'),
-    Dm('m.ralenti', ['m.tempo'], 'Ralentis sous 60 bpm avant la fin de la mesure', { how: 'by', param: 'global.tempo', v: (v) => v < 60 },
+    Dm('m.ralenti', ['m.tempo'], 'Ralentis sous 60 bpm', { how: 'by', param: 'global.tempo', v: (v) => v < 60 },
       BY + 'Sculpter > Global > Tempo sous 60 : tout le paysage ralentit.'),
-    Dm('m.phrase', ['m.phrase'], 'Passe la Mélodie auto en Phrase sur MAINTENANT', { how: 'hit', param: 'bells.mode', v: (v) => v === 'Phrase' },
+    Dm('m.phrase', ['m.phrase'], 'Passe la Mélodie auto en Phrase', { how: 'hit', param: 'bells.mode', v: (v) => v === 'Phrase' },
       ON1 + 'Sculpter > Mélodie auto > Jeu : Phrase. Le motif se répète et varie un peu à chaque tour.'),
-    Dm('m.nuage', ['m.grains'], 'Épaissis les grains (Densité au-dessus de 60) avant la fin de la mesure', { how: 'by', param: 'grains.density', src: ['user', 'macro', 'cc'], v: (v) => v >= 0.6 },
+    Dm('m.nuage', ['m.grains'], 'Épaissis les grains : Densité au-dessus de 60', { how: 'by', param: 'grains.density', src: ['user', 'macro', 'cc'], v: (v) => v >= 0.6 },
       BY + 'Sculpter > Grains > Densité au-dessus de 60 (ou Sculpter > Grands réglages > Densité{, ou la molette de modulation MIDI|}).'),
-    Dm('m.figer', ['m.grains2'], 'Fige le son sur MAINTENANT (❄{ ou Entrée|})', { how: 'hit', act: 'freeze' },
+    Dm('m.figer', ['m.grains2'], 'Fige le son (❄{ ou Entrée|})', { how: 'hit', act: 'freeze' },
       ON1 + '❄ Figer{ (ou Entrée)|} capture les 4 dernières secondes : les grains les rejouent.'),
 
     // Composer (S3.5: played, not drawn — the notes, the groove and the song come from playing them)
@@ -143,39 +143,47 @@
     }, '{● Rec en haut, joue un moment, puis ■ : ton morceau est gardé. Ou Composer > Morceau > ● Rec : tes sections, du début à la fin.|Touche ● Rec en haut, joue un peu, puis touche ■ pour arrêter.}'),
 
     // S11.1 the second and third objectives of each piece (generic, above)
-    Nn('k.notes', ['k.piano'], 32),
+    Nn('k.notes', ['k.piano'], 48),
     Br('m.ecoute', ['m.bells'], 20, 'Laisse jouer 20 mesures avec la Mélodie auto', () => on('bells'), 'Pendant la lecture, laisse la Mélodie auto improviser (Sculpter > Mélodie auto > On) : chaque mesure compte. Tu peux jouer par-dessus.'),
-    Tm('k.minute', ['k.piano'], 150, 'Joue pendant 2 minutes et demie'),
-    Br('h.ecoute', ['h.pad'], 20, 'Laisse jouer 20 mesures avec le Pad', () => on('pad'), 'Pendant la lecture, laisse les accords du Pad tourner (Sculpter > Pad > On) : chaque mesure compte.'),
-    Br('t.ecoute', ['racine'], 20, 'Écoute 20 mesures sans t\'arrêter', null, 'Lance la lecture et laisse tourner : chaque mesure compte. Regarde la ville réagir.'),
-    Nn('h.chant', ['h.pad'], 32, 'Joue 32 notes sur les accords du Pad', () => on('pad')),
-    Tm('t.joue', ['k.piano'], 180, 'Joue pendant 3 minutes'),
-    Nn('m.notes2', ['m.bells'], 56),
-    Br('m.phrase8', ['m.bells'], 28, 'Laisse jouer 28 mesures avec la Mélodie auto', () => on('bells'), 'Pendant la lecture, laisse la Mélodie auto improviser : écoute ce qui revient d\'une mesure à l\'autre.'),
-    Ch('h.accords', ['h.pad'], 14),
-    Br('h.tient', ['h.pad'], 28, 'Laisse jouer 28 mesures avec le Pad', () => on('pad'), 'Pendant la lecture, laisse les accords du Pad tourner : chaque mesure compte.'),
-    Tm('t.deux', ['t.son'], 210, 'Joue pendant 3 minutes et demie'),
-    Nn('e.loin', ['e.reverb'], 40, 'Joue 40 notes avec la Reverb au-dessus de 65', () => store.get('fx.space') >= 0.65,
+    Tm('k.minute', ['k.piano'], 60, 'Joue pendant 1 minute'),
+    Br('h.ecoute', ['h.pad'], 32, 'Laisse jouer 32 mesures avec le Pad', () => on('pad'), 'Pendant la lecture, laisse les accords du Pad tourner (Sculpter > Pad > On) : chaque mesure compte.'),
+    Br('t.ecoute', ['racine'], 28, 'Écoute 28 mesures sans t\'arrêter', null, 'Lance la lecture et laisse tourner : chaque mesure compte. Regarde la ville réagir.'),
+    Nn('h.chant', ['h.pad'], 48, 'Joue 48 notes sur les accords du Pad', () => on('pad')),
+    Tm('t.joue', ['k.piano'], 60, 'Joue pendant 1 minute'),
+    Nn('m.notes2', ['m.bells'], 80),
+    Br('m.phrase8', ['m.bells'], 40, 'Laisse jouer 40 mesures avec la Mélodie auto', () => on('bells'), 'Pendant la lecture, laisse la Mélodie auto improviser : écoute ce qui revient d\'une mesure à l\'autre.'),
+    Ch('h.accords', ['h.pad'], 20),
+    Br('h.tient', ['h.pad'], 40, 'Laisse jouer 40 mesures avec le Pad', () => on('pad'), 'Pendant la lecture, laisse les accords du Pad tourner : chaque mesure compte.'),
+    Tm('t.deux', ['t.son'], 60, 'Joue pendant 1 minute'),
+    Nn('e.loin', ['e.reverb'], 60, 'Joue 60 notes avec la Reverb au-dessus de 65', () => store.get('fx.space') >= 0.65,
       '{Sculpter > Effets > Reverb au-dessus de 65, puis joue (touches à l\'écran, A à L ou MIDI) : chaque note résonne.|Sculpter > Effets > Reverb au-dessus de 65, puis joue sur les touches de couleur : chaque note résonne.}'),
-    Br('e.salle8', ['e.reverb'], 20, 'Laisse jouer 20 mesures avec la Reverb au-dessus de 65', () => store.get('fx.space') >= 0.65, 'Sculpter > Effets > Reverb au-dessus de 65, puis laisse tourner : écoute la salle.'),
-    Ch('e.accords', ['e.reverb', 'h.pad'], 10, 'Joue 10 accords dans la Reverb', () => store.get('fx.space') >= 0.5),
-    Tm('e.minute', ['e.reverb'], 150, 'Joue pendant 2 minutes et demie'),
+    Br('e.salle8', ['e.reverb'], 32, 'Laisse jouer 32 mesures avec la Reverb au-dessus de 65', () => store.get('fx.space') >= 0.65, 'Sculpter > Effets > Reverb au-dessus de 65, puis laisse tourner : écoute la salle.'),
+    Ch('e.accords', ['e.reverb', 'h.pad'], 14, 'Joue 14 accords dans la Reverb', () => store.get('fx.space') >= 0.5),
+    Tm('e.minute', ['e.reverb'], 60, 'Joue pendant 1 minute'),
     Nn('t.notes', ['t.son'], 80),
-    Br('k.lumiere', ['t.macros'], 20, 'Laisse jouer 20 mesures avec la Lumière au-dessus de 60', () => store.get('macro.light') >= 0.6, 'Sculpter > Grands réglages > Lumière au-dessus de 60, puis laisse tourner.'),
-    Ch('h.accords2', ['h.key'], 14, 'Joue 14 accords dans ta nouvelle tonalité'),
-    Br('m.lent', ['m.tempo'], 20, 'Laisse jouer 20 mesures sous 60 bpm', () => store.get('global.tempo') < 60, 'Sculpter > Global > Tempo sous 60, puis laisse tourner : tout respire plus lentement.'),
-    Br('m.phrase16', ['m.phrase'], 28, 'Laisse jouer 28 mesures avec la Mélodie auto en Phrase', () => on('bells') && store.get('bells.mode') === 'Phrase', 'Sculpter > Mélodie auto > Jeu : Phrase, puis laisse tourner : le motif revient et varie.'),
-    Tm('c.minute', ['h.pad', 'm.bells'], 180, 'Joue pendant 3 minutes'),
-    Br('e.grande8', ['e.salle'], 20, 'Laisse jouer 20 mesures dans une grande salle (Taille au-dessus de 80)', () => store.get('fx.size') >= 0.8, 'Sculpter > Effets > Taille au-dessus de 80, puis laisse tourner.'),
-    Br('e.echo16', ['e.echo'], 28, 'Laisse jouer 28 mesures avec l\'Écho au-dessus de 45', () => store.get('fx.echo') >= 0.45, 'Sculpter > Effets > Écho au-dessus de 45, puis laisse tourner : les notes se répètent en rythme.'),
-    Br('c.ecrite', ['c.seq'], 20, 'Laisse jouer 20 mesures avec ta Mélodie écrite', () => on('seq'), 'Composer > Mélodie écrite > On (écris ou joue des notes dans le piano roll), puis laisse tourner.'),
+    Br('k.lumiere', ['t.macros'], 32, 'Laisse jouer 32 mesures avec la Lumière au-dessus de 60', () => store.get('macro.light') >= 0.6, 'Sculpter > Grands réglages > Lumière au-dessus de 60, puis laisse tourner.'),
+    Ch('h.accords2', ['h.key'], 20, 'Joue 20 accords dans ta nouvelle tonalité'),
+    Br('m.lent', ['m.tempo'], 32, 'Laisse jouer 32 mesures sous 60 bpm', () => store.get('global.tempo') < 60, 'Sculpter > Global > Tempo sous 60, puis laisse tourner : tout respire plus lentement.'),
+    Br('m.phrase16', ['m.phrase'], 40, 'Laisse jouer 40 mesures avec la Mélodie auto en Phrase', () => on('bells') && store.get('bells.mode') === 'Phrase', 'Sculpter > Mélodie auto > Jeu : Phrase, puis laisse tourner : le motif revient et varie.'),
+    Tm('c.minute', ['h.pad', 'm.bells'], 60, 'Joue pendant 1 minute'),
+    Br('e.grande8', ['e.salle'], 32, 'Laisse jouer 32 mesures dans une grande salle (Taille au-dessus de 80)', () => store.get('fx.size') >= 0.8, 'Sculpter > Effets > Taille au-dessus de 80, puis laisse tourner.'),
+    Br('e.echo16', ['e.echo'], 40, 'Laisse jouer 40 mesures avec l\'Écho au-dessus de 45', () => store.get('fx.echo') >= 0.45, 'Sculpter > Effets > Écho au-dessus de 45, puis laisse tourner : les notes se répètent en rythme.'),
+    Br('c.ecrite', ['c.seq'], 32, 'Laisse jouer 32 mesures avec ta Mélodie écrite', () => on('seq'), 'Composer > Mélodie écrite > On (écris ou joue des notes dans le piano roll), puis laisse tourner.'),
     Nn('t.notes2', ['t.journal'], 80),
-    Ch('h.accords3', ['h.scale', 'h.pad2'], 20),
-    Br('m.grains16', ['m.grains'], 28, 'Laisse jouer 28 mesures avec les Grains', () => on('grains'), 'Sculpter > Grains > On, puis laisse tourner : le nuage de grains vit avec la musique.'),
-    Br('e.cassette', ['e.tape'], 20, 'Laisse jouer 20 mesures avec la Cassette au-dessus de 50', () => store.get('fx.tape') >= 0.5, 'Sculpter > Effets > Cassette au-dessus de 50, puis laisse tourner : le son tremble comme une vieille bande.'),
-    Br('m.derive', ['m.evolve'], 28, 'Laisse jouer 28 mesures avec la Dérive au-dessus de 50', () => store.get('global.evolve') >= 0.5, 'Sculpter > Global > Dérive au-dessus de 50, puis laisse tourner : tes réglages bougent tout seuls.'),
-    Tm('m.deux', ['m.lfo'], 210, 'Joue pendant 3 minutes et demie'),
-    Tm('c.trois', ['c.rythme', 'h.prog'], 270, 'Joue pendant 4 minutes et demie'),
+    Ch('h.accords3', ['h.scale', 'h.pad2'], 28),
+    Br('m.grains16', ['m.grains'], 40, 'Laisse jouer 40 mesures avec les Grains', () => on('grains'), 'Sculpter > Grains > On, puis laisse tourner : le nuage de grains vit avec la musique.'),
+    Br('e.cassette', ['e.tape'], 32, 'Laisse jouer 32 mesures avec la Cassette au-dessus de 50', () => store.get('fx.tape') >= 0.5, 'Sculpter > Effets > Cassette au-dessus de 50, puis laisse tourner : le son tremble comme une vieille bande.'),
+    Br('m.derive', ['m.evolve'], 40, 'Laisse jouer 40 mesures avec la Dérive au-dessus de 50', () => store.get('global.evolve') >= 0.5, 'Sculpter > Global > Dérive au-dessus de 50, puis laisse tourner : tes réglages bougent tout seuls.'),
+    Tm('m.deux', ['m.lfo'], 60, 'Joue pendant 1 minute'),
+    Tm('c.trois', ['c.rythme', 'h.prog'], 60, 'Joue pendant 1 minute'),
+    // S11.5: « Joue pendant… » is one minute at most; the pieces that had a long one listen a little longer instead
+    Br('h.melo', ['m.bells'], 36, 'Laisse jouer 36 mesures avec la Mélodie auto', () => on('bells'), 'Pendant la lecture, laisse la Mélodie auto improviser : chaque mesure compte. Tu peux jouer par-dessus.'),
+    Br('t.drone8', ['racine'], 36, 'Laisse jouer 36 mesures avec le drone', () => on('drone'), 'Pendant la lecture, laisse le drone tenir sa note : chaque mesure compte.'),
+    Br('t.timbre8', ['t.son'], 36, 'Laisse jouer 36 mesures avec ton son de drone', () => on('drone'), 'Pendant la lecture, écoute le timbre que tu as choisi (Sculpter > Drone > Timbre) : chaque mesure compte.'),
+    Br('e.pad8', ['h.pad', 'e.reverb'], 36, 'Laisse jouer 36 mesures avec le Pad dans la Reverb', () => on('pad') && store.get('fx.space') >= 0.5, 'Sculpter > Effets > Reverb au-dessus de 50, le Pad allumé, puis laisse tourner.'),
+    Br('c.ensemble', ['h.pad', 'm.bells'], 36, 'Laisse jouer 36 mesures avec le Pad et la Mélodie auto', () => on('pad') && on('bells'), 'Pendant la lecture, le Pad et la Mélodie auto allumés : laisse-les jouer ensemble.'),
+    Br('m.grains8', ['m.grains2'], 36, 'Laisse jouer 36 mesures avec les Grains', () => on('grains'), 'Sculpter > Grains > On, puis laisse tourner.'),
+    Br('c.basse8', ['c.rythme'], 36, 'Laisse jouer 36 mesures avec la Basse', () => on('bass'), 'Composer > Basse > On, puis laisse tourner : la ligne de basse tient le morceau.'),
 
     // gates opened by a Réponse (S4.3: they replaced the « set the knobs to a target » puzzles; S4.2: played in the music)
     E('p.premier', ['t.son', 'h.pad', 'm.bells'], 'Premier reflet'),
@@ -191,17 +199,17 @@
   // (tests/balance.html). Pace (balance.html): the first piece after ~1 min of play, then one every 2–4 min.
   const OPENS = {
     'm.bells': ['k.allume', 'k.drone', 'k.ecoute'], 'k.piano': ['m.ecoute', 'k.couleur'],
-    'h.pad': ['m.notes', 'k.minute'], 't.son': ['k.notes', 't.ecoute'],
+    'h.pad': ['m.notes', 'k.minute', 'h.melo'], 't.son': ['k.notes', 't.ecoute'],
     'e.reverb': ['m.monte', 'h.ecoute'], 't.viz': ['m.descend', 'v.regarde'], 'h.drone': ['h.forcer', 'h.chant'],
-    't.macros': ['p.premier', 't.joue'], 'm.tempo': ['m.pas', 'm.notes2'], 'm.phrase': ['p.suite', 'm.phrase8'],
+    't.macros': ['p.premier', 't.joue', 't.drone8'], 'm.tempo': ['m.pas', 'm.notes2'], 'm.phrase': ['p.suite', 'm.phrase8'],
     'h.key': ['h.suivre', 'h.accords'], 'h.pad2': ['h.son', 'h.tient'],
-    't.journal': ['k.timbre', 't.deux'], 'e.echo': ['e.resonne', 'e.loin'], 'e.salle': ['m.respire', 'e.salle8', 'e.accords'],
-    'e.texture': ['e.noyer', 'e.minute'], 't.rec': ['k.moments', 't.notes'], 't.dice': ['k.macros', 'k.lumiere'],
+    't.journal': ['k.timbre', 't.deux', 't.timbre8'], 'e.echo': ['e.resonne', 'e.loin'], 'e.salle': ['m.respire', 'e.salle8', 'e.accords'],
+    'e.texture': ['e.noyer', 'e.minute', 'e.pad8'], 't.rec': ['k.moments', 't.notes'], 't.dice': ['k.macros', 'k.lumiere'],
     'h.scale': ['h.tonalite', 'h.accords2'], 'm.evolve': ['m.ralenti', 'm.lent'], 'm.grains': ['m.phrase', 'm.phrase16'],
-    'c.seq': ['p.composer', 'c.minute'], 'e.halo': ['e.grande', 'e.grande8'], 'e.tape': ['e.echo', 'e.echo16'],
+    'c.seq': ['p.composer', 'c.minute', 'c.ensemble'], 'e.halo': ['e.grande', 'e.grande8'], 'e.tape': ['e.echo', 'e.echo16'],
     'c.rythme': ['c.reclive', 'c.ecrite'], 't.share': ['k.enreg', 't.notes2'], 'h.prog': ['p.gamme', 'h.accords3'],
     'm.grains2': ['m.nuage', 'm.grains16'], 'e.lofi': ['p.espace', 'e.cassette'], 'm.lfo': ['p.mouvement', 'm.derive'],
-    'm.scenes': ['m.figer', 'm.deux'], 'c.song': ['c.groove', 'c.trois'],
+    'm.scenes': ['m.figer', 'm.deux', 'm.grains8'], 'c.song': ['c.groove', 'c.trois', 'c.basse8'],
   };
   // before S11.1 a piece had ONE challenge (older saves: done, the piece is ready)
   const LEGACY = {
@@ -214,7 +222,7 @@
     'c.song': 'c.groove',
   };
   // S11.1: whatever is played with notes or chords (and a Réponse, a Rec live) waits for the Piano
-  for (const d of DEFS) if ((d.on.note || d.on.act && d.id !== 'k.allume' && d.id !== 'c.morceau' || d.kind === 'reponse') && !d.need.includes('k.piano')) d.need.push('k.piano');
+  for (const d of DEFS) if ((d.on.note || d.on.act && !d.gesture && d.id !== 'k.allume' && d.id !== 'c.morceau' || d.kind === 'reponse') && !d.need.includes('k.piano')) d.need.push('k.piano');
   const byId = Object.fromEntries(DEFS.map((d) => [d.id, d]));
   for (const [node, ids] of Object.entries(OPENS)) for (const id of ids) byId[id].node = node;
   byId['c.morceau'].first = true;

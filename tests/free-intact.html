@@ -82,10 +82,13 @@ f.addEventListener('load', async () => {
     ok(seenViz.has('Jardin') && V.mode === 'Jardin' && GV.active && GV.free && GV.answer(0) === null && GV.dawnLevel(0) === 0 && d.getElementById('vizMode').textContent === 'Ville',
       'visuel : la Ville par défaut en libre, reflet sans jeu (aucune découverte, Réponse ni aube) ; Orbes, Horizon, Spectre au choix (' + [...seenViz].join(', ') + ')');
 
-    // S11.4: the Melody's switch is « Auto »; off, its settings stay lit (they are the keys' sound too)
-    { const was = A.store.get('bells.on'), tg = d.querySelector('.panel[data-sec=bells] > header .tog'), ctl = d.querySelector('.panel[data-sec=bells] > .ctls');
-      A.store.set('bells.on', false, 'user'); await wait(30);
-      ok(/Auto/.test(tg.textContent) && !tg.classList.contains('on') && w.getComputedStyle(ctl).opacity === '1', 'Mélodie : l\'interrupteur s\'appelle « Auto », éteint ses réglages restent allumés (ce sont ceux des touches)');
+    // S11.4 / S11.10: the Melody — its sound on top (the keys' too), a sub-frame « Mélodie auto » with the Auto switch;
+    // Auto off dims only the improvisation's settings
+    { const was = A.store.get('bells.on'), pn = d.querySelector('.panel[data-sec=bells]'), tg = pn.querySelector('.sub[data-sub=auto] > header .tog'), ctl = pn.querySelector(':scope > .ctls'), sc = pn.querySelector('.sub > .ctls');
+      A.store.set('bells.on', false, 'user'); await wait(600);
+      ok(/^Mélodie$/.test(pn.querySelector('h2').textContent) && /Auto/.test(tg.textContent) && !tg.classList.contains('on') && w.getComputedStyle(ctl).opacity === '1' && +w.getComputedStyle(sc).opacity < 1
+        && ctl.querySelector('[data-key="bells.wave"]') && sc.querySelector('[data-key="bells.mode"]') && sc.querySelector('[data-key="bells.range"]'),
+        'Mélodie : le son en haut (Timbre…), « Mélodie auto » dans un sous-cadre avec Auto ; Auto éteint ne grise que ses réglages');
       A.store.set('bells.on', was, 'user'); await wait(30); }
 
     // S11.6: the help bubble — a mouse resting on « Registre » (Mélodie auto) shows its name and what it does

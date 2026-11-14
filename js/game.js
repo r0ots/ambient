@@ -21,7 +21,6 @@
     log: [], // S11.1 the history the Objectifs widget shows: [{id (objective) | disc (discovery), node, t, by}], oldest first
     ob: 2, // S11.1 a piece asks for 2–3 objectives (older saves: 1, contracts.migrate)
     rng: null, // seed of the Réponse phrases (contracts.js)
-    dem: null, // S5.5 live asks (demands.js): combo, best, misses per challenge
     secrets: null, // discoveries state (discoveries.js; the field keeps its old name: older saves' secrets are discoveries)
     ended: false, // whole tree owned: the instrument was handed over (S3.7), no game interface any more
   });

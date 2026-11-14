@@ -4,8 +4,8 @@
      time model per objective. A piece is READY once all its objectives are done; the player opens it in the Arbre
      (TIME.open: the widget's « ✦ … est prêt », the Arbre, its card, ✦ Ouvrir).
      Objectives of one piece run together: what is played or listened to (notes, chords, « let N bars play », « play for
-     a minute ») counts at the same time (the longest one + a quarter of the others); a live ask, a Réponse, a recording
-     or a gesture on a control come one after the other.
+     a minute ») counts at the same time (the longest one + a quarter of the others); a Réponse, a recording or a
+     gesture on a control (S11.5: no live ask any more) come one after the other.
      S11.1 targets: the first piece after ~1 min of real play; a piece every 2–4 min on average; the nephew (MIDI keyboard,
      right and in time, finds discoveries, placed « Musicien » then « Virtuose » — a placement checks ONE objective of
      each piece of its set, never a whole piece) completes the path in ~1 h 30 – 2 h; no order of play ever blocks
@@ -23,13 +23,13 @@ document.getElementById('f').addEventListener('load', async () => {
     const BAR = 4 * 60 / A.store.spec('global.tempo').def; // s, default tempo
     const RUNS = ['m.monte', 'm.descend', 'm.pas', 'm.respire'];
     // seconds per objective for a calm player; `skill` (the musician) speeds up what is played, never what is listened to
-    const TIME = { demande: 60, open: 15, secret: 150 };
-    const kindOf = (d) => d.kind === 'demande' ? 'ask' : d.kind === 'reponse' ? 'resp' : d.on.bar ? 'bars' : d.unit === 's' ? 'time' : d.on.rec ? 'rec' : d.on.bass ? 'bass' : d.on.param ? 'param'
+    const TIME = { geste: 45, open: 15, secret: 150 };
+    const kindOf = (d) => d.gesture ? 'gesture' : d.kind === 'reponse' ? 'resp' : d.on.bar ? 'bars' : d.unit === 's' ? 'time' : d.on.rec ? 'rec' : d.on.bass ? 'bass' : d.on.param ? 'param'
       : d.on.act && d.id === 'k.allume' ? 'wake' : d.on.act ? 'chords' : RUNS.includes(d.id) ? 'run' : 'notes';
     const PAR = ['bars', 'time', 'notes', 'chords', 'run', 'bass']; // played / listened at the same time
     const tOf = (d, skill = 1) => {
       switch (kindOf(d)) {
-        case 'ask': return TIME.demande;
+        case 'gesture': return TIME.geste;
         case 'resp': return (45 + 15 * P.respLen(d.d)) * (skill < 1 ? 0.75 : 1);
         case 'bars': return 15 + d.goal * BAR;
         case 'time': return d.goal * 1.25;
@@ -112,8 +112,9 @@ document.getElementById('f').addEventListener('load', async () => {
 
     const pieces = K.PIECES.map((n) => K.forNode(n).length);
     ok(pieces.every((x) => x >= 2 && x <= 3), `S11.1 : chaque pièce demande 2 ou 3 objectifs (${pieces.filter((x) => x === 2).length} × 2, ${pieces.filter((x) => x === 3).length} × 3)`);
-    const asks = K.DEFS.filter((d) => d.kind === 'demande');
-    ok(asks.length && asks.every((d) => d.node && A.demands.MISSES > 0 && d.ask && ['hit', 'by'].includes(d.ask.how)), `${asks.length} objectifs demandés en musique (${TIME.demande} s chacun), cochés quand même après ${A.demands.MISSES} ratés : jamais d'impasse`);
+    const ges = K.DEFS.filter((d) => d.gesture), tms = K.DEFS.filter((d) => d.unit === 's');
+    ok(ges.length && ges.every((d) => d.node && d.goal === 1 && !d.kind) && !K.DEFS.some((d) => d.kind === 'demande'), `S11.5 : ${ges.length} gestes sur une commande, simples (${TIME.geste} s chacun), sans compte à rebours`);
+    ok(tms.every((d) => d.goal <= 60), `S11.5 : « Joue pendant… » 1 minute au plus (${tms.map((d) => d.goal).join(', ')} s)`);
     const echoes = K.DEFS.filter((d) => d.kind === 'reponse').map((d) => `${d.title} ${P.respLen(d.d)}`);
     ok(K.DEFS.filter((d) => d.kind === 'reponse').every((d) => P.respLen(d.d) >= 4 && P.respLen(d.d) <= 7), `Réponses de 4 à 7 notes (${echoes.join(', ')})`);
     log(`ouvrir une pièce prête : ${TIME.open} s (le widget, l'Arbre, sa fiche, ✦ Ouvrir) ; ${K.DEFS.length} objectifs, ${nodes.length - 1} pièces`);
