@@ -2,7 +2,9 @@
 // garden-visual.js and city-gl.js; plugs into the city engine (S8.1) only through its public hooks: `gv.addDim` (the
 // world: `music.level` / `music.kick` / `music.bass`, and the `power` cut of a RATÉ), `gv.addLayer` (six layers) and
 // `gv.impulse` / `gv.energy` (the windows that blink); the bloom pulse through `AMB.cityGL.pulse`.
-//   - LASERS: every melody note (Mélodie auto, Mélodie écrite, the player's pads / keys / MIDI, the looper) fires a beam
+//   (S9.3: each of these only with its function heard — grid = Basse, ring = Pulsations, sky tint = Pad, shooting stars =
+//   Texture / Grains; the Mélodie auto's notes are cars and the looper's airships, js/city-life.js)
+//   - LASERS: every melody note (Mélodie écrite, the player's pads / keys / MIDI) fires a beam
 //     from the roof of its layer's building: elevation = pitch (low = grazing, high = vertical), colour = the layer, length
 //     in time = the note, velocity = width and glow; a forced chord = a fan; the player's beams beat the machine's.
 //   - KICK (and the strong beats without a kick): the city throbs (bloom), a ring of light runs over the ground from the
@@ -70,6 +72,9 @@
     listen(bus) {
       bus.on('note', (n) => {
         if (!n || n.live) return; // a live note is seen through `live` (one beam, not two)
+        // S9.3: the Mélodie auto's notes are flying cars and the looper's blink its airships (js/city-life.js); a laser
+        // is a note of the Mélodie écrite or of the player
+        if (n.loop || n.layer === 'bells') return;
         if (MELODY.has(n.layer)) this.push('laser', { layer: n.layer, midi: n.midi, vel: n.vel == null ? 0.7 : n.vel, dur: n.dur, time: n.time, who: n.loop ? 'loop' : 'machine' });
         else if (n.layer === 'bass') this.push('bass', n);
       });
@@ -182,7 +187,7 @@
       if (G && G.pulse) G.pulse('bloom', (kind === 'kick' ? 0.7 : 0.4) * v, 260);
       for (const p of GV.plants) GV.energy[p.id] = Math.max(GV.energy[p.id] || 0, (kind === 'kick' ? 0.42 : 0.28) * v * (0.6 + 0.4 * Math.min(1, J)));
       GV.impulse('beat', v);
-      if (this.still()) return;
+      if (this.still() || !GV.feat.perc) return; // S9.3: the ring over the ground is the Pulsations'
       const cap = Math.max(1, Math.round(CAPS.waves * this.q));
       if (this.waves.length >= cap) this.waves.shift();
       this.waves.push({ t0: this.now, dur: kind === 'kick' ? 0.95 : 0.8, a: v * Math.min(1.5, J), col: kind === 'kick' ? [255, 63, 164] : [63, 240, 255] });
@@ -194,6 +199,7 @@
     },
     star(who, t, force) {
       if (this.still()) return null;
+      if (!force && !(GV.feat.texture || GV.feat.grains)) return null; // S9.3: shooting stars belong to the starry sky (Texture, Grains)
       if (!force && t - this.lastStar[who] < STAR_GAP[who]) return null;
       const cap = Math.max(1, Math.round(CAPS.stars * this.q)); if (this.stars.length >= cap) return null;
       this.lastStar[who] = t;
@@ -298,13 +304,13 @@
   // the sky (z 5, over the sky, under the stars): the chord's tint sweeping across, the clouds lit from below
   GV.addLayer({ id: 'music-sky', z: 5, draw: timed((g, w, cam, v) => {
     CM.cost_ = 0;
-    const t = CM.tint, W = cam.W, gd = cam.y(1, cam.gd), now = CM.now, still = CM.still();
-    if (t.a < 0.01) return;
+    const t = CM.tint, W = cam.W, gd = cam.y(1, cam.gd), now = CM.now, still = CM.still(), pk = GV.featK.pad || 0;
+    if (t.a < 0.01 || pk < 0.01) return; // S9.3: the sky takes the chord's colour once the Pad is heard
     g.globalCompositeOperation = 'lighter'; g.imageSmoothingEnabled = true;
     const sw = CM.sweep, e = sw && sw.dur ? ease(clamp((now - sw.t0) / sw.dur)) : 1;
     let x0 = 0, x1 = W; // the new tint covers [x0, x1]; the old one the rest
     if (e < 1) { if (sw.dir > 0) x1 = e * W * 1.15; else x0 = W - e * W * 1.15; }
-    const kOff = CM.out() ? 0.15 : 1, A = Math.min(1, t.a) * 0.55 * kOff;
+    const kOff = (CM.out() ? 0.15 : 1) * pk, A = Math.min(1, t.a) * 0.55 * kOff;
     if (t.prev && e < 1) { g.globalAlpha = Math.min(1, t.prevA || 0.22) * 0.55 * kOff; const sp = CM.skyGrad(t.prev); if (sw.dir > 0) g.drawImage(sp, Math.max(0, x1), 0, W - Math.max(0, x1), gd); else g.drawImage(sp, 0, 0, Math.min(W, x0), gd); }
     g.globalAlpha = A; g.drawImage(CM.skyGrad(t.col), Math.max(0, x0), 0, Math.max(0, Math.min(W, x1) - Math.max(0, x0)), gd);
     if (e < 1) { // the front of the sweep: the tint brighter towards its leading edge, a thin bright line on it
@@ -344,21 +350,22 @@
     const G = CM.grid, W = cam.W, H = cam.H, hz = cam.y(1, cam.gd); if (hz >= H - 2) return;
     const rows = Math.max(4, Math.round(8 * CM.q)), cols = Math.max(6, Math.round(12 * CM.q)), ph = G.phase, ZF = 4; // rows: z step 1/rows, up to z = ZF
     CM.gridInfo = { project: (u, z) => CM.project(cam, u, z), phase: ph, rows, cols, flash: G.flash };
-    const base = (0.07 + 0.05 * G.base) * (0.5 + 0.5 * (w.play == null ? 1 : w.play)), a = (base + 0.55 * G.flash) * (CM.out() ? 0.1 : 1);
+    const bk = GV.featK.bass || 0; // S9.3: the grid is the Bass's: it unrolls from us to the horizon when the bass is heard
+    const base = (0.07 + 0.05 * G.base) * (0.5 + 0.5 * (w.play == null ? 1 : w.play)), a = (base + 0.55 * G.flash) * (CM.out() ? 0.1 : 1) * Math.min(1, bk * 1.5);
     if (a < 0.01) return;
     const lw = Math.max(1, Math.round(cam.px * (0.35 + 0.35 * G.flash)));
     g.globalCompositeOperation = 'lighter'; g.lineWidth = lw;
     // the lines running to the horizon (u step 2/cols)
     g.strokeStyle = rgba([255, 63, 164], a); g.beginPath();
-    for (let i = -2 * cols; i <= 2 * cols; i++) { const u = i * 2 / cols, p0 = CM.project(cam, u, 0), p1 = CM.project(cam, u, 60); g.moveTo(p0.x, p0.y); g.lineTo(p1.x, p1.y); }
+    for (let i = -2 * cols; i <= 2 * cols; i++) { const u = i * 2 / cols, p0 = CM.project(cam, u, 0), p1 = CM.project(cam, u, bk >= 1 ? 60 : 0.02 + 60 * bk ** 3); g.moveTo(p0.x, p0.y); g.lineTo(p1.x, p1.y); }
     g.stroke();
     // the rows (z step 1/rows), one per beat, coming towards us; brighter near us
-    for (let i = 1; i <= rows * ZF; i++) {
+    for (let i = 1; i <= rows * ZF * bk; i++) {
       const z = (i - ph) / rows; if (z <= 0) continue;
       const p = CM.project(cam, 0, z), aa = a * 1.3 / (1 + z) ** 1.7; // (S8.8: the far rows fade: no bright slab at the horizon)
       g.fillStyle = rgba(G.flash > 0.3 ? [255, 120, 210] : [255, 63, 164], aa); g.fillRect(0, Math.round(p.y), W, lw);
     }
-    g.fillStyle = rgba([63, 240, 255], Math.min(1, a * 1.6)); g.fillRect(0, Math.round(hz), W, lw); // the horizon line
+    if (bk > 0.95) { g.fillStyle = rgba([63, 240, 255], Math.min(1, a * 1.6)); g.fillRect(0, Math.round(hz), W, lw); } // the horizon line
     g.globalCompositeOperation = 'source-over';
   }) });
   // the ring of the kick (z 34): an ellipse of light running over the ground from the street's centre

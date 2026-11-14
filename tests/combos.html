@@ -15,7 +15,7 @@ const f = document.getElementById('f');
 f.addEventListener('load', async () => {
   if (f.dataset.ran) return; f.dataset.ran = 1;
   try {
-    const w = f.contentWindow, d = f.contentDocument, A = w.AMB, G = A.game, D = A.discoveries, C = A.cityCombos, GV = A.gardenVisual, St = A.store, T = A.tree, GL = A.cityGL;
+    const w = f.contentWindow, d = f.contentDocument, A = w.AMB, G = A.game, D = A.discoveries, C = A.cityCombos, GV = A.gardenVisual, St = A.store, T = A.tree, GL = A.cityGL; GV.awake = true; // (S9.3: the city stands once the music has been heard)
     w.addEventListener('error', (e) => log('ERROR ' + e.message + ' @' + e.filename + ':' + e.lineno));
     G.setMode('path'); A.garden.welcome(false);
     GV.paused = true; // the mechanics are stepped by hand below (no frame of the app interferes)
@@ -114,11 +114,12 @@ f.addEventListener('load', async () => {
       GV.reduced = false; }
 
     // --- 6. each SUPER transforms the screen (pixels that change vs the same city without it), and its cost
-    { own(); base(); A.perform.setMode('sculpt'); A.visual.gardenSync(); GV.active = true; GV.visible = true; GV.post2d = true; // (1984 drawn in 2D: no WebGL here)
+    { own(); base(); for (const id of ['drone', 'pad', 'bells', 'texture', 'grains', 'seq', 'bass', 'perc']) St.set(id + '.on', true, 'user'); // (S9.3: a full city = every layer active)
+      A.perform.setMode('sculpt'); A.visual.gardenSync(); GV.active = true; GV.visible = true; GV.post2d = true; // (1984 drawn in 2D: no WebGL here)
       const W0 = 640, H0 = 400, cv = d.createElement('canvas'); cv.width = W0; cv.height = H0; const g = cv.getContext('2d');
       const frame = (n) => { for (let i = 0; i < n; i++) { GV.lastT = GV.now() - 33; GV.paused = false; GV.frame(g, W0, H0); GV.paused = true; } return g.getImageData(0, 0, W0, H0).data; };
       const stepC = C.step.bind(C); let force = null; C.step = function (dt) { if (force) { this.cur = force; this.lvl = { [force.id]: 1 }; this.any = true; this.T = GV.st; return 1; } return stepC(dt); };
-      GV.refresh(W0, H0, true); force = null; C.stop(); const ref = frame(40);
+      GV.refresh(W0, H0, true); force = null; C.stop(); frame(150); const ref = frame(40); // (the buildings just switched on are built first)
       const rep2 = [], weak = [], wash = [], washed = []; let wire = null;
       for (const c of C.COMBOS) {
         force = { id: c.id, n: c.n, phase: 'super', charge: 1, beats: 9, sp: 0.6, rounds: 0, left: false }; C.bolts.length = 0; if (c.id === 'orage') { C.strike(C.roofs()[0], 1); C.strike(null, 2); }

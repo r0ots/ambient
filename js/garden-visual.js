@@ -7,7 +7,7 @@
 //      element shows its layer's settings), SCENE (every other control drives a scene layer), SPLASH (each note seen).
 //      (S8.7: the combos are drawn by js/city-combos.js, through the hooks below.)
 //   2. THE WORLD MODEL (`gv.world`, smoothed every frame): named DIMENSIONS (table DIMS: courant = power, trafic, caméra
-//      = cam.back / cam.depth / cam.fog, météo = weather.rain / wind / storm, usure VHS, population, chantiers = sites,
+//      = cam.back / cam.depth / cam.fog, météo = weather.rain / wind / storm, usure VHS, chantiers = sites,
 //      aube, lecture), each `aim(c)` → 0..1 from the settings, the open layers and the scene, with its own smoothing;
 //      plus IMPULSES (table PULSES: note, chord, beat, kick, flash, build) that decay on their own. The BUILDINGS (one per
 //      open layer, `plants`) are part of it: a height in cells that never scales — a building that gets taller is BUILT
@@ -129,6 +129,34 @@
     return [];
   }
 
+  // ---- S9.3 « La ville qui grandit avec toi »: FUNCTION → ELEMENT. An element of the city exists only when its function
+  // is OPEN (its node of the tree; everything in free mode) AND ACTIVE (its layer on and audible, its effect above zero,
+  // loops in the looper…), and only once the music has been heard (`awake`: before the first note, an empty city at night:
+  // ground, horizon, moon, sky). Activating builds it (the S8.1 construction for the buildings, a reveal for the others),
+  // switching it off takes it down. What MOVES (cars, light-cycles, airships, people, lasers) only lives while it plays
+  // (js/city-life.js, js/city-music.js). Density makes no building: it multiplies what exists (`mult`). The grands
+  // réglages and the combos modulate what exists. gv.feat[id] = exists now; gv.featK[id] = 0..1 smoothed (reveal).
+  // on(get, app): app = {loops, sections, found} (the looper's loops heard, the song's sections, discoveries found).
+  const layerOn = (id) => (get) => val(get, id + '.on') !== false && norm(id + '.vol', get(id + '.vol')) > 0.01;
+  const FUNCS = {
+    drone: { node: 'racine', on: layerOn('drone'), el: 'la tour centrale, son antenne pulse' },
+    pad: { node: 'h.pad', on: layerOn('pad'), el: 'la pyramide violette, brume néon au sol, fenêtres au rythme des accords, ciel à la couleur de l\'accord' },
+    bells: { node: 'm.bells', on: layerOn('bells'), el: 'l\'enseigne (Réponse) et la voie aérienne balisée : une voiture volante par note' },
+    texture: { node: 'e.texture', on: layerOn('texture'), el: 'le mât radio ; le ciel étoilé, les étoiles filantes' },
+    grains: { node: 'm.grains', on: layerOn('grains'), el: 'la parabole ; le ciel étoilé, les étincelles' },
+    seq: { node: 'c.seq', on: layerOn('seq'), el: 'l\'écran géant ; un laser par note (comme les notes jouées)' },
+    bass: { node: 'c.rythme', on: layerOn('bass'), el: 'le pylône ; la grille du sol qui défile, une moto par note' },
+    perc: { node: 'c.rythme', on: layerOn('perc'), el: 'la tour d\'envol ; les projecteurs, l\'onde au sol sur la grosse caisse' },
+    chords: { node: 'h.prog', on: layerOn('pad'), el: 'l\'enseigne holographique : le nom de l\'accord' },
+    reverb: { node: 'e.reverb', on: (get) => norm('fx.space', get('fx.space')) > 0.02, el: 'le sol mouillé qui reflète la ville' },
+    echo: { node: 'e.echo', on: (get) => norm('fx.echo', get('fx.echo')) > 0.02, el: 'les reflets et les tours doublés, décalés' },
+    looper: { node: 'c.song', on: (get, app) => app.loops > 0, el: 'le mât d\'amarrage ; un dirigeable par boucle' },
+    song: { node: 'c.song', on: (get, app) => app.sections > 0, el: 'un quartier par section, celui qui joue s\'allume' },
+    people: { node: null, on: (get, app) => app.found > 0, el: 'un habitant par découverte, dehors quand ça joue' },
+  };
+  // Densité → how many of each moving thing per event (1 up to the default, ×3 at the top)
+  const mult = (d) => 1 + Math.floor(Math.max(0, (+d || 0) - 0.5) * 4.01);
+
   // ---- S5.8 SETTINGS → SCENE: every control the elements do not show drives a layer of the scene. A layer is one
   // intensity 0..1 (the MEAN of its cells: a select = its option's rank, a toggle 0/1, a text = how much it holds, a knob =
   // its range); `poll` = app state outside the store (mode, playback, song). A touched control (sources user / macro / cc,
@@ -139,13 +167,13 @@
     hue: { at: 'ciel : teinte', keys: ['global.key', 'global.tuning'] },
     clouds: { at: 'ciel : nuages qui dérivent', keys: ['global.evolve'] },
     twinkle: { at: 'ciel : étoiles qui scintillent', keys: ['mod.l1target', 'mod.l1shape', 'mod.l1rate', 'mod.l1depth', 'mod.l2target', 'mod.l2shape', 'mod.l2rate', 'mod.l2depth', 'auto.on', 'auto.target', 'auto.bars', 'auto.curve'] },
-    aurora: { at: 'lumières : aurores néon', keys: ['fx.shimmer'] },
-    rays: { at: 'lumières : projecteurs qui balaient le ciel', keys: ['drone.follow', 'pad.length', 'pad.prog', 'pad.custom', 'pad.counter'] },
-    fireflies: { at: 'lumières : drones qui clignotent', keys: ['bells.mode', 'bells.phraseLen', 'bells.mutate', 'bells.range', 'seq.mode', 'seq.arpDir', 'seq.arpRate', 'seq.arpOct', 'seq.steps', 'seq.octave', 'seq.follow', 'seq.decay', 'seq.mutate', 'seq.patB', 'seq.patC', 'seq.patD', 'seq.slot', 'seq.chain'] },
-    snow: { at: 'météo : neige de pixels', keys: ['grains.scan', 'grains.pitch', 'grains.reverse', 'grains.glide'] },
-    frost: { at: 'météo : givre', keys: ['grains.source'], ev: 'freeze' },
-    ripple: { at: 'sol : ondulation', keys: ['global.swing', 'global.humanize', 'bass.octave', 'perc.steps'] },
-    echo: { at: 'filtre : écho (bâtiments fantômes)', keys: ['fx.echo', 'fx.echoTime', 'fx.feedback'] },
+    aurora: { at: 'lumières : aurores néon', keys: ['fx.shimmer'], of: ['reverb'] },
+    rays: { at: 'lumières : projecteurs qui balaient le ciel', keys: ['drone.follow', 'pad.length', 'pad.prog', 'pad.custom', 'pad.counter'], of: ['perc'] },
+    fireflies: { at: 'lumières : drones qui clignotent', keys: ['bells.mode', 'bells.phraseLen', 'bells.mutate', 'bells.range', 'seq.mode', 'seq.arpDir', 'seq.arpRate', 'seq.arpOct', 'seq.steps', 'seq.octave', 'seq.follow', 'seq.decay', 'seq.mutate', 'seq.patB', 'seq.patC', 'seq.patD', 'seq.slot', 'seq.chain'], of: ['bells', 'seq'] },
+    snow: { at: 'météo : neige de pixels', keys: ['grains.scan', 'grains.pitch', 'grains.reverse', 'grains.glide'], of: ['grains'] },
+    frost: { at: 'météo : givre', keys: ['grains.source'], ev: 'freeze', of: ['grains'] },
+    ripple: { at: 'sol : ondulation', keys: ['global.swing', 'global.humanize', 'bass.octave', 'perc.steps'], of: ['bass', 'perc'] },
+    echo: { at: 'filtre : écho (bâtiments fantômes)', keys: ['fx.echo', 'fx.echoTime', 'fx.feedback'], of: ['echo'] },
     grain: { at: 'filtre : grain et vignette', keys: ['fx.lofi'] },
     lens: { at: 'filtre : portée (Composer)', poll: () => (AMB.mode === 'compose' ? 1 : 0) },
     play: { at: 'lumière : allumée en lecture, voilée à l\'arrêt', poll: () => (AMB.seq && AMB.seq.playing ? 1 : 0) },
@@ -235,7 +263,6 @@
     'weather.wind': { tau: 2, at: 'météo : vent (pluie penchée, nuages)', aim: (c) => 0.15 + 0.85 * c.L.clouds },
     'weather.storm': { tau: 2, at: 'météo : orage (éclairs)', aim: (c) => (1 - c.dawn) * clamp((c.nature - 0.75) / 0.25) },
     vhs: { tau: 0.6, at: 'usure VHS (bande, grain)', aim: (c) => c.all.worn },
-    population: { tau: 2, at: 'population : la ville habitée (ville lointaine allumée)', aim: (c) => Math.max(c.dawn, clamp(0.05 + c.plants.length / 8) * (0.5 + 0.5 * c.L.play)) },
     sites: { tau: 0.4, at: 'chantiers : bâtiments en construction ou en démolition', aim: (c) => clamp(c.sites / 3) },
     dawn: { tau: 0, at: 'aube (fin du Parcours)', aim: (c) => c.dawn },
     play: { tau: 0.3, at: 'lecture', aim: (c) => c.L.play },
@@ -254,7 +281,7 @@
   // of the old plants are kept (code), the drawing is the city's:
   //   reed = Tour (Drone), bush = Pyramide (Pad), bell = Enseigne néon (Mélodie auto), fern = Antenne radio (Texture),
   //   puff = Parabole (Grains), vine = Écran géant (Mélodie écrite), cactus = Pylône (Basse), shroom = Tour d'envol et
-  //   voitures volantes (Pulsations), crystal = Hologramme (a discovery).
+  //   voitures volantes (Pulsations). (S9.3: the discoveries are inhabitants now, js/city-life.js.)
   // tones: 0 frame, 1 wall, 2 lit window, 3 neon tube, 4 hot light, 6 window (lit or not: dress, by Lumière), 7 dark
   // window, 8 red beacon, 12 cable (dim)
   const CW = 25; // sprite width in cells (axis at column 12)
@@ -313,10 +340,6 @@
       for (let y = b; y < hC; y++) for (let x = -hw; x <= hw; x++) put(C + x, y, Math.abs(x) === hw || y === b || y === hC - 1 ? 0 : 1);
       for (let y = b + 2; y < hC - 2; y += 2) { let x = -hw + 2 + Math.floor(r() * 3); while (x < hw - 2) { const L = 1 + Math.floor(r() * 4); for (let i = 0; i < L && x + i < hw - 1; i++) put(C + x + i, y, 6); x += L + 1 + Math.floor(r() * 3); } }
       for (let x = -hw; x <= hw; x += 2) put(C + x, hC, 3);
-    } else if (kind === 'crystal') { // a hologram: a diamond of light over a small base
-      const h = hC;
-      for (let y = 0; y < h; y++) { const w = Math.round((y < h * 0.6 ? y / (h * 0.6) : (h - y) / (h * 0.4)) * 3); for (let x = -w; x <= w; x++) put(C + x, y, x === 0 || y === Math.round(h * 0.6) ? 2 : 1); }
-      put(C - 4, 0, 1); put(C - 3, 0, 1); put(C + 3, 0, 1); put(C + 4, 0, 2);
     } else if (kind === 'bell') { // a neon sign: a pole, a vertical sign box with glyphs
       const p = Math.round(hC * 0.38);
       for (let y = 0; y < p; y++) put(C, y, 0);
@@ -334,7 +357,7 @@
       }
       put(C, hC, 0); put(C, hC + 1, 0); put(C, hC + 2, 8);
     }
-    return a && kind !== 'crystal' ? dress(out, hC, seed, a) : out;
+    return a ? dress(out, hC, seed, a) : out;
   }
   // the look on top of the element. a = {shape 0..1, light 0..1, bloom = neon signs 1..4} (quantized).
   // light: how many windows are lit; shape: a dome ↔ masts (1 to 5) and greebles on the outline; bloom: neon signs
@@ -390,7 +413,7 @@
   function addLayer(def) { const i = STACK.findIndex((l) => l.id === def.id); if (i >= 0) STACK.splice(i, 1); STACK.push(def); STACK.sort((a, b) => a.z - b.z); return def; }
 
   // ---- state → layout (pure): where each building stands (world coordinates, before the camera) ----
-  // state = {layers: [ids], levels: {layer: 0..1}, secrets: [ids]}. One row of buildings on the street; on a narrow
+  // state = {layers: [ids], levels: {layer: 0..1}}. One row of buildings on the street; on a narrow
   // screen (portrait) with more than 4 buildings, two rows: the back row higher up, smaller, between the front ones.
   const ROW_K = 0.74, ROW_D = 0.82; // the back row: its scale, its depth (parallax)
   // safe = {top, right, bottom, left}: fractions of the canvas the interface covers (S8.3); the street stays above the
@@ -409,19 +432,15 @@
       return {
         id, kind: byLayer[id].kind, col: byLayer[id].col, label: byLayer[id].label, short: byLayer[id].short, level: lv, row,
         x: Math.round(x + (r() - 0.5) * slotW * (row ? 0.15 : 0.3)),
-        y: row ? Math.round(ground - H * 0.05) : ground + Math.round((r() - 0.5) * H * 0.01), phase: r() * 6.283, rare: false,
+        y: row ? Math.round(ground - H * 0.05) : ground + Math.round((r() - 0.5) * H * 0.01), phase: r() * 6.283,
       };
     });
-    const sec = (st.secrets || []).slice().sort();
-    const rares = sec.map((id) => {
-      const r = mulberry(hash('secret:' + id));
-      return { id: 'secret:' + id, kind: 'crystal', rare: true, level: 0, row: 0, col: hsl2rgb(Math.floor(r() * 360), 0.85, 0.7), x: Math.round(X0 + FW * 0.05 + slotW * (Math.floor(r() * (nf + 1)) + (r() - 0.5) * 0.3)), y: ground, phase: r() * 6.283 };
-    });
-    return { plants, rares, ground, slotW, rows };
+    return { plants, ground, slotW, rows };
   }
 
   const gv = {
-    LAYERS, byLayer, layout, cells, hash, FLOOR, BUILD, DIMS, PULSES, STACK,
+    LAYERS, byLayer, layout, cells, hash, FLOOR, BUILD, DIMS, PULSES, STACK, FUNCS, mult,
+    feat: {}, featK: {}, awake: false, // S9.3: which elements exist (open AND active, once the music is heard), their reveal 0..1
     grow: {}, built: {}, growStart: null, growNext: false, // S8.1 construction: building id -> {h0, h1, spr, start, dur}
     skyKey: null, skyPrevKey: null, skyT: 0, skyQ: [], skies: new Map(), // S4.5w sky
     replay: null, lit: {}, // S4.5w finale
@@ -433,7 +452,7 @@
     world: makeWorld(), // S8.1 the world model
     hooks: [], post2d: true, safe: null, // S8.1 for S8.2 (afterDraw, post2d) and S8.3 (safe)
     sprites: new Map(), glows: new Map(), labels: new Map(),
-    plants: [], rares: [], parts: [], pending: [],
+    plants: [], parts: [], pending: [],
     energy: {}, // building id -> 0..1 light of its notes
     visible: true, paused: false, reduced: false,
     times: [], frames: 0, cacheMisses: 0,
@@ -446,10 +465,36 @@
     addDim(name, d) { DIMS[name] = d; return d; }, // a new dimension of the world (or a new wiring of one)
     impulse(name, v = 1) { const w = this.world.pulse; w[name] = Math.max(w[name] || 0, clamp(v, 0, 2)); },
 
-    // ---- read the game / secrets state; a layer's level = share of its tree nodes owned ----
+    // ---- S9.3 what exists: each function open (its node; all in free mode) AND active, once the music has been heard.
+    // app state outside the store: the looper's loops that sound (not muted, with notes), the song's sections, the
+    // discoveries found (free mode: all of them)
+    app() {
+      const Lp = AMB.looper, S = AMB.song, D = AMB.discoveries; let loops = 0, found = 0;
+      try { if (Lp && Lp.layers) for (const l of Lp.layers()) if (!l.mute && l.notes && l.notes.length) loops++; } catch (e) {}
+      try { found = this.free ? (D && D.ALL ? D.ALL.length : 0) : D && D.foundCount ? D.foundCount() : 0; } catch (e) {}
+      return { loops, sections: S && S.sections ? S.sections.length : 0, found };
+    },
+    updateFeats(dt) {
+      if (!this.awake && AMB.seq && AMB.seq.playing) this.awake = true;
+      const get = this.getter(), g = AMB.game, own = this.free ? null : (g && g.s && g.s.nodes) || [], app = this.app();
+      const kT = this.reduced ? 1 : 1 - Math.exp(-dt / 0.7);
+      for (const id in FUNCS) {
+        const F = FUNCS[id]; let on = false;
+        if (this.awake && (!own || !F.node || own.includes(F.node))) { try { on = !!F.on(get, app); } catch (e) {} }
+        this.feat[id] = on;
+        const k = this.featK[id] == null ? 0 : this.featK[id], t = on ? 1 : 0, nk = k + (t - k) * kT;
+        this.featK[id] = Math.abs(nk - t) < 0.003 ? t : nk;
+      }
+      this.app_ = app;
+      return this.feat;
+    },
+    // how many of each moving thing per event: Densité (1 up to its default, ×3 at the top)
+    many() { const S = AMB.store; return mult(S && S.get ? S.get('macro.density') : 0.35); },
+
+    // ---- read the game state; a layer's level = share of its tree nodes owned ----
     layerNodes(id) { const T = AMB.tree; return T ? T.NODES.filter((n) => n.params.some((p) => p.startsWith(id + '.'))).map((n) => n.id) : []; },
     readState() {
-      const g = AMB.game, st = { layers: [], levels: {}, secrets: [] };
+      const g = AMB.game, st = { layers: [], levels: {} };
       if (this.free) { for (const l of LAYERS) { st.layers.push(l.id); st.levels[l.id] = 1; } return st; } // free mode: the whole city
       if (!g || !g.s) return st;
       const own = g.s.nodes || [];
@@ -458,16 +503,14 @@
         const ns = this.layerNodes(l.id);
         st.levels[l.id] = ns.length ? ns.filter((n) => own.includes(n)).length / ns.length : 0;
       }
-      const sq = g.s.secrets && g.s.secrets.found;
-      st.secrets = sq ? Object.keys(sq).filter((k) => sq[k]) : [];
       return st;
     },
-    signature(st) { return JSON.stringify([st.layers, st.levels, st.secrets.slice().sort()]); },
+    signature(st) { return JSON.stringify([st.layers, st.levels]); },
 
     // ---- sizes ----
     cellPx(W, H, n, avail = H * 0.52) { return Math.max(2, Math.min(Math.floor(avail / 68), Math.floor((W * 0.9) / Math.max(1, n) / 19))); },
     // the height a layer's level gives (cells, before its Niveau): a third of the tallest at the first node, all at the last
-    heightCells(p) { if (p.rare) return 9; const M = this.hMax || 58, m = Math.min(16, Math.round(M * 0.35)); return Math.round(m + (M - m) * p.level); },
+    heightCells(p) { const M = this.hMax || 58, m = Math.min(16, Math.round(M * 0.35)); return Math.round(m + (M - m) * p.level); },
     // S6.6: the HUD and the chips only cover the top corners — `zones` = their boxes (fractions of the canvas); `ceil` is the
     // free middle sky (SKY); a building under a corner is lower (ceilAt). S8.3 may set gv.safe = {top, zones?} instead.
     SKY: 0.1, zones: [],
@@ -498,9 +541,8 @@
     // the height a building should have now (cells, whole floors): its level × its Niveau, 0 when its layer is off, never
     // into the HUD (cap, from refresh)
     wantOf(p) {
-      if (p.rare) return 9;
+      if (!this.feat[p.id]) return 0; // S9.3: open AND active (and the music heard), else nothing
       const a = this.aim && this.aim[p.id];
-      if (a && a.on < 0.5) return 0;
       const h = Math.round(this.heightCells(p) * (a ? this.sizeK(p.id, a.size) : 1) / FLOOR) * FLOOR;
       return Math.max(FLOOR * 3, Math.min(h, p.cap || 999));
     },
@@ -523,7 +565,7 @@
     // the sprites of a building at a height (cells): cv = as it is, dk = all dark (under construction, power cut), em = its
     // lights only (windows, neon, beacons: what a note lights); wins = its lit windows (lit one by one on construction)
     sprite(p, px) {
-      const hC = p.spr != null ? p.spr : this.heightCells(p), qq = p.rare ? null : this.quant(p.look), ab = this.crt(), key = `${p.kind}|${p.id}|${hC}|${px}|${ab}` + (qq ? `|${qq.shape}|${qq.light}|${qq.bloom}` : '');
+      const hC = p.spr != null ? p.spr : this.heightCells(p), qq = this.quant(p.look), ab = this.crt(), key = `${p.kind}|${p.id}|${hC}|${px}|${ab}` + (qq ? `|${qq.shape}|${qq.light}|${qq.bloom}` : '');
       let s = this.sprites.get(key);
       if (s) return s;
       this.cacheMisses++;
@@ -586,7 +628,7 @@
       return cv;
     },
     // the far city (cached): two rows of buildings against the sky, wider than the screen (the camera pans), their windows
-    // lit by a share k 0..1 (population, dawn), always the same ones first
+    // lit by a share k 0..1, always the same ones first; S9.3: cut into the song's districts (layer `far`)
     farCity(W, gd) {
       const px = this.px || 3, key = W + '|' + gd + '|' + px;
       if (this.bg && this.bg.key === key) return this.bg;
@@ -607,26 +649,23 @@
     },
     skyline(k) {
       const bg = this.bg, qk = Math.round(k * 20) / 20, key = bg.key + '|' + qk;
-      if (this.skyW && this.skyW.key === key) return this.skyW.cv;
-      const cv = this.skyW && this.skyW.cv.width === bg.FW && this.skyW.cv.height === bg.bandH ? this.skyW.cv : this.canvas(bg.FW, bg.bandH), g = cv.getContext('2d'), px = this.px || 3;
+      const M = this.skyW && this.skyW.bg === bg ? this.skyW : (this.skyW = { bg, m: new Map() }); // S9.3: a few levels at once (lit / dim districts)
+      if (M.m.has(key)) return M.m.get(key);
+      const cv = this.canvas(bg.FW, bg.bandH), g = cv.getContext('2d'), px = this.px || 3;
       g.clearRect(0, 0, cv.width, cv.height);
       for (const [x, y, w, h, row, al] of bg.blds) { g.fillStyle = rgb(TOK.wall, 0.85 - 0.25 * row, al); g.fillRect(x, y, w, h); }
       const cols = [TOK.amber, TOK.cyan, TOK.pink, TOK.red], s = Math.max(1, px - 1);
       for (const [x, y, t, c, row] of bg.wins) if (t < qk || c === 3) { g.fillStyle = rgb(cols[c], c === 3 ? 1 : 0.95, (row ? 0.75 : 0.5) * (c === 0 ? 1 : 0.85)); g.fillRect(x, y, s, s); }
-      this.skyW = { key, cv };
+      M.m.set(key, cv); if (M.m.size > 6) M.m.delete(M.m.keys().next().value);
       return cv;
     },
-    // the wet street (cached): asphalt, a faint synthwave grid to the horizon, puddles, a neon kerb; wider than the screen
+    // the street (cached): asphalt and a neon kerb, wider than the screen (S9.3: no more grid nor puddles of its own: the
+    // grid is the Bass's, the wet ground the Reverb's)
     street(W, H, gd) {
       const px = this.px || 3, key = W + 'x' + H + '|' + gd + '|' + px;
       if (this.st0 && this.st0.key === key) return this.st0.cv;
-      const r = mulberry(9), w = Math.round(W * 1.5), gh = Math.max(1, Math.round((H - gd) * 1.4) + px), gr = this.canvas(w, gh), g = gr.getContext('2d');
+      const w = Math.round(W * 1.5), gh = Math.max(1, Math.round((H - gd) * 1.4) + px), gr = this.canvas(w, gh), g = gr.getContext('2d');
       const grd = g.createLinearGradient(0, 0, 0, gh); grd.addColorStop(0, rgb(TOK.ground, 2.2)); grd.addColorStop(0.5, rgb(TOK.ground)); grd.addColorStop(1, rgb(TOK.ground, 0.7)); g.fillStyle = grd; g.fillRect(0, 0, w, gh);
-      g.strokeStyle = rgb(TOK.pink, 1, 0.12); g.lineWidth = Math.max(1, px >> 1); g.beginPath();
-      for (let k = -16; k <= 16; k++) { g.moveTo(w / 2 + k * W * 0.02, 0); g.lineTo(w / 2 + k * W * 0.16, gh); }
-      for (let i = 1; i < 9; i++) { const y = Math.round(gh * (i / 9) ** 2); g.moveTo(0, y); g.lineTo(w, y); }
-      g.stroke();
-      for (let i = 0; i < 40; i++) { g.fillStyle = r() < 0.5 ? rgb(TOK.cyan, 1, 0.08) : rgb(TOK.pink, 1, 0.08); g.fillRect(Math.floor(r() * w / px) * px, Math.floor(r() * gh / px) * px, Math.round((4 + r() * 22)) * px, Math.max(1, px >> 1)); }
       g.fillStyle = rgb(TOK.pink, 1, 0.55); g.fillRect(0, 0, w, Math.max(1, px >> 1));
       this.st0 = { key, cv: gr };
       return gr;
@@ -742,7 +781,7 @@
       this.sig = sig; this.state = st;
       const L = layout(st, W, H, this.safe), old = Object.fromEntries(this.plants.map((p) => [p.id, p]));
       // the same object for a building that stays (it keeps its smoothed look)
-      this.plants = L.plants.map((p) => (old[p.id] ? Object.assign(old[p.id], p) : p)); this.rares = L.rares; this.ground = L.ground; this.slotW = L.slotW; this.rows = L.rows;
+      this.plants = L.plants.map((p) => (old[p.id] ? Object.assign(old[p.id], p) : p)); this.ground = L.ground; this.slotW = L.slotW; this.rows = L.rows;
       this.W = W; this.H = H; this.ceil = ceil;
       const top = Math.min(...this.plants.map((p) => p.y), L.ground), avail = Math.max(H * 0.2, top - H * ceil);
       const perRow = L.rows === 2 ? Math.ceil(this.plants.length / 2) : this.plants.length;
@@ -811,8 +850,14 @@
     },
     // S5.9 → S5.8: a moment of the juice table (garden.FX `kick`) flares scene layers up, k = JUICE
     flare(names, k = this.JUICE) { if (!this.running() || this.reduced) return 0; let n = 0; for (const x of names) if (SCENE[x]) { this.kick[x] = Math.max(this.kick[x] || 0, Math.min(1, k)); n++; } return n; },
-    // how much of a scene layer is drawn: its intensity squared (default settings = a calm scene) + the impulse of a touch
-    amt(n) { const v = this.sc[n] || 0; return Math.min(1, v * v + 0.8 * (this.kick[n] || 0)); },
+    // how much of a scene layer is drawn: its intensity squared (default settings = a calm scene) + the impulse of a touch;
+    // S9.3: a layer that belongs to functions (`of`) shows only as much as they are there (drones = melodies, snow and
+    // frost = Grains, ripple = rhythm, searchlights = Pulsations, aurora = Reverb, echo ghosts = Écho)
+    amt(n) {
+      const v = this.sc[n] || 0, of = SCENE[n] && SCENE[n].of; let k = 1;
+      if (of) { k = 0; for (const f of of) k = Math.max(k, this.featK[f] || 0); }
+      return k * Math.min(1, v * v + 0.8 * (this.kick[n] || 0));
+    },
 
     // ---- S8.1 the world: every dimension smoothed toward its aim, the impulses falling, the beat ----
     updateWorld(dt, now) {
@@ -853,11 +898,11 @@
     // the framing the camera aims at: the built buildings (x span, the tallest) fill the street, never into the HUD;
     // at most ×1.6 closer; {z, cx}
     framing() {
-      const W = this.W || 1, H = this.H || 1, gd = this.ground || H * 0.76, px = this.px || 3, ps = this.plants.concat(this.rares);
+      const W = this.W || 1, H = this.H || 1, gd = this.ground || H * 0.76, px = this.px || 3, ps = this.plants.filter((p) => this.built[p.id] > 0 || this.grow[p.id]);
       if (!ps.length) return { z: 1, cx: 0.5 };
       let x0 = Infinity, x1 = -Infinity, up = 1;
       for (const p of ps) {
-        const rk = p.row ? ROW_K : 1, hw = 10 * px * rk, hc = p.rare ? 9 : (this.built[p.id] != null ? this.built[p.id] : this.wantOf(p)) + 7;
+        const rk = p.row ? ROW_K : 1, hw = 10 * px * rk, hc = Math.max(this.built[p.id] || 0, this.grow[p.id] ? this.grow[p.id].h0 : 0) + 7;
         x0 = Math.min(x0, p.x - hw); x1 = Math.max(x1, p.x + hw); up = Math.max(up, gd - p.y + hc * px * rk);
       }
       const cx = (x0 + x1) / 2, span = Math.max(1, x1 - x0), room = gd - H * Math.max(this.ceil || 0.1, ...this.zones.map((zz) => zz.b));
@@ -878,7 +923,6 @@
         p.vis = !s ? 0 : !e ? s.h : Math.min(s.h, h * px);
         p.gy = s ? p.vis / s.h : 0;
       }
-      for (const p of this.rares) { p.k = cam.k(1); p.sx = cam.x(1, p.x); p.sy = cam.y(1, p.y); p.spr = 9; const s = this.sprite(p, px); p.vis = s.h; p.gy = 1; }
     },
     // cached canvases of the scene, rebuilt only when the size changes
     fx(name, W, H, build) {
@@ -902,7 +946,7 @@
     // a note of a layer: its building lights up (windows, neon, beacon), a spark flies off its roof
     hit(layer, vel) {
       const p = this.plants.find((qq) => qq.id === layer);
-      if (!p) return false;
+      if (!p || !this.feat[layer]) return false; // S9.3: an element that is not there does not light up
       this.energy[layer] = Math.min(1, (this.energy[layer] || 0) * 0.5 + 0.5 + vel * 0.5);
       this.impulse('note', 0.4 + 0.6 * vel);
       if (!this.reduced && this.parts.length < PARTS_MAX && p.vis) {
@@ -917,7 +961,7 @@
     onSplash(ev, d) {
       if (!this.running() || this.replay) return;
       const P = AMB.pianoRoll, s = splash(ev, d, !!(P && P.roll && P.roll.recording));
-      if (!s || !this.plants.some((p) => p.id === s.plant)) return;
+      if (!s || !this.feat[s.plant] || !this.plants.some((p) => p.id === s.plant)) return; // S9.3: only on what stands
       const mine = this.waves.filter((w) => w.plant === s.plant);
       if (mine.length >= WAVES_PER_PLANT) {
         const old = mine.find((w) => w.who === 'machine') || (s.who === 'machine' ? null : mine[0]);
@@ -992,7 +1036,7 @@
       const px = this.px, s = this.sprite(p, px), k = p.k, red = this.reduced, e = this.grow[p.id], R = this.replay, w = this.world;
       const vis = p.vis, building = e && e.h1 > e.h0 && now >= e.start, sinking = e && e.h1 < e.h0 && now >= e.start;
       g.setTransform(k, 0, 0, k, p.sx, p.sy);
-      if (vis < px * 0.5) { this.drawLot(g, p, s, now); return; }
+      if (vis < px * 0.5) return; // S9.3: nothing standing, nothing drawn (no empty lot)
       const sy0 = s.h - vis;
       const a = p.look, off = a ? 1 - a.on : 0, rep = R ? 0.3 + 0.7 * Math.min(1, this.lit[p.id] || 0) : 1;
       g.globalAlpha = rep;
@@ -1056,16 +1100,6 @@
         this.parts.push({ x: p.sx + (x0 + r() * (x1 - x0)) * k, y: p.sy - vis * k, vx: (r() - 0.5) * 14 * px, vy: -(4 + r() * 8) * px, life: 0.7, decay: 1.6, g: 30, col: r() < 0.5 ? [255, 240, 200] : TOK.amber, s: 1 });
       }
     },
-    // an empty lot (layer switched off, or not built yet): a slab, a fence, a blinking amber lamp
-    drawLot(g, p, s, now) {
-      const px = this.px, hw = Math.max(5 * px, Math.round(Math.min(s.l, s.r) / px) * px);
-      g.fillStyle = rgb(TOK.wall, 1.8); g.fillRect(-hw, -2 * px, 2 * hw, 2 * px); // the foundation slab
-      g.fillStyle = rgb(p.col, 0.5, 0.9); for (let x = -hw; x <= hw; x += 2 * px) g.fillRect(x, -5 * px, Math.max(1, px >> 1), 3 * px); // fence posts
-      for (let x = -hw, i = 0; x < hw; x += px, i++) { g.fillStyle = i % 2 ? rgb(TOK.amber, 0.9) : '#120a08'; g.fillRect(x, -5 * px, px, px); } // a hazard board
-      g.fillStyle = rgb(p.col, 0.35, 0.9); for (let y = 3; y < 9; y += 2) g.fillRect(-px, -(5 + y) * px, 2 * px, Math.max(1, px >> 1)); // the starter of a crane mast
-      if (this.reduced || Math.floor(this.st * 2) % 2) { g.fillStyle = rgb(TOK.amber, 1.2); g.fillRect(-hw, -6 * px, px, px); g.fillRect(hw - px, -6 * px, px, px); }
-    },
-
     // ---- one frame (called by AMB.visual.draw while the mode is « Jardin ») ----
     frame(g, W, H, dpr = 1) {
       if (!this.running()) { this.lastT = null; return false; }
@@ -1074,7 +1108,7 @@
       const dt = this.lastT == null ? 1 / 60 : Math.max(0, Math.min(0.1, (t0 - this.lastT) / 1000));
       this.lastT = t0; this.t = (this.t || 0) + dt; this.dt = dt; this.dpr = dpr;
       const now = this.clock();
-      this.watch(); this.updateScene(dt); this.updateLook(dt);
+      this.watch(); this.updateScene(dt); this.updateLook(dt); this.updateFeats(dt);
       if (!this.reduced) this.st += dt * this.speed; // the scene's time: the tempo is its speed, still in reduced motion
       for (let i = this.pending.length - 1; i >= 0; i--) { const e = this.pending[i]; if (e.time <= now + 0.02) { this.pending.splice(i, 1); this.hit(e.layer, e.vel); } }
       const ans = this.answer(now);
@@ -1165,12 +1199,12 @@
       bus.on('note', (n) => { if (n) { this.onEvent(n.layer, n.time, n.vel); this.onSplash('note', n); } });
       bus.on('grain', (n) => n && this.onEvent('grains', n.time, n.vel));
       bus.on('perc', (n) => { if (n) { this.onEvent('perc', n.time, n.vel); this.onSplash('perc', n); } });
-      bus.on('live', (n) => this.onSplash('live', n));
+      bus.on('live', (n) => { this.awake = true; this.onSplash('live', n); });
       bus.on('liveOff', (n) => n && this.release(n.id, n.time));
       bus.on('panic', () => this.release(null));
       bus.on('chord', (c) => {
         if (!c) return; this.onEvent('drone', c.time, 0.6); this.onEvent('pad', c.time, 0.3); this.onSplash('chord', c);
-        if (this.running() && !this.replay) { this.skyQ.push({ time: c.time || 0, key: this.chordKey(c.deg) }); if (this.skyQ.length > 8) this.skyQ.shift(); }
+        if (this.running() && !this.replay && this.feat.pad) { this.skyQ.push({ time: c.time || 0, key: this.chordKey(c.deg) }); if (this.skyQ.length > 8) this.skyQ.shift(); }
       });
       for (const n in SCENE) if (SCENE[n].ev) bus.on(SCENE[n].ev, () => { if (this.running()) this.kick[n] = 1; });
       bus.on('game:puzzle', (e) => { if (e && e.peg && e.peg.state === 'ok') this.onEvent('bells', 0, 0.9); });
@@ -1195,6 +1229,21 @@
       g.drawImage(v.sun(Rs), Math.round(W / 2 - Rs), sy0 - Rs);
     }
     g.globalAlpha = 1;
+    { // S9.3 the moon (always there, with the ground, the horizon and the sky): a pixel disc, a few craters, a halo
+      const R = Math.max(4, Math.round(Math.min(gd * 0.07, W * 0.05) / px)), mx = Math.round(cam.x(0.05, W * 0.8)), my = Math.round(gd * 0.18);
+      const mn = v.fx('moon', R, R, (r1, r2, p2) => {
+        const c = v.canvas(2 * R * p2, 2 * R * p2), x = c.getContext('2d'), rr = mulberry(61);
+        for (let j = 0; j < 2 * R; j++) for (let i = 0; i < 2 * R; i++) {
+          const dx = i - R + 0.5, dy = j - R + 0.5, d = dx * dx + dy * dy; if (d > R * R) continue;
+          const lit = (dx + R * 0.35) ** 2 + (dy - R * 0.1) ** 2 > (R * 0.95) ** 2 ? 0.55 : 1; // a soft terminator on the left
+          x.fillStyle = rgb([236, 226, 255], lit * (rr() < 0.12 ? 0.82 : 1)); x.fillRect(i * p2, j * p2, p2, p2);
+        }
+        return c;
+      });
+      g.globalAlpha = 1 - dawn; g.drawImage(mn, mx - R * px, my - R * px);
+      g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.35 * (1 - dawn); const gl = v.glow([170, 140, 255], R * px * 3); g.drawImage(gl, mx - gl.width / 2, my - gl.height / 2);
+      g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+    }
     let a;
     if ((a = v.kick.hue || 0) > 0.02) { g.fillStyle = `rgba(255,200,245,${(0.16 * a).toFixed(3)})`; g.fillRect(0, 0, W, gd); }
     g.globalCompositeOperation = 'lighter';
@@ -1212,7 +1261,7 @@
       g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.15 + 0.85 * a);
       g.drawImage(cv, dx - W * 0.06, gd * 0.04, W * 1.12, gd * 0.55); g.imageSmoothingEnabled = false;
     }
-    if ((a = v.amt('rays')) > 0.03) { // searchlights sweeping the sky from the city (Blade Runner)
+    if ((a = v.amt('rays')) > 0.03) { // searchlights sweeping the sky from the city (S9.3: the Pulsations')
       const bh = Math.round(gd * 1.1), cv = v.fx('beam', W, gd, () => {
         const c = v.canvas(64, 128), x = c.getContext('2d'), grd = x.createLinearGradient(0, 128, 0, 0);
         grd.addColorStop(0, 'rgba(210,235,255,0.55)'); grd.addColorStop(1, 'rgba(210,235,255,0)');
@@ -1245,9 +1294,11 @@
     if ((a = v.sc.song || 0) > 0.01) { g.globalAlpha = 0.7; g.fillStyle = hex(TOK.cyan); g.fillRect(0, 0, Math.round(W * a), Math.max(2, px)); }
     if ((a = v.kick.song || 0) > 0.02 && !red) { const x = (1 - a) * W * 1.2 - W * 0.1; g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.35 * a; g.fillStyle = '#ffb0ec'; g.fillRect(Math.round(x), 0, Math.round(W * 0.08), gd); }
   } });
-  // stars (z 10): a still field of faint stars (gone at dawn), the twinkling ones of the slow movements
+  // stars (z 10): a still field of faint stars (gone at dawn), the twinkling ones of the slow movements (S9.3: only with
+  // Texture or Grains heard; they come out with them)
   addLayer({ id: 'stars', z: 10, draw(g, w, cam, v) {
-    const W = cam.W, gd = cam.gd, px = cam.px, T = v.st, red = v.reduced, s = Math.max(1, px - 1), r = mulberry(7), fade = 1 - w.dawn;
+    const W = cam.W, gd = cam.gd, px = cam.px, T = v.st, red = v.reduced, s = Math.max(1, px - 1), r = mulberry(7);
+    const fade = (1 - w.dawn) * Math.max(v.featK.texture || 0, v.featK.grains || 0); // S9.3: the starry sky = Texture, Grains
     if (fade < 0.02) return;
     g.setTransform(1, 0, 0, 1, cam.ox + cam.pan * W * 0.1, cam.oy);
     const n0 = Math.round(30 + W / px / 6);
@@ -1262,13 +1313,22 @@
       if (a > 0.5 && i % 7 === 0) { g.fillRect(x - px, y, s, s); g.fillRect(x + px, y, s, s); g.fillRect(x, y - px, s, s); g.fillRect(x, y + px, s, s); }
     }
   } });
-  // far city (z 20): the skyline behind the street, its windows lit by the population (all at dawn), the fog in front of it
+  // far city (z 20) — S9.3 « Morceau »: one DISTRICT of the far skyline per recorded section (at most 8, from the centre
+  // out), rising from the horizon when the section is made, sinking when it is removed; the one that plays is lit
+  // (Parcours: only once the Morceau is open). The fog of the horizon (Espace) stays in front, with or without districts.
   addLayer({ id: 'far', z: 20, draw(g, w, cam, v) {
-    const W = cam.W, gd = cam.gd, bg = v.farCity(W, gd), d = 0.35 * (0.5 + w.cam.depth);
-    const k = Math.max(w.dawn, (0.03 + 0.97 * w.population) * (0.4 + 0.6 * w.power)), sk = v.skyline(k);
-    const kk = cam.k(0.35), x = cam.x(d, (W - bg.FW) / 2), y = cam.y(0.35, gd - bg.bandH);
-    g.drawImage(sk, Math.round(x), Math.round(y), Math.round(bg.FW * kk), Math.round(bg.bandH * kk));
-    const fog = w.cam.fog; // the haze of the horizon: the far city sinks into it
+    const W = cam.W, gd = cam.gd, bg = v.farCity(W, gd), d = 0.35 * (0.5 + w.cam.depth), S = AMB.song, NMAX = 8;
+    const n = v.feat.song && S && S.sections ? Math.min(NMAX, S.sections.length) : 0, play = S && S.playing ? S.idx : -1;
+    const rise = v.rise || (v.rise = new Float32Array(NMAX)), kT = v.reduced ? 1 : Math.min(1, (v.dt || 0) / 0.9);
+    const kk = cam.k(0.35), x0 = cam.x(d, (W - bg.FW) / 2), y0 = cam.y(0.35, gd - bg.bandH), sw = bg.FW / NMAX;
+    for (let i = 0; i < NMAX; i++) {
+      const t = i < n ? 1 : 0; rise[i] += (t - rise[i]) * kT; if (Math.abs(rise[i] - t) < 0.004) rise[i] = t;
+      if (rise[i] < 0.01) continue;
+      const slot = i % 2 ? 3 - (i >> 1) : 4 + (i >> 1), lit = i === play ? 1 : 0.18, sk = v.skyline(Math.max(w.dawn, lit * (0.4 + 0.6 * w.power)));
+      const hv = Math.round(bg.bandH * ease(rise[i])), sx = Math.round(slot * sw);
+      g.drawImage(sk, sx, bg.bandH - hv, Math.round(sw), hv, Math.round(x0 + sx * kk), Math.round(y0 + (bg.bandH - hv) * kk), Math.round(sw * kk), Math.round(hv * kk));
+    }
+    const fog = w.cam.fog; // the haze of the horizon
     if (fog > 0.02) {
       const fv = v.fx('farfog', W, gd, () => { const c = v.canvas(4, 64), x2 = c.getContext('2d'), grd = x2.createLinearGradient(0, 0, 0, 64); grd.addColorStop(0, 'rgba(120,50,140,0)'); grd.addColorStop(0.7, 'rgba(150,60,150,0.55)'); grd.addColorStop(1, 'rgba(170,70,150,0.7)'); x2.fillStyle = grd; x2.fillRect(0, 0, 4, 64); return c; });
       g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, fog); g.drawImage(fv, 0, Math.round(gd - bg.bandH * 1.2 + cam.oy), W, Math.round(bg.bandH * 1.25)); g.imageSmoothingEnabled = false;
@@ -1280,22 +1340,33 @@
     const st = v.street(W, H, gd), k = cam.set(g, 1);
     g.drawImage(st, Math.round((W - st.width) / 2), gd);
     g.setTransform(1, 0, 0, 1, 0, 0);
-    // reflections: each building upside down under its foot, faded by distance (cached overlay with rain streaks)
-    for (const p of v.plants) {
+    // reflections (S9.3: the Reverb wets the ground): each building upside down under its foot, faded by distance; the
+    // Écho adds copies of them, shifted to the right
+    const wet = v.featK.reverb || 0, ek = v.featK.echo || 0;
+    if (wet > 0.01) for (const p of v.plants) {
       if (!p.vis) continue;
       const s = v.sprite(p, px), on = p.look ? 0.3 + 0.7 * p.look.on : 1, rk = p.k;
-      g.globalAlpha = 0.4 * on * (R ? 0.3 + 0.7 * Math.min(1, v.lit[p.id] || 0) : 1) * (0.5 + 0.5 * w.power);
-      g.setTransform(rk, 0, 0, -rk * 0.62, p.sx, p.sy + px * rk); g.drawImage(s.cv, 0, s.h - p.vis, s.w, p.vis, -s.w / 2, -p.vis, s.w, p.vis);
+      const A = wet * 0.4 * on * (R ? 0.3 + 0.7 * Math.min(1, v.lit[p.id] || 0) : 1) * (0.5 + 0.5 * w.power);
+      for (let i = ek > 0.01 ? 2 : 0; i >= 0; i--) {
+        g.globalAlpha = i ? A * ek * 0.35 / i : A;
+        g.setTransform(rk, 0, 0, -rk * 0.62, p.sx + i * px * 6 * rk * ek, p.sy + px * rk); g.drawImage(s.cv, 0, s.h - p.vis, s.w, p.vis, -s.w / 2, -p.vis, s.w, p.vis);
+      }
     }
     g.setTransform(1, 0, 0, 1, cam.ox, cam.oy); g.globalAlpha = 1;
-    const sgd = cam.y(1, gd) - cam.oy, wet = v.fx('wet', W, H - gd, (ww, h, px2) => {
+    const sgd = cam.y(1, gd) - cam.oy, wetv = v.fx('wet', W, H - gd, (ww, h, px2) => {
       const c = v.canvas(ww, Math.max(1, h)), x = c.getContext('2d'), grd = x.createLinearGradient(0, 0, 0, Math.max(1, h));
       grd.addColorStop(0, rgb(TOK.ground, 1, 0.05)); grd.addColorStop(0.6, rgb(TOK.ground, 1, 0.6)); grd.addColorStop(1, rgb(TOK.ground, 1, 0.95));
       x.fillStyle = grd; x.fillRect(0, 0, ww, h); x.fillStyle = rgb(TOK.ground, 1, 0.55);
       for (let y = px2; y < h; y += 2 * px2) x.fillRect(0, y, ww, Math.max(1, px2 >> 1));
       return c;
     });
-    g.drawImage(wet, 0, Math.round(sgd), W, Math.round(H - sgd + 2 * px));
+    g.drawImage(wetv, 0, Math.round(sgd), W, Math.round(H - sgd + 2 * px));
+    const pk = v.featK.pad || 0; // S9.3 Pad: a neon mist on the ground, brighter on each chord
+    if (pk > 0.01) {
+      const mist = v.fx('padmist', W, H - gd, () => { const c = v.canvas(4, 64), x = c.getContext('2d'), grd = x.createLinearGradient(0, 0, 0, 64); grd.addColorStop(0, 'rgba(236,96,214,0)'); grd.addColorStop(0.35, 'rgba(236,96,214,0.5)'); grd.addColorStop(1, 'rgba(157,107,255,0)'); x.fillStyle = grd; x.fillRect(0, 0, 4, 64); return c; });
+      g.globalCompositeOperation = 'lighter'; g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, pk * (0.16 + 0.3 * (w.pulse.chord || 0)) * (0.5 + 0.5 * w.power));
+      g.drawImage(mist, 0, Math.round(sgd - 6 * px), W, Math.round((H - sgd) * 0.45 + 6 * px)); g.imageSmoothingEnabled = false; g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+    }
     // the kerb flashes on the beat (stronger on beats 1 and 3); the dawn warms the street
     g.globalCompositeOperation = 'lighter';
     if (w.dawn > 0) { g.fillStyle = `rgba(255,122,79,${(w.dawn * 0.12).toFixed(3)})`; g.fillRect(0, sgd, W, H - sgd); }
@@ -1325,7 +1396,7 @@
         g.drawImage(gl, p.sx - Rg, p.sy - p.vis * p.k * 0.6 - Rg);
         g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
       }
-      const e = v.amt('echo');
+      const e = v.amt('echo'); // (S9.3: only with the Écho heard, SCENE.echo.of)
       if (e >= 0.1 && !R && p.vis > px) { // S5.8 Écho: faded copies of the building trailing to its right
         const s = v.sprite(p, px), n = 1 + Math.round(e * 2), d = px * (3 + 7 * e) * p.k;
         for (let i = n; i >= 1; i--) { g.globalAlpha = Math.min(1, (0.08 + 0.3 * e) / i); g.setTransform(p.k, 0, 0, p.k, p.sx + i * d, p.sy); g.drawImage(s.cv, 0, s.h - p.vis, s.w, p.vis, -s.w / 2, -p.vis, s.w, p.vis); }
@@ -1335,11 +1406,10 @@
       // the light of its notes over its roof
       const en = v.energy[p.id] || 0;
       if (en > 0.02 && p.vis) { const Rg = Math.max(16, px * 12 * p.k), gl = v.glow(p.col, Rg); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, en); g.drawImage(gl, p.sx - Rg, p.sy - p.vis * p.k * 0.85 - Rg); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; }
-    }
-    for (const p of v.rares) { // the discoveries: holograms on the street, breathing
-      const s = v.sprite(p, px), e = v.reduced ? 0.35 : 0.25 + 0.25 * Math.sin(v.t * 1.3 + p.phase);
-      g.setTransform(p.k, 0, 0, p.k, p.sx, p.sy); g.drawImage(s.cv, -s.w / 2, -s.h);
-      const Rg = Math.max(16, px * 8), gl = v.glow(p.col, Rg); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'lighter'; g.globalAlpha = e; g.drawImage(gl, p.sx - Rg, p.sy - s.h * p.k * 0.6 - Rg); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+      if (p.id === 'drone' && p.vis > px && v.sc.play > 0.5 && !(p.gy < 1)) { // S9.3 Drone: its antenna pulses with the held note
+        const Rb = Math.max(8, Math.round(px * 6 * p.k)), gb = v.glow([255, 70, 110], Rb), ph = v.reduced ? 0.5 : 0.5 + 0.5 * Math.sin(v.st * 2.4);
+        g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.25 + 0.55 * ph; g.drawImage(gb, p.sx - Rb, p.sy - p.vis * p.k - Rb); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+      }
     }
   } });
   // sparks (z 45): the notes' rings and glows, the particles (notes, welding, dust)
@@ -1358,20 +1428,10 @@
   // traffic (z 50): S8.6 moved it to js/city-life.js (flying cars in lanes, zeppelin, light-cycles, people, holograms)
   // weather (z 60): rain (how much, slanted by the wind; it stops at dawn), splashes on the street, lightning
   addLayer({ id: 'weather', z: 60, draw(g, w, cam, v) { v.drawRain(g, cam, w); } });
-  // front (z 70): street lamps near the camera (the strongest parallax), then the scene.s front layers: drones,
-  // snow, frost, lens
+  // front (z 70): the scene's front layers: drones, snow, frost, lens (S9.3: the two street lamps near the camera, a decor
+  // tied to nothing, are gone)
   addLayer({ id: 'front', z: 70, draw(g, w, cam, v) {
     const W = cam.W, H = cam.H, gd = cam.gd, px = cam.px, T = v.st, red = v.reduced, s = Math.max(1, px - 1);
-    { // two street lamps, near: dark poles, a sodium glow
-      const d = 1.35, ys = cam.y(d, gd + (H - gd) * 0.35), k = cam.k(d), hgt = Math.min(H * 0.55, (ys - H * 0.08)), xs = W < H ? [0.06] : [0.04, 0.96];
-      for (const xf of xs) {
-        const x = Math.round(cam.x(d, W * xf)), lw = Math.max(2, Math.round(1.6 * px * k)), arm = Math.round(6 * px * k) * (xf < 0.5 ? 1 : -1);
-        g.fillStyle = '#05030a'; g.fillRect(x, Math.round(ys - hgt), lw, Math.round(hgt)); g.fillRect(Math.min(x, x + arm), Math.round(ys - hgt), Math.abs(arm) + lw, lw);
-        const gl = v.glow([255, 170, 90], Math.round(14 * px * k)); g.globalCompositeOperation = 'lighter'; g.globalAlpha = w.lamps != null ? clamp(w.lamps) : 0.5 + 0.3 * w.power; // S8.4 hook: lamps (dead in a blackout)
-        g.drawImage(gl, x + arm - gl.width / 2, Math.round(ys - hgt) - gl.height / 2 + lw); g.fillStyle = '#ffd9a0'; g.fillRect(x + arm - lw, Math.round(ys - hgt + lw), 2 * lw, lw);
-        g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
-      }
-    }
     g.setTransform(1, 0, 0, 1, cam.ox, cam.oy);
     let a;
     g.globalCompositeOperation = 'lighter';
@@ -1448,11 +1508,12 @@
     if (v.post2d !== false) v.drawCrt(g, W, H);
     g.globalAlpha = 1;
   } });
-  // scene HUD (z 90): the captions under the buildings (above the roofs of the back row), the Réponse lamps, the tier
-  // marks, the line that says what to do when the city is empty
+  // scene HUD (z 90): the captions under the buildings that stand (above the roofs of the back row), the Réponse lamps,
+  // the tier marks (S9.3: an empty city says nothing: it is night)
   addLayer({ id: 'hud', z: 90, draw(g, w, cam, v) {
     const px = cam.px, fs = Math.round(Math.max(11 * (v.dpr || 1), px * 2.6));
     for (const p of v.plants) {
+      if (!(p.vis > px * 0.5)) continue; // S9.3: nothing built, no caption
       const lb = v.label(p, fs, Math.min(v.slotW * 0.96, 2 * Math.min(p.roomL, p.roomR) - 2) * (p.row ? 1.4 : 1)), hot = p.hot || 0, off = p.look ? 1 - p.look.on : 0;
       const y = p.row ? Math.round(p.sy - Math.max(p.vis, 6 * px) * p.k - lb.height - px) : Math.round(p.sy + px * 1.5);
       g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = Math.min(1, 0.85 + 0.15 * hot) * (1 - 0.5 * off) * (p.row ? 0.8 : 1); g.drawImage(lb, Math.round(p.sx - lb.width / 2), y);
@@ -1461,7 +1522,6 @@
     g.globalAlpha = 1;
     if (v.ans) v.drawAnswer(g, v.ans);
     v.drawMark(g, fs);
-    if (!v.plants.length && !v.rares.length) { g.setTransform(1, 0, 0, 1, 0, 0); g.font = `${Math.round(fs * 1.3)}px VT323, monospace`; g.fillStyle = hex(TOK.pink); g.textAlign = 'center'; g.shadowColor = hex(TOK.pink); g.shadowBlur = fs * 0.6; g.fillText('Ouvre un son pour rallumer la ville', cam.W / 2, cam.H * 0.42); g.shadowBlur = 0; g.textAlign = 'start'; }
   } });
 
   // rain: streaks drawn directly (far and near, slanted by the wind), falling with the scene's time; splashes on the
