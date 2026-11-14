@@ -198,7 +198,7 @@
 
     // ---- a view change (Écouter ↔ Sculpter ↔ Composer): a neon scan sweeps the window in the direction of travel
     // (dir > 0 = to the right), the sections that come in cascade behind it. The sections are shown at once.
-    SECTIONS: '.app > .row > *, .app > .scenes',
+    SECTIONS: '.app > .row > *, .drawer > .row > *, .drawer > .scenes', // (S8.3: Sculpter / Composer panels live in .drawer)
     swap(dir = 1) {
       if (!this.on()) return [];
       let w = document.querySelector('.m-wipe');

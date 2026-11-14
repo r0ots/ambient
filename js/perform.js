@@ -42,7 +42,7 @@
   const MODES = ['listen', 'sculpt', 'compose'];
   function setMode(mode) {
     if (!MODES.includes(mode)) mode = 'listen';
-    const prev = AMB.mode;
+    const prev = AMB.mode, dr = document.querySelector('.drawer'), was = prev && prev !== 'listen' && mode === 'listen' && dr && dr.getBoundingClientRect();
     for (const m of MODES) document.body.classList.toggle('mode-' + m, m === mode);
     document.querySelectorAll('[data-mode]').forEach((b) => { const on = b.dataset.mode === mode; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
     try { localStorage.setItem('ambient.mode', mode); } catch (e) {}
@@ -51,6 +51,12 @@
     // S7.1: the lit key slides to the new mode; the view that comes in cascades behind a scan (not at load)
     const M = AMB.motion;
     if (M) { M.slide(document.querySelector('.modes')); if (prev && prev !== mode) M.swap(MODES.indexOf(mode) - MODES.indexOf(prev)); }
+    // S8.3: the drawer is gone at once (Écouter); its empty glass ghost slides out to its edge (sheet: down, side: right)
+    if (M && M.on() && was && was.width && was.height) {
+      const g = M.ghost('s8-drawer-ghost', { left: was.left + 'px', top: was.top + 'px', width: was.width + 'px', height: was.height + 'px' }), side = was.height > (window.innerHeight || 800) / 2;
+      const an = g.animate([{ translate: '0 0', opacity: 1 }, { translate: side ? '105% 0' : '0 105%', opacity: 0.4 }], { duration: M.ms('med') + 60, easing: M.EASE.in });
+      an.onfinish = an.oncancel = () => g.remove();
+    }
   }
   // legacy API: setView(true) = listen, setView(false) = sculpt
   const setView = (simple) => setMode(simple ? 'listen' : 'sculpt');

@@ -121,32 +121,8 @@
     // clicks that always succeed go on the bus as actions (contracts count them); actions that can fail or be
     // cancelled (save, journal, chords, freeze) are emitted by their own code once they really happened
     CLICKS: [['#dice', 'dice'], ['.sc-store', 'sceneStore']],
-    // S6.7: in the Parcours the LCD never leaves the window — once its place scrolls above the top, it is pinned there
-    // (css .lcd-pin, compact), a placeholder of its size keeps the bar from moving; the demands wait for a visible LCD
-    // (demands.seen), so they keep coming while the player scrolls through the panels. Free mode, fullscreen: never.
-    pinLcd() {
-      const lcd = document.getElementById('lcd'); if (!lcd || this._pin) return;
-      const ph = document.createElement('div'); ph.className = 'lcd-ph'; ph.setAttribute('aria-hidden', 'true');
-      lcd.before(ph);
-      let raf = 0;
-      const set = (on) => {
-        if (on === lcd.classList.contains('lcd-pin')) { if (on) place(); return; }
-        if (on) { const r = lcd.getBoundingClientRect(); ph.style.width = r.width + 'px'; ph.style.height = r.height + 'px'; ph.classList.add('on'); lcd.classList.add('lcd-pin'); place(); }
-        else { lcd.classList.remove('lcd-pin'); ph.classList.remove('on'); lcd.style.left = lcd.style.width = ''; }
-      };
-      const place = () => { const r = ph.getBoundingClientRect(); lcd.style.left = r.left + 'px'; lcd.style.width = r.width + 'px'; };
-      const check = () => {
-        raf = 0;
-        const b = document.body, on = !!AMB.game.path && b.classList.contains('game') && !b.classList.contains('listen');
-        const top = (lcd.classList.contains('lcd-pin') ? ph : lcd).getBoundingClientRect().top;
-        set(on && top < 0);
-      };
-      const later = () => { if (!raf) raf = requestAnimationFrame(check); };
-      window.addEventListener('scroll', later, { passive: true });
-      window.addEventListener('resize', () => { set(false); later(); });
-      if (AMB.bus) AMB.bus.on('game:mode', () => { set(false); later(); });
-      this._pin = { check, set };
-    },
+    // S6.7 → S8.3: in the Parcours the LCD never leaves the window: the bar floats fixed over the city (css « S8.3 »), the
+    // panels scroll inside their drawer, so the LCD stays in view (the old pin-on-scroll is gone; demands.seen still checks)
     hookActions() {
       const emit = (id) => AMB.bus.emit('act', id);
       document.addEventListener('click', (e) => {
@@ -607,7 +583,6 @@
         const mo = new MutationObserver((ms) => { if (ms.some((m) => !m.target.hidden)) this.confetti.clear(); });
         document.querySelectorAll('.modal').forEach((m) => mo.observe(m, { attributes: true, attributeFilter: ['hidden'] }));
       }
-      this.pinLcd(); // (S5.6 press feedback: now js/motion.js, everywhere)
       this.coinWire(); this.hiscores.build();
       // S5.7: a touch screen in the path: no MIDI button, no keyboard words (css body.game.touch, game.txt)
       this.applyTouch(); if (window.matchMedia) { const q = matchMedia('(pointer: coarse)'); if (q.addEventListener) q.addEventListener('change', () => this.applyTouch()); }
