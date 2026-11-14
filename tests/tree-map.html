@@ -15,7 +15,7 @@ f.addEventListener('load', async ()=>{
   Gd.showTree(true); await wait(60);
   // --- narrow screen (S5.7): a narrow fan, the whole map in sight and filling its height (k ≥ 0.45), root at the bottom
   const root=map.querySelector('.tree-node[data-id=racine] .led'), mr=R(map), rr=R(root);
-  const leds=[...map.querySelectorAll('.tree-node .led')].map(R), lo=Math.min(...leds.map(r=>r.left)), hi=Math.max(...leds.map(r=>r.right)), top=Math.min(...leds.map(r=>r.top));
+  const leds=[...map.querySelectorAll('.tree-node .led')].map(R).filter(r=>r.width>0), lo=Math.min(...leds.map(r=>r.left)), hi=Math.max(...leds.map(r=>r.right)), top=Math.min(...leds.map(r=>r.top));
   ok(Gd.treeLayout().nar && Gd.view.k>=0.45 && lo>=mr.left-30 && hi<=mr.right+30, 'écran étroit ('+map.clientWidth+' px) : éventail étroit, toute la carte en largeur (k='+Gd.view.k.toFixed(2)+', '+Math.round(lo-mr.left)+'…'+Math.round(mr.right-hi)+' px des bords)');
   ok(Math.abs((rr.left+rr.width/2)-(mr.left+mr.width/2))<40 && rr.bottom<=mr.bottom && rr.top>mr.top && mr.bottom-rr.bottom<70 && top-mr.top<110, 'racine en bas, la carte remplit la hauteur (pas de quart vide : '+Math.round(mr.bottom-rr.bottom)+' px sous la racine, '+Math.round(top-mr.top)+' px au-dessus)');
   ok(/conic-gradient/.test(w.getComputedStyle(d.querySelector('.tree-legend i.st-owned')).backgroundImage), 'S5.7 légende : « ouvert » = la couleur de sa branche (pastille aux 5 couleurs), plus « vert »');
@@ -55,14 +55,14 @@ f.addEventListener('load', async ()=>{
   // --- S4.3 the card says what opens the node; a click (mouse or finger) selects, never opens
   const card=()=>d.querySelector('.tree-info'), op=()=>(card().querySelector('.ti-o')||{}).textContent||'';
   map.querySelector('.tree-node[data-id="h.drone"]').click(); await wait(20);
-  ok(!G.has('h.drone') && Gd.sel==='h.drone' && /Pour l'ouvrir : ◇ Force 3 accords/.test(op()) && !card().querySelector('.tree-buy'), 'clic sur Drone qui suit : sa fiche, « '+op()+' », rien d\'acheté');
+  ok(!G.has('h.drone') && Gd.sel==='h.drone' && /Pour l'ouvrir : ◇ Joue 3 accords/.test(op()) && !card().querySelector('.tree-buy'), 'clic sur Drone qui suit : sa fiche, « '+op()+' », rien d\'acheté');
   Gd.select('t.macros');
   ok(/↺ Réponse « Premier reflet » \(3 notes\)/.test(op()) && !card().querySelector('.tree-buy, button'), 'Grands réglages : « '+op()+' », sans bouton (la Réponse se joue dans la musique)');
   Gd.select('m.phrase');
   ok(/Réponse « Suite connue »/.test(op()) && /ou ✦ Découverte : \?\?\?/.test(op()), 'Phrases : une Réponse ou une découverte cachée (« '+op()+' »)');
   const spans=[...map.querySelectorAll('.tree-node')].map(b=>b.querySelector('span').textContent);
   ok(!spans.some(t=>/✧|\d/.test(t)) && spans.includes('↺ Réponse') && spans.includes('◇ défi') && spans.includes('✓'), 'nœuds : ✓, ◇ défi ou ↺ Réponse, aucun coût');
-  ok(/^\d+\/32$/.test(d.querySelector('.tree-count').textContent), 'en-tête : nœuds ouverts '+d.querySelector('.tree-count').textContent);
+  ok(/^\d+ ouverts?$/.test(d.querySelector('.tree-count').textContent), 'en-tête : nœuds ouverts '+d.querySelector('.tree-count').textContent);
   Gd.select(null); Gd.showTree(false);
   localStorage.removeItem('ambient.game.treemap');
   done();

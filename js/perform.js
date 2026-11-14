@@ -1,9 +1,9 @@
-// Performance controls: macro knobs (simple view), driven by MIDI CCs too
+// Performance controls: the five big knobs (macros, at the head of Sculpter), driven by MIDI CCs too
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const store = AMB.store;
   const { $ } = AMB.dom;
-  // ---------- macros (simple view) ----------
+  // ---------- macros ----------
   // Macro -> [param, at 0, at 1, curve exponent]
   const MACROS = {
     'macro.light': [['pad.tone', 0.08, 0.9], ['bells.tone', 0.05, 1], ['drone.tone', 0.08, 0.7], ['texture.tone', 0.15, 0.85]],
@@ -37,12 +37,12 @@
     clearTimeout(syncT); syncT = setTimeout(syncMacros, 60);
   });
 
-  // Simple / Expert view
-  // Three modes: listen (5 macros), sculpt (every sound setting), compose (progression, tracks, song)
-  const MODES = ['listen', 'sculpt', 'compose'];
+  // Two modes (S9.1: Écouter is gone, its five knobs open Sculpter): sculpt (every sound setting, the five big ones
+  // first), compose (progression, tracks, song). An unknown or old mode ('listen' of a save) = sculpt.
+  const MODES = ['sculpt', 'compose'];
   function setMode(mode) {
-    if (!MODES.includes(mode)) mode = 'listen';
-    const prev = AMB.mode, dr = document.querySelector('.drawer'), was = prev && prev !== 'listen' && mode === 'listen' && dr && dr.getBoundingClientRect();
+    if (!MODES.includes(mode)) mode = 'sculpt';
+    const prev = AMB.mode;
     for (const m of MODES) document.body.classList.toggle('mode-' + m, m === mode);
     document.querySelectorAll('[data-mode]').forEach((b) => { const on = b.dataset.mode === mode; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
     try { localStorage.setItem('ambient.mode', mode); } catch (e) {}
@@ -50,16 +50,8 @@
     window.dispatchEvent(new Event('resize')); // canvases re-measure when shown
     // S7.1: the lit key slides to the new mode; the view that comes in cascades behind a scan (not at load)
     const M = AMB.motion;
-    if (M) { M.slide(document.querySelector('.modes')); if (prev && prev !== mode) M.swap(MODES.indexOf(mode) - MODES.indexOf(prev)); }
-    // S8.3: the drawer is gone at once (Écouter); its empty glass ghost slides out to its edge (sheet: down, side: right)
-    if (M && M.on() && was && was.width && was.height) {
-      const g = M.ghost('s8-drawer-ghost', { left: was.left + 'px', top: was.top + 'px', width: was.width + 'px', height: was.height + 'px' }), side = was.height > (window.innerHeight || 800) / 2;
-      const an = g.animate([{ translate: '0 0', opacity: 1 }, { translate: side ? '105% 0' : '0 105%', opacity: 0.4 }], { duration: M.ms('med') + 60, easing: M.EASE.in });
-      an.onfinish = an.oncancel = () => g.remove();
-    }
+    if (M) { M.slide(document.querySelector('.modes')); if (prev && prev !== mode && MODES.includes(prev)) M.swap(MODES.indexOf(mode) - MODES.indexOf(prev)); }
   }
-  // legacy API: setView(true) = listen, setView(false) = sculpt
-  const setView = (simple) => setMode(simple ? 'listen' : 'sculpt');
 
   // ---------- MIDI CCs drive the macros themselves (one mapping, knobs stay in sync) ----------
   // S6.2: the visualizer is a reflection, never a control surface (no more gliding on the screen)
@@ -72,5 +64,5 @@
     applyMacro(key, T && !T.paramUnlocked(key) ? v : store.get(key), 'cc');
   }
 
-  AMB.perform = { MACROS, setMacro, applyMacro, setView, setMode, MODES, syncMacros };
+  AMB.perform = { MACROS, setMacro, applyMacro, setMode, MODES, syncMacros };
 })();

@@ -175,7 +175,7 @@
     ripple: { at: 'sol : ondulation', keys: ['global.swing', 'global.humanize', 'bass.octave', 'perc.steps'], of: ['bass', 'perc'] },
     echo: { at: 'filtre : écho (bâtiments fantômes)', keys: ['fx.echo', 'fx.echoTime', 'fx.feedback'], of: ['echo'] },
     grain: { at: 'filtre : grain et vignette', keys: ['fx.lofi'] },
-    lens: { at: 'filtre : grille (Sculpter), portée (Composer)', poll: () => ({ sculpt: 0.5, compose: 1 })[AMB.mode] || 0 },
+    lens: { at: 'filtre : portée (Composer)', poll: () => (AMB.mode === 'compose' ? 1 : 0) },
     play: { at: 'lumière : allumée en lecture, voilée à l\'arrêt', poll: () => (AMB.seq && AMB.seq.playing ? 1 : 0) },
     song: { at: 'ciel : avancée du Morceau, balayage à chaque section', poll: () => { const S = AMB.song; return S && S.playing && S.sections && S.sections.length ? (S.idx + 1) / S.sections.length : 0; }, ev: 'section' },
   };

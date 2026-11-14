@@ -13,7 +13,7 @@
 // S5.4 'resp:place' {id, name, nodes} (placement, PLACE below); S6.7 'resp:call' {notes: [{midis, time, dur}]} (the pads
 // light up on the machine's phrase, like a Simon: js/play.js).
 // S6.7: « À toi » leaves at least START s for the first note; a timed answer is judged from the beat its first note comes
-// on; a wrong answer says « RATÉ » (BZZT!, garden.FX) and the phrase is played once more. ONE table of timing windows
+// on; a wrong answer says « RATÉ » (garden.FX) and the phrase is played once more. ONE table of timing windows
 // (TOL), in absolute seconds: tight at the MIDI keyboard, a child's at the pads and keys. At the MIDI keyboard (or after a
 // first long answer right and tight), the ladder skips the Phrases and starts at the Octaves.
 (function () {

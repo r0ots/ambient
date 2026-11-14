@@ -162,22 +162,16 @@ kbd { background: #23273b; border: 1px solid #383e5c; border-bottom-width: 2px; 
 .moment:hover { transform: scale(1.4); }
 .moment:last-child { outline: 2px solid #ffffff55; outline-offset: 2px; }
 
-.macros { display: none; }
 /* ---- modes ---- */
 .modes { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
 .mode-btn { background: var(--panel2); color: var(--muted); border: 0; padding: 8px 14px; font: inherit; font-size: 13px; cursor: pointer; }
 .mode-btn + .mode-btn { border-left: 1px solid var(--line); }
 .mode-btn.on { background: var(--accent); color: #0b0c12; font-weight: 600; }
-body.mode-listen .macros { display: grid; }
-body.mode-listen .globals, body.mode-listen .layers, body.mode-listen .seqrow,
-body.mode-listen #scenes, body.mode-listen #journal { display: none; }
 body.mode-sculpt .seqrow { display: none; }
-body.mode-compose .globals, body.mode-compose .layers, body.mode-compose #scenes, body.mode-compose #journal { display: none; }
+body.mode-compose .macros, body.mode-compose .globals, body.mode-compose .layers, body.mode-compose #scenes, body.mode-compose #journal { display: none; }
 /* composition order: song (sections) → chords → written melody → bass → rhythm → automation */
 .seqrow .chords-panel { order: 1; } .seqrow [data-sec="seq"] { order: 2; } .seqrow [data-sec="bass"] { order: 3; }
 .seqrow [data-sec="perc"] { order: 4; } .seqrow [data-sec="auto"] { order: 5; } .seqrow .song-panel { order: 0; } /* S6.3: the section picked here is what the editors below show */
-.layer-chips { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
-.layer-chips .tog { margin: 0; padding: 6px 14px; font-size: 12px; }
 .macros .ctls { justify-content: space-around; }
 body.game .macros .panel:not(:has(.ctls > :not(.is-locked))) > header { display: none; } /* Parcours, grands réglages fermés : les couches seules, sans titre */
 .macros .ctl { width: 110px; }
@@ -424,7 +418,7 @@ footer { color: #6e6757; font-family: var(--f-num); letter-spacing: .08em; text-
 /* ---------- Jardin sonore : parcours ---------- */
 body.game .is-locked { display: none !important; }
 body.game .tog.is-solo { display: none; } /* S5.6 : la seule couche ouverte n'a pas de coupure (couper = tout couper) */
-body.game .macros .panel:not(:has(.ctls > :not(.is-locked))):not(:has(.layer-chips > .tog:not(.is-locked):not(.is-solo))) { display: none; } /* (Écouter à la Graine : rien à toucher, pas de boîte vide) */
+body.game .macros .panel:not(:has(.ctls > :not(.is-locked))) { display: none; } /* (à la Graine : rien à toucher, pas de boîte vide) */
 .welcome-card { max-width: 640px; }
 .welcome-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
 .welcome-choice { text-align: left; display: grid; gap: 6px; padding: 16px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel2); color: var(--fg, #e8e2d0); cursor: pointer; box-shadow: var(--bevel); font: inherit; }
@@ -527,7 +521,7 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 @keyframes lcd-arcade { 0% { translate: 100% 0; } 40% { translate: 0 0; opacity: 1; } 50% { opacity: .15; } 60% { opacity: 1; } 70% { opacity: .15; } 80%, 100% { translate: 0 0; opacity: 1; } }
 .fx-pop { position: absolute; translate: -50% -50%; font-family: var(--f-lcd); line-height: 1; letter-spacing: .04em; white-space: nowrap; color: #fff3c4;
   text-shadow: 3px 3px 0 #ff4fa0, -3px -2px 0 #4fe0ff, 0 0 18px #ffb347; animation: fx-pop 1.2s cubic-bezier(.2, 1.6, .4, 1) forwards; }
-@keyframes fx-pop { 0% { scale: .2; rotate: -14deg; opacity: 0; } 18% { scale: 1.4; rotate: 7deg; opacity: 1; } 35% { scale: 1; rotate: -3deg; translate: -50% -50%; } 75% { opacity: 1; } 100% { opacity: 0; scale: 1.1; rotate: 0deg; translate: -50% -160%; } }
+@keyframes fx-pop { 0% { scale: .2; opacity: 0; } 18% { scale: 1.4; opacity: 1; } 35% { scale: 1; translate: -50% -50%; } 75% { opacity: 1; } 100% { opacity: 0; scale: 1.1; translate: -50% -160%; } }
 
 
 /* S5.10 the notebook of discoveries (was G10.1 secrets): folded panel inside the tree screen (path only); found ones, then riddles */
@@ -559,6 +553,7 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 /* S5.7: an open node wears its branch's colour: the dot shows the five */
 .tree-legend i.st-owned { background: conic-gradient(#e8d9b0 0 20%, #b58cff 0 40%, #7fd6ff 0 60%, #8fe3a0 0 80%, #ffb36b 0); box-shadow: 0 0 6px #fff3c466; }
 .tree-legend i.st-available { background: var(--lcd-fg); box-shadow: 0 0 6px var(--lcd-fg); }
+.tree-legend i.lg-dark { width: 18px; height: 0; border-radius: 0; background: none; box-shadow: none; border-top: 2px dashed var(--muted); -webkit-mask: linear-gradient(90deg, #000, transparent); mask: linear-gradient(90deg, #000, transparent); }
 .tree-legend i.st-ready { background: #fff3c4; box-shadow: 0 0 0 2px var(--lcd-fg), 0 0 8px var(--lcd-fg); }
 .tree-legend > .tree-tip { flex-basis: 100%; font-size: 11px; white-space: normal; display: block; }
 .tree-tip .tip-short { display: none; }
@@ -570,11 +565,12 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .tree-bname { font: 600 13px var(--f-ui); letter-spacing: .22em; text-transform: uppercase; fill: var(--c); opacity: .75; }
 /* links: locked = dotted grey, available = amber flowing dashes, owned = branch colour */
 .tree-link { fill: none; stroke: #4a4844; stroke-width: 2.5; stroke-linecap: round; transition: stroke .3s, opacity .3s, stroke-width .2s; }
-.tree-link.locked { stroke: #45433f; stroke-dasharray: 2 6; }
+/* S9.1: the dark — nodes not reachable yet are not drawn; their links leave in dots that fade out (gradient set by js) */
+.tree-node.st-locked, .tree-link.gone, .tree-glow.gone, .tree-glow.dark, .tree-bname.gone { display: none; }
+.tree-link.dark { stroke-dasharray: 3 7; opacity: 1; }
 .tree-link.available { stroke: var(--lcd-fg); opacity: .6; stroke-dasharray: 7 6; animation: tree-flow 1.4s linear infinite; }
 .tree-link.owned { stroke: var(--c); opacity: .8; stroke-width: 3; }
 .tree-link.x { stroke-width: 2; }
-.tree-link.x.locked { opacity: .7; }
 .tree-link.is-hl { stroke-width: 4.5; opacity: 1; }
 .tree-map:has(.is-focus) .tree-link:not(.is-hl) { opacity: .18; }
 @keyframes tree-flow { to { stroke-dashoffset: -13; } }
@@ -588,7 +584,6 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .tree-node b, .tree-node span { background: #191816e6; border-radius: 3px; padding: 0 4px; max-width: 92px; }
 .tree-node b { font-weight: 600; font-size: 12.5px; line-height: 1.1; padding-top: 1px; }
 .tree-node span { font: 11px var(--f-num, monospace); }
-.tree-node.st-locked b, .tree-node.st-locked span { opacity: .6; }
 .tree-node.st-available { color: var(--lcd-fg); }
 .tree-node.st-available .led { background: radial-gradient(circle at 35% 30%, #fff0c8, var(--lcd-fg) 45%, #8a4d10); animation: led-breathe 2.6s ease-in-out infinite; }
 .tree-node.st-ready { color: #fff3c4; }
@@ -687,17 +682,6 @@ body.game .modal-card h3, body.game .tree-count, body.game .dc-head { color: var
   text-shadow: 2px 0 var(--arc-hot), -2px 0 #3ff0ffaa, 0 0 14px #ff3fa488; }
 body.game .open-kicker { font: 20px var(--f-lcd); color: var(--arc-hot); letter-spacing: .1em; text-transform: uppercase; }
 
-/* the onomatopoeia of a moment (garden.js FX `boom`): a comic starburst behind the word, halftone dots, two neons */
-.fx-pop.fx-boom { display: grid; justify-items: center; gap: .05em; text-shadow: none; color: var(--b2); rotate: var(--rot, -8deg); white-space: nowrap;
-  animation-name: fx-boom; animation-timing-function: cubic-bezier(.2, 1.7, .4, 1); padding: .35em .7em; }
-.fx-boom::before, .fx-boom::after { content: ""; position: absolute; clip-path: polygon(50% 0%, 59% 17%, 75% 7%, 77% 23%, 93% 25%, 83% 41%, 100% 50%, 87% 60%, 93% 75%, 74% 74%, 75% 93%, 60% 87%, 50% 100%, 41% 83%, 25% 93%, 23% 77%, 7% 75%, 17% 59%, 0% 50%, 13% 40%, 7% 25%, 26% 26%, 25% 7%, 40% 13%); }
-.fx-boom::after { inset: -.75em -.95em; z-index: -2; background: var(--arc-ink); }
-.fx-boom::before { inset: -.6em -.8em; z-index: -1; background: radial-gradient(circle, #12021a55 26%, transparent 28%) 0 0 / .24em .24em, radial-gradient(circle at 50% 45%, #fffbe8 0, var(--b1) 55%); }
-.fx-boom { isolation: isolate; }
-.fx-boom b { font-weight: 400; font-size: 1.25em; line-height: 1; letter-spacing: .02em; color: var(--b2); -webkit-text-stroke: .06em var(--arc-ink); paint-order: stroke fill;
-  text-shadow: .07em .07em 0 var(--arc-ink), .1em .1em 0 var(--b3); }
-.fx-boom small { font-size: .5em; line-height: 1; color: var(--arc-ink); letter-spacing: .06em; }
-@keyframes fx-boom { 0% { scale: .1; opacity: 0; } 14% { scale: 1.35; opacity: 1; } 26% { scale: .88; } 38% { scale: 1.06; } 48% { scale: 1; translate: -50% -50%; } 80% { opacity: 1; } 100% { opacity: 0; scale: 1.08; translate: -50% -130%; } }
 
 /* « INSERT COIN »: the Parcours' title before the first sound; the first press (finger, key, MIDI note) starts the music */
 .coin { display: none; }
@@ -746,8 +730,6 @@ body.game #vizMode { display: none; }
 /* toasts over the visual's chips and the party flash; readable (opaque, neon) */
 .toast { z-index: 6; max-width: min(92%, 560px); white-space: normal; text-align: center; }
 body.game .toast { background: var(--arc-bg); border-color: var(--arc-hot); color: #fff3c4; text-shadow: 0 0 6px #ff3fa480; box-shadow: 0 0 0 1px #000, 0 6px 24px #000c; }
-/* the text under an onomatopoeia (« À TOI !!! ») on a dark caption box: readable on every bubble colour (violet too) */
-.fx-boom small { background: var(--arc-ink); color: #fff3c4; padding: .12em .4em .08em; border-radius: .15em; box-shadow: 0 0 0 .06em var(--b3, #3ff0ff); }
 /* the LCD keeps its size: the score line holds its place before the first record, the challenge's help covers the
    screen instead of growing it (scrolls inside when long) — the pads below never jump */
 body.game #lcdScore[hidden] { display: block; visibility: hidden; }
@@ -886,7 +868,7 @@ input[type=range]:hover::-moz-range-thumb { scale: calc(1 + .3 * var(--m-amp)); 
 input[type=range]:active::-webkit-slider-thumb { scale: calc(1 + .3 * var(--m-amp)) calc(1 - .12 * var(--m-amp)); background: linear-gradient(var(--accent), #8a4d10); box-shadow: 0 0 14px var(--accent); }
 input[type=range]:active::-moz-range-thumb { scale: calc(1 + .3 * var(--m-amp)) calc(1 - .12 * var(--m-amp)); background: linear-gradient(var(--accent), #8a4d10); }
 
-/* a group where one key is lit (Écouter / Sculpter / Composer; motion.slide): the lit key slides behind the labels.
+/* a group where one key is lit (Sculpter / Composer; motion.slide): the lit key slides behind the labels.
    .m-placed = the key is in place; until then the buttons keep their own lit look */
 .modes { position: relative; }
 .m-ind { position: absolute; left: 0; top: 0; bottom: 0; width: 100px; transform-origin: 0 0; pointer-events: none; opacity: 0;
@@ -948,7 +930,7 @@ body.playing #play::after { content: ""; position: absolute; inset: -2px; border
   transition-duration: 0s !important; transition-delay: 0s !important; }
 
 /* =====================================================================
-   S7.4 « Barre, Sculpter / Écouter, fenêtres » — on the S7.1 system (tokens --m-*, AMB.motion: landscape, scene,
+   S7.4 « Barre, Sculpter, fenêtres » — on the S7.1 system (tokens --m-*, AMB.motion: landscape, scene,
    neon, boom, run, card, crt). Parcours and free mode; sound and controls unchanged. The hover tokens are in S7.1 above.
    ===================================================================== */
 /* ghosts: temporary click-through elements over everything (motion.ghost), removed when their animation ends */
@@ -1241,7 +1223,7 @@ body.playing #play::after { content: ""; position: absolute; inset: -2px; border
    and free mode alike; sound and controls unchanged). Size rules (ARCHITECTURE.md « Mise en page S8.3 »): .stage is
    fixed over the whole window, #viz = 100 % of it (visual.js resize × devicePixelRatio): the canvas size follows the
    window only, never a mode, a drawer or a panel. The page never scrolls: .app is a fixed grid of floating pieces —
-   bar + LCD on top (smoked glass), Écouter's knobs and the pads at the bottom, Sculpter / Composer in .drawer (right
+   bar + LCD on top (smoked glass), the pads at the bottom, Sculpter / Composer in .drawer (right
    side; a bottom sheet on a portrait screen) that scrolls inside itself. ui.js layoutWatch measures what is left of
    the city (--free-t / -r / -b / -l, AMB.gardenVisual.safe); the stage's own overlays sit inside that free window.
    ===================================================================== */
@@ -1250,22 +1232,18 @@ body.playing #play::after { content: ""; position: absolute; inset: -2px; border
 html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 .app { position: fixed; inset: 0; max-width: none; margin: 0; overflow: clip; pointer-events: none;
   padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
-  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr) auto auto; gap: 8px 10px;
-  grid-template-areas: "top top" "free drawer" "macros drawer" "pads drawer"; }
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px 10px;
+  grid-template-areas: "top top" "free drawer" "pads drawer"; }
 .app > * { pointer-events: auto; }
 /* the city: behind everything, edge to edge (no bezel; its CRT scanlines and vignette stay) */
 .app > .stage { position: fixed; inset: 0; z-index: 0; height: auto; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
-.app > .top, .app > .macros, .app > .pads, .app > .drawer { position: relative; z-index: 2; }
+.app > .top, .app > .pads, .app > .drawer { position: relative; z-index: 2; }
 /* the bar: compact smoked glass; the LCD keeps its own screen */
 .app > .top { grid-area: top; background: var(--glass); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-line); border-radius: 6px; box-shadow: 0 8px 28px #0009, inset 0 1px 0 #ffffff10; padding: 6px 10px; gap: 8px 12px; }
 .brand p { display: none; }
 .brand .logo { width: 30px; height: 30px; }
 .lcd { box-shadow: var(--bevel-in), 0 0 18px #000a; }
-/* Écouter: the five knobs and the layer chips, one glass console at the bottom centre */
-.app > .macros { grid-area: macros; justify-self: center; width: min(100%, 880px); margin: 0; }
-.macros > .panel { background: var(--glass); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-line); box-shadow: 0 8px 28px #0009; padding: 8px 12px 10px; }
-.macros .layer-chips { margin-top: 6px; }
 /* the pads: the bottom row (thumbs), over the city */
 .app > .pads { grid-area: pads; margin: 0; }
 body.game .app > .pads { position: relative; bottom: auto; padding: 0; background: none; border-radius: 0; } /* (was sticky under the page) */
@@ -1284,7 +1262,6 @@ body.mode-compose .drawer { width: clamp(340px, 56vw, 940px); }
 @container (max-width: 720px) { .drawer .globals { grid-template-columns: minmax(0, 1fr); } }
 @keyframes s8-in-side { from { translate: calc(70px * var(--m-amp)) 0; opacity: 0; } }
 @keyframes s8-in-sheet { from { translate: 0 calc(90px * var(--m-amp)); opacity: 0; } }
-.s8-drawer-ghost { border-radius: 6px; background: var(--glass-hi); border: 1px solid var(--glass-line); box-shadow: 0 10px 34px #000a; z-index: 2; }
 /* the stage's overlays live in the free window (what the floating pieces leave of the city) */
 .stage .hud { top: calc(var(--free-t) + 10px); left: calc(var(--free-l) + 16px); }
 .stage-tools { top: calc(var(--free-t) + 10px); right: calc(var(--free-r) + 12px); }
@@ -1312,27 +1289,24 @@ body.listen .app > .stage { height: auto; }
 }
 /* a portrait screen (phone, tablet upright): the drawer is a bottom sheet over the pads, the city above it */
 @media (orientation: portrait) and (max-width: 900px) {
-  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto auto; grid-template-areas: "top" "free" "drawer" "macros" "pads"; }
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; grid-template-areas: "top" "free" "drawer" "pads"; }
   body.mode-sculpt .drawer, body.mode-compose .drawer { width: auto; height: 40dvh; animation-name: s8-in-sheet; border-radius: 12px 12px 6px 6px; }
   body.mode-compose .drawer { height: 46dvh; }
 }
 /* a phone with a sheet open: the pads on one row (thumb-wide), the city keeps a window above the sheet */
 @media (orientation: portrait) and (max-width: 560px) {
   body.mode-sculpt .drawer { height: 36dvh; } body.mode-compose .drawer { height: 42dvh; }
-  body:not(.mode-listen) .pads { grid-template-columns: repeat(9, 1fr); }
-  body:not(.mode-listen) .pad, body:not(.mode-listen) .pad:nth-child(6) { grid-column: auto; height: 48px; }
+  .pads { grid-template-columns: repeat(9, 1fr); }
+  .pad, .pad:nth-child(6) { grid-column: auto; height: 48px; }
 }
 /* phones: smaller knobs (the five on one row), tighter glass */
 @media (max-width: 560px) {
   .app { gap: 6px; padding-left: max(6px, env(safe-area-inset-left)); padding-right: max(6px, env(safe-area-inset-right)); }
   .app > .top { padding: 6px 8px; }
-  .macros > .panel { padding: 6px 6px 8px; }
   .macros .ctls { flex-wrap: nowrap; gap: 0; }
   .macros .ctl { width: auto; flex: 1 1 0; min-width: 0; }
   .macros .knob svg { width: 54px; height: 54px; }
   .macros .k-lab { font-size: 10px; letter-spacing: .02em; }
-  .macros .layer-chips { gap: 4px; }
-  .macros .layer-chips .tog { padding: 4px 8px; font-size: 11px; }
   .modes { display: flex; width: 100%; } .modes .mode-btn { flex: 1; }
   .rec-opts { position: static; } .rec-opts > .menu { left: 0; right: 0; min-width: 0; } /* (like ⋯: across the bar, inside the screen) */
   .drawer { padding: 8px; }
@@ -1349,15 +1323,6 @@ body.listen .app > .stage { height: auto; }
   #dice { font-size: 0; white-space: nowrap; } #dice .m-die { font-size: 16px; } /* ✦ alone (its name stays for screen readers and in its title) */
   .lcd { font-size: 18px; padding: 2px 10px; }
   .lcd #lcdLine { font-size: 16px; }
-  /* Écouter: one strip, no title — the knobs left, the layer chips beside them */
-  .macros > .panel { padding: 4px 10px; display: flex; align-items: center; gap: 10px; }
-  .macros > .panel > header { display: none; }
-  .macros .ctls { flex: 1 1 auto; flex-wrap: nowrap; }
-  .macros .ctl { width: 60px; }
-  .macros .knob svg { width: 46px; height: 46px; }
-  .macros .k-lab { font-size: 10px; }
-  .macros .layer-chips { margin: 0; flex: 0 1 300px; gap: 4px; }
-  .macros .layer-chips .tog { padding: 3px 8px; font-size: 11px; }
   .pad { height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) { .drawer { animation: none !important; } }

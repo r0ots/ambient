@@ -14,7 +14,7 @@ document.getElementById('f').addEventListener('load', () => {
   const GV = A.gardenVisual, S = A.store, L = ['drone', 'pad', 'bells', 'texture', 'grains', 'seq', 'bass', 'perc'];
   const small = h.includes('small'), big = h.includes('big');
   setTimeout(() => {
-    A.garden.showTree(false); A.perform.setMode('listen'); A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none'; GV.sig = null;
+    A.garden.showTree(false); A.perform.setMode('sculpt'); A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none'; GV.sig = null;
     const v = {};
     if (small || big) {
       for (const l of L) { v[l + '.vol'] = small ? 0.08 : 1; v[l + '.tone'] = small ? 0 : 1; v[l + '.send'] = small ? 0 : 1; }
