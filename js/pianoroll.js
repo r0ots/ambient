@@ -550,7 +550,7 @@
         if (nt.p < 10) { // dashed outline + percentage for probabilistic notes
           g.setLineDash([3, 2]); g.strokeStyle = '#fff8'; g.lineWidth = 1;
           roundRect(g, x + 0.5, y + 0.5, w - 1, G.rowH - 5, 3); g.stroke(); g.setLineDash([]);
-          if (w > 22) { g.fillStyle = '#1d1407'; g.font = '9px "IBM Plex Mono", monospace'; g.fillText(nt.p * 10 + '%', x + 3, y + (G.rowH - 4) / 2); }
+          if (w > 22) { g.fillStyle = '#1d1407'; g.font = '600 9px "Chakra Petch", sans-serif'; g.fillText(nt.p * 10 + '%', x + 3, y + (G.rowH - 4) / 2); }
         }
       }
       this.drawFx(g, G);

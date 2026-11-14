@@ -136,7 +136,10 @@
     renderTree() {
       const map = $('#treeDlg .tree-map'); if (!map) return;
       const T = AMB.tree, g = AMB.game;
-      $('#treeDlg .tree-count').textContent = g.s.ended ? '✦ L\'instrument est à toi' : `${T.NODES.filter((n) => g.has(n.id)).length}/${T.NODES.length}`;
+      const cnt = $('#treeDlg .tree-count'), rdy = $('#treeDlg .tree-ready'), nr = T.NODES.filter((n) => T.status(n.id) === 'ready').length;
+      cnt.textContent = g.s.ended ? '✦ L\'instrument est à toi' : `${T.NODES.filter((n) => g.has(n.id)).length}/${T.NODES.length}`;
+      cnt.classList.toggle('done', !!g.s.ended);
+      if (rdy) { rdy.hidden = !nr || !!g.s.ended; rdy.textContent = `${nr} ${nr > 1 ? 'prêts' : 'prêt'}`; } // (S9.2: the neon counters)
       if (!map.querySelector('.tree-stage') || map.dataset.n !== T.NODES.length + (this.narrowTree() ? 'n' : '')) this.buildMap(map);
       this.paintTree();
     },
@@ -146,6 +149,14 @@
       if (d) out.push({ kind: d.kind === 'reponse' ? 'reponse' : 'défi', d, text: d.kind === 'reponse' ? `↺ Réponse « ${d.title} » (${AMB.puzzles.need(d)} notes)` : AMB.game.txt(d.kind === 'demande' ? `♪ Demande : ${d.title}` : `◇ ${d.title}`) });
       if (S) for (const [sid, nid] of Object.entries(S.OPENS)) if (nid === id) out.push({ kind: 'secret', text: `✦ Découverte : ${S.has(sid) ? S.byId[sid].name : '???'}` });
       return out;
+    },
+    // S9.2 a circuit trace from a (below) to b: straight up, a 45° bend towards b's column (a flat run if the step is
+    // wide), straight up into b — never a curve
+    linkPath(a, b) {
+      const dx = b.x - a.x, dy = a.y - b.y, sx = Math.sign(dx), diag = Math.min(Math.abs(dx), Math.max(0, dy - 24)), flat = Math.abs(dx) - diag;
+      if (!dx) return `M${a.x} ${a.y}V${b.y}`;
+      const y1 = a.y - Math.max(12, (dy - diag) / 2), y2 = y1 - diag;
+      return `M${a.x} ${a.y}V${y1}L${a.x + sx * diag} ${y2}${flat ? `H${b.x}` : ''}V${b.y}`;
     },
     // the stage: SVG links under absolutely placed LED buttons, in layout units (pan/zoom = one transform)
     buildMap(map) {
@@ -168,8 +179,7 @@
       }
       const gl = document.createElementNS(SVGNS, 'g');
       for (const n of T.NODES) for (const r of n.req) {
-        const a = lay.pos[r], b = lay.pos[n.id], dy = a.y - b.y;
-        const d = `M${a.x} ${a.y}C${a.x} ${a.y - dy * 0.55} ${b.x} ${b.y + dy * 0.45} ${b.x} ${b.y}`;
+        const d = this.linkPath(lay.pos[r], lay.pos[n.id]);
         const cross = T.byId[r].branch !== n.branch;
         for (const glow of [false, true]) {
           const p = document.createElementNS(SVGNS, 'path');

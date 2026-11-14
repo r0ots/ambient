@@ -577,11 +577,11 @@
       g.globalAlpha = on ? 1 : 0.22; g.fillStyle = on ? (hot && !sup ? '#ff3a6a' : sup ? (i % 2 ? '#fff36b' : rgba(col, 1)) : rgba(col, 1)) : '#3a2a50';
       g.fillRect(Math.round(x0 + i * (sw + 2 * dpr)), y0, Math.max(1, Math.round(sw)), bh);
     }
-    g.font = `${fs}px VT323, monospace`; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+    g.font = `${fs}px "Chakra Petch", sans-serif`; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
     const txt = `${sup ? 'SUPER !' : 'COMBO ×' + k.n} · ${C.shown(c).toUpperCase()}`, ty = y0 - Math.round(fs * 0.35);
     g.globalAlpha = 0.9; g.fillStyle = rgba(col, 1); g.fillText(txt, W / 2 + dpr, ty + dpr);
     g.globalAlpha = 1; g.fillStyle = sup && blink > 0.5 ? '#fff36b' : '#ffffff'; g.fillText(txt, W / 2, ty);
-    if (!sup) { g.globalAlpha = 0.85; g.font = `${Math.round(fs * 0.7)}px VT323, monospace`; g.fillStyle = '#d8c8ff'; g.fillText(k.charge >= 1 ? 'SUR LE TEMPS…' : 'TIENS LA POSITION · JOUE DES NOTES', W / 2, y0 + bh + Math.round(fs * 0.85)); }
+    if (!sup) { g.globalAlpha = 0.85; g.font = `${Math.round(fs * 0.7)}px "Chakra Petch", sans-serif`; g.fillStyle = '#d8c8ff'; g.fillText(k.charge >= 1 ? 'SUR LE TEMPS…' : 'TIENS LA POSITION · JOUE DES NOTES', W / 2, y0 + bh + Math.round(fs * 0.85)); }
     g.textAlign = 'start'; g.globalAlpha = 1;
   }) });
 

@@ -235,7 +235,6 @@ canvas.auto-lane { display: block; width: 100%; border-radius: 8px; border: 1px 
 
 footer { text-align: center; padding: 20px 0 8px; }
 
-
 @media (max-width: 760px) {
   .app { padding: 12px; }
   .globals { grid-template-columns: 1fr; }
@@ -253,7 +252,6 @@ footer { text-align: center; padding: 20px 0 8px; }
   .hint { display: none; }
   .knob svg { width: 56px; height: 56px; }
 }
-
 
 /* =====================================================================
    S9.2 NÉON — one skin for the whole app (ARCHITECTURE.md « Néon (S9.2) »). Night black around, the colour only in
@@ -496,13 +494,11 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .fx-pop .fx-word i { font-style: normal; display: inline-block; opacity: 0; animation: fx-letter calc(var(--m-med) + 60ms) steps(1, end) forwards; animation-delay: calc(var(--d) * (var(--m-stagger) + 10ms)); }
 .fx-pop .fx-word::after { content: ""; position: absolute; top: 50%; left: 0; width: .3em; height: .3em; margin: -.15em 0 0 -.15em; border-radius: 50%; background: #fff; box-shadow: 0 0 .3em #fff, 0 0 .8em var(--k);
   opacity: 0; animation: fx-head calc(var(--n) * (var(--m-stagger) + 10ms) + 40ms) linear forwards; }
-.fx-pop small { font-size: .42em; letter-spacing: .24em; color: #fff; opacity: .92; }
 .fx-pop.fx-out { animation: fx-out var(--m-slow) steps(1, end) forwards; }
 @keyframes fx-letter { 0% { opacity: 1; color: #fff; text-shadow: 0 0 .2em #fff, 0 0 .6em #fff, 0 0 1.2em var(--k); } 40% { opacity: .35; } 60% { opacity: 1; } 100% { opacity: 1; } }
 @keyframes fx-head { 0% { opacity: 1; left: 0; } 95% { opacity: 1; left: 100%; } 100% { opacity: 0; left: 100%; } }
 @keyframes fx-out { 0% { opacity: 1; } 12% { opacity: .2; } 22% { opacity: 1; } 34% { opacity: .1; } 44% { opacity: .8; filter: brightness(1.5); } 58% { opacity: .05; } 70% { opacity: .5; } 100% { opacity: 0; } }
 .m-still .fx-pop .fx-word i { opacity: 1; }
-
 
 /* S5.10 the notebook of discoveries (was G10.1 secrets): folded panel inside the tree screen (path only); found ones, then riddles */
 .discoveries { margin: 0 0 4px; border-radius: var(--radius, 4px); background: #0003; }
@@ -655,7 +651,6 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
   .pad { height: 50px; border-radius: 8px; }
 }
 
-
 /* S5.7 (revues regard neuf) — Parcours seulement, le mode libre ne change pas */
 /* no permanent help line on the visual: the first move is a note on the pads */
 body.game .stage .hint { display: none !important; }
@@ -669,12 +664,9 @@ body.game.touch #midi { display: none !important; }
 body.game .app { overflow-x: clip; }
 
 /* =====================================================================
-   S6.6 « Juice d'arcade » — Parcours only (body.game); the free mode keeps the amber synth
+   S6.6 « Juice d'arcade » — INSERT COIN, HIGH SCORES (S9.2: in the one neon skin, Parcours and free mode alike)
    ===================================================================== */
 :root { --arc-fg: var(--cyan); --arc-hot: var(--magenta); --arc-gold: var(--amber); --arc-bg: #0a0618; --arc-dim: var(--line-hi); --arc-glow: #22e6ff66; --arc-ink: var(--bg); --arc-soft: var(--muted); } /* (S9.2: the arcade tokens are the neon ones) */
-/* the LCD and the titles of the Parcours: neon on a violet night, a pink / cyan fringe (VT323, already loaded) */
-
-
 
 /* « INSERT COIN »: the Parcours' title before the first sound; the first press (finger, key, MIDI note) starts the music */
 .coin { display: none; }
@@ -1335,7 +1327,6 @@ body.listen .app > .stage { height: auto; }
   .pad { height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) { .drawer { animation: none !important; } }
-
 
 /* S8.8: a short window (phone on its side) keeps the city for the city: no keyboard hint over it */
 @media (max-height: 520px) { .stage .hint { display: none; } }

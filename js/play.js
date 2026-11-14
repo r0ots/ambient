@@ -19,14 +19,14 @@
     // notes sound when stopped too, once audio has been started once (in the path, a note key starts it: S5.7)
     if (!AMB.engine.ctx && !(note && g && g.path && wakeAudio(true))) return;
     if (note) firstNote();
-    if ((i = MELODY_LOW.indexOf(e.code)) >= 0) press('k' + e.code, AMB.seq.playDegree(i, e.shiftKey ? 0.5 : 0.85, true, e.timeStamp));
-    else if ((i = MELODY_HIGH.indexOf(e.code)) >= 0) press('k' + e.code, AMB.seq.playDegree(i + 7, e.shiftKey ? 0.5 : 0.85, true, e.timeStamp));
+    if ((i = MELODY_LOW.indexOf(e.code)) >= 0) { press('k' + e.code, AMB.seq.playDegree(i, e.shiftKey ? 0.5 : 0.85, true, e.timeStamp)); keyDown('k' + e.code, padOfDeg(i), { source: 'key' }); }
+    else if ((i = MELODY_HIGH.indexOf(e.code)) >= 0) { press('k' + e.code, AMB.seq.playDegree(i + 7, e.shiftKey ? 0.5 : 0.85, true, e.timeStamp)); keyDown('k' + e.code, padOfDeg(i + 7), { source: 'key' }); }
     else if ((i = CHORDS.indexOf(e.code)) >= 0) AMB.seq.forceChord(i);
     else return;
     e.preventDefault();
   }
 
-  function onKeyUp(e) { lift('k' + e.code, false, e.timeStamp); }
+  function onKeyUp(e) { lift('k' + e.code, false, e.timeStamp); keyUp('k' + e.code); }
 
   // ---------- held notes: key → live handle; the sustain pedal (CC64) delays the releases ----------
   const held = new Map(); // key ('k' + e.code or 'm' + midi note) → handle from AMB.seq.playMidi
@@ -52,7 +52,7 @@
   }
   // stop, MIDI unplugged, focus lost: every note ends, the pedal is considered up, a held chord is let go
   function panic() {
-    padsUp();
+    padsUp(); [...keyPad.keys()].forEach(keyUp);
     held.forEach((h) => AMB.seq.endLive(h));
     held.clear();
     setPedal(false);
@@ -155,8 +155,7 @@
     firstNote();
     const deg = +b.dataset.deg, key = 'p' + e.pointerId;
     try { b.setPointerCapture(e.pointerId); } catch (err) {}
-    b.classList.add('on');
-    if (AMB.motion) AMB.motion.burst(b, { n: 9, spread: 1.7, speed: 280 }); // S7.3: a pad sparks in its colour at once (and again when let go)
+    keys.hit(deg, { source: e.pointerType === 'mouse' ? 'mouse' : 'touch' }); // S9.2: the strike (the same for every input)
     press(key, AMB.seq.playDegree(deg, 0.85, true, e.timeStamp));
     const t = setTimeout(() => { // long press: the chord of this degree (needs the Pad; the note keeps sounding)
       if (!padPtr.has(e.pointerId) || !can('h.pad')) return;
@@ -169,7 +168,7 @@
   function padUp(id) {
     const p = padPtr.get(id); if (!p) return;
     padPtr.delete(id); clearTimeout(p.t); lift('p' + id);
-    if (![...padPtr.values()].some((q) => q.b === p.b)) p.b.classList.remove('on', 'chord');
+    if (![...padPtr.values()].some((q) => q.b === p.b)) { p.b.classList.remove('chord'); if (![...keyPad.values()].includes(+p.b.dataset.deg)) keys.lift(+p.b.dataset.deg); }
   }
   // S5.2: the pads light up briefly on the Mélodie auto's notes (in their own colour), so the player sees what the machine
   // plays and can copy it. The pad of the same note, nearest in pitch (another octave = the pad of that degree).
@@ -194,6 +193,7 @@
     const b = bar.children[padForMidi(midi)]; if (!b) return;
     const ctx = AMB.engine && AMB.engine.ctx, wait = ctx && time ? Math.max(0, (time - ctx.currentTime) * 1000) : 0, T = cls === 'auto' ? autoT : callT;
     setTimeout(() => {
+      if (cls === 'auto') return keys.hit(+b.dataset.deg, { source: 'machine', ms }); // S9.2: the machine's strike, softer
       b.classList.add(cls); clearTimeout(T.get(b));
       T.set(b, setTimeout(() => b.classList.remove(cls), ms));
     }, wait);
@@ -202,7 +202,8 @@
   const padCall = (e) => { if (e && e.notes) e.notes.forEach((n) => n.midis.forEach((m) => padLight(m, n.time, n.dur * 1000, 'call'))); };
   function padsInit() {
     const bar = document.getElementById('pads'); if (!bar) return;
-    bar.innerHTML = PADS.map((k, i) => `<button type="button" class="pad" data-deg="${i}" style="--i:${i};--c:hsl(${250 - i * 27}, 85%, 64%)" title="Touche ${k} · appui long : accord" aria-label="Note ${i + 1}"><span>${k}</span></button>`).join('');
+    bar.innerHTML = PADS.map((k, i) => `<button type="button" class="pad" data-deg="${i}" style="--i:${i};--c:${KEY_COL[i]}" title="Touche ${k} · appui long : accord" aria-label="Note ${i + 1}"><b>${k}</b><small></small></button>`).join('');
+    padNames(); AMB.store.on((key) => { if (key === 'global.key' || key === 'global.scale') padNames(); }); // (S9.2: each key says its note)
     bar.addEventListener('pointerdown', padDown);
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((n) => bar.addEventListener(n, (e) => padUp(e.pointerId)));
     bar.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -212,20 +213,70 @@
     padsRefresh();
   }
 
+  // ---------- S9.2 the strike of a key: ONE look for every input (mouse or finger on a key, computer key, MIDI note,
+  // and — softer, never squashed — the machine's notes): crushed and full of light while held (.on), a ring, a laser
+  // towards the city and sparks of its colour; let go = 400 ms brighter (.k-rel). The state changes at once; the
+  // motion (ring, laser, sparks, the 400 ms) is off in reduced motion and at JUICE 0. Keys = the 9 notes of A–L.
+  const KEY_COL = ['#8a5cff', '#5c7bff', '#22c6ff', '#22e6ff', '#22ffc8', '#39ff88', '#c8ff39', '#ffb347', '#ff2bd6'];
+  const NOTE_FR = ['DO', 'DO♯', 'RÉ', 'RÉ♯', 'MI', 'FA', 'FA♯', 'SOL', 'SOL♯', 'LA', 'LA♯', 'SI'];
+  function padNames() {
+    const bar = document.getElementById('pads'), S = AMB.seq, T = AMB.theory; if (!bar || !S || !S.scale || !T) return;
+    [...bar.children].forEach((b, i) => { const sm = b.querySelector('small'), n = NOTE_FR[((T.degreeToMidi(i, S.root, S.scale, 4) % 12) + 12) % 12]; if (sm) sm.textContent = n; b.setAttribute('aria-label', `Note ${n}`); });
+  }
+  const padOfDeg = (d) => (d < PADS.length ? d : padForMidi(AMB.theory.degreeToMidi(d, AMB.seq.root, AMB.seq.scale, 4)));
+  const keyPad = new Map(), machineT = new WeakMap(); // input key ('k' + code, 'm' + MIDI note) → the key it lights
+  function keyDown(k, i, o) { if (keyPad.has(k)) keyUp(k); if (i < 0) return; keyPad.set(k, i); keys.hit(i, o); }
+  function keyUp(k) {
+    const i = keyPad.get(k); if (i == null) return; keyPad.delete(k);
+    if (![...keyPad.values()].includes(i) && ![...padPtr.values()].some((q) => +q.b.dataset.deg === i)) keys.lift(i);
+  }
+  const keys = {
+    COL: KEY_COL,
+    el(i) { const bar = document.getElementById('pads'); return bar && !bar.hidden ? bar.children[i] || null : null; },
+    // i = the key (0..8); o = {source: 'mouse' | 'touch' | 'key' | 'midi' | 'machine', vel (0..1), ms (machine: how long it stays lit)}
+    hit(i, o = {}) {
+      const b = this.el(i); if (!b) return null;
+      const soft = o.source === 'machine', M = AMB.motion;
+      if (soft) { b.classList.add('auto'); clearTimeout(machineT.get(b)); machineT.set(b, setTimeout(() => b.classList.remove('auto'), o.ms || AUTO_MS)); }
+      else { b.classList.remove('k-rel'); b.classList.add('on'); }
+      if (!M || !M.on() || document.hidden) return b;
+      const r = b.getBoundingClientRect(), c = KEY_COL[i] || '#22e6ff', v = o.vel != null ? o.vel : 0.85; if (!r.width) return b;
+      // the laser: from the key's top up into the city (longer when struck harder; the machine's = shorter, fainter)
+      const h = Math.max(50, Math.min(r.top * 0.55, 340)) * (soft ? 0.45 : 0.55 + 0.45 * v), lz = M.ghost('k-laser', { left: r.left + r.width / 2 + 'px', top: r.top - h + 'px', height: h + 'px' });
+      lz.style.setProperty('--c', c);
+      const an = lz.animate([{ transform: 'scaleY(0)', opacity: 1 }, { transform: 'scaleY(1)', opacity: soft ? 0.5 : 1, offset: 0.28 }, { transform: 'scaleY(1)', opacity: 0 }],
+        { duration: M.ms('slow') + (soft ? 0 : 120 * M.t()), easing: 'ease-out' });
+      an.onfinish = an.oncancel = () => lz.remove();
+      if (soft) return b;
+      const rg = M.ghost('k-ring', { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' }); rg.style.setProperty('--c', c);
+      const ar = rg.animate([{ transform: 'scale(1)', opacity: 0.9 }, { transform: `scale(${1 + 0.18 * Math.min(1.5, M.amp())}, ${1 + 0.4 * Math.min(1.5, M.amp())})`, opacity: 0 }], { duration: M.ms('med') + 60 * M.t(), easing: M.EASE.out });
+      ar.onfinish = ar.oncancel = () => rg.remove();
+      M.burst({ x: r.left + r.width / 2, y: r.top + 6 }, { n: 10 + Math.round(6 * v), spread: 2.6, speed: 300, life: 0.5, color: c });
+      return b;
+    },
+    // let go: no longer crushed, 400 ms brighter, a few sparks
+    lift(i) {
+      const b = this.el(i); if (!b || !b.classList.contains('on')) return;
+      b.classList.remove('on');
+      const M = AMB.motion; if (M && M.on()) { M.pop(b, 'k-rel', { ms: 400 }); M.burst(b, { n: 6, spread: 2, speed: 220, life: 0.4, color: KEY_COL[i] }); }
+    },
+  };
+  AMB.keys = keys;
+
   let midiAccess = null;
   function onMidi(msg) {
     const [st, d1, d2] = msg.data;
     const type = st & 0xf0;
     if (type === 0x80 || (type === 0x90 && d2 === 0)) { // note-off (or note-on at velocity 0)
       if (lowDown.delete(d1)) letChordGo();
-      lift('m' + d1, false, msg.timeStamp);
+      lift('m' + d1, false, msg.timeStamp); keyUp('m' + d1);
     } else if (type === 0x90) {
       // in the path, like the computer keyboard: notes from the Graine (S5.7), low notes (chords) the Pad.
       // Notes sound while stopped too (like A–L), chords need the playback.
       const g = AMB.game, can = (id) => !g || g.isUnlocked(id);
       // the heard velocity is remapped to 0.25–1 (soft notes stay audible); the raw one (0..1) rides along on 'live'
       if (d1 < LOW) { if (can('h.pad') && AMB.seq.playing) lowOn(d1); }
-      else if (wakeAudio()) { firstNote(); press('m' + d1, AMB.seq.playMidi(d1, 0.25 + (d2 / 127) * 0.75, d2 / 127, true, msg.timeStamp)); }
+      else if (wakeAudio()) { firstNote(); press('m' + d1, AMB.seq.playMidi(d1, 0.25 + (d2 / 127) * 0.75, d2 / 127, true, msg.timeStamp)); keyDown('m' + d1, padForMidi(d1), { source: 'midi', vel: d2 / 127 }); }
     } else if (type === 0xb0) {
       const v = d2 / 127;
       if (d1 === 64) { setPedal(d2 >= 64, msg.timeStamp); return letChordGo(); } // sustain pedal (holds notes and the forced chord)

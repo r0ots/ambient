@@ -437,7 +437,7 @@
         say: (o) => `★ Parfait !${o.n > 1 ? ' ×' + o.n : ''}${o.node ? ' · ✦ ' + o.node : ''}` },
       bien: { rank: 3, stamp: 1, boom: 'ZIP!', flash: 0.25, confetti: 50, shake: 1, lcd: 'glitch', jingle: 'streak', pop: (o) => o.n > 1 ? `BIEN ! ×${o.n}` : 'BIEN !', kick: ['twinkle'],
         say: (o) => `✓ Bien !${o.n > 1 ? ' ×' + o.n : ''}${o.node ? ' · ✦ ' + o.node : ''}` },
-      rate: { city: 'blackout', rank: 1, stamp: 1, boom: 'BZZT!', lcd: 'glitch', say: (o) => `✗ Raté${o.why ? ' · ' + o.why : ''} : la musique continue` },
+      rate: { city: 'blackout', rank: 1, stamp: 1, pop: 'RATÉ', boom: 'BZZT!', lcd: 'glitch', say: (o) => `✗ Raté${o.why ? ' · ' + o.why : ''} : la musique continue` },
       // S8.7 the huge combos (js/city-combos.js), the instrument's: they play in free mode too (`free`), silent (no
       // jingle: the music is the player's), never a flash (the city flashes itself, × JUICE). A combo's first SUPER is a
       // discovery: the `discovery` recipe, its onomatopoeia « SUPER! » (o.boom)
@@ -502,7 +502,7 @@
         if (R.bounce) this.fxClass(document.body, 'fx-bounce', 800);
         const el = R.hop === 'el' ? o.el : R.hop && $(R.hop); if (el) this.fxClass(el, 'fx-hop', 550);
         if (R.kick && GV && GV.flare) GV.flare(R.kick, J);
-        if (R.pop || boom) this.fxPop(R.pop ? (typeof R.pop === 'function' ? R.pop(o) : R.pop) : '', stage, R.rank, J > 0 ? boom : null, J);
+        if (R.pop || boom) this.fxPop(R.pop ? (typeof R.pop === 'function' ? R.pop(o) : R.pop) : '', stage, R.rank, J > 0 ? boom : null, J, kind);
         if (R.confetti) {
           const src = R.from === 'el' ? o.el : R.from ? $(R.from) : stage, n = Math.round(R.confetti * J);
           this.confetti.burst(n, src || stage);
@@ -526,33 +526,32 @@
       f.style.setProperty('--a', a.toFixed(2)); f.classList.toggle('soft', !!soft);
       this.fxClass(f, 'on', soft ? 950 : 600);
     },
-    // the pop text; S6.6 with its onomatopoeia (`boom`): a comic starburst (halftone, two neons picked by the word, tilted,
-    // bouncing in), the pop text under it, size by rank × JUICE; never over the LCD (it stays readable during an ask)
-    BOOM_COLS: [['#ff3fa4', '#fff36b', '#3ff0ff'], ['#3ff0ff', '#ff3fa4', '#fff36b'], ['#ffd23f', '#ff3348', '#3ff0ff'], ['#9d6bff', '#3ff0ff', '#fff36b']],
+    // S9.2 the party's word as a neon sign: written by a laser letter by letter, held, then it crackles and goes out
+    // (css .fx-pop; no bubble, no comic font). The word = the moment's text (PARFAIT ! ×3, COMBO ×2…), else its `boom`
+    // (no onomatopoeia under it any more). Colour by moment (phosphor = success, magenta = missed, cyan =
+    // combo / discovery, amber = what opens); size by rank × JUICE; never over the LCD (it stays readable during an ask)
+    SIGN_COL: { rate: '#ff2bd6', parfait: '#39ff88', bien: '#39ff88', juste: '#39ff88', streak: '#39ff88', defi: '#39ff88', record: '#39ff88', tier: '#39ff88',
+      combo: '#22e6ff', super: '#22e6ff', discovery: '#22e6ff', placement: '#22e6ff', open: '#ffb347', end: '#ffb347', ready: '#ffb347', first: '#ffb347' },
     // S6.7: two never overlap — while one is up, a bigger (or equal) moment replaces it, a smaller one is dropped
-    fxPop(text, stage, rank, boom = null, J = 1) {
+    fxPop(text, stage, rank, boom = null, J = 1, kind = null) {
       const cur = this._pop, now = Date.now();
       if (cur && cur.el.isConnected) { if (now < cur.until && rank < cur.rank) return null; cur.el.remove(); }
       const L = this.confetti.layer(), r = stage ? stage.getBoundingClientRect() : { left: 0, top: 0, width: innerWidth, height: innerHeight };
-      const p = document.createElement('div'); p.className = 'fx-pop';
-      const x = Math.round(r.left + r.width / 2); let y = Math.round(r.top + r.height * 0.42);
-      if (boom) {
-        let h = 0; for (const c of boom) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-        const C = this.BOOM_COLS[h % this.BOOM_COLS.length], k = Math.min(1.6, 0.6 + 0.4 * J);
-        p.classList.add('fx-boom');
-        p.style.setProperty('--b1', C[0]); p.style.setProperty('--b2', C[1]); p.style.setProperty('--b3', C[2]);
-        p.style.setProperty('--rot', ((this._boomTilt = -(this._boomTilt || 9)) + (Math.random() - 0.5) * 6).toFixed(1) + 'deg');
-        p.style.animationDuration = rank >= 7 ? '1.8s' : '1.3s';
-        p.style.fontSize = `min(${Math.round((22 + rank * 4) * k)}px, ${(8 * k).toFixed(1)}vw)`;
-        const b = document.createElement('b'); b.textContent = boom; p.append(b);
-        if (text) { const s = document.createElement('small'); s.textContent = text; p.append(s); }
-      } else { p.textContent = text; p.style.fontSize = `min(${24 + rank * 5}px, 10vw)`; }
+      const word = String(text || boom || ''), k = Math.min(1.5, 0.7 + 0.3 * J);
+      const p = document.createElement('div'); p.className = 'fx-pop'; p.setAttribute('role', 'status');
+      if (this.SIGN_COL[kind]) p.style.setProperty('--k', this.SIGN_COL[kind]);
+      const w = document.createElement('b'); w.className = 'fx-word'; const ch = [...word];
+      ch.forEach((c, i) => { const e = document.createElement('i'); e.textContent = c === ' ' ? '\u00a0' : c; e.style.setProperty('--d', i); w.append(e); });
+      w.style.setProperty('--n', ch.length); w.setAttribute('aria-label', word); p.append(w);
+      p.style.fontSize = `min(${Math.round((20 + rank * 4) * k)}px, ${(7.5 * k).toFixed(1)}vw)`;
+      const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height * 0.42);
       p.style.left = x + 'px'; p.style.top = y + 'px';
       L.hidden = false; L.append(p);
       const lcd = document.getElementById('lcd'), lr = lcd && lcd.getBoundingClientRect(), half = p.offsetHeight * 0.75;
       if (lr && lr.height && y - half < lr.bottom + 6) p.style.top = Math.round(lr.bottom + 6 + half) + 'px'; // under the LCD, never over it
-      const ms = boom && rank >= 7 ? 1800 : 1300;
+      const ms = rank >= 7 ? 1900 : 1400, out = AMB.motion.ms('slow');
       this._pop = { el: p, rank, until: now + ms };
+      setTimeout(() => p.classList.add('fx-out'), Math.max(0, ms - out)); // the sign crackles and goes out
       setTimeout(() => { p.remove(); this.confetti.idle(); }, ms);
       return p;
     },

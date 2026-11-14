@@ -571,10 +571,10 @@
       let s = this.labels.get(key);
       if (s) return s;
       const cv = document.createElement('canvas'), g = cv.getContext('2d'), pad = Math.ceil(fs * 0.4);
-      let font = `${fs}px VT323, "IBM Plex Mono", monospace`; g.font = font;
+      let font = `${fs}px "Chakra Petch", sans-serif`; g.font = font;
       const fits = (t) => g.measureText(t).width + 4 + 2 * pad <= maxW, short = p.short.toUpperCase();
       const lines = [fits(full) ? full : short];
-      if (!fits(lines[0])) { const f2 = Math.max(Math.round(fs * 0.7), Math.floor(fs * (maxW - 4 - 2 * pad) / g.measureText(short).width)); font = `${f2}px VT323, "IBM Plex Mono", monospace`; g.font = font; }
+      if (!fits(lines[0])) { const f2 = Math.max(Math.round(fs * 0.7), Math.floor(fs * (maxW - 4 - 2 * pad) / g.measureText(short).width)); font = `${f2}px "Chakra Petch", sans-serif`; g.font = font; }
       const w = Math.ceil(Math.max(...lines.map((t) => g.measureText(t).width))) + 4 + 2 * pad;
       cv.width = w; cv.height = Math.ceil(fs * 1.05 * lines.length + fs * 0.2) + pad;
       g.font = font; g.textBaseline = 'top'; g.textAlign = 'center';
@@ -1461,7 +1461,7 @@
     g.globalAlpha = 1;
     if (v.ans) v.drawAnswer(g, v.ans);
     v.drawMark(g, fs);
-    if (!v.plants.length && !v.rares.length) { g.setTransform(1, 0, 0, 1, 0, 0); g.font = `${Math.round(fs * 1.3)}px VT323, monospace`; g.fillStyle = hex(TOK.pink); g.textAlign = 'center'; g.shadowColor = hex(TOK.pink); g.shadowBlur = fs * 0.6; g.fillText('Ouvre une couche pour rallumer la ville', cam.W / 2, cam.H * 0.42); g.shadowBlur = 0; g.textAlign = 'start'; }
+    if (!v.plants.length && !v.rares.length) { g.setTransform(1, 0, 0, 1, 0, 0); g.font = `${Math.round(fs * 1.3)}px "Chakra Petch", sans-serif`; g.fillStyle = hex(TOK.pink); g.textAlign = 'center'; g.shadowColor = hex(TOK.pink); g.shadowBlur = fs * 0.6; g.fillText('Ouvre une couche pour rallumer la ville', cam.W / 2, cam.H * 0.42); g.shadowBlur = 0; g.textAlign = 'start'; }
   } });
 
   // rain: streaks drawn directly (far and near, slanted by the wind), falling with the scene's time; splashes on the
