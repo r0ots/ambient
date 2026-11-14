@@ -11,11 +11,11 @@
 //   - JUICE (AMB.motion): look effects (bloom, chroma, crt, mask) × (0.25 + 0.75 JUICE); motion effects (vhs, grain,
 //     shake, warp, flash) × JUICE; JUICE 0 = a still image (time frozen, no motion effect). Reduced motion: the look at
 //     half strength, every motion effect off (no flash), time frozen. fog is content (not scaled).
-//   - robustness: no WebGL, a lost context, or a frame budget blown (sliding measure of the frame interval and of this
-//     pass's own cost: quality steps down — render scale 0.7, one bloom radius, scale 0.5 — then 2D) → automatic fallback:
-//     the GL canvas hides, #viz shows again with the css CRT (body.city .stage::after) and the 2D post of garden-visual
-//     (gardenVisual.post2d). A restored context brings WebGL back; a budget fallback stays for the session.
-//     ?gl=0 = never WebGL; ?gl=1 = WebGL without the budget fallback (dev captures).
+//   - robustness: no WebGL or a lost context → automatic fallback: the GL canvas hides, #viz shows again with the css CRT
+//     (body.city .stage::after) and the 2D post of garden-visual (gardenVisual.post2d). A restored context brings WebGL back.
+//   - S10.1 quality (AMB.quality, end of js/motion.js, the ONE governor on the real frame intervals; the own budget of S8.2 is gone — it
+//     never fired): level haut = two bloom radii (1/2, 1/4), moyen = one radius rendered at 1/4, bas = no WebGL (2D,
+//     reason 'quality'); back up = WebGL again. ?gl=0 = never WebGL; ?gl=1 = WebGL whatever the level (dev captures).
 //   - resolution: output = source size × 1/ceil(devicePixelRatio / 1.5) (S9.4: a whole fraction, nearest, pixelated) × quality scale; bloom at 1/2 and 1/4 of it.
 //     Follows any size of #viz (ResizeObserver: S8.3 full screen); the overlay copies #viz's box and its punch animations.
 // Hook: wraps AMB.visual.draw (loaded after garden-visual.js) → render after every frame of any visual mode; nothing
@@ -26,8 +26,7 @@
   const LOOK = { bloom: 1, chroma: 1, crt: 1, mask: 1 }, MOTION = { vhs: 1, grain: 1, shake: 1, warp: 1, flash: 1 };
   const BASE = { bloom: 1.2, chroma: 0.35, crt: 0.55, grain: 0.2 }; // the default look (others 0)
   const FOG = [0.13, 0.05, 0.2]; // S8.8: a DARK violet haze (the lights glow through it), never a milky veil
-  const LEVELS = [{ scale: 1, q: true }, { scale: 0.7, q: false }, { scale: 0.5, q: false }]; // budget steps, then 2D
-  const BUDGET = { warm: 30, window: 90, interval: 36, own: 6 }; // ms: below ~28 fps, or this pass > 6 ms → one step down
+  const STAT = 90; // frames per measure of this pass's own cost (state().stat)
   const qs = (() => { try { return new URLSearchParams(location.search).get('gl'); } catch (e) { return null; } })();
 
   const VS = 'attribute vec2 p;varying vec2 v;void main(){v=p*.5+.5;gl_Position=vec4(p,0.,1.);}';
@@ -65,11 +64,11 @@ col+=(hs(gl_FragCoord.xy+fract(T*.37)*911.)-.5)*.14*GR;
 gl_FragColor=vec4(col,1.);}`;
 
   const G = {
-    NAMES, BASE, BUDGET, LEVELS,
+    NAMES, BASE,
     base: Object.fromEntries(NAMES.map((n) => [n, BASE[n] || 0])),
     pulses: [], // {name, amount, t0, ms}
     mode: 'off', // 'gl' | '2d' | 'off' (not started)
-    reason: null, level: 0, noBudget: qs === '1', forceNoGL: qs === '0',
+    reason: null, level: 2, noBudget: qs === '1', forceNoGL: qs === '0', // level = the quality's gl (2 two radii, 1 one at 1/4, 0 2D)
     frames: 0, times: [], own: [], last: 0, T: 0,
 
     // ---- inputs
@@ -119,7 +118,8 @@ gl_FragColor=vec4(col,1.);}`;
       if (!this.cv) return false;
       if (this.forceNoGL) return this.fallback('off');
       if (!this.gl && !this.setupGL()) return this.fallback('nogl');
-      this.mode = 'gl'; this.reason = null; this.level = 0; this.times.length = 0; this.own.length = 0; this.frames = 0;
+      if (!this.level && !this.noBudget) return this.fallback('quality');
+      this.mode = 'gl'; this.reason = null; this.times.length = 0; this.own.length = 0; this.frames = 0;
       this.show(true); this.place();
       return true;
     },
@@ -201,10 +201,10 @@ gl_FragColor=vec4(col,1.);}`;
       const gl = this.gl, src = this.src, t0 = performance.now();
       if (gl.isContextLost()) { this.fallback('lost'); return false; }
       if (!src.width || !src.height) return false;
-      const dpr = (AMB.visual && AMB.visual.dpr) || window.devicePixelRatio || 1, L = LEVELS[this.level];
+      const dpr = (AMB.visual && AMB.visual.dpr) || window.devicePixelRatio || 1, L = { q: this.level >= 2 || this.noBudget, scale: 1 };
       // S9.4: a whole fraction of the source (1, 1/2, 1/3), sampled to the nearest texel and shown pixelated (css): the
       // pixel cells stay sharp on a phone or a retina screen (0.75 blurred them)
-      const sc = 1 / Math.max(1, Math.ceil(dpr / 1.5 - 0.01)) * L.scale, w = Math.max(2, Math.round(src.width * sc)), h = Math.max(2, Math.round(src.height * sc));
+      const sc = 1 / Math.max(1, Math.ceil(dpr / 1.5 - 0.01)), w = Math.max(2, Math.round(src.width * sc)), h = Math.max(2, Math.round(src.height * sc));
       if (this.cv.width !== w || this.cv.height !== h) { this.cv.width = w; this.cv.height = h; this.place(); }
       this.targets(w, h);
       const near = sc < 1 && L.scale === 1;
@@ -221,11 +221,15 @@ gl_FragColor=vec4(col,1.);}`;
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
       const [A, B, C, D] = this.fb, P = this.P;
       const bloom = V.bloom > 0.001 || V.fog > 0.001;
-      if (bloom) {
+      if (bloom && !L.q) { // S10.1 moyen: one bloom radius, rendered at 1/4 (bright pass straight into C, blur C ↔ D)
+        this.pass(P.bright, C, this.tex, (u) => { gl.uniform2f(u.TX, 1 / src.width, 1 / src.height); gl.uniform1f(u.TH, 0.58); });
+        this.pass(P.blur, D, C.t, (u) => gl.uniform2f(u.D, 1 / C.w, 0));
+        this.pass(P.blur, C, D.t, (u) => gl.uniform2f(u.D, 0, 1 / C.h));
+      } else if (bloom) {
         this.pass(P.bright, A, this.tex, (u) => { gl.uniform2f(u.TX, 1 / src.width, 1 / src.height); gl.uniform1f(u.TH, 0.58); });
         this.pass(P.blur, B, A.t, (u) => gl.uniform2f(u.D, 1 / A.w, 0));
         this.pass(P.blur, A, B.t, (u) => gl.uniform2f(u.D, 0, 1 / A.h));
-        if (L.q) {
+        {
           this.pass(P.blur, C, A.t, (u) => gl.uniform2f(u.D, 0.5 / A.w, 0.5 / A.h));
           this.pass(P.blur, D, C.t, (u) => gl.uniform2f(u.D, 1 / C.w, 0));
           this.pass(P.blur, C, D.t, (u) => gl.uniform2f(u.D, 0, 1 / C.h));
@@ -233,8 +237,8 @@ gl_FragColor=vec4(col,1.);}`;
       }
       const sh = V.shake * 0.012;
       this.pass(P.comp, null, this.tex, (u) => {
-        gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, A.t); gl.uniform1i(u.B1, 1);
-        gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, L.q ? C.t : A.t); gl.uniform1i(u.B2, 2);
+        gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, L.q ? A.t : C.t); gl.uniform1i(u.B1, 1);
+        gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, C.t); gl.uniform1i(u.B2, 2);
         gl.activeTexture(gl.TEXTURE0);
         gl.uniform2f(u.R, w, h); gl.uniform2f(u.TX, 1 / src.width, 1 / src.height);
         gl.uniform2f(u.SH, sh ? (Math.random() - 0.5) * sh : 0, sh ? (Math.random() - 0.5) * sh : 0);
@@ -246,25 +250,30 @@ gl_FragColor=vec4(col,1.);}`;
       this.measure(now, performance.now() - t0);
       return true;
     },
-    // sliding budget: frame interval and own cost; one quality step down per blown window, then 2D
+    // this pass's own cost and the frame interval, averaged over STAT frames (state().stat; the quality decides, not us)
     measure(now, own) {
       this.frames++;
       const dt = this.last ? now - this.last : 0; this.last = now;
-      if (this.frames <= BUDGET.warm || this.noBudget) return;
-      if (dt > 0 && dt < 250) this.times.push(dt); // (a hidden tab / a pause is not a slow frame)
+      if (dt > 0 && dt < 250) this.times.push(dt);
       this.own.push(own);
-      if (this.own.length < BUDGET.window) return;
-      const avg = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0), ai = avg(this.times), ao = avg(this.own);
-      this.stat = { interval: ai, own: ao, level: this.level };
+      if (this.own.length < STAT) return;
+      const avg = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
+      this.stat = { interval: avg(this.times), own: avg(this.own), level: this.level };
       this.times.length = 0; this.own.length = 0;
-      if (ai > BUDGET.interval || ao > BUDGET.own) {
-        this.level++;
-        if (this.level >= LEVELS.length) { this.level = LEVELS.length - 1; this.fallback('budget'); }
-      }
+    },
+    // S10.1 the quality's WebGL level: 2 two bloom radii, 1 one at 1/4, 0 = 2D ('quality'); up again = WebGL back
+    setLevel(l) {
+      this.level = Math.max(0, Math.min(2, l | 0));
+      if (!this.cv) return this.level;
+      if (!this.level && !this.noBudget) { if (this.mode === 'gl') this.fallback('quality'); }
+      else if (this.mode !== 'gl' && (this.reason === 'quality' || this.mode === 'off') && !this.lost) this.enable();
+      return this.level;
     },
     state() { return { mode: this.mode, reason: this.reason, level: this.level, w: this.cv ? this.cv.width : 0, h: this.cv ? this.cv.height : 0, stat: this.stat || null }; },
   };
   AMB.cityGL = G;
+  const Q = AMB.quality;
+  if (Q) { G.level = Q.gl(); Q.on(() => G.setLevel(Q.gl())); }
 
   // ---- hook: after every frame of AMB.visual (city or classic modes)
   const V = AMB.visual;

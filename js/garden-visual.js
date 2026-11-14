@@ -216,6 +216,7 @@
     tier: { ring: 1, parts: 90, flash: 1, life: 1.3, spread: 6.3, shake: 1 },
   };
   const WAVES_PER_PLANT = 3, PARTS_MAX = 260, LOUD = 0.85, HELD_MAX = 30; // s: a release that never comes
+  const partsMax = () => Math.round(PARTS_MAX * (AMB.quality ? AMB.quality.fx() : 1)); // S10.1: half on a phone (moyen), none at bas
   const MACHINE = new Set(['bells', 'seq', 'bass']); // the machine's melodies and bass (+ the rhythm, 'perc')
   const pitchK = (m) => clamp(((m == null ? 60 : +m) - 36) / 60); // 0 = low (C2) .. 1 = high (C7)
   // bus event → splash {plant, who, vel 0..1, pitch 0..1, held (live id | 'chord' | null), shake 0..1, time}, or null. Pure.
@@ -619,9 +620,17 @@
         box = this._tagBox = document.createElement('div'); box.className = 'city-tags'; box.setAttribute('aria-hidden', 'true'); this._tag = {};
         cv.parentElement.append(box);
       }
-      const bs = box.style, L = cv.offsetLeft + 'px', T = cv.offsetTop + 'px', Wc = cv.offsetWidth + 'px', Hc = cv.offsetHeight + 'px';
-      if (bs.left !== L || bs.top !== T || bs.width !== Wc || bs.height !== Hc) Object.assign(bs, { left: L, top: T, width: Wc, height: Hc });
-      const k = (cv.clientWidth || 1) / (cv.width || 1), px = cam.px, used = [], fr = (AMB.layout && AMB.layout.free) || { l: 0, r: 0 };
+      // S10.1: the canvas box is measured when it changes (ResizeObserver, resize), never in the frame: reading layout here
+      // forced a style + layout pass every frame
+      let m = this._tagM;
+      if (!m || m.cv !== cv) {
+        if (!this._tagRO && typeof ResizeObserver !== 'undefined') { this._tagRO = new ResizeObserver(() => { this._tagM = null; }); window.addEventListener('resize', () => { this._tagM = null; }); }
+        if (this._tagRO && (!m || m.cv !== cv)) this._tagRO.observe(cv);
+        m = this._tagM = { cv, L: cv.offsetLeft + 'px', T: cv.offsetTop + 'px', W: cv.offsetWidth + 'px', H: cv.offsetHeight + 'px', cw: cv.clientWidth };
+      }
+      const bs = box.style;
+      if (bs.left !== m.L || bs.top !== m.T || bs.width !== m.W || bs.height !== m.H) Object.assign(bs, { left: m.L, top: m.T, width: m.W, height: m.H });
+      const k = (m.cw || 1) / (cv.width || 1), px = cam.px, used = [], fr = (AMB.layout && AMB.layout.free) || { l: 0, r: 0 };
       const list = this.plants.filter((p) => p.vis > px * 0.5).sort((a, b) => (a.row || 0) - (b.row || 0) || a.sx - b.sx);
       const on = new Set();
       for (const p of list) {
@@ -629,7 +638,7 @@
         if (!el) { el = this._tag[p.id] = document.createElement('span'); el.style.setProperty('--c', rgb(p.col)); el._w = {}; box.append(el); }
         const room = Math.max(24, 2 * Math.min(p.roomL, p.roomR) * k * (p.row ? 1.4 : 1) - 4);
         const wOf = (t) => { if (el._w[t] == null) { el.textContent = t; el._w[t] = el.offsetWidth; } return el._w[t]; };
-        const lo = fr.l + 2, hi = cv.clientWidth - fr.r - 2, cx = p.sx * k;
+        const lo = fr.l + 2, hi = m.cw - fr.r - 2, cx = p.sx * k;
         if (cx < lo || cx > hi) continue; // (under the drawer: no caption)
         const fits = (t) => wOf(t) <= room && cx - wOf(t) / 2 >= lo - 8 && cx + wOf(t) / 2 <= hi + 8;
         let t = p.label.toUpperCase(); if (!fits(t)) t = p.short.toUpperCase();
@@ -639,10 +648,11 @@
         for (let n = 0; n < 3 && used.some((u) => x < u.x1 + 4 && x + w > u.x0 - 4 && Math.abs(y - u.y) < 13); n++) y += 13; // (no overlap: one line lower)
         used.push({ x0: x, x1: x + w, y });
         const hot = p.hot || 0, off = p.look ? 1 - p.look.on : 0;
-        el.style.transform = `translate(${x}px, ${y}px)`; el.style.opacity = (Math.min(1, 0.8 + 0.2 * hot) * (1 - 0.5 * off) * (p.row ? 0.8 : 1)).toFixed(2);
-        el.classList.toggle('hot', hot > 0.3); el.hidden = false; on.add(p.id);
+        const tf = `translate(${x}px, ${y}px)`, op = (Math.min(1, 0.8 + 0.2 * hot) * (1 - 0.5 * off) * (p.row ? 0.8 : 1)).toFixed(2), ht = hot > 0.3; // (written only when they change)
+        if (el._tf !== tf) { el._tf = tf; el.style.transform = tf; } if (el._op !== op) { el._op = op; el.style.opacity = op; }
+        if (el._ht !== ht) { el._ht = ht; el.classList.toggle('hot', ht); } if (el.hidden) el.hidden = false; on.add(p.id);
       }
-      for (const id in this._tag) if (!on.has(id)) this._tag[id].hidden = true;
+      for (const id in this._tag) if (!on.has(id) && !this._tag[id].hidden) this._tag[id].hidden = true;
     },
     // « MÉLODIE AUTO » under its building, a neon caption; « MÉLO » when it does not fit its slot (phone)
     label(p, fs, maxW) {
@@ -986,7 +996,7 @@
       if (!p || !this.feat[layer]) return false; // S9.3: an element that is not there does not light up
       this.energy[layer] = Math.min(1, (this.energy[layer] || 0) * 0.5 + 0.5 + vel * 0.5);
       this.impulse('note', 0.4 + 0.6 * vel);
-      if (!this.reduced && this.parts.length < PARTS_MAX && p.vis) {
+      if (!this.reduced && this.parts.length < partsMax() && p.vis) {
         const px = this.px, r = this.rng || (this.rng = mulberry(99));
         this.parts.push({ x: (p.sx || p.x) + (r() - 0.5) * 8 * px, y: (p.sy || p.y) - p.vis * (p.k || 1) * (0.6 + r() * 0.4), vx: (r() - 0.5) * 12 * px, vy: -(8 + r() * 10) * px, life: 1, col: r() < 0.3 ? [255, 233, 168] : p.col, s: r() < 0.5 ? 1 : 2 });
       }
@@ -1043,7 +1053,7 @@
         const c = r(), big = w.who !== 'machine' ? (r() < 0.35 ? 3 : 2) : 1;
         this.parts.push({ x: o.x, y: o.y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, life: 1, decay: 1 + r() * 0.7, g: 24, col: c < 0.3 ? [255, 240, 200] : c < 0.65 ? col : p.col, s: big });
       }
-      if (this.parts.length > PARTS_MAX) this.parts.splice(0, this.parts.length - PARTS_MAX);
+      if (this.parts.length > partsMax()) this.parts.splice(0, this.parts.length - partsMax());
       this.zap[p.id] = Math.max(this.zap[p.id] || 0, S.flash * v);
       this.band = this.band || {}; this.band[p.id] = { pitch: w.pitch, a: S.flash * v };
       if (w.shake) this.shake = { t0: this.t || 0, amp: Math.max(this.shake ? this.shake.amp * 0.5 : 0, w.shake * J) };
@@ -1108,7 +1118,7 @@
       }
       g.globalAlpha = 1;
       if (building) this.drawScaffold(g, p, s, vis, e, now);
-      else if (sinking && !red && Math.random() < 0.5 && this.parts.length < PARTS_MAX) { // neon dust off the cut
+      else if (sinking && !red && Math.random() < 0.5 && this.parts.length < partsMax()) { // neon dust off the cut
         const r = this.rng || (this.rng = mulberry(99)), x = (r() - 0.5) * (s.l + s.r);
         this.parts.push({ x: p.sx + x * k, y: p.sy - vis * k, vx: (r() - 0.5) * 6 * px + (w.weather.wind || 0) * 10 * px, vy: -(2 + r() * 6) * px, life: 1, decay: 0.9 + r() * 0.6, g: -2, col: r() < 0.5 ? p.col : [200, 190, 220], s: r() < 0.3 ? 2 : 1 });
       }
@@ -1132,7 +1142,7 @@
       g.fillStyle = rgb(TOK.amber, 1.1, 0.95); g.fillRect(hx - 2 * px, -vis - 3 * px, 4 * px, px); // a floor slab hanging
       if (red || Math.floor(T * 3) % 2) { g.fillStyle = rgb(TOK.red, 1.2); g.fillRect(mx, -mt - px, px, px); }
       g.globalCompositeOperation = 'source-over';
-      if (!red && this.parts.length < PARTS_MAX && Math.random() < 0.35) { // welding sparks
+      if (!red && this.parts.length < partsMax() && Math.random() < 0.35) { // welding sparks
         const r = this.rng || (this.rng = mulberry(99)), k = p.k;
         this.parts.push({ x: p.sx + (x0 + r() * (x1 - x0)) * k, y: p.sy - vis * k, vx: (r() - 0.5) * 14 * px, vy: -(4 + r() * 8) * px, life: 0.7, decay: 1.6, g: 30, col: r() < 0.5 ? [255, 240, 200] : TOK.amber, s: 1 });
       }

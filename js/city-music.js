@@ -17,7 +17,7 @@
 //   - garden.FX: `city` ingredient — 'salvo' (PARFAIT: every roof fires), 'blackout' (RATÉ: half a second of power cut),
 //     'stars' (a party: a shower of shooting stars). No second juice system: garden.fxPlay calls `cityMusic.fx` on its beat.
 // Every event waits for the moment it is HEARD (audio clock minus the output latency), not the scheduler's lookahead.
-// Caps (LASERS, STARS, WAVES) and an automatic quality `q` (0.3..1) that lowers them when frames get slow.
+// Caps (LASERS, STARS, WAVES) × the quality `q` (0.3..1: S10.1, from the app's quality level, AMB.quality, end of js/motion.js).
 // JUICE (AMB.motion) scales it; JUICE 0 or reduced motion: nothing moves (no ring, no shooting star, no scroll, no sweep,
 // no flicker), the light still follows (beams, grid lit on the bass, sky tint).
 (function () {
@@ -45,7 +45,7 @@
     lasers: [], stars: [], waves: [], pending: [],
     sweep: null, tint: { col: FUNC_COL.T, a: 0, prev: null }, lastDeg: null,
     grid: { flash: 0, phase: 0, base: 0 }, kick: 0, bass: 0, level: 0, act: 0,
-    blackout: null, q: 1, auto: true, emaDt: 1 / 60, slowT: 0, fastT: 0,
+    blackout: null, q: 1, auto: true,
     lastStar: { player: -99, machine: -99 }, lastKick: -99, beatIdx: null, now: 0,
     times: [], rng: 1,
 
@@ -232,11 +232,10 @@
     },
 
     // ---- automatic quality: slow frames lower the caps (lasers, stars, rings, grid lines); fast frames bring them back
-    budget(info) {
-      if (!this.auto) return;
-      const dt = info.dt || 1 / 60; this.emaDt += (dt - this.emaDt) * 0.05;
-      if (this.emaDt > 0.026) { this.slowT += dt; this.fastT = 0; if (this.slowT > 1.5) { this.q = Math.max(0.3, this.q - 0.2); this.slowT = 0; } }
-      else if (this.emaDt < 0.019) { this.fastT += dt; this.slowT = 0; if (this.fastT > 4) { this.q = Math.min(1, this.q + 0.1); this.fastT = 0; } }
+    // S10.1: the app's ONE governor (AMB.quality, end of js/motion.js) decides; its own frame watch of S8.5 is gone (haut 1, moyen 0.6, bas 0.3)
+    budget() {
+      if (!this.auto || !AMB.quality) return;
+      this.q = [1, 0.6, 0.3][AMB.quality.level] || 1;
     },
     cost(ms) { this.times.push(ms); if (this.times.length > 240) this.times.shift(); },
     stats() {

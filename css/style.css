@@ -465,10 +465,11 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
    combo text. Individual transform properties (translate, scale, rotate) so nothing fights an element's own transform.
    Never in the way of a click: the layer and the flash are pointer-events: none. */
 .fx-layer, .fx-layer *, .fx-flash { pointer-events: none !important; }
-.fx-layer { position: fixed; inset: 0; z-index: 70; overflow: hidden; }
-.fx-layer[hidden] { display: none; }
+.fx-layer { position: fixed; inset: 0; z-index: 70; overflow: hidden; contain: strict; }
+/* S10.1: hidden = invisible but still laid out (display: none ↔ block relaid out the page on every party / spark) */
+.fx-layer[hidden] { display: block; visibility: hidden; }
 .fx-layer canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
-.fx-layer canvas[hidden] { display: none; }
+.fx-layer canvas[hidden] { display: block; visibility: hidden; }
 .fx-flash { position: absolute; inset: 0; z-index: 3; opacity: 0; mix-blend-mode: screen; background: radial-gradient(circle at 50% 60%, #ffffff, #ff2bd6aa 40%, #22e6ff44 70%, transparent); }
 .fx-flash.on { animation: fx-flash .55s ease-out; }
 .fx-flash.soft { mix-blend-mode: normal; background: #1a0730; }
@@ -1391,3 +1392,38 @@ body.listen .app > .stage { height: auto; }
 }
 /* a phone: the bar's first row (▶ · MIDI · ● · ▾ · ARBRE · ⋯) holds in 390 px */
 @media (max-width: 560px) { .top .btn, .top summary.btn { padding-inline: 8px; letter-spacing: .04em; font-size: 12px; } .top .mode-btn { padding-inline: 8px; letter-spacing: .06em; } }
+
+/* =====================================================================
+   S10.1 « Fluide sur téléphone » — AMB.quality, end of js/motion.js puts q-haut | q-moyen | q-bas on <html>. q-haut = the look above,
+   untouched (desktop). q-moyen / q-bas (phone): no backdrop-filter (the glass is simply darker), and the neon loops
+   that repainted every frame (box-shadow, text-shadow, filter in an infinite animation) become transform / opacity
+   only: their glow stays, still. Plus the fps counter (?fps=1, ⋯ « Afficher les images/s ») and the warm-up box.
+   ===================================================================== */
+:is(.q-moyen, .q-bas) .app > .top { backdrop-filter: none; -webkit-backdrop-filter: none; background: linear-gradient(180deg, #07040ff7, #07040fe6); }
+:is(.q-moyen, .q-bas) .drawer { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--glass-hi); }
+:is(.q-moyen, .q-bas) .modal { backdrop-filter: none; -webkit-backdrop-filter: none; background: #05060be6; }
+@keyframes q-breathe { 50% { scale: calc(1 + .05 * var(--m-amp)); } }
+@keyframes q-blink { 50% { opacity: .55; } }
+@keyframes q-star { 50% { scale: calc(1 + .5 * var(--m-amp)); rotate: calc(25deg * var(--m-amp)); } }
+@keyframes q-crackle { 0%, 86%, 100% { translate: 0 0; opacity: 1; } 88% { translate: calc(2px * var(--m-amp)) 0; } 90% { opacity: .2; } 92% { opacity: 1; } }
+:is(.q-moyen, .q-bas) :is(.lcd-task.ready .lcd-task-txt, .lcd-task.demand.hot .lcd-task-n, .open-actions .open-go, .open-dlg:not([hidden]) .open-card .open-actions .open-go, .dc-head.fresh) { animation-name: q-breathe; }
+:is(.q-moyen, .q-bas) :is(.tree-btn.has-ready::after, .tree-btn.has-hs::before) { animation-name: q-star; }
+:is(.q-moyen, .q-bas) .tree-node.st-ready .led, :is(.q-moyen, .q-bas) .hs-list li.pend { animation-name: q-blink; }
+:is(.q-moyen, .q-bas) .dc-item.riddle b { animation-name: q-crackle; }
+:is(.q-moyen, .q-bas) .is-new, :is(.q-moyen, .q-bas) .is-new.is-appearing { animation-name: q-breathe; outline-color: #fff; }
+:is(.q-moyen, .q-bas) .is-new.is-appearing { animation-name: m-appear, q-breathe; }
+:is(.q-moyen, .q-bas) .tree-link.available { filter: none; }
+/* the counter: a small neon box at the bottom-left of the free city (above the keys and the drawer), click-through */
+.fps-meter { position: fixed; z-index: 95; left: calc(var(--free-l) + 8px); bottom: calc(var(--free-b) + 8px); pointer-events: none; opacity: .85;
+  contain: strict; width: 16ch; height: 3.1em; padding: 3px 7px; box-sizing: content-box; white-space: pre; font: 600 11px/1.4 var(--f); letter-spacing: .04em;
+  color: var(--cyan); background: #05030cd9; border: 1px solid var(--cyan); border-radius: 4px; }
+.fps-meter.slow { color: var(--magenta); border-color: var(--magenta); }
+/* the warm-up box (quality.warm): two frames, out of sight */
+.q-warm { --c: #22e6ff; position: fixed; left: 0; top: 0; z-index: 99; opacity: .01; pointer-events: none; }
+.q-warm .w1 { display: block; font: 700 40px/1 var(--f); letter-spacing: .3em; text-shadow: 0 0 .2em #fff, 0 0 .6em #fff, 0 0 1.2em #ff2bd6; }
+.q-warm .w2 { display: block; font: 400 30px/1 var(--f-logo); }
+.q-warm .k-laser, .q-warm .k-ring { position: absolute; left: 10px; top: 10px; height: 40px; }
+.q-warm .k-ring { width: 40px; }
+/* the key let go (k-rel: colour, background, shadows animated = a repaint per frame per key): its spring only */
+@keyframes q-krel { from { scale: calc(1 + .03 * var(--m-amp)); translate: 0 calc(-2px * var(--m-amp)); } }
+:is(.q-moyen, .q-bas) .pad.k-rel:not(.on) { animation-name: q-krel; }

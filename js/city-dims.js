@@ -314,11 +314,12 @@
   // (software canvas) → off for the session (D.slow).
   gv.addLayer({ id: 'dims-trails', z: 78, draw(g, w, cam, v) {
     const a = w.trails || 0, cv = g.canvas;
-    if (a < 0.04 || v.reduced || !cv || D.slow.trails) { D.trail = null; return; }
+    const QF = AMB.quality ? AMB.quality.fx() : 1; // S10.1: half the persistence at moyen, no trails at bas
+    if (a * QF < 0.04 || v.reduced || !cv || D.slow.trails) { D.trail = null; return; }
     const t0 = performance.now(), tw = Math.max(1, Math.round(cv.width / 4)), th = Math.max(1, Math.round(cv.height / 4));
     if (!D.trail || D.trail.width !== tw || D.trail.height !== th) D.trail = gv.canvas(tw, th);
     const T = D.trail, x = T.getContext('2d');
-    g.setTransform(1, 0, 0, 1, 0, 0); g.imageSmoothingEnabled = true; g.globalCompositeOperation = 'lighten'; g.globalAlpha = Math.min(1, 0.2 + 0.5 * a);
+    g.setTransform(1, 0, 0, 1, 0, 0); g.imageSmoothingEnabled = true; g.globalCompositeOperation = 'lighten'; g.globalAlpha = Math.min(1, (0.2 + 0.5 * a) * QF);
     g.drawImage(T, 0, 0, cv.width, cv.height);
     const k60 = (D.dt || 1 / 60) * 60; x.imageSmoothingEnabled = false; x.globalCompositeOperation = 'multiply'; x.globalAlpha = Math.min(1, (1.15 - a) * k60); x.drawImage(T, 0, 0);
     x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1; x.fillStyle = `rgba(0,0,0,${Math.min(1, (0.3 - 0.22 * a) * k60).toFixed(3)})`; x.fillRect(0, 0, tw, th); // even pure white fades (a few frames)
