@@ -302,7 +302,7 @@
       map.querySelectorAll('.tree-bname').forEach((t) => {
         const off = !T.NODES.some((n) => n.branch === t.dataset.b && g.has(n.id)); t.classList.toggle('gone', off);
         const ps = T.NODES.filter((n) => n.branch === t.dataset.b && this.seen(n.id)).map((n) => lay.pos[n.id]); if (off || !ps.length) return;
-        names.push({ t, x: (Math.min(...ps.map((q) => q.x)) + Math.max(...ps.map((q) => q.x))) / 2, w: t.textContent.length * 12.5 + 20 });
+        names.push({ t, x: (Math.min(...ps.map((q) => q.x)) + Math.max(...ps.map((q) => q.x))) / 2, w: t.textContent.length * 11.4 + 16 });
       });
       names.sort((a, b) => a.x - b.x).forEach((o, i, a) => { if (i) o.x = Math.max(o.x, a[i - 1].x + (a[i - 1].w + o.w) / 2); });
       names.forEach((o) => { o.t.setAttribute('x', Math.round(o.x)); o.t.setAttribute('y', yTop); });
@@ -343,11 +343,11 @@
       const k = Math.min(mw / (x1 - x0), mh / (y1 - y0), 1.15);
       v.k = clamp(all ? k : Math.max(k, L.KR), lim.min, lim.max);
       let cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-      if (!all && k < L.KR) { // too big to read at once: centre on what waits, else on the last piece opened
+      if (!all && k < L.KR) { // too big to read at once: centre on what waits, else on the last piece opened (its height)
         const g = AMB.game, rd = ids.filter((id) => T.status(id) === 'ready'), last = g.s.nodes[g.s.nodes.length - 1];
         const f = (rd.length ? rd : [last && lay.pos[last] ? last : ids[0]]).map((id) => lay.pos[id]);
         const fx = (Math.min(...f.map((p) => p.x)) + Math.max(...f.map((p) => p.x))) / 2, fy = (Math.min(...f.map((p) => p.y)) + Math.max(...f.map((p) => p.y))) / 2 + 20;
-        if ((x1 - x0) * v.k > mw) cx = clamp(fx, x0 + mw / 2 / v.k, x1 - mw / 2 / v.k);
+        if ((x1 - x0) * v.k > mw && rd.length) cx = clamp(fx, x0 + mw / 2 / v.k, x1 - mw / 2 / v.k); // (nothing waits: the middle of the tree)
         if ((y1 - y0) * v.k > mh) cy = clamp(fy, y0 + mh / 2 / v.k, y1 - mh / 2 / v.k);
       }
       v.tx = mw / 2 - cx * v.k; v.ty = mh / 2 - cy * v.k;

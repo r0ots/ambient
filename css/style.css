@@ -510,7 +510,7 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .tree-map.panning { cursor: grabbing; }
 .tree-stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 .tree-links { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
-.tree-bname { font: 700 13px var(--f); letter-spacing: .3em; text-transform: uppercase; fill: var(--c); opacity: .85; filter: drop-shadow(0 0 6px var(--c)); }
+.tree-bname { font: 700 13px var(--f); letter-spacing: .2em; text-transform: uppercase; fill: var(--c); opacity: .85; filter: drop-shadow(0 0 6px var(--c)); }
 /* traces: unknown = dots that fade, can open = amber dashes that flow, open = its branch's colour, lit */
 .tree-link { fill: none; stroke: #5d4a85; stroke-width: 3; stroke-linejoin: round; stroke-linecap: square; transition: stroke .3s, opacity .3s, stroke-width .2s; }
 .tree-link.locked { stroke-width: 2; stroke-dasharray: 3 7; stroke-linecap: round; opacity: .55; }
