@@ -307,12 +307,14 @@
       }
       return res;
     },
-    // S5.4: place p reached → S11.1: the first objective left of each of its pieces (and the lower places') is checked;
-    // never a whole piece (its other objectives still ask to be played). `objs` = the objectives checked
+    // S5.4: place p reached → S11.1: the first objective left of each piece of « Musicien » is checked (the lower place's
+    // too, when a player jumps straight to Virtuose); never a whole piece (its other objectives still ask to be played).
+    // « Virtuose » itself checks nothing more: it lifts the Réponse to the Quinte (balance.html: the nephew's 1 h 30 – 2 h).
+    // `objs` = the objectives checked
     place(p, g = AMB.game) {
       const s = this.st(g), nodes = [];
       s.place = p;
-      for (let i = 0; i <= p; i++) nodes.push(...PLACE[i].nodes);
+      nodes.push(...PLACE[0].nodes);
       const objs = AMB.contracts ? AMB.contracts.grant(nodes, g) : [];
       g.save();
       return { id: PLACE[p].id, name: PLACE[p].name, objs, nodes: [...new Set(objs.map((id) => AMB.contracts.byId[id].node))] };
