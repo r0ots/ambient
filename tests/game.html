@@ -3,7 +3,7 @@
 <script>window.AMB_GAME_KEY='ambient.game.test';
 localStorage.removeItem('ambient.game.test');
 </script>
-<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/game.js"></script><script src="../js/tree.js"></script><script src="../js/contracts.js"></script><script src="../js/puzzles.js"></script><script src="../js/demands.js"></script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/engine.js"></script><script src="../js/layers.js"></script><script src="../js/sequencer.js"></script><script src="../js/game.js"></script><script src="../js/tree.js"></script><script src="../js/contracts.js"></script><script src="../js/puzzles.js"></script>
 <script>
 const ok=(c,m)=>log((c?'ok ':'ERROR fail ')+m);
 window.addEventListener('load', async ()=>{
@@ -115,7 +115,7 @@ window.addEventListener('load', async ()=>{
     g.s.contracts=g.s.contracts.filter(x=>x!=='m.notes'); force('m.notes'); Pz.cur={ midis:[60,62,64], steps:[0,4,8], len:3, row:[], from:-1, until:1e9, t0:0, sd:0.25 }; lives(3)();
     ok(K.progress('m.notes')===3, 'Réponse en attente : les notes comptent encore pour « Joue 6 notes » ('+K.progress('m.notes')+')');
     Pz.cancel();
-    force('m.phrase'); AMB.store.set('bells.mode','Aléatoire','user'); ask(); tNow=D.cur.tT; AMB.store.set('bells.mode','Aléatoire','user'); ok(!g.s.contracts.includes('m.phrase') && D.cur,'Phrases : un autre mode ne compte pas'); AMB.store.set('bells.mode','Phrase','user'); ok(g.s.contracts.includes('m.phrase'),'Phrase sur le 1 → réussi'); g.open();
+    force('m.phrase'); AMB.seq.playing=true; AMB.store.set('bells.mode','Aléatoire','user'); ok(!g.s.contracts.includes('m.phrase'),'Phrases : un autre mode ne compte pas'); AMB.store.set('bells.mode','Phrase','user'); ok(g.s.contracts.includes('m.phrase'),'Phrase pendant la lecture → réussi'); g.open();
     ok((()=>{ g.s.active=[]; g.s.skipped=[]; g.s.contracts=[]; K.refill(); return g.s.active.join(); })()!=='c.morceau', 'S5.7 : Morceau ouvert, d\'autres nœuds fermés : pas encore « Enregistre ton morceau »');
     ok((()=>{ const n0=g.s.nodes.slice(); g.s.nodes=T.NODES.map(n=>n.id); g.s.active=[]; g.s.skipped=[]; g.s.contracts=[]; K.refill(); const a=g.s.active.join(); g.s.nodes=n0; return a; })()==='c.morceau', 'S5.7 : tout l\'arbre ouvert → « Enregistre ton morceau », le dernier'); }
   AMB.seq.playing=false; g.setMode('free'); AMB.store.set('drone.tone',0.1,'user'); ok(true,'libre : pas de suivi');
@@ -158,7 +158,7 @@ window.addEventListener('load', async ()=>{
     const lv=(m,t)=>AMB.bus.emit('live',{midi:m,time:t+0.15,vel:0.85,raw:null,played:t}); // handled late, played at t
     let res=null, phases=[]; AMB.bus.on('game:puzzle',e=>{ phases.push(e.phase); if(e.phase==='end') res=e.res; });
     const st=P.st(g), gate=(id)=>{ g.s.active=[id]; g.s.prog[id]={n:0}; };
-    K.finish('t.joue'); gate('p.premier'); K.seed(7); // (S11.1: Grands réglages' other objective done: the gate is its last)
+    K.finish('t.joue'); K.finish('t.drone8'); gate('p.premier'); K.seed(7); // (S11.1: Grands réglages' other objective done: the gate is its last)
     // 1. a gate: its phrase comes at the next bar line, during playback, no card
     ok(until(()=>P.cur) && P.cur.len===3 && !P.cur.timed && P.cur.gate==='p.premier' && phases[0]==='call' && notes.length===3 && P.cur.steps.join()==='0,4,8', 'pendant la lecture : une phrase marquée de 3 notes, sur les temps de la mesure ('+P.cur.degs.join(' ')+')');
     const c1=P.cur, t0=c1.t0; ok(notes.map(n=>n.t-t0).join()==='0,1,2' && P.view(t0+0.5).phase==='call' && P.view(c1.from+0.1).phase==='answer', 'la phrase est jouée sur la grille (voix Mélodie) ; la plante : appel, puis attente de la réponse');

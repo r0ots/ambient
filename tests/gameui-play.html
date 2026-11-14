@@ -83,7 +83,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, goals, buyAll, sdiff, KEY, settle
   // --- S4.2 « Réponse » in the app: the phrase in the music, « ↺ À toi » on the widget, leaves on the Melody plant, the pads stay
   { const P=A.puzzles, gv=A.gardenVisual; A.game.reset(); ['m.bells','k.piano','h.pad','t.son'].forEach(i=>A.game.unlock(i)); await settle(300);
     A.garden.showTree(false); A.perform.setMode('sculpt'); A.visual.gardenSync(); P.cancel(); P.wait=99;
-    A.contracts.finish('t.joue'); const st=A.contracts.state(); st.active=['p.premier']; st.prog['p.premier']={n:0}; A.garden.renderContracts();
+    A.contracts.finish('t.joue'); A.contracts.finish('t.drone8'); const st=A.contracts.state(); st.active=['p.premier']; st.prog['p.premier']={n:0}; A.garden.renderContracts();
     const sd=0.05, snap=JSON.stringify(A.store.stableSnapshot());
     ok(P.launch(ctx.currentTime+0.05, sd) && P.cur.len===3 && P.view().phase==='call' && shown('#pads') && d.body.classList.contains('game'), 'une phrase marquée pendant le jeu : pas de carte, les pastilles restent ('+(P.cur&&P.cur.len)+' notes)');
     const c=P.cur; let lit=0; for(let i=0;i<60 && !/À TOI/i.test(goals.querySelector('.gw-line').textContent);i++){ lit=Math.max(lit, d.querySelectorAll('#pads .pad.call').length); await wait(25); }

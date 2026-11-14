@@ -51,7 +51,7 @@ f.addEventListener('load', async () => {
     // --- 1b. S9.1 no more comics: one short plain word per moment (no onomatopoeia, no bubble, no tilt), bigger for
     // bigger moments; S9.2 written as a neon sign, letter by letter (one <i> per letter, each later than the one before); never over the LCD; JUICE 0 = none (reduced motion: section 4)
     { const last = () => [...d.querySelectorAll('.fx-pop')].pop();
-      ok(kinds.every((k) => !G.FX[k].boom) && G.FX.rate.pop === 'RATÉ' && G.FX.parfait.pop({ n: 1 }) === 'PARFAIT' && G.FX.combo.pop({ n: 2 }) === 'COMBO ×2' && !G.BOOM_COLS, 'S9.1 : plus d\'onomatopées de BD, un mot court par moment (RATÉ, PARFAIT, COMBO ×2…)');
+      ok(kinds.every((k) => !G.FX[k].boom) && G.FX.rate.pop === 'RATÉ' && G.FX.combo.pop({ n: 2 }) === 'COMBO ×2' && !G.BOOM_COLS, 'S9.1 : plus d\'onomatopées de BD, un mot court par moment (RATÉ, COMBO ×2…)');
       const size = {}; let plain = true, letters = true;
       for (const k of ['defi', 'open', 'placement']) {
         G._pop = null; G.fx(k, { name: 'Musicien' }); await tick(); const p = last();

@@ -1383,7 +1383,6 @@ body.listen .app > .stage { height: auto; }
 .gw-list, .gw-hist { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .gw-obj { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 2px 8px; padding: 6px 4px 6px 8px;
   border-radius: 4px; background: #ffffff08; border-left: 2px solid var(--cyan); }
-.gw-obj.asked { border-left-color: var(--amber); background: #ffb34714; }
 .gw-txt { position: relative; display: flex; gap: 8px; align-items: baseline; min-width: 0; padding: 0; margin: 0; background: none; border: 0; cursor: pointer; text-align: left;
   font: 600 15px/1.25 var(--f); letter-spacing: .03em; color: var(--text); }
 .gw-box { font-style: normal; color: var(--cyan); }

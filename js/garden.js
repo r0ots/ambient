@@ -135,7 +135,7 @@
       for (const li of ul.children) {
         const d = K.byId[li.dataset.id]; if (!d) continue;
         const dn = K.done(d.id), n = K.progress(d.id), was = li.classList.contains('done');
-        li.classList.toggle('done', dn); li.classList.toggle('asked', !!(dm && dm.gate === d.id));
+        li.classList.toggle('done', dn);
         li.querySelector('.gw-box').textContent = dn ? '☑' : '☐';
         const t = li.querySelector('.gw-t'), tx = this.goalTxt(d); if (t.textContent !== tx) t.textContent = tx;
         li.querySelector('.gw-txt').title = dn ? 'Fait' : `${g.txt(d.hint)}\n(Toucher : comment faire)`;
