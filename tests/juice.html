@@ -9,7 +9,7 @@
 const f = document.getElementById('f');
 f.addEventListener('load', async () => {
   try {
-    const w = f.contentWindow, d = f.contentDocument, A = w.AMB, G = A.garden, GV = A.gardenVisual;
+    const w = f.contentWindow, d = f.contentDocument, A = w.AMB, G = A.garden, GV = A.gardenVisual; GV.awake = true; // (S9.3: the city stands once the music has been heard; a celebration splashes on what is built)
     w.addEventListener('error', e => log('ERROR ' + e.message + ' @' + e.filename + ':' + e.lineno));
     A.game.setMode('path'); G.welcome(false); A.game.unlock('m.bells'); await wait(300); G.showTree(false); A.perform.setMode('listen'); A.visual.gardenSync();
     const tick = () => new Promise((r) => setTimeout(r, 0));
