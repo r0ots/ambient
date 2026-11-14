@@ -13,7 +13,8 @@
   function knob(key, sp, color) {
     const wrap = h('div', 'ctl knob');
     wrap.dataset.key = key;
-    wrap.title = (sp.hint ? sp.hint + '\n' : '') + 'Glisser verticalement · double-clic : valeur par défaut · Maj : réglage fin';
+    if (sp.hint) wrap.dataset.hint = sp.hint; // S11.6: the neon help bubble (tip, below), not the system's title
+    wrap.dataset.how = 'knob';
     const secLabel = (AMB.SCHEMA[key.split('.')[0]] || {}).label || '';
     wrap.setAttribute('role', 'slider');
     wrap.setAttribute('aria-label', `${secLabel} · ${sp.label}`);
@@ -103,7 +104,7 @@
   function select(key, sp) {
     const wrap = h('div', 'ctl sel');
     wrap.dataset.key = key;
-    if (sp.hint) wrap.title = sp.hint;
+    if (sp.hint) wrap.dataset.hint = sp.hint;
     const s = h('select');
     s.setAttribute('aria-label', `${(AMB.SCHEMA[key.split('.')[0]] || {}).label || ''} · ${sp.label}`);
     sp.options.forEach((o) => { const op = h('option', null, (sp.labels && sp.labels[o]) || o); op.value = o; s.append(op); });
@@ -118,7 +119,7 @@
   function textField(key, sp) {
     const wrap = h('div', 'ctl sel txt');
     wrap.dataset.key = key;
-    if (sp.hint) wrap.title = sp.hint;
+    if (sp.hint) wrap.dataset.hint = sp.hint;
     const inp = h('input'); inp.type = 'text'; inp.placeholder = sp.placeholder || ''; inp.spellcheck = false;
     inp.addEventListener('change', () => store.set(key, inp.value.trim(), 'user'));
     inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') inp.blur(); });
@@ -131,7 +132,7 @@
   function toggle(key, sp, color) {
     const b = h('button', 'tog', sp.label);
     b.dataset.key = key;
-    if (sp.hint) b.title = sp.hint;
+    if (sp.hint) b.dataset.hint = sp.hint;
     if (color) b.style.setProperty('--c', color);
     b.addEventListener('click', () => store.set(key, !store.get(key), 'user'));
     if (!sp.label) b.setAttribute('aria-label', `${(AMB.SCHEMA[key.split('.')[0]] || {}).label || ''} activé`);
@@ -285,5 +286,56 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 
   AMB.dom = { $, h, bind };
-  AMB.widgets = { registry: widgets, knob, select, textField, toggle, neonSelect, neonClose: () => nsClose(openSt, false), neonOpen: (sel) => { const s = NS.get(sel); if (s) nsOpen(s); return s && s.list; } };
+
+  // ---------- S11.6 the help bubble: a control's name and what it does, in plain words ----------
+  // A mouse resting DELAY ms on a control (or keyboard focus) shows it; on a touch screen, a tap on the control's NAME
+  // (its label under the knob / list) shows it for HOLD ms. One bubble for the whole app (#tip), placed above the
+  // control (below when there is no room), never over the pointer. Any press, scroll or Échap hides it.
+  const tip = {
+    DELAY: 550, HOLD: 4500, el: null, t: 0, cur: null,
+    box() {
+      if (!this.el) { this.el = h('div', 'tip'); this.el.id = 'tip'; this.el.setAttribute('role', 'tooltip'); this.el.hidden = true; document.body.append(this.el); }
+      return this.el;
+    },
+    text(ctl) {
+      const lab = ctl.querySelector('.k-lab'), name = (lab && lab.textContent) || ctl.textContent.trim() || '';
+      return { name, hint: ctl.dataset.hint || '', how: ctl.dataset.how === 'knob' && matchMedia('(hover: hover)').matches ? 'Glisse vers le haut ou le bas · double-clic : valeur de départ · Maj : réglage fin' : '' };
+    },
+    show(ctl, ms) {
+      if (!ctl || !ctl.isConnected || !ctl.dataset.hint) return;
+      const b = this.box(), t = this.text(ctl);
+      b.replaceChildren(h('b', null, t.name), h('span', null, t.hint));
+      if (t.how) b.append(h('small', null, t.how));
+      const col = getComputedStyle(ctl).getPropertyValue('--c').trim(); if (col) b.style.setProperty('--c', col); else b.style.removeProperty('--c');
+      b.hidden = false; this.cur = ctl;
+      const r = ctl.getBoundingClientRect(), W = innerWidth, bw = Math.min(280, W - 24); b.style.width = bw + 'px';
+      const bh = b.offsetHeight, x = Math.max(12, Math.min(W - bw - 12, r.left + r.width / 2 - bw / 2));
+      const y = r.top - bh - 10 >= 8 ? r.top - bh - 10 : r.bottom + 10;
+      b.style.left = x + 'px'; b.style.top = y + 'px';
+      if (AMB.motion && AMB.motion.on()) AMB.motion.pop(b, 'pop');
+      clearTimeout(this.t); if (ms) this.t = setTimeout(() => this.hide(), ms);
+    },
+    hide() { clearTimeout(this.t); this.cur = null; if (this.el) this.el.hidden = true; },
+    wire() {
+      const ctlOf = (e) => e.target.closest && e.target.closest('[data-hint]');
+      let touch = false;
+      document.addEventListener('pointerover', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        const c = ctlOf(e); if (c === this.cur) return;
+        this.hide(); if (c) this.t = setTimeout(() => this.show(c), this.DELAY);
+      });
+      document.addEventListener('pointerdown', (e) => { touch = e.pointerType !== 'mouse'; if (!(touch && e.target.closest('.k-lab'))) this.hide(); }, true);
+      document.addEventListener('click', (e) => { // a touch: the control's name
+        if (!touch) return; const lab = e.target.closest && e.target.closest('.k-lab'), c = lab && ctlOf(e);
+        if (c) { if (this.cur === c) this.hide(); else this.show(c, this.HOLD); }
+      });
+      document.addEventListener('focusin', (e) => { const c = ctlOf(e); if (c && e.target.matches(':focus-visible')) { clearTimeout(this.t); this.t = setTimeout(() => this.show(c), this.DELAY); } });
+      document.addEventListener('focusout', () => this.hide());
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') this.hide(); });
+      addEventListener('scroll', () => this.hide(), true);
+    },
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => tip.wire()); else tip.wire();
+
+  AMB.widgets = { tip, registry: widgets, knob, select, textField, toggle, neonSelect, neonClose: () => nsClose(openSt, false), neonOpen: (sel) => { const s = NS.get(sel); if (s) nsOpen(s); return s && s.list; } };
 })();

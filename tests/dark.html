@@ -47,6 +47,11 @@ window.addEventListener('load', async () => {
     await wait(300);
     const m = await level(0.5);
     ok(!m.nan && m.peak < 0.999, 'coups Métal, basse Saturée et accord Cuivres joués à la main : pas de NaN ni de saturation (crête ' + m.peak.toFixed(3) + ')');
+    { // S11.7: a new Pad timbre is heard at once — the held chord crossfades to it (not only from the next chord)
+      const P = AMB.layers.pad, t0 = AMB.engine.ctx.currentTime; P.playChord([50, 57, 62], t0 + 0.02, 6); await wait(200);
+      const live = () => [...P.active_].filter((r) => !r.gone && r.end > AMB.engine.ctx.currentTime).length, before = live();
+      st.set('pad.wave', 'Verre', 'user'); await wait(50);
+      ok(before >= 3 && live() >= 3 && [...P.active_].filter((r) => r.gone).length >= before, 'Pad : changer le timbre fait basculer l\'accord tenu tout de suite (' + before + ' voix → ' + live() + ' neuves)'); }
     AMB.ui.stop();
     done();
   } catch (e) { fail(e); }

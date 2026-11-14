@@ -88,6 +88,12 @@ f.addEventListener('load', async () => {
       ok(/Auto/.test(tg.textContent) && !tg.classList.contains('on') && w.getComputedStyle(ctl).opacity === '1', 'Mélodie : l\'interrupteur s\'appelle « Auto », éteint ses réglages restent allumés (ce sont ceux des touches)');
       A.store.set('bells.on', was, 'user'); await wait(30); }
 
+    // S11.6: the help bubble — a mouse resting on « Registre » (Mélodie auto) shows its name and what it does
+    { const k = d.querySelector('.ctl[data-key="bells.range"]'), tip = () => d.getElementById('tip');
+      k.dispatchEvent(new w.PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' })); await wait(700);
+      ok(tip() && !tip().hidden && /Registre/i.test(tip().textContent) && /grave/.test(tip().textContent) && !k.title, 'aide : la souris posée sur Registre montre une bulle (nom + explication), pas de title système');
+      d.dispatchEvent(new w.PointerEvent('pointerdown', { bubbles: true, pointerType: 'mouse' })); ok(tip().hidden, 'aide : un appui la cache'); }
+
     // --- localStorage: no new game key
     const ls1 = LS(), added = Object.keys(ls1).filter(k => !(k in ls0)), changed = Object.keys(ls0).filter(k => ls1[k] !== ls0[k]);
     const bad = added.concat(changed).filter(k => !HARMLESS.includes(k));

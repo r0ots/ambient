@@ -1494,3 +1494,13 @@ body.game:not(.playing):not(.coined) .panel[data-sec=drone] > header .tog::befor
 body.game .panel[data-sec=drone] > header .tog:not(.on)::before { background: #ff3b1f; box-shadow: 0 0 8px #ff3b1f, 0 0 16px #ff3b1f88; }
 body.game:not(.playing):not(.coined) .panel[data-sec=drone] > header .tog::after { content: "⏻ ALLUMER"; margin-left: 8px; font-weight: 700; letter-spacing: .18em; }
 :is(.q-moyen, .q-bas) .panel[data-sec=drone] > header .tog { animation-name: q-blink; }
+
+/* S11.6 the help bubble (widgets.js tip): a control's name and what it does; mouse resting on it, or a tap on its name */
+.tip { position: fixed; z-index: 60; pointer-events: none; display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; --c: var(--accent, #22e6ff);
+  border: 1.5px solid var(--c); border-radius: 6px; background: #07040ff2; color: #e9e1ff; font: 500 13.5px/1.4 var(--f);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--c) 45%, transparent), 0 8px 24px #000c; }
+.tip[hidden] { display: none; }
+.tip b { font-weight: 700; font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: #fff; text-shadow: 0 0 8px var(--c); }
+.tip small { font-size: 11.5px; color: #a99cc4; }
+.ctl .k-lab { cursor: help; }
+@media (hover: none) { .ctl[data-hint] .k-lab { text-decoration: underline dotted color-mix(in srgb, currentColor 45%, transparent); text-underline-offset: 3px; } }

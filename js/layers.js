@@ -143,6 +143,21 @@
       this.bus = this.ctx.createGain(); this.bus.gain.value = 0.6;
       this.bus.connect(this.out);
       this.active_ = new Set();
+      // S11.7: a new timbre is heard at once — the chord being held crossfades to it (not only from the next chord)
+      if (AMB.store) AMB.store.on((k) => { if (k === 'pad.wave') this.revoice(); });
+    }
+    revoice(xf = 0.35) {
+      if (!this.active) return 0;
+      const now = this.ctx.currentTime, held = [...this.active_].filter((r) => r.midi != null && !r.gone && r.end > now + 0.3);
+      if (!held.length) return 0;
+      const rel = 1.5 + P('pad', 'attack') * 6;
+      for (const r of held) {
+        r.gone = true; const g = r.env.gain;
+        if (g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(now); else { g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); }
+        g.setTargetAtTime(0, now, xf / 3);
+        this.voice(r.midi, now, r.end - now, xf, rel, r.gainMul, true);
+      }
+      return held.length;
     }
     playChord(midis, time, dur) {
       if (!this.active) return;
@@ -154,14 +169,14 @@
     // fade out every sounding chord (used when the player forces a new chord)
     releaseAll(time, tc = 0.7) {
       for (const r of this.active_) {
-        const g = r.env.gain;
+        const g = r.env.gain; r.gone = true; // (S11.7: a released chord is never revoiced)
         // hold the current (possibly mid-attack) level instead of jumping back to the ramp's start
         if (g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(time);
         else { g.cancelScheduledValues(time); g.setValueAtTime(g.value, time); }
         g.setTargetAtTime(0, time, tc);
       }
     }
-    voice(midi, time, dur, atk, rel, gainMul) {
+    voice(midi, time, dur, atk, rel, gainMul, quiet = false) {
       const ctx = this.ctx;
       const type = P('pad', 'wave');
       const tone = P('pad', 'tone');
@@ -286,10 +301,10 @@
       env.gain.setTargetAtTime(0, end, rel / 4);
       const stopAt = end + rel * 1.5;
       oscs.forEach((o) => { o.start(time); o.stop(stopAt); });
-      const rec = { env, stopAt };
+      const rec = { env, stopAt, midi, end, gainMul };
       this.active_.add(rec);
       oscs[0].onended = () => { env.disconnect(); pan.disconnect(); this.active_.delete(rec); };
-      AMB.bus.emit('note', { layer: 'pad', midi, time, vel: 0.6, dur: end - time });
+      if (!quiet) AMB.bus.emit('note', { layer: 'pad', midi, time, vel: 0.6, dur: end - time }); // (a revoiced chord is no new note)
     }
   }
 
