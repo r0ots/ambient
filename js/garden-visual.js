@@ -1,46 +1,36 @@
-// « Jardin » (G11.2) : a visual mode of the screen, the showcase of what the player has grown. Purely visual (never
-// earns, never writes the store or the game state).
-//   - one plant per UNLOCKED sound layer (tree node below), in a fixed order, spread evenly over the ground;
-//   - it reacts to its own notes (bus `note` / `perc` / `grain` / `chord`): pulse of light + a leaf that pops out;
-//   - its height = the share of the tree nodes of its layer that are unlocked (a node belongs to a layer when one of
-//     its settings does: `<layer>.*`, js/tree.js);
-//   - rare plants (glowing crystals) = discoveries found (S5.10, js/discoveries.js), on the ground between two plants;
-//   - S4.2 « Réponse » (js/puzzles.js view()): the Melody plant blinks while the marked phrase plays, stays lit while it
-//     waits for the answer, and grows one leaf per note played back (green = right, red = wrong).
+// « Ville » (the code and the mode keep their old name « Jardin », `garden*`, `plants`): the visual of the screen, a neon
+// city at night in the rain that the music lights up. Purely a reflection: it never earns, never writes the store or the
+// game state, and nothing on it can be touched.
+//
+// S8.1 « Moteur de ville »: three parts, each knows nothing of the next one's insides.
+//   1. TABLES (what the controls and the music mean, pure functions, unchanged since S4.6–S6.5): LOOK / LOOK_ALL (each
+//      element shows its layer's settings), SCENE (every other control drives a scene layer), SPLASH (each note seen),
+//      COMBO_FX (the emergent picture of each combo of js/discoveries.js).
+//   2. THE WORLD MODEL (`gv.world`, smoothed every frame): named DIMENSIONS (table DIMS: courant = power, trafic, caméra
+//      = cam.back / cam.depth / cam.fog, météo = weather.rain / wind / storm, usure VHS, population, chantiers = sites,
+//      aube, lecture), each `aim(c)` → 0..1 from the settings, the open layers and the scene, with its own smoothing;
+//      plus IMPULSES (table PULSES: note, chord, beat, kick, flash, build) that decay on their own. The BUILDINGS (one per
+//      open layer, `plants`) are part of it: a height in cells that never scales — a building that gets taller is BUILT
+//      (scaffold, crane, floors stacking up, windows lit one by one), one that gets lower or whose layer is switched off is
+//      DECONSTRUCTED (floors going dark and sinking, neon dust), both timed on the audio clock (`grow`).
+//   3. THE DRAWING: an ordered stack of layers (STACK; `gv.addLayer({id, z, draw(g, world, cam, gv)})`): sky, stars, far
+//      city, street, combos (back), towers, sparks, traffic, weather, front, combos (front), post, scene HUD. One camera
+//      (`cam`: zoom = recul, pan with parallax by depth, shake) for all; `cam.set(g, d)` puts a layer at depth d (0 = sky,
+//      1 = the main street, > 1 = in front). Later waves add dimensions (`gv.addDim`) and layers (`gv.addLayer`) without
+//      touching the rest.
+// Buildings never deform (no squash, no sway, no scale of their own): a note LIGHTS them (windows, neon, roof beacon),
+// a touched control highlights its element. The camera may move (pan, recul, shake); the buildings stay still in it.
+//
 // Mode policy (wraps AMB.visual, visual.js is untouched): « Jardin » (the « Ville » on screen) is the default visual and
-// in the cycle of both modes, each with its own stored choice (ambient.vizMode.path in the Parcours, ambient.vizMode in
-// free mode, where Orbes / Horizon / Spectre stay available). S6.7: in free mode (or mode not chosen) the city is a pure
-// reflection of the music: every layer has its element (all open, dim when switched off), at full height, and nothing of
-// the game is drawn (no Réponse, tier marks, discoveries, combos, celebrations, dawn of the end); notes splash and the
-// scene layers (SCENE) follow the controls as in the Parcours. Without this file the app is unchanged.
-// S4.5w (calé sur la musique): a plant that appears or gets taller GROWS (~1.2 s, Y scale of its cached sprite) from the
-// strong beat its layer comes in on (garden.beat / growAt); the sky follows the chord and the scale (cached skies,
-// cross-faded with globalAlpha); the ground pulses on the beat; the finale replays the recorded song (replayStart):
-// night -> dawn, each plant lights up when its layer plays. Reduced motion: no growth, no pulse (the sky still follows).
-// S4.6: each plant shows its layer's settings (one table, LOOK below: size, light, shape, halo, sway, pace, bloom) and
-// bounces when one of them is touched.
-// S5.2 « Chaque note se voit »: each note splashes from the plant that plays it (trigger: splash(), drawing: drawSplash,
-// fire; one knob, JUICE): the player's (A–L, pads, MIDI; a forced chord on the Pad) loud and goofy — a ring of LEDs, a glow
-// where the pitch sits on the stem (lit while held), particles, a flash, squash & stretch, a shake on chords and loud
-// MIDI notes; the machine's (Mélodie auto, Mélodie écrite, Basse, Pulsations) the same, smaller. Reduced motion: a
-// fixed, brief glow only. Still a reflection: nothing on the scene can be touched.
-// S5.8 « Chaque bouton a un impact visuel »: every control the plants do not show drives a layer of the scene (one table,
-// SCENE: sky tint, clouds, stars, aurora, rays, fireflies, mist, snow, frost, ground ripple, echo ghosts, tape, grain,
-// lens, playback veil, song), each an intensity 0..1 (layers()) plus an impulse when touched; the tempo is its speed.
-// S5.10 « Combos »: a combo ON (js/discoveries.js) draws its own emergent effect (COMBO_FX), only while it holds.
-// S6.5 « Ville néon »: the same tables and events, a new drawing: each layer is an element of a dark city in the rain that
-// lights up (tower, pyramid, neon sign, radio mast, dish, giant screen, pylon, flying cars; a discovery = a hologram), the
-// sky a violet night (magenta horizon, the far city whose windows light up as layers open), a wet street with reflections,
-// rain; the finale's dawn = the whole city lit under a synthwave sunrise, the rain stops. A discreet CRT (css scanlines,
-// colour fringes in the sprites, a rolling band) set by JUICE, off in reduced motion. Colours: css tokens --city-* (TOK).
-// The code keeps its words (plants, garden): only the screen says « Ville ».
-// Perf: LED sprites pre-rendered in offscreen canvases (cache by species / size / pixel size), cached
-// background and labels, real dt, nothing drawn while the tab is hidden or the canvas off screen, reduced motion =
-// no sway nor particles. stats() gives the cost per frame (ms).
+// in the cycle of both modes. In free mode the city is a pure reflection of the music: every layer has its building, at
+// full height, and nothing of the game is drawn (no Réponse, tier marks, discoveries, combos, celebrations, dawn of the end).
+// Perf: sprites (normal, dark, emission) cached per element, height and look; cached skies, far city, ground; real dt;
+// nothing drawn while the tab is hidden or the canvas off screen; reduced motion = nothing moves (the light still follows).
+// stats() gives the cost per frame (ms). Canvas of any size and ratio (phone portrait to 21:9), any devicePixelRatio.
 (function () {
   const AMB = (window.AMB = window.AMB || {});
 
-  // S6.5: the neon colour of each element (kind = the code id of its drawing, see cells())
+  // one element per sound layer: its node of the tree, its neon colour, the drawing of its building (kind, see cells())
   const LAYERS = [
     { id: 'drone', node: 'racine', label: 'Drone', short: 'Drone', col: [124, 132, 255], kind: 'reed' },
     { id: 'pad', node: 'h.pad', label: 'Pad', short: 'Pad', col: [236, 96, 214], kind: 'bush' },
@@ -51,7 +41,7 @@
     { id: 'bass', node: 'c.rythme', label: 'Basse', short: 'Basse', col: [150, 110, 255], kind: 'cactus' },
     { id: 'perc', node: 'c.rythme', label: 'Pulsations', short: 'Rythme', col: [255, 64, 110], kind: 'shroom' },
   ];
-  // S6.5 the city's palette: CSS tokens (css/style.css :root, --city-*), read once; these values without a stylesheet
+  // the city's palette: CSS tokens (css/style.css :root, --city-*), read once; these values without a stylesheet
   const TOK = (() => {
     const D = { night: '#07040f', sky: '#1c0b33', horizon: '#6a1f6e', wall: '#130c22', ground: '#06040b', pink: '#ff3fa4', cyan: '#3ff0ff',
       violet: '#9d6bff', amber: '#ffb347', red: '#ff3348', rain: '#a9b8ff', dawnTop: '#140a33', dawnMid: '#a8327e', dawnLow: '#ff7a4f', sunTop: '#ffd36b', sunLow: '#ff3f8e' };
@@ -66,19 +56,23 @@
   })();
   const hex = (c) => '#' + c.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
   const byLayer = Object.fromEntries(LAYERS.map((l) => [l.id, l]));
+  const clamp = (v, a = 0, b = 1) => (v < a ? a : v > b ? b : v);
 
-  // ---- S4.6 SETTINGS → LOOK: the one table. Each plant shows its layer's settings as 7 aspects, all 0..1, and knows
-  // nothing of how they are drawn (a later skin, e.g. a city at night, reads the same aspects and draws them its way):
-  //   size  ← Niveau (× general Volume)             : height and width of the plant
-  //   light ← Lumière (× Usure / Cassette, darker)  : colour and brightness, petals open (bright) or closed in a bud (dark)
-  //   shape ← Timbre                                : round petals and smooth leaves ↔ pointed petals, more points, serrated leaves
-  //   halo  ← Distance of the layer × Reverb (+ Halo)  : soft aura around the plant
-  //   sway  ← the layer's movement (Mouvement, Attaque, Résonance, Swing +, Flou, Tenue) : how wide the stem waves
-  //   pace  ← Tempo (Flottant = slower)             : how fast it waves
-  //   bloom ← density / complexity (Densité, Accords riches, notes of the motif, hits of the pattern) : 1 to 4 flowers
+  // ======================================================================================================================
+  // 1. TABLES
+  // ---- S4.6 SETTINGS → LOOK: each element shows its layer's settings as aspects, all 0..1 (how they are drawn is the
+  // drawing's business):
+  //   size  ← Niveau (× general Volume)             : how many floors (S8.1: built or deconstructed, never scaled)
+  //   light ← Lumière (× Usure / Cassette, darker)  : share of lit windows, brightness of its neon
+  //   shape ← Timbre                                : a dome on the roof ↔ masts and antennas, spikes on the outline
+  //   halo  ← Distance of the layer × Reverb (+ Halo)  : soft aura around the building
+  //   sway  ← the layer's movement (Mouvement, Attaque, Résonance, Swing +, Flou, Tenue) : (S8.1: no more sway; kept
+  //           for the aspects table and later waves)
+  //   pace  ← Tempo (Flottant = slower)
+  //   bloom ← density / complexity (Densité, Accords riches, notes of the motif, hits of the pattern) : 1 to 4 neon signs
+  //   on    ← the layer's On : switched off = deconstructed
   // A cell: 'layer.key' (a knob, normalised by its range, or a toggle), sel(key, {option: 0..1}) for a select, num(v), or
-  // fn([keys], (get) => 0..1). The grands réglages (Lumière, Densité, Espace, Nostalgie, Nature) move these same
-  // settings (js/perform.js MACROS), so they reach every plant they concern through this table.
+  // fn([keys], (get) => 0..1). The grands réglages move these same settings (js/perform.js MACROS).
   const sel = (k, map) => ({ keys: [k], f: (get) => { const v = map[val(get, k)]; return v == null ? 0.5 : v; } });
   const num = (v) => ({ keys: [], f: () => v });
   const fn = (keys, f) => ({ keys, f });
@@ -94,9 +88,8 @@
     bass: { size: 'bass.vol', light: 'bass.tone', shape: sel('bass.wave', { Sub: 0, Ronde: 0.35, Pluck: 1 }), halo: 'bass.send', sway: 'bass.decay', bloom: fn(['bass.pattern'], (get) => Math.min(1, share(val(get, 'bass.pattern'), /1/g) * 6)) },
     perc: { size: 'perc.vol', light: 'perc.tone', shape: sel('perc.kit', { 'Feutré': 0.15, Organique: 0.85 }), halo: 'perc.send', sway: 'perc.swing', bloom: fn(['perc.pattern', 'perc.prob'], (get) => Math.min(1, share(val(get, 'perc.pattern'), /[1-9a-z]/gi) * 2) * (0.4 + 0.6 * norm('perc.prob', get('perc.prob')))) },
   };
-  // S5.8: on ← the layer's On (coupure de couche): a silent layer's plant goes dim
   for (const id in LOOK) LOOK[id].on = id + '.on';
-  // the general settings, the same for every plant
+  // the general settings, the same for every element
   const LOOK_ALL = { volume: 'global.volume', space: 'fx.space', shimmer: 'fx.shimmer', worn: fn(['fx.tape', 'fx.lofi'], (get) => 0.5 * norm('fx.tape', get('fx.tape')) + 0.5 * norm('fx.lofi', get('fx.lofi'))), pace: 'global.tempo', float: sel('global.time', { 'Pulsé': 0, Flottant: 1 }) };
   const ASPECTS = ['size', 'light', 'shape', 'halo', 'sway', 'pace', 'bloom', 'on'];
   const spec = (key) => { const S = AMB.SCHEMA, [sec, k] = key.split('.'); return S && S[sec] && S[sec].params[k]; };
@@ -107,13 +100,13 @@
     if (typeof v === 'boolean') return v ? 1 : 0;
     const lo = sp && sp.min != null ? sp.min : 0, hi = sp && sp.max != null ? sp.max : 1;
     const n = (Number(v) - lo) / ((hi - lo) || 1);
-    return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0.5;
+    return Number.isFinite(n) ? clamp(n) : 0.5;
   }
-  const cell = (c, get) => (typeof c === 'string' ? norm(c, get(c)) : Math.max(0, Math.min(1, +c.f(get) || 0)));
+  const cell = (c, get) => (typeof c === 'string' ? norm(c, get(c)) : clamp(+c.f(get) || 0));
+  function lookAll(get) { const all = {}; for (const k in LOOK_ALL) all[k] = cell(LOOK_ALL[k], get); return all; }
   // get(key) → the store value (undefined = the schema default). Pure: same settings, same look.
   function look(get) {
-    const all = {}; for (const k in LOOK_ALL) all[k] = cell(LOOK_ALL[k], get);
-    const out = {};
+    const all = lookAll(get), out = {};
     for (const id in LOOK) {
       const L = LOOK[id], a = {};
       for (const k of ['size', 'light', 'shape', 'halo', 'sway', 'bloom', 'on']) a[k] = cell(L[k], get);
@@ -126,7 +119,7 @@
     }
     return out;
   }
-  // which plants a setting concerns: its layer's, or all of them for the general ones (Volume, Tempo, Reverb, Halo…)
+  // which elements a setting concerns: its layer's, or all of them for the general ones (Volume, Tempo, Reverb, Halo…)
   const ALL_KEYS = new Set(); for (const k in LOOK_ALL) { const c = LOOK_ALL[k]; (typeof c === 'string' ? [c] : c.keys).forEach((x) => ALL_KEYS.add(x)); }
   function concerns(key) {
     const sec = String(key).split('.')[0];
@@ -135,12 +128,11 @@
     return [];
   }
 
-  // ---- S5.8 « Chaque bouton a un impact visuel »: SETTINGS → SCENE, the second table. Every control the plants do not
-  // show drives a layer of the scene (sky, weather, lights, ground, full-screen filters). A layer is one intensity 0..1
-  // (the MEAN of its cells: a select = its option's rank, a toggle 0/1, a text = how much it holds, a knob = its range);
-  // `poll` = app state outside the store (mode, playback, song). The drawing (drawScene) reads intensities only: a later
-  // skin, or S5.10's combos, read the same `layers()`. A touched control (sources user / macro / cc, or the event `ev`)
-  // kicks its layer: an impulse 1 → 0 in ~0.8 s on top of the lasting state.
+  // ---- S5.8 SETTINGS → SCENE: every control the elements do not show drives a layer of the scene. A layer is one
+  // intensity 0..1 (the MEAN of its cells: a select = its option's rank, a toggle 0/1, a text = how much it holds, a knob =
+  // its range); `poll` = app state outside the store (mode, playback, song). A touched control (sources user / macro / cc,
+  // or the event `ev`) kicks its layer: an impulse 1 → 0 in ~0.8 s on top of the lasting state. `layers()` gives them
+  // (S5.10 combos read them).
   const SCENE = {
     hue: { at: 'ciel : teinte', keys: ['global.key', 'global.tuning'] },
     clouds: { at: 'ciel : nuages qui dérivent', keys: ['global.evolve'] },
@@ -152,7 +144,7 @@
     snow: { at: 'météo : neige de pixels', keys: ['grains.scan', 'grains.pitch', 'grains.reverse', 'grains.glide'] },
     frost: { at: 'météo : givre', keys: ['grains.source'], ev: 'freeze' },
     ripple: { at: 'sol : ondulation', keys: ['global.swing', 'global.humanize', 'bass.octave', 'perc.steps'] },
-    echo: { at: 'filtre : écho (éléments fantômes)', keys: ['fx.echo', 'fx.echoTime', 'fx.feedback'] },
+    echo: { at: 'filtre : écho (bâtiments fantômes)', keys: ['fx.echo', 'fx.echoTime', 'fx.feedback'] },
     tape: { at: 'filtre : bande qui défile, image qui tremble', keys: ['fx.tape'] },
     grain: { at: 'filtre : grain et vignette', keys: ['fx.lofi'] },
     lens: { at: 'filtre : grille (Sculpter), portée (Composer)', poll: () => ({ sculpt: 0.5, compose: 1 })[AMB.mode] || 0 },
@@ -173,33 +165,30 @@
     const out = {};
     for (const n in SCENE) {
       const L = SCENE[n];
-      if (L.poll) { let v = 0; try { v = +L.poll() || 0; } catch (e) {} out[n] = Math.max(0, Math.min(1, v)); continue; }
+      if (L.poll) { let v = 0; try { v = +L.poll() || 0; } catch (e) {} out[n] = clamp(v); continue; }
       let s = 0; for (const k of L.keys) s += level(k, get);
       out[n] = s / L.keys.length;
     }
     return out;
   }
 
-  // ---- S5.2 « Chaque note se voit »: the TRIGGER (which plant, who plays, how strong), apart from the drawing (a later
-  // skin reads the same splashes and draws them its way: drawSplash only). The garden stays a reflection: nothing on the
-  // scene is touchable. JUICE = the one knob for how much a note sets off (0 = calm, 1 = goofy default, 2 = way too much).
-  const JUICE = AMB.motion ? AMB.motion.JUICE : 1; // S7.1: the same knob as the interface's motion (js/motion.js)
-  // per who: ring (wave brightness), parts (particles at vel 1), flash (plant lit), squash (squash & stretch), life (s)
+  // ---- S5.2 « Chaque note se voit »: the TRIGGER (which element, who plays, how strong), apart from the drawing.
+  // JUICE = the one knob for how much a note sets off (0 = calm, 1 = goofy default, 2 = way too much); js/motion.js owns it.
+  const JUICE = AMB.motion ? AMB.motion.JUICE : 1;
+  // per who: ring (wave brightness), parts (particles at vel 1), flash (element lit), life (s), spread (rad), shake
   const SPLASH = {
-    player: { ring: 1, parts: 24, flash: 1, squash: 0.28, life: 0.8 },
-    chord: { ring: 1, parts: 36, flash: 1, squash: 0.36, life: 1, spread: 4.2 },
-    machine: { ring: 0.45, parts: 4, flash: 0.35, squash: 0.08, life: 0.5 },
-    // S5.3 celebrations of the Réponse on the Melody plant (cheer()): a series that grows, a record, a new tier
-    streak: { ring: 1, parts: 30, flash: 1, squash: 0.32, life: 0.9, spread: 4.2 },
-    record: { ring: 1, parts: 60, flash: 1, squash: 0.45, life: 1.1, spread: 6.3, shake: 0.6 },
-    tier: { ring: 1, parts: 90, flash: 1, squash: 0.55, life: 1.3, spread: 6.3, shake: 1 },
+    player: { ring: 1, parts: 24, flash: 1, life: 0.8 },
+    chord: { ring: 1, parts: 36, flash: 1, life: 1, spread: 4.2 },
+    machine: { ring: 0.45, parts: 4, flash: 0.35, life: 0.5 },
+    // S5.3 celebrations of the Réponse (cheer()): a series that grows, a record, a new tier
+    streak: { ring: 1, parts: 30, flash: 1, life: 0.9, spread: 4.2 },
+    record: { ring: 1, parts: 60, flash: 1, life: 1.1, spread: 6.3, shake: 0.6 },
+    tier: { ring: 1, parts: 90, flash: 1, life: 1.3, spread: 6.3, shake: 1 },
   };
   const WAVES_PER_PLANT = 3, PARTS_MAX = 260, LOUD = 0.85, HELD_MAX = 30; // s: a release that never comes
   const MACHINE = new Set(['bells', 'seq', 'bass']); // the machine's melodies and bass (+ the rhythm, 'perc')
-  const pitchK = (m) => Math.max(0, Math.min(1, ((m == null ? 60 : +m) - 36) / 60)); // 0 = low (C2) .. 1 = high (C7)
+  const pitchK = (m) => clamp(((m == null ? 60 : +m) - 36) / 60); // 0 = low (C2) .. 1 = high (C7)
   // bus event → splash {plant, who, vel 0..1, pitch 0..1, held (live id | 'chord' | null), shake 0..1, time}, or null. Pure.
-  // live = a note the player plays (A–L, pads, MIDI; on the written melody's plant while the piano roll records);
-  // a forced chord = the Pad; the machine's notes ('note' not live: Réponse phrases and the player's own are live) and hits.
   function splash(ev, d, recording) {
     if (!d) return null;
     const t = d.time || 0;
@@ -223,38 +212,53 @@
   const mulberry = (a) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   const rgb = (c, k = 1, a = 1) => `rgba(${Math.min(255, Math.round(c[0] * k))},${Math.min(255, Math.round(c[1] * k))},${Math.min(255, Math.round(c[2] * k))},${a})`;
   const hsl2rgb = (h, s, l) => { const f = (n) => { const k = (n + h / 30) % 12, a = s * Math.min(l, 1 - l); return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); }; return [f(0), f(8), f(4)]; };
+  const ih = (x, y) => { let h = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 
-  // ---- state → layout (pure) ----
-  // state = {layers: [ids], levels: {layer: 0..1}, secrets: [ids]}
-  function layout(st, W, H) {
-    const ids = LAYERS.map((l) => l.id).filter((id) => (st.layers || []).includes(id));
-    const n = ids.length, ground = Math.round(H * 0.74);
-    const slotW = (W * 0.9) / Math.max(1, n);
-    const plants = ids.map((id, i) => {
-      const r = mulberry(hash('plant:' + id));
-      const lv = Math.max(0, Math.min(1, +((st.levels || {})[id]) || 0));
-      return {
-        id, kind: byLayer[id].kind, col: byLayer[id].col, label: byLayer[id].label, short: byLayer[id].short, level: lv,
-        x: Math.round(W * 0.05 + slotW * (i + 0.5) + (r() - 0.5) * slotW * 0.3),
-        y: ground + Math.round((r() - 0.5) * H * 0.02), phase: r() * 6.283, rare: false,
-      };
-    });
-    const sec = (st.secrets || []).slice().sort();
-    const rares = sec.map((id) => {
-      const r = mulberry(hash('secret:' + id));
-      return { id: 'secret:' + id, kind: 'crystal', rare: true, level: 0, col: hsl2rgb(Math.floor(r() * 360), 0.85, 0.7), x: Math.round(W * 0.05 + slotW * (Math.floor(r() * (n + 1)) + (r() - 0.5) * 0.3)), y: ground, phase: r() * 6.283 }; // between two plants, on the ground
-    });
-    return { plants, rares, ground, slotW };
+  // ======================================================================================================================
+  // 2. THE WORLD MODEL
+  // ---- DIMENSIONS: name (a path in `world`) → {aim(c) 0..1, tau (s, smoothing), at (what it is)}. c = {get, L (scene
+  // intensities, smoothed), all (LOOK_ALL), plants (open buildings, each with its smoothed `look`), dawn, free, sites}.
+  // S8.1 wires each to the settings that meant it before (the look of the old garden stays); S8.4 rewires the grands
+  // réglages to one dimension each, S8.5 the music, S8.6 the life — through this table only (`gv.addDim`).
+  const mean = (ps, f) => { if (!ps.length) return 0; let s = 0; for (const p of ps) s += f(p); return s / ps.length; };
+  const lk = (p) => p.look || { light: 0.6, on: 1, bloom: 0.3, size: 0.6 };
+  const DIMS = {
+    power: { tau: 0.5, at: 'courant : la lumière de la ville (fenêtres, néons, halos ; voilée à l\'arrêt)', aim: (c) => c.dawn + (1 - c.dawn) * (0.2 + 0.8 * mean(c.plants, (p) => lk(p).light * lk(p).on)) * (0.55 + 0.45 * c.L.play) },
+    traffic: { tau: 1.2, at: 'trafic : voitures volantes et de la rue', aim: (c) => clamp((0.15 + 0.5 * mean(c.plants, (p) => lk(p).bloom * lk(p).on) + 0.35 * c.all.pace) * (0.35 + 0.65 * c.L.play) * Math.min(1, 0.25 + c.plants.length / 5)) },
+    // the framing: the camera centres the built city and comes closer while it is small (never into the HUD)
+    'cam.frame': { tau: 1.8, at: 'caméra : cadrage (1 = toute la rue, plus = plus près de la ville bâtie)', aim: (c) => c.frame().z },
+    'cam.cx': { tau: 1.8, at: 'caméra : centre du cadrage (x, part de la largeur)', aim: (c) => c.frame().cx },
+    'cam.back': { tau: 1.5, at: 'caméra : recul (0 = près, 1 = loin)', aim: (c) => 0.15 + 0.35 * c.all.space },
+    'cam.depth': { tau: 1.5, at: 'caméra : profondeur (parallaxe)', aim: (c) => 0.3 + 0.7 * c.L.haze },
+    'cam.fog': { tau: 1.2, at: 'caméra : brouillard à l\'horizon', aim: (c) => 0.15 + 0.6 * c.L.haze * c.L.haze },
+    'weather.rain': { tau: 2, at: 'météo : pluie (s\'arrête à l\'aube)', aim: (c) => (1 - c.dawn) * (0.45 + 0.55 * c.nature) },
+    'weather.wind': { tau: 2, at: 'météo : vent (pluie penchée, nuages)', aim: (c) => 0.15 + 0.85 * c.L.clouds },
+    'weather.storm': { tau: 2, at: 'météo : orage (éclairs)', aim: (c) => (1 - c.dawn) * clamp((c.nature - 0.75) / 0.25) },
+    vhs: { tau: 0.6, at: 'usure VHS (bande, grain)', aim: (c) => c.all.worn },
+    population: { tau: 2, at: 'population : la ville habitée (ville lointaine allumée)', aim: (c) => Math.max(c.dawn, clamp(0.05 + c.plants.length / 8) * (0.5 + 0.5 * c.L.play)) },
+    sites: { tau: 0.4, at: 'chantiers : bâtiments en construction ou en démolition', aim: (c) => clamp(c.sites / 3) },
+    dawn: { tau: 0, at: 'aube (fin du Parcours)', aim: (c) => c.dawn },
+    play: { tau: 0.3, at: 'lecture', aim: (c) => c.L.play },
+  };
+  // ---- IMPULSES: name → decay time (s). gv.impulse(name, v) sets one (max), it falls to 0 linearly.
+  const PULSES = { note: 0.3, chord: 1, beat: 0.35, kick: 0.8, flash: 0.4, build: 0.6 };
+  function makeWorld() {
+    const w = { pulse: {}, beat: { ph: 0, strong: false, k: 0, on: false }, cam: {}, weather: {} };
+    for (const n in PULSES) w.pulse[n] = 0;
+    return w;
   }
+  const getPath = (o, p) => { const i = p.indexOf('.'); return i < 0 ? o[p] : (o[p.slice(0, i)] || {})[p.slice(i + 1)]; };
+  const setPath = (o, p, v) => { const i = p.indexOf('.'); if (i < 0) o[p] = v; else (o[p.slice(0, i)] || (o[p.slice(0, i)] = {}))[p.slice(i + 1)] = v; };
 
-  // ---- sprites: S6.5 « Ville néon »: each layer is an element of a city at night, drawn as a pixel matrix (1 cell = px
-  // device pixels; walls solid, lights as LEDs). The `kind` ids of the plants are kept (code), the drawing is the city's:
+  // ---- BUILDINGS: each element as a pixel matrix (1 cell = px canvas pixels; walls solid, lights as LEDs). The `kind` ids
+  // of the old plants are kept (code), the drawing is the city's:
   //   reed = Tour (Drone), bush = Pyramide (Pad), bell = Enseigne néon (Mélodie auto), fern = Antenne radio (Texture),
-  //   puff = Parabole (Grains), vine = Écran géant (Mélodie écrite), cactus = Pylône (Basse), shroom = Voitures volantes
-  //   (Pulsations), crystal = Hologramme (a discovery).
+  //   puff = Parabole (Grains), vine = Écran géant (Mélodie écrite), cactus = Pylône (Basse), shroom = Tour d'envol et
+  //   voitures volantes (Pulsations), crystal = Hologramme (a discovery).
   // tones: 0 frame, 1 wall, 2 lit window, 3 neon tube, 4 hot light, 6 window (lit or not: dress, by Lumière), 7 dark
   // window, 8 red beacon, 12 cable (dim)
   const CW = 25; // sprite width in cells (axis at column 12)
+  const FLOOR = 2; // cells per floor: heights move by whole floors
   function cells(kind, hC, seed, a) {
     const r = mulberry(seed), out = [];
     const put = (x, y, t) => { if (x >= 0 && x < CW && y >= 0) out.push([x, y, t]); };
@@ -263,7 +267,7 @@
     if (kind === 'bush') { // a stepped pyramid (Tyrell), bands of windows
       const Wm = Math.min(11, 4 + Math.round(hC * 0.2));
       for (let y = 0; y < hC; y++) {
-        const hw = Math.max(1, Math.round(Wm * (1 - y / (hC + 1)) / 1));
+        const hw = Math.max(1, Math.round(Wm * (1 - y / (hC + 1))));
         for (let x = C - hw; x <= C + hw; x++) put(x, y, x === C - hw || x === C + hw ? 0 : y % 3 === 1 && (x - C) % 2 === 0 ? 6 : 1);
       }
     } else if (kind === 'cactus') { // an electricity pylon: a tapered lattice, cross-arms, insulators
@@ -279,7 +283,7 @@
         for (let x = -L - 2; x <= L + 2; x++) put(C + x, y0, 0);
         for (const s of [-1, 1]) { put(C + s * (L + 2), y0 - 1, 4); put(C + s * (L + 2), y0 - 2, 4); put(C + s * 3, y0 - 1, 4); }
       }
-    } else if (kind === 'shroom') { // a landing tower, flying cars hovering around it
+    } else if (kind === 'shroom') { // a landing tower, flying cars parked around it
       const h = Math.round(hC * 0.78);
       for (let y = 0; y < h; y++) for (let x = -1; x <= 1; x++) put(C + x, y, x ? 0 : y % 3 === 1 ? 6 : 1);
       for (let x = -4; x <= 4; x++) { put(C + x, h, 0); if (x % 2 === 0) put(C + x, h + 1, 3); }
@@ -330,13 +334,11 @@
       }
       put(C, hC, 0); put(C, hC + 1, 0); put(C, hC + 2, 8);
     }
-    return a && kind !== 'crystal' ? dress(out, hC, seed, a, kind) : out;
+    return a && kind !== 'crystal' ? dress(out, hC, seed, a) : out;
   }
-
-  // S4.6 → S6.5: the look on top of the element. a = {shape 0..1, light 0..1, bloom = neon signs 1..4} (quantized).
-  // light: how many windows are lit (dark = a few); shape: smooth roofs (a dome) ↔ spiky (masts, 1 to 5, and greebles on
-  // the outline); bloom: neon signs hung on its sides
-  function dress(out, hC, seed, a, kind) {
+  // the look on top of the element. a = {shape 0..1, light 0..1, bloom = neon signs 1..4} (quantized).
+  // light: how many windows are lit; shape: a dome ↔ masts (1 to 5) and greebles on the outline; bloom: neon signs
+  function dress(out, hC, seed, a) {
     const r = mulberry(seed ^ 0x5bd1e995), has = new Set(out.map((c) => c[0] + ',' + c[1]));
     const put = (x, y, t) => { const k = x + ',' + y; if (x >= 0 && x < CW && y >= 0 && !has.has(k)) { has.add(k); out.push([x, y, t]); } };
     const C = 12;
@@ -372,17 +374,26 @@
     }
     return out;
   }
+  // a building's construction (S8.1): heights in cells, h(now) eased from h0 to h1 over dur s from start (audio clock)
+  const ease = (q) => q * q * (3 - 2 * q);
+  const BUILD = { base: 0.7, perCell: 0.034, unbase: 0.5, unPerCell: 0.022, lag: 0.5 }; // s; lag = windows lit after the floor is up
 
-  // sky per chord (S6.5: a city night): a hue per scale degree; minor scales (minor third) darker and cooler
+  // sky per chord: a hue per scale degree; minor scales (minor third) darker and cooler
   const HUES = [285, 320, 200, 255, 230, 335, 5]; // I violet, ii magenta, iii cyan, IV indigo, V blue, vi pink, vii red
-  const GROW = 1.2, SKY_FADE = 2; // s
-  const ease = (q) => q * q * (3 - 2 * q) + 0.1 * Math.sin(Math.PI * q) * q * q; // slow start, a slight overshoot at the end
+  const SKY_FADE = 2; // s
+  const q = (x, px) => Math.round(x / px) * px;
+
+  // ======================================================================================================================
+  // 3. THE DRAWING — the layers (calques). Each: {id, z, draw(g, world, cam, gv)}; the stack calls them in z order with
+  // the context reset (no transform but the shake, alpha 1, source-over, no smoothing). cam.set(g, d) places a layer at
+  // depth d; cam.x(d, x) / cam.y(d, y) / cam.k(d) map a point of that depth to the screen.
+  const STACK = [];
+  function addLayer(def) { const i = STACK.findIndex((l) => l.id === def.id); if (i >= 0) STACK.splice(i, 1); STACK.push(def); STACK.sort((a, b) => a.z - b.z); return def; }
 
   // ---- S5.10 « Combos »: the EMERGENT effect of each combo of js/discoveries.js (COMBOS), drawn only while that combo is
-  // ON (intensity a 0..1, in and out in ~0.25 s): a new picture, not the sum of the layers. Only these functions draw them:
-  // a later skin swaps this table and nothing else. pass 'back' = over the sky and the ground, behind the plants; 'front' =
-  // over the plants, under the full-screen filters. T = the scene's time (the tempo is its speed; frozen in reduced motion).
-  const q = (x, px) => Math.round(x / px) * px;
+  // ON (intensity a 0..1, in and out in ~0.25 s): a new picture, not the sum of the layers. pass 'back' = over the sky and
+  // the street, behind the buildings; 'front' = over the buildings, under the full-screen filters. T = the scene's time.
+  // (S8.7 replaces them with the huge combos.)
   const COMBO_FX = {
     monolithe: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // a black obelisk, its edges lit on the beat, glyphs running up
       const w = Math.max(4 * px, q(W * 0.05, px)), x0 = q(W / 2 - w / 2, px), top = q(gd * 0.26, px), h = gd - top;
@@ -407,7 +418,7 @@
       const n = v.starNotes.length; if (!n) return;
       const pts = v.starNotes.map((s, i) => [q(W * (0.08 + 0.84 * (i + 0.5) / n), px), q(gd * (0.78 - 0.62 * s.p), px)]);
       g.globalCompositeOperation = 'lighter'; g.fillStyle = '#bfe6ff';
-      for (let i = 1; i < n; i++) { // dotted pixel lines
+      for (let i = 1; i < n; i++) {
         const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], k = Math.max(1, Math.round(Math.hypot(x1 - x0, y1 - y0) / (2 * px)));
         g.globalAlpha = Math.min(1, a * 0.55);
         for (let j = 1; j < k; j++) g.fillRect(q(x0 + (x1 - x0) * j / k, px), q(y0 + (y1 - y0) * j / k, px), Math.max(1, px - 1), Math.max(1, px - 1));
@@ -420,7 +431,7 @@
       g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, a * 0.8); g.drawImage(gl, Math.round(cx - gl.width / 2), Math.round(cy - gl.height / 2));
       for (let i = 0; i < n; i++) { const an = i / n * 6.283 + T * 1.2; g.globalAlpha = Math.min(1, a * (0.5 + 0.5 * Math.sin(i * 0.9 - T * 6))); g.fillStyle = i % 2 ? '#a58cff' : '#5ff0ff'; g.fillRect(q(cx + Math.cos(an) * R, px), q(cy + Math.sin(an) * R, px), 2 * px - 1, 2 * px - 1); }
     } },
-    brume: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // neon fog: pink and cyan bands rolling at the foot of the plants, scanlines
+    brume: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // neon fog: pink and cyan bands rolling at the foot of the buildings
       const bh = Math.round(H * 0.34), cv = v.fx('neonfog', W, H, (w) => {
         const c = v.canvas(w / 4, bh / 4), x = c.getContext('2d'), r = mulberry(83);
         for (let i = 0; i < 18; i++) { const cx = r() * c.width, cy = c.height * (0.3 + 0.5 * r()), R = c.height * (0.25 + 0.35 * r()), gg = x.createRadialGradient(cx, cy, 0, cx, cy, R), col = i % 2 ? '255,79,160' : '79,224,255'; gg.addColorStop(0, `rgba(${col},0.45)`); gg.addColorStop(1, `rgba(${col},0)`); x.fillStyle = gg; x.fillRect(cx - R, cy - R, 2 * R, 2 * R); }
@@ -429,7 +440,7 @@
       const off = ((T * px * 7) % W + W) % W, y = gd - bh * 0.62;
       g.globalCompositeOperation = 'lighter'; g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, a);
       g.drawImage(cv, off, y, W, bh); g.drawImage(cv, off - W, y, W, bh); g.imageSmoothingEnabled = false;
-      for (let i = 0; i < 4; i++) { // neon tubes humming at the foot of the plants
+      for (let i = 0; i < 4; i++) {
         const yy = q(gd - bh * (0.08 + 0.1 * i), px), fl = 0.6 + 0.4 * Math.sin(T * (7 + i) + i * 2);
         g.globalAlpha = Math.min(1, a * fl); g.fillStyle = i % 2 ? '#4fe0ff' : '#ff4fa0'; g.fillRect(q(((T * (30 + 12 * i) * px) % (W * 1.5)) - W * 0.25, px), yy, q(W * (0.25 + 0.1 * i), px), Math.max(1, px >> 1));
       }
@@ -444,11 +455,12 @@
         for (let x = 0; x < W; x += st) g.fillRect(x, q(gd - lift + Math.sin(x * 0.006 + T * (0.6 + 0.2 * j) + j) * A, px), st - 1, px);
       }
     } },
-    miroir: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // the garden reflected under the ground, rippling
+    miroir: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // the city reflected under the street, rippling
       g.globalAlpha = Math.min(1, a * 0.32);
       for (const p of v.plants) {
-        const s = v.sprite(p, px), k = p.k || 1, sz = p.sz || 1, gy = p.gy == null ? 1 : p.gy; if (gy < 0.05) continue;
-        g.setTransform(k * sz, 0, 0, -k * sz * gy * 0.7, p.x + Math.sin(T * 1.7 + p.x * 0.02) * px * 2 + (v.ox || 0), p.y + px * 2 + (v.oy || 0)); g.drawImage(s.cv, -s.w / 2, -s.h);
+        if (!p.vis) continue;
+        const s = v.sprite(p, px), k = p.k || 1;
+        g.setTransform(k, 0, 0, -k * 0.7, p.sx + Math.sin(T * 1.7 + p.x * 0.02) * px * 2, p.sy + px * 2); g.drawImage(s.cv, 0, s.h - p.vis, s.w, p.vis, -s.w / 2, -p.vis, s.w, p.vis);
       }
       g.setTransform(1, 0, 0, 1, v.ox || 0, v.oy || 0); g.globalCompositeOperation = 'lighter'; g.fillStyle = '#7fd6ff';
       for (let i = 0; i < 5; i++) { g.globalAlpha = Math.min(1, a * 0.25); const y = q(gd + (H - gd) * (0.15 + 0.17 * i), px), x = q(((T * (20 + 9 * i) * px) % W), px); g.fillRect(x - W * 0.2, y, W * 0.4, Math.max(1, px >> 1)); }
@@ -466,7 +478,7 @@
       });
       g.globalCompositeOperation = 'lighter'; g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, a * (0.75 + 0.25 * Math.sin(T * 0.8)));
       g.drawImage(cv, 0, 0, W, gd); g.imageSmoothingEnabled = false;
-      const sx = q(((T * 0.15) % 1.4 - 0.2) * W, px); g.globalAlpha = Math.min(1, a * 0.3); g.fillStyle = '#fff4d6'; g.fillRect(sx, 0, q(W * 0.03, px) || px, gd); // a light sweeping through
+      const sx = q(((T * 0.15) % 1.4 - 0.2) * W, px); g.globalAlpha = Math.min(1, a * 0.3); g.fillStyle = '#fff4d6'; g.fillRect(sx, 0, q(W * 0.03, px) || px, gd);
     } },
     vhs: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // the picture derails: red / blue edges, a rolling band, « ● REC 2089 »
       const r = mulberry(Math.floor(T * 8)), fs = Math.max(12, Math.round(px * 5));
@@ -476,7 +488,7 @@
       g.globalAlpha = Math.min(1, a); g.font = `${fs}px VT323, monospace`; g.fillStyle = '#f0f0f0'; g.fillText('REC 2089', Math.round(px * 6 + fs), Math.round(H - px * 4));
       if (Math.floor(T * 2) % 2 === 0) { g.fillStyle = '#ff3050'; g.fillRect(Math.round(px * 4), Math.round(H - px * 4 - fs * 0.6), Math.round(fs * 0.55), Math.round(fs * 0.55)); }
     } },
-    kaleido: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // the sky as a kaleidoscope: 8 mirrored wedges turning, the hue turning
+    kaleido: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // the sky as a kaleidoscope: 8 mirrored wedges turning
       const cx = W / 2, cy = gd * 0.45, R = Math.min(W, gd) * 0.55, h0 = (T * 40) % 360;
       g.globalCompositeOperation = 'lighter';
       for (let k = 0; k < 8; k++) {
@@ -490,7 +502,7 @@
       g.globalAlpha = Math.min(1, a * 0.4); g.fillStyle = '#000'; g.fillRect(0, 0, W, gd);
       g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, a); const gl = v.glow([255, 200, 150], 3 * R); g.drawImage(gl, Math.round(cx - 3 * R), Math.round(cy - 3 * R));
       g.globalCompositeOperation = 'source-over'; g.fillStyle = '#030204'; g.beginPath(); g.arc(cx, cy, R, 0, 6.283); g.fill();
-      const an = T * 0.5; g.globalCompositeOperation = 'lighter'; g.fillStyle = '#fff'; g.fillRect(q(cx + Math.cos(an) * R, px) - px, q(cy + Math.sin(an) * R, px) - px, 2 * px, 2 * px); // the diamond ring
+      const an = T * 0.5; g.globalCompositeOperation = 'lighter'; g.fillStyle = '#fff'; g.fillRect(q(cx + Math.cos(an) * R, px) - px, q(cy + Math.sin(an) * R, px) - px, 2 * px, 2 * px);
     } },
     quintes: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // the twelve fifths: a {12/5} star turning, a LED on each point
       const cx = W / 2, cy = gd * 0.42, R = Math.min(W, gd) * 0.3, an = (i) => i / 12 * 6.283 + T * 0.2 - 1.571, pt = (i) => [cx + Math.cos(an(i)) * R, cy + Math.sin(an(i)) * R * 0.85];
@@ -507,8 +519,8 @@
       for (let i = 0; i < 8; i++) { const z = ((i / 8 + T * 0.25) % 1), y = gd + (H - gd) * z * z; g.moveTo(0, Math.round(y)); g.lineTo(W, Math.round(y)); }
       g.stroke();
     } },
-    reseau: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // arcs of light between the plants, a spark running on each
-      const ps = v.plants.slice().sort((u, w) => u.x - w.x).map((p) => [p.x, p.y - v.heightCells(p) * px * (p.sz || 1) * (p.gy == null ? 1 : p.gy) * 0.8]);
+    reseau: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // arcs of light between the rooftops, a spark running on each
+      const ps = v.plants.filter((p) => p.vis).sort((u, w) => u.sx - w.sx).map((p) => [p.sx, p.sy - p.vis * (p.k || 1) * 0.8]);
       g.globalCompositeOperation = 'lighter'; g.strokeStyle = '#5ff0ff'; g.lineWidth = Math.max(1, px >> 1);
       for (let i = 1; i < ps.length; i++) {
         const [x0, y0] = ps[i - 1], [x1, y1] = ps[i], mx = (x0 + x1) / 2, my = Math.min(y0, y1) - gd * 0.12;
@@ -519,30 +531,69 @@
     } },
   };
 
+  // ---- state → layout (pure): where each building stands (world coordinates, before the camera) ----
+  // state = {layers: [ids], levels: {layer: 0..1}, secrets: [ids]}. One row of buildings on the street; on a narrow
+  // screen (portrait) with more than 4 buildings, two rows: the back row higher up, smaller, between the front ones.
+  const ROW_K = 0.74, ROW_D = 0.82; // the back row: its scale, its depth (parallax)
+  // safe = {top, right, bottom, left}: fractions of the canvas the interface covers (S8.3); the street stays above the
+  // bottom one, the buildings between the side ones.
+  function layout(st, W, H, safe) {
+    const ids = LAYERS.map((l) => l.id).filter((id) => (st.layers || []).includes(id)), sf = safe || {};
+    const sl = clamp(+sf.left || 0, 0, 0.4), sr = clamp(+sf.right || 0, 0, 0.4), sb = clamp(+sf.bottom || 0, 0, 0.5), X0 = W * sl, FW = W * (1 - sl - sr);
+    // S8.1: each layer has its own lot, always the same (a building never moves when another one opens); the camera
+    // frames the lots that are built (cam.frame, cam.cx)
+    const N = LAYERS.length, ground = Math.round(H * Math.max(0.45, Math.min(W < H ? 0.8 : 0.76, 1 - sb - 0.03))), rows = FW < H * 0.95 ? 2 : 1;
+    const nf = rows === 2 ? Math.ceil(N / 2) : N, slotW = (FW * 0.9) / nf;
+    const plants = ids.map((id) => {
+      const i = LAYERS.indexOf(byLayer[id]), r = mulberry(hash('plant:' + id)), row = rows === 2 ? i % 2 : 0, j = rows === 2 ? i >> 1 : i;
+      const lv = clamp(+((st.levels || {})[id]) || 0);
+      const x = row ? X0 + FW * 0.05 + slotW * (j + 1) : X0 + FW * 0.05 + slotW * (j + 0.5);
+      return {
+        id, kind: byLayer[id].kind, col: byLayer[id].col, label: byLayer[id].label, short: byLayer[id].short, level: lv, row,
+        x: Math.round(x + (r() - 0.5) * slotW * (row ? 0.15 : 0.3)),
+        y: row ? Math.round(ground - H * 0.05) : ground + Math.round((r() - 0.5) * H * 0.01), phase: r() * 6.283, rare: false,
+      };
+    });
+    const sec = (st.secrets || []).slice().sort();
+    const rares = sec.map((id) => {
+      const r = mulberry(hash('secret:' + id));
+      return { id: 'secret:' + id, kind: 'crystal', rare: true, level: 0, row: 0, col: hsl2rgb(Math.floor(r() * 360), 0.85, 0.7), x: Math.round(X0 + FW * 0.05 + slotW * (Math.floor(r() * (nf + 1)) + (r() - 0.5) * 0.3)), y: ground, phase: r() * 6.283 };
+    });
+    return { plants, rares, ground, slotW, rows };
+  }
+
   const gv = {
-    LAYERS, byLayer, layout, cells, hash, GROW,
-    grow: {}, prevH: {}, growStart: null, growNext: false, // S4.5w growth: plant id -> {from (0..1 of its height), start}
+    LAYERS, byLayer, layout, cells, hash, FLOOR, BUILD, DIMS, PULSES, STACK,
+    grow: {}, built: {}, growStart: null, growNext: false, // S8.1 construction: building id -> {h0, h1, spr, start, dur}
     skyKey: null, skyPrevKey: null, skyT: 0, skyQ: [], skies: new Map(), // S4.5w sky
     replay: null, lit: {}, // S4.5w finale
-    LOOK, LOOK_ALL, ASPECTS, look, concerns, aim: null, cur: {}, kicks: {}, swPh: {}, lookDirty: true, // S4.6 settings → look
+    LOOK, LOOK_ALL, ASPECTS, look, concerns, aim: null, cur: {}, kicks: {}, lookDirty: true, // S4.6 settings → look
     // S7.1 the one knob lives in js/motion.js (css --juice, interface motion); GV.JUICE reads and sets it there
     get JUICE() { return AMB.motion ? AMB.motion.JUICE : this._juice; }, set JUICE(v) { if (AMB.motion) AMB.motion.set({ juice: v }); else this._juice = v; }, _juice: JUICE,
-    SPLASH, WAVES_PER_PLANT, PARTS_MAX, splash, waves: [], squash: {}, zap: {}, shake: null, ox: 0, oy: 0, // S5.2 notes seen
+    SPLASH, WAVES_PER_PLANT, PARTS_MAX, splash, waves: [], zap: {}, shake: null, ox: 0, oy: 0, // S5.2 notes seen
     SCENE, scene, sc: {}, kick: {}, sAim: null, sPoll: {}, st: 0, speed: 1, fxc: {}, // S5.8 scene layers
-    COMBO_FX, cx: {}, starNotes: [], // S5.10 combos: intensity per combo ON, the player's last notes (constellation)
+    COMBO_FX, cx: {}, starNotes: [], // S5.10 combos
+    world: makeWorld(), // S8.1 the world model
+    hooks: [], post2d: true, safe: null, // S8.1 for S8.2 (afterDraw, post2d) and S8.3 (safe)
     sprites: new Map(), glows: new Map(), labels: new Map(),
     plants: [], rares: [], parts: [], pending: [],
-    energy: {}, // plant id -> 0..1 pulse
+    energy: {}, // building id -> 0..1 light of its notes
     visible: true, paused: false, reduced: false,
     times: [], frames: 0, cacheMisses: 0,
     clock: () => (AMB.engine && AMB.engine.ctx ? AMB.engine.ctx.currentTime : performance.now() / 1000),
     now: () => performance.now(),
+    get canvas() { return this.active ? this.observed || null : null; },
+    // S8.2: fn(canvas, world, info) after each frame of the city; returns off()
+    afterDraw(f) { this.hooks.push(f); return () => { const i = this.hooks.indexOf(f); if (i >= 0) this.hooks.splice(i, 1); }; },
+    addLayer, // S8.4–S8.7: a new layer of the drawing
+    addDim(name, d) { DIMS[name] = d; return d; }, // a new dimension of the world (or a new wiring of one)
+    impulse(name, v = 1) { const w = this.world.pulse; w[name] = Math.max(w[name] || 0, clamp(v, 0, 2)); },
 
     // ---- read the game / secrets state; a layer's level = share of its tree nodes owned ----
     layerNodes(id) { const T = AMB.tree; return T ? T.NODES.filter((n) => n.params.some((p) => p.startsWith(id + '.'))).map((n) => n.id) : []; },
     readState() {
       const g = AMB.game, st = { layers: [], levels: {}, secrets: [] };
-      if (this.free) { for (const l of LAYERS) { st.layers.push(l.id); st.levels[l.id] = 1; } return st; } // S6.7 free mode: the whole city
+      if (this.free) { for (const l of LAYERS) { st.layers.push(l.id); st.levels[l.id] = 1; } return st; } // free mode: the whole city
       if (!g || !g.s) return st;
       const own = g.s.nodes || [];
       st.layers = LAYERS.filter((l) => own.includes(l.node)).map((l) => l.id);
@@ -557,66 +608,79 @@
     signature(st) { return JSON.stringify([st.layers, st.levels, st.secrets.slice().sort()]); },
 
     // ---- sizes ----
-    // The tallest plant stays under the stage HUD (chord + « D Lydien · 66 bpm » line, top left) and the tool chips (top
-    // right): `ceil` = fraction of the canvas they cover (measured, 0.3 without a DOM). A sprite is at most ~1.1 × its
-    // height in cells + 4 (heads, caps), hence `hMax`; heights stay comparable between plants (same scale for all).
-    cellPx(W, H, n, avail = H * 0.52) { return Math.max(2, Math.min(Math.floor(avail / 68), Math.floor((W * 0.9) / Math.max(1, n) / 22))); },
+    cellPx(W, H, n, avail = H * 0.52) { return Math.max(2, Math.min(Math.floor(avail / 68), Math.floor((W * 0.9) / Math.max(1, n) / 19))); },
+    // the height a layer's level gives (cells, before its Niveau): a third of the tallest at the first node, all at the last
     heightCells(p) { if (p.rare) return 9; const M = this.hMax || 58, m = Math.min(16, Math.round(M * 0.35)); return Math.round(m + (M - m) * p.level); },
     // S6.6: the HUD and the chips only cover the top corners — `zones` = their boxes (fractions of the canvas); `ceil` is the
-    // free middle sky (SKY), which sizes the city; an element under a corner shrinks to stay under it (ceilAt)
+    // free middle sky (SKY); a building under a corner is lower (ceilAt). S8.3 may set gv.safe = {top, zones?} instead.
     SKY: 0.1, zones: [],
     ceilFrac() {
       this.zones = [];
+      const sf = this.safe && this.safe.top != null ? clamp(+this.safe.top, 0, 0.6) : null; // S8.3: the bar + LCD on top
       try {
         const c = this.observed, ch = document.getElementById('chordName'), info = document.getElementById('hudInfo'), tools = document.querySelector('.stage-tools'), hud = ch && ch.parentElement;
         const r = c && c.getBoundingClientRect();
-        if (!r || !r.height || !ch) return 0.3;
-        const fy = (y) => Math.max(this.SKY, Math.min(0.5, (y - r.top) / r.height + 0.03)), up = (x) => Math.min(1, Math.ceil(x * 20) / 20), dn = (x) => Math.max(0, Math.floor(x * 20) / 20);
+        if (!r || !r.height || !ch) return sf != null ? sf : 0.3;
+        const fy = (y) => Math.max(sf != null ? sf : this.SKY, Math.min(0.6, (y - r.top) / r.height + 0.03)), up = (x) => Math.min(1, Math.ceil(x * 20) / 20), dn = (x) => Math.max(0, Math.floor(x * 20) / 20);
         let b = ch.getBoundingClientRect().bottom;
-        if (info) { const cs = getComputedStyle(info); b += (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.fontSize) || 12) * 1.3; } // even while empty
+        if (info) { const cs = getComputedStyle(info); b += (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.fontSize) || 12) * 1.3; }
         const hr = hud.getBoundingClientRect();
-        this.zones.push({ l: 0, r: up((Math.max(hr.right, hr.left + 160) - r.left) / r.width + 0.02), b: fy(b) });
+        if (hr.width && hr.height) this.zones.push({ l: 0, r: up((Math.max(hr.right, hr.left + 160) - r.left) / r.width + 0.02), b: fy(b) });
         const tr = tools && tools.getBoundingClientRect();
         if (tr && tr.height) this.zones.push({ l: dn((tr.left - r.left) / r.width - 0.02), r: 1, b: fy(tr.bottom) });
-        return this.SKY;
-      } catch (e) { this.zones = []; return 0.3; }
+        return sf != null ? Math.max(sf, this.SKY) : this.SKY;
+      } catch (e) { this.zones = []; return sf != null ? sf : 0.3; }
     },
-    // the ceiling (fraction of H) over an element at x, half-width hw (canvas px)
     ceilAt(x, hw) { let c = this.ceil || 0; const W = this.W || 1; for (const z of this.zones) if (x + hw > z.l * W && x - hw < z.r * W) c = Math.max(c, z.b); return c; },
+    // size aspect → how many floors: ×1 at the layer's default setting, ×0.5 at Niveau 0, ×SZ_MAX at the top
+    SZ_MAX: 1.3,
+    sizeK(id, v) {
+      const d = (this.lookDef || (this.lookDef = look(() => undefined)))[id].size;
+      return v <= d ? 0.5 + 0.5 * v / (d || 1) : 1 + (this.SZ_MAX - 1) * (v - d) / ((1 - d) || 1);
+    },
+    // the height a building should have now (cells, whole floors): its level × its Niveau, 0 when its layer is off, never
+    // into the HUD (cap, from refresh)
+    wantOf(p) {
+      if (p.rare) return 9;
+      const a = this.aim && this.aim[p.id];
+      if (a && a.on < 0.5) return 0;
+      const h = Math.round(this.heightCells(p) * (a ? this.sizeK(p.id, a.size) : 1) / FLOOR) * FLOOR;
+      return Math.max(FLOOR * 3, Math.min(h, p.cap || 999));
+    },
 
-    // S4.6: the sprite of a look, quantized (5 shapes × 5 lights × 1–4 flowers) so a slider glides through a few
-    // cached sprites; size, halo and sway are drawn continuously on top (transform, glow), never in the sprite
+    // the look of a building, quantized (5 shapes × 5 lights × 1–4 signs), so a slider glides through a few cached sprites
     quant(a) { return a ? { shape: Math.round(a.shape * 4) / 4, light: Math.round(a.light * 4) / 4, bloom: 1 + Math.round(a.bloom * 3) } : null; },
-    // S6.5 the colour of each tone (cells()): walls dark and barely tinted, frames a little lighter, windows warm,
-    // neon in the element's colour; Lumière brightens everything (and lights the windows, dress())
-    tones(col, q) {
-      const L = q ? q.light : 0.75, mix = (u, w, t) => u.map((v, i) => v + (w[i] - v) * t), W = TOK.wall;
-      const wall = mix(W, col, 0.14).map((v) => v * (0.9 + 0.5 * L)), frame = mix(wall, col, 0.5).map((v) => v * (1.05 + 0.35 * L)); // the outline reads as a neon edge
+    // the colour of each tone: walls dark and barely tinted, frames lighter, windows warm, neon in the element's colour
+    tones(col, qq) {
+      const L = qq ? qq.light : 0.75, mix = (u, w, t) => u.map((v, i) => v + (w[i] - v) * t), W = TOK.wall;
+      const wall = mix(W, col, 0.14).map((v) => v * (0.9 + 0.5 * L)), frame = mix(wall, col, 0.5).map((v) => v * (1.05 + 0.35 * L));
       const neon = mix(col.map((v) => v * (0.55 + 0.6 * L)), [255, 255, 255], 0.1 * L), win = mix(col, [255, 236, 200], 0.55);
       const t = [];
       t[0] = rgb(frame); t[1] = rgb(wall); t[2] = rgb(win, 0.6 + 0.5 * L); t[3] = rgb(neon); t[4] = rgb(mix(col, [255, 255, 255], 0.75), 0.75 + 0.3 * L);
       t[5] = t[6] = t[2]; t[7] = rgb(mix(wall, col, 0.25), 1.15); t[8] = rgb(TOK.red, 0.7 + 0.4 * L); t[12] = rgb(mix(wall, col, 0.4), 1.4, 0.7);
-      if (!q) { t[1] = rgb(col, 0.55, 0.85); t[2] = rgb(col, 1.25); } // the hologram (discovery): its own colour
+      if (!qq) { t[1] = rgb(col, 0.55, 0.85); t[2] = rgb(col, 1.25); } // the hologram (discovery): its own colour
       return t;
     },
-    // S6.5 CRT: the chromatic aberration is baked into the sprites (a red and a cyan edge), set by JUICE; off in reduced motion
-    crt() { return this.reduced ? 0 : Math.min(1.5, JUICE); },
+    // CRT colour fringes baked in the sprites (JUICE; off in reduced motion, or when S8.2's WebGL pass does it: post2d)
+    crt() { return this.reduced || this.post2d === false ? 0 : Math.min(1.5, this.JUICE); },
+    // the sprites of a building at a height (cells): cv = as it is, dk = all dark (under construction, power cut), em = its
+    // lights only (windows, neon, beacons: what a note lights); wins = its lit windows (lit one by one on construction)
     sprite(p, px) {
-      const hC = this.heightCells(p), q = p.rare ? null : this.quant(p.look), ab = this.crt(), key = `${p.kind}|${p.id}|${hC}|${px}|${ab}` + (q ? `|${q.shape}|${q.light}|${q.bloom}` : '');
+      const hC = p.spr != null ? p.spr : this.heightCells(p), qq = p.rare ? null : this.quant(p.look), ab = this.crt(), key = `${p.kind}|${p.id}|${hC}|${px}|${ab}` + (qq ? `|${qq.shape}|${qq.light}|${qq.bloom}` : '');
       let s = this.sprites.get(key);
       if (s) return s;
       this.cacheMisses++;
-      const cl = cells(p.kind, hC, hash(p.id), q);
+      const cl = cells(p.kind, hC, hash(p.id), qq);
       let top = 0; for (const c of cl) top = Math.max(top, c[1]);
-      const Hc = top + 1, cv = document.createElement('canvas');
-      cv.width = CW * px; cv.height = Hc * px;
-      const g = cv.getContext('2d'), gap = px >= 4 ? 1 : 0, col = p.col;
-      const tones = this.tones(col, q);
+      const Hc = top + 1, mk = () => { const c = document.createElement('canvas'); c.width = CW * px; c.height = Hc * px; return c; };
+      const cv = mk(), dk = mk(), em = mk(), g = cv.getContext('2d'), gk = dk.getContext('2d'), ge = em.getContext('2d'), gap = px >= 4 ? 1 : 0, col = p.col;
+      const tones = this.tones(col, qq), dark = this.tones(col, qq ? { ...qq, light: 0 } : null), wins = [];
       for (const [x, y, t] of cl) {
-        g.fillStyle = tones[t] || tones[1];
-        if (t === 12) g.fillRect(x * px + (px >> 2), (Hc - 1 - y) * px + (px >> 2), Math.max(1, px >> 1), Math.max(1, px >> 1));
-        else if (t === 0 || t === 1 || t === 3 || t === 7) g.fillRect(x * px, (Hc - 1 - y) * px, px, px);
-        else g.fillRect(x * px, (Hc - 1 - y) * px, px - gap, px - gap);
+        const X = x * px, Y = (Hc - 1 - y) * px, full = t === 0 || t === 1 || t === 3 || t === 7;
+        const draw = (c, tn) => { c.fillStyle = tn[t] || tn[1]; if (t === 12) c.fillRect(X + (px >> 2), Y + (px >> 2), Math.max(1, px >> 1), Math.max(1, px >> 1)); else if (full) c.fillRect(X, Y, px, px); else c.fillRect(X, Y, px - gap, px - gap); };
+        draw(g, tones);
+        if (t === 2 || t === 4) { wins.push([X, Y]); gk.fillStyle = dark[7]; gk.fillRect(X, Y, px - gap, px - gap); } else draw(gk, t === 3 ? [, , , rgb(col, 0.35)] : t === 8 ? [, , , , , , , , rgb(TOK.red, 0.4)] : dark);
+        if (t === 2 || t === 3 || t === 4 || t === 8) { ge.fillStyle = t === 3 ? rgb(col, 1.2) : t === 8 ? rgb(TOK.red, 1.2) : rgb(col.map((v) => v + (255 - v) * 0.6)); ge.fillRect(X, Y, px - gap, px - gap); }
       }
       if (ab) { // behind the element: its silhouette in red shifted left, in cyan shifted right
         const o = Math.max(1, Math.round(px * 0.35 * ab)), m = this.canvas(cv.width, cv.height), mg = m.getContext('2d');
@@ -625,12 +689,14 @@
         g.globalCompositeOperation = 'source-over';
       }
       let x0 = CW, x1 = 0; for (const c of cl) { x0 = Math.min(x0, c[0]); x1 = Math.max(x1, c[0]); }
-      s = { cv, w: cv.width, h: cv.height, hC: Hc, key, l: cv.width / 2 - x0 * px, r: (x1 + 1) * px - cv.width / 2 }; // l, r: drawn extent left and right of the axis
+      // l, r: drawn extent left and right of the axis; body: height of the body (px), the roof above it
+      s = { cv, dk, em, wins, w: cv.width, h: cv.height, hC: Hc, body: hC * px, key, l: cv.width / 2 - x0 * px, r: (x1 + 1) * px - cv.width / 2 };
       this.sprites.set(key, s);
-      if (this.sprites.size > 200) this.sprites.delete(this.sprites.keys().next().value);
+      if (this.sprites.size > 160) this.sprites.delete(this.sprites.keys().next().value);
       return s;
     },
     glow(col, R) {
+      R = Math.max(1, Math.round(R));
       const key = col.join() + '|' + R;
       let s = this.glows.get(key);
       if (s) return s;
@@ -639,15 +705,15 @@
       grd.addColorStop(0, rgb(col, 1, 0.55)); grd.addColorStop(0.4, rgb(col, 1, 0.18)); grd.addColorStop(1, rgb(col, 1, 0));
       g.fillStyle = grd; g.fillRect(0, 0, R * 2, R * 2);
       this.glows.set(key, cv);
+      if (this.glows.size > 120) this.glows.delete(this.glows.keys().next().value);
       return cv;
     },
-    // « MÉLODIE AUTO » under its element, a neon caption; « MÉLO » when it does not fit its slot (phone)
+    // « MÉLODIE AUTO » under its building, a neon caption; « MÉLO » when it does not fit its slot (phone)
     label(p, fs, maxW) {
       const full = p.label.toUpperCase(), key = full + '|' + fs + '|' + Math.round(maxW) + '|' + p.col.join();
       let s = this.labels.get(key);
       if (s) return s;
       const cv = document.createElement('canvas'), g = cv.getContext('2d'), pad = Math.ceil(fs * 0.4);
-      // S6.6: the whole caption (its glow pad included) fits the room between the neighbours, else the short one, else smaller
       let font = `${fs}px VT323, "IBM Plex Mono", monospace`; g.font = font;
       const fits = (t) => g.measureText(t).width + 4 + 2 * pad <= maxW, short = p.short.toUpperCase();
       const lines = [fits(full) ? full : short];
@@ -662,50 +728,53 @@
       this.labels.set(key, cv);
       return cv;
     },
-    // S6.5 the far city (cached): two rows of buildings against the sky, a little transparent (the sky's tint shows through),
-    // their windows lit by a share k 0..1 (the layers open, the dawn), always the same ones first: one canvas, only the
-    // band the buildings cover, rebuilt when k changes. The wet street below: asphalt, a faint synthwave grid to the
-    // horizon, puddles, a neon kerb.
-    background(W, H, ground) {
-      const px = this.px || 3, key = W + 'x' + H + '|' + ground + '|' + px;
+    // the far city (cached): two rows of buildings against the sky, wider than the screen (the camera pans), their windows
+    // lit by a share k 0..1 (population, dawn), always the same ones first
+    farCity(W, gd) {
+      const px = this.px || 3, key = W + '|' + gd + '|' + px;
       if (this.bg && this.bg.key === key) return this.bg;
-      const r = mulberry(7), blds = [], wins = [], bandH = Math.round(ground * 0.2 / px) * px + 5 * px, top = ground - bandH;
-      [[0.05, 0.15, 6, 16, 0.8], [0.02, 0.08, 8, 22, 0.92]].forEach(([h0, h1, w0, w1, al], row) => {
+      const r = mulberry(7), blds = [], wins = [], FW = Math.round(W * 1.3), bandH = Math.round(gd * 0.24 / px) * px + 5 * px;
+      [[0.06, 0.18, 6, 16, 0.8], [0.02, 0.1, 8, 22, 0.92]].forEach(([h0, h1, w0, w1, al], row) => {
         let x = -Math.floor(r() * 8) * px;
-        while (x < W) {
-          const bw = Math.round(w0 + r() * (w1 - w0)) * px, bh = Math.round((h0 + r() * (h1 - h0)) * ground / px) * px, y = ground - bh - top;
+        while (x < FW) {
+          const bw = Math.round(w0 + r() * (w1 - w0)) * px, bh = Math.round((h0 + r() * (h1 - h0)) * gd / px) * px, y = bandH - bh;
           blds.push([x, y, bw - px, bh, row, al]);
-          if (r() < 0.3) { const mx = x + Math.round(bw / 2 / px) * px - px; blds.push([mx, y - 3 * px, px, 3 * px, row, al]); if (r() < 0.8) wins.push([mx, y - 4 * px, 0, 3, row]); } // a mast, its red light
+          if (r() < 0.3) { const mx = x + Math.round(bw / 2 / px) * px - px; blds.push([mx, y - 3 * px, px, 3 * px, row, al]); if (r() < 0.8) wins.push([mx, y - 4 * px, 0, 3, row]); }
           for (let yy = y + 2 * px; yy < bandH - px; yy += (2 + row) * px) for (let xx = x + px; xx < x + bw - 2 * px; xx += 2 * px) wins.push([xx, yy, r(), r() < 0.6 ? 0 : r() < 0.5 ? 1 : 2, row]);
           x += bw;
         }
       });
-      const gr = document.createElement('canvas'); gr.width = W; gr.height = Math.max(1, H - ground);
-      const g = gr.getContext('2d'), gh = H - ground, grd = g.createLinearGradient(0, 0, 0, gh);
-      grd.addColorStop(0, rgb(TOK.ground, 1.9)); grd.addColorStop(1, rgb(TOK.ground)); g.fillStyle = grd; g.fillRect(0, 0, W, gh);
-      g.strokeStyle = rgb(TOK.pink, 1, 0.1); g.lineWidth = Math.max(1, px >> 1); g.beginPath();
-      for (let k = -12; k <= 12; k++) { g.moveTo(W / 2 + k * W * 0.02, 0); g.lineTo(W / 2 + k * W * 0.16, gh); }
-      for (let i = 1; i < 7; i++) { const y = Math.round(gh * (i / 7) ** 2); g.moveTo(0, y); g.lineTo(W, y); }
-      g.stroke();
-      for (let i = 0; i < 26; i++) { g.fillStyle = r() < 0.5 ? rgb(TOK.cyan, 1, 0.08) : rgb(TOK.pink, 1, 0.08); g.fillRect(Math.floor(r() * W / px) * px, Math.floor(r() * gh / px) * px, Math.round((4 + r() * 22)) * px, Math.max(1, px >> 1)); } // puddles
-      g.fillStyle = rgb(TOK.pink, 1, 0.55); g.fillRect(0, 0, W, Math.max(1, px >> 1));
-      this.bg = { key, ground: gr, blds, wins, top, bandH };
+      this.bg = { key, blds, wins, bandH, FW };
+      this.skyW = null;
       return this.bg;
     },
-    skyline(W, k) {
-      const bg = this.bg, q = Math.round(k * 20) / 20, key = bg.key + '|' + q;
+    skyline(k) {
+      const bg = this.bg, qk = Math.round(k * 20) / 20, key = bg.key + '|' + qk;
       if (this.skyW && this.skyW.key === key) return this.skyW.cv;
-      const cv = this.skyW && this.skyW.cv.width === W && this.skyW.cv.height === bg.bandH ? this.skyW.cv : this.canvas(W, bg.bandH), g = cv.getContext('2d'), px = this.px || 3;
+      const cv = this.skyW && this.skyW.cv.width === bg.FW && this.skyW.cv.height === bg.bandH ? this.skyW.cv : this.canvas(bg.FW, bg.bandH), g = cv.getContext('2d'), px = this.px || 3;
       g.clearRect(0, 0, cv.width, cv.height);
       for (const [x, y, w, h, row, al] of bg.blds) { g.fillStyle = rgb(TOK.wall, 0.85 - 0.25 * row, al); g.fillRect(x, y, w, h); }
       const cols = [TOK.amber, TOK.cyan, TOK.pink, TOK.red], s = Math.max(1, px - 1);
-      for (const [x, y, t, c, row] of bg.wins) if (t < q || c === 3) { g.fillStyle = rgb(cols[c], c === 3 ? 1 : 0.95, (row ? 0.75 : 0.5) * (c === 0 ? 1 : 0.85)); g.fillRect(x, y, s, s); }
+      for (const [x, y, t, c, row] of bg.wins) if (t < qk || c === 3) { g.fillStyle = rgb(cols[c], c === 3 ? 1 : 0.95, (row ? 0.75 : 0.5) * (c === 0 ? 1 : 0.85)); g.fillRect(x, y, s, s); }
       this.skyW = { key, cv };
       return cv;
     },
+    // the wet street (cached): asphalt, a faint synthwave grid to the horizon, puddles, a neon kerb; wider than the screen
+    street(W, H, gd) {
+      const px = this.px || 3, key = W + 'x' + H + '|' + gd + '|' + px;
+      if (this.st0 && this.st0.key === key) return this.st0.cv;
+      const r = mulberry(9), w = Math.round(W * 1.5), gh = Math.max(1, Math.round((H - gd) * 1.4) + px), gr = this.canvas(w, gh), g = gr.getContext('2d');
+      const grd = g.createLinearGradient(0, 0, 0, gh); grd.addColorStop(0, rgb(TOK.ground, 2.2)); grd.addColorStop(0.5, rgb(TOK.ground)); grd.addColorStop(1, rgb(TOK.ground, 0.7)); g.fillStyle = grd; g.fillRect(0, 0, w, gh);
+      g.strokeStyle = rgb(TOK.pink, 1, 0.12); g.lineWidth = Math.max(1, px >> 1); g.beginPath();
+      for (let k = -16; k <= 16; k++) { g.moveTo(w / 2 + k * W * 0.02, 0); g.lineTo(w / 2 + k * W * 0.16, gh); }
+      for (let i = 1; i < 9; i++) { const y = Math.round(gh * (i / 9) ** 2); g.moveTo(0, y); g.lineTo(w, y); }
+      g.stroke();
+      for (let i = 0; i < 40; i++) { g.fillStyle = r() < 0.5 ? rgb(TOK.cyan, 1, 0.08) : rgb(TOK.pink, 1, 0.08); g.fillRect(Math.floor(r() * w / px) * px, Math.floor(r() * gh / px) * px, Math.round((4 + r() * 22)) * px, Math.max(1, px >> 1)); }
+      g.fillStyle = rgb(TOK.pink, 1, 0.55); g.fillRect(0, 0, w, Math.max(1, px >> 1));
+      this.st0 = { key, cv: gr };
+      return gr;
+    },
     // the sky of a chord: 'night' (before any chord), 'dawn' (finale), or `${deg}|${minor}`; cached by key and size
-    // S5.8: off = hue shift (degrees) of the « hue » layer (Tonalité, Diapason), 0 at the default settings
-    // S6.5: a violet night, magenta at the horizon (the city's glow); the dawn = a synthwave sunrise
     skyColors(key, off = 0) {
       if (key === 'night') return off ? [[0, hex(TOK.night)], [0.6, `rgb(${hsl2rgb(((285 + off) % 360 + 360) % 360, 0.5, 0.09).join()})`], [1, `rgb(${hsl2rgb(((300 + off) % 360 + 360) % 360, 0.55, 0.2).join()})`]] : [[0, hex(TOK.night)], [0.6, hex(TOK.sky)], [1, hex(TOK.horizon)]];
       if (key === 'dawn') return [[0, hex(TOK.dawnTop)], [0.5, hex(TOK.dawnMid)], [0.85, hex(TOK.dawnLow)], [1, hex(TOK.sunTop)]];
@@ -714,21 +783,20 @@
       return [[0, hex(TOK.night)], [0.5, c(0.5, mi === '1' ? 0.07 : 0.1)], [1, c(0.65, mi === '1' ? 0.2 : 0.27)]];
     },
     hueOff() { const D = this.sDef, v = this.sc.hue; return D && v != null ? Math.round((v - D.hue) * 22) * 15 : 0; },
-    sky(key, W, ground) {
-      const off = key === 'dawn' ? 0 : this.hueOff(), k = key + '|' + off + '|' + W + 'x' + ground + '|' + (this.px || 3);
+    sky(key, W, gd) {
+      const off = key === 'dawn' ? 0 : this.hueOff(), k = key + '|' + off + '|' + W + 'x' + gd;
       let cv = this.skies.get(k);
       if (cv) return cv;
       this.cacheMisses++;
-      cv = document.createElement('canvas'); cv.width = W; cv.height = Math.max(1, ground);
-      const g = cv.getContext('2d'), grd = g.createLinearGradient(0, 0, 0, ground);
+      cv = document.createElement('canvas'); cv.width = W; cv.height = Math.max(1, gd);
+      const g = cv.getContext('2d'), grd = g.createLinearGradient(0, 0, 0, gd);
       for (const [o, c] of this.skyColors(key, off)) grd.addColorStop(o, c);
-      g.fillStyle = grd; g.fillRect(0, 0, W, ground);
-      if (key !== 'dawn') { const r = mulberry(7), px = this.px || 3; for (let i = 0; i < 40; i++) { g.fillStyle = `rgba(220,200,255,${(0.06 + r() * 0.16).toFixed(3)})`; g.fillRect(Math.floor(r() * W / px) * px, Math.floor(r() * ground * 0.45 / px) * px, px - 1, px - 1); } } // a few stars
+      g.fillStyle = grd; g.fillRect(0, 0, W, gd);
       this.skies.set(k, cv);
       if (this.skies.size > 16) this.skies.delete(this.skies.keys().next().value);
       return cv;
     },
-    // S6.5 the dawn's sun: a synthwave disc, striped at its foot, rising behind the city (cached)
+    // the dawn's sun: a synthwave disc, striped at its foot, rising behind the city (cached)
     sun(R) {
       return this.fx('dawnsun', R, R, () => {
         const c = this.canvas(2 * R, 2 * R), x = c.getContext('2d'), grd = x.createLinearGradient(0, 0, 0, 2 * R);
@@ -737,27 +805,6 @@
         for (let i = 0; i < 7; i++) x.fillRect(0, R * (1.05 + i * 0.13), 2 * R, Math.max(1, R * 0.025 * (i + 1)));
         return c;
       });
-    },
-    // S6.5 rain: a few dozen streaks drawn directly (far and near, slanted by the wind), falling with the scene's time;
-    // a handful of splashes blink on the street; it stops at dawn
-    drawRain(g, W, H, k) {
-      if (k < 0.02) return 0;
-      const px = this.px || 3, T = this.st, key = W + 'x' + H + '|' + px;
-      if (!this.rain || this.rain.key !== key) { // [x0, y0, length, speed, colour] per streak, by colour
-        const r = mulberry(131), n = Math.round(60 * Math.min(2.5, Math.max(0.6, W / (this.dpr || 1) / 1000))), by = [[], [], []];
-        for (let i = 0; i < n; i++) { const z = r() < 0.6 ? 0.55 : 1, L = Math.round(px * (3 + 6 * z)); by[i % 13 === 0 ? 2 : z < 1 ? 0 : 1].push([r() * W, r() * H, L, H * (0.55 + 0.5 * z)]); }
-        this.rain = { key, by, n, lw: Math.max(1, Math.round(px * 0.34)), cols: [rgb(TOK.rain, 1, 0.2), rgb(TOK.rain, 1, 0.34), rgb(TOK.pink, 1, 0.4)] };
-      }
-      const Rn = this.rain, lw = Rn.lw; g.globalAlpha = k;
-      for (let c = 0; c < 3; c++) {
-        g.fillStyle = Rn.cols[c];
-        for (const [x0, y0, L, v] of Rn.by[c]) { const d = y0 + T * v, y = (d % (H + L)) - L, x = ((x0 - d * 0.12) % W + W) % W; g.fillRect(x | 0, y | 0, lw, L); }
-      }
-      const q = mulberry(Math.floor(T * 9)), gd = this.ground, s = Math.max(1, px >> 1);
-      g.fillStyle = Rn.cols[1]; g.globalAlpha = k * 0.9;
-      for (let i = 0; i < 10; i++) g.fillRect(Math.round(q() * W / px) * px, Math.round((gd + px * 2 + q() * (H - gd - px * 3)) / px) * px, 2 * px, s);
-      g.globalAlpha = 1;
-      return Rn.n;
     },
     chordKey(deg) {
       let minor = false;
@@ -769,24 +816,50 @@
       this.skyPrevKey = this.skyKey || 'night'; this.skyKey = key; this.skyT = this.t || 0;
     },
 
-    // ---- S4.5w growth: armed by an opening (garden.beat), timed on the audio clock ----
-    // growAt(t): the next state change grows from audio time t (null = now); retime(t): the growth already armed waits
-    // until t (the map closing)
+    // ---- S8.1 construction, timed on the audio clock ----
+    // growAt(t): the next change of the game state (an opening) builds from audio time t (null = now); retime(t): a
+    // construction already armed waits until t (the map closing)
     growAt(t) { this.growNext = true; this.retime(t); },
     retime(t) {
       const now = this.clock(), at = t == null ? now : t;
       this.growStart = at;
-      for (const id in this.grow) if (this.grow[id].start + GROW > now) this.grow[id].start = Math.max(at, now);
+      for (const id in this.grow) { const e = this.grow[id]; if (e.start + e.dur > now && e.h1 > e.h0) e.start = Math.max(at, now); }
     },
+    // progress 0..1 of a building's construction (1 = done or none); h(): its height now (cells)
     growth(id, now) {
       const e = this.grow[id]; if (!e) return 1;
-      const q = (now - e.start) / GROW;
-      if (q >= 1) { delete this.grow[id]; return 1; }
-      return q <= 0 ? e.from : e.from + (1 - e.from) * ease(q);
+      const qq = (now - e.start) / e.dur;
+      return qq <= 0 ? 0 : qq >= 1 ? 1 : ease(qq);
+    },
+    heightAt(id, now) { const e = this.grow[id]; if (!e) return this.built[id] || 0; return e.h0 + (e.h1 - e.h0) * this.growth(id, now); },
+    // a building's target changes: from where it is now, to h1, starting at `start`; a lower target keeps the taller
+    // sprite while its floors sink, a higher one shows the new building, its top floors in scaffolding
+    retarget(p, h1, start, now) {
+      const h0 = this.heightAt(p.id, now), e = this.grow[p.id], up = h1 > h0, d = Math.abs(h1 - h0);
+      const spr = up ? h1 : Math.max(e ? e.spr : 0, this.built[p.id] || 0, Math.ceil(h0));
+      if (this.reduced || d < 0.01) { delete this.grow[p.id]; this.built[p.id] = h1; return; }
+      this.grow[p.id] = { h0, h1, spr, start, dur: up ? BUILD.base + BUILD.perCell * d : BUILD.unbase + BUILD.unPerCell * d };
+      this.built[p.id] = h1;
+      if (!up) this.impulse('build', 0.6);
+    },
+    updateBuildings(now) {
+      const armed = this.armed, n0 = Object.keys(this.grow).length;
+      for (const p of this.plants) {
+        const w = this.wantOf(p), has = this.built[p.id] != null;
+        if (!has) { // first sight: built at once (first frame, return of the state), or from the ground on an opening
+          if (armed != null && !this.reduced) { this.built[p.id] = 0; this.retarget(p, w, armed, now); } else this.built[p.id] = w;
+        } else if (w !== this.built[p.id]) this.retarget(p, w, armed != null ? armed : now, now);
+        const e = this.grow[p.id];
+        if (e && now >= e.start + e.dur) delete this.grow[p.id];
+      }
+      for (const id in this.grow) if (!this.plants.some((p) => p.id === id)) delete this.grow[id];
+      this.armed = null;
+      if (Object.keys(this.grow).length > n0) this.impulse('build', 1);
+      let s = 0; for (const id in this.grow) if (now >= this.grow[id].start) s++;
+      this.sites = s;
     },
 
-    // ---- S4.5w finale: the recorded song is heard again (garden.finale); its events light the plants ----
-    // r = {t0 (audio time of the song's start), from, len (s, the excerpt), ev: [{layer, t, vel, deg}]}
+    // ---- S4.5w finale: the recorded song is heard again (garden.finale); its events light the buildings ----
     replayStart(r) {
       const ev = (r.ev || []).filter((e) => e.t >= r.from && e.t < r.from + r.len).sort((x, y) => x.t - y.t);
       this.replay = { t0: r.t0, from: r.from, len: r.len, ev, i: 0 };
@@ -795,8 +868,8 @@
     replayStop() { this.replay = null; this.lit = {}; },
     dawnLevel(now) {
       const R = this.replay;
-      if (R) return Math.max(0, Math.min(1, (now - R.t0 - R.from) / Math.max(0.1, R.len)));
-      return !this.free && AMB.game && AMB.game.s && AMB.game.s.ended ? 1 : 0; // the instrument handed over: the garden stays at dawn
+      if (R) return clamp((now - R.t0 - R.from) / Math.max(0.1, R.len));
+      return !this.free && AMB.game && AMB.game.s && AMB.game.s.ended ? 1 : 0; // the instrument handed over: the city stays at dawn
     },
     // the beat (0..1 since the last one, strong = beat 1 or 3), null when the sequencer is stopped
     beatPhase(now) {
@@ -807,33 +880,35 @@
 
     // ---- state refresh (events + a cheap 1 s signature check, e.g. after a save import) ----
     refresh(W, H, force) {
-      const st = this.readState(), ceil = this.ceilFrac(), sig = this.signature(st) + W + 'x' + H + '|' + ceil.toFixed(3) + JSON.stringify(this.zones);
+      const st = this.readState(), ceil = this.ceilFrac(), sig = this.signature(st) + W + 'x' + H + '|' + ceil.toFixed(3) + JSON.stringify(this.zones) + JSON.stringify(this.safe || 0);
       if (!force && sig === this.sig) { this.lastCheck = this.now(); return false; }
       this.sig = sig; this.state = st;
-      const L = layout(st, W, H);
-      this.plants = L.plants; this.rares = L.rares; this.ground = L.ground; this.slotW = L.slotW;
-      const avail = Math.max(H * 0.2, this.ground - H * ceil);
-      this.px = this.cellPx(W, H, this.plants.length, avail);
-      this.hMax = Math.max(12, Math.min(58, Math.floor((avail / this.px - 10) / 1.1))); // S4.6: the flowers (≈ 6 rows more than the old heads) fit in
-      // S4.6: each plant may spread half-way to its neighbours (or to the edge), never over them (phones)
+      const L = layout(st, W, H, this.safe), old = Object.fromEntries(this.plants.map((p) => [p.id, p]));
+      // the same object for a building that stays (it keeps its smoothed look)
+      this.plants = L.plants.map((p) => (old[p.id] ? Object.assign(old[p.id], p) : p)); this.rares = L.rares; this.ground = L.ground; this.slotW = L.slotW; this.rows = L.rows;
+      this.W = W; this.H = H; this.ceil = ceil;
+      const top = Math.min(...this.plants.map((p) => p.y), L.ground), avail = Math.max(H * 0.2, top - H * ceil);
+      const perRow = L.rows === 2 ? Math.ceil(this.plants.length / 2) : this.plants.length;
+      this.px = this.cellPx(W, H, perRow, avail);
+      this.hMax = Math.max(12, Math.min(W < H ? 96 : 64, Math.floor((avail / this.px - 8) / 1.1)));
       const xs = this.plants.slice().sort((u, v) => u.x - v.x);
       xs.forEach((p, i) => { p.roomL = (i ? (p.x - xs[i - 1].x) / 2 : p.x) - 1; p.roomR = (i < xs.length - 1 ? (xs[i + 1].x - p.x) / 2 : W - p.x) - 1; });
-      this.ceil = ceil;
-      // S4.5w: after an opening, a new plant grows from 0, a taller one from its old height
-      const stSig = this.signature(st), now = this.clock(), hs = {};
-      for (const p of this.plants) hs[p.id] = this.heightCells(p);
-      if (this.growNext && stSig !== this.stSig && !this.reduced) {
-        const start = Math.max(this.growStart == null ? now : this.growStart, now);
-        for (const p of this.plants) { const was = this.prevH[p.id]; if (was == null || hs[p.id] > was) this.grow[p.id] = { from: was == null ? 0 : was / hs[p.id], start }; }
+      for (const p of this.plants) { // never into the HUD: the tallest body + its roof (~7 cells) stays under its corner
+        const rk = p.row ? ROW_K : 1; p.cap = Math.max(FLOOR * 3, Math.floor(((p.y - H * this.ceilAt(p.x, CW * this.px * 0.3)) / (this.px * rk) - 7) / FLOOR) * FLOOR);
       }
+      // an opening (garden.beat → growAt) builds the new building from the ground, a taller one from its old height
+      const stSig = this.signature(st);
+      if (this.growNext && stSig !== this.stSig && this.stSig != null) this.armed = Math.max(this.growStart == null ? this.clock() : this.growStart, this.clock());
       if (stSig !== this.stSig) this.growNext = false;
-      this.stSig = stSig; this.prevH = hs;
-      this.W = W; this.H = H; this.lastCheck = this.now();
+      this.stSig = stSig;
+      for (const id in this.built) if (!this.plants.some((p) => p.id === id)) { delete this.built[id]; delete this.grow[id]; }
+      this.lastCheck = this.now();
+      this.place(this.camera(W, H));
       return true;
     },
 
-    // ---- S4.6 the look follows the settings: targets from the store (look), smoothed per plant (cur, ~0.35 s);
-    // a touched control (sources below) kicks its plants: a damped bounce, a wider sway, the plant lit while it is touched ----
+    // ---- S4.6 the look follows the settings: targets from the store (look), smoothed per building (~0.35 s);
+    // a touched control (sources below) highlights its buildings while it is touched ----
     KICK: new Set(['user', 'macro', 'cc']),
     watch() {
       const S = AMB.store;
@@ -843,36 +918,31 @@
     },
     onSet(key, src) {
       this.lookDirty = true;
-      if (!this.KICK.has(src) || !this.running()) return; // nothing is kept for a garden off screen
+      if (!this.KICK.has(src) || !this.running()) return; // nothing is kept for a city off screen
       const t = this.t || 0;
       for (const n of SCENE_OF[key] || []) this.kick[n] = 1; // S5.8: the scene layer it drives
-      for (const id of concerns(key)) { const k = this.kicks[id]; if (k && t - k.last < 0.25) k.last = t; else this.kicks[id] = { t0: t, last: t }; } // a slider held: one bounce, then it follows
+      for (const id of concerns(key)) { const k = this.kicks[id]; if (k && t - k.last < 0.25) k.last = t; else this.kicks[id] = { t0: t, last: t }; }
+      this.impulse('kick', 1);
     },
-    // size aspect → scale of the plant: 1 at the layer's default setting (the plants of before S4.6), down to 0.5 at
-    // Niveau 0, up to SZ_MAX at the top; the stage HUD and the neighbours cap it when drawn
-    SZ_MAX: 1.3,
-    sizeK(id, v) {
-      const d = (this.lookDef || (this.lookDef = look(() => undefined)))[id].size;
-      return v <= d ? 0.5 + 0.5 * v / (d || 1) : 1 + (this.SZ_MAX - 1) * (v - d) / ((1 - d) || 1);
-    },
+    getter() { const S = AMB.store; return S && typeof S.get === 'function' ? (k) => S.get(k) : () => undefined; },
     updateLook(dt) {
-      if (this.lookDirty || !this.aim) { const S = AMB.store, get = S && typeof S.get === 'function' ? (k) => S.get(k) : () => undefined; this.aim = look(get); this.lookDirty = false; }
+      if (this.lookDirty || !this.aim) { const get = this.getter(); this.aim = look(get); this.allAim = lookAll(get); this.nature = norm('texture.vol', get('texture.vol')) * (val(get, 'texture.on') === false ? 0 : 1); this.lookDirty = false; }
       const kT = this.reduced ? 1 : 1 - Math.exp(-dt / 0.11);
       for (const p of this.plants) {
         const a = this.aim[p.id]; if (!a) continue;
         const c = this.cur[p.id] || (this.cur[p.id] = { ...a });
         for (const k of ASPECTS) c[k] += (a[k] - c[k]) * kT;
-        p.look = c;
+        p.look = c; p.sz = this.sizeK(p.id, c.size);
       }
     },
 
-    // ---- S5.8 scene layers: targets from the table (store + polled app state), smoothed like the plants (~0.35 s);
-    // a polled state that changes (mode, play / stop, section) kicks its layer; the impulses fade in ~0.8 s ----
-    layers() { const S = AMB.store; return scene(S && typeof S.get === 'function' ? (k) => S.get(k) : () => undefined); },
+    // ---- S5.8 scene layers: targets from the table (store + polled app state), smoothed (~0.35 s); a polled state that
+    // changes (mode, play / stop, section) kicks its layer; the impulses fade in ~0.8 s ----
+    layers() { return scene(this.getter()); },
     updateScene(dt) {
-      const S = AMB.store, get = S && typeof S.get === 'function' ? (k) => S.get(k) : () => undefined;
+      const get = this.getter();
       if (this.lookDirty || !this.sAim) { this.sAim = scene(get); this.sDef = this.sDef || scene(() => undefined); }
-      else for (const n in SCENE) if (SCENE[n].poll) { let v = 0; try { v = +SCENE[n].poll() || 0; } catch (e) {} this.sAim[n] = Math.max(0, Math.min(1, v)); }
+      else for (const n in SCENE) if (SCENE[n].poll) { let v = 0; try { v = +SCENE[n].poll() || 0; } catch (e) {} this.sAim[n] = clamp(v); }
       for (const n in SCENE) if (SCENE[n].poll) { const v = this.sAim[n]; if (this.sPoll[n] != null && this.sPoll[n] !== v) this.kick[n] = 1; this.sPoll[n] = v; }
       const kT = this.reduced ? 1 : 1 - Math.exp(-dt / 0.11);
       for (const n in SCENE) { const a = this.sAim[n], c = this.sc[n]; this.sc[n] = c == null ? a : c + (a - c) * kT; }
@@ -880,17 +950,82 @@
       // the tempo is the scene's speed (Flottant slower); reduced motion: the scene stands still
       const tp = norm('global.tempo', get('global.tempo')), fl = val(get, 'global.time') === 'Flottant';
       this.speed = (0.5 + 1.5 * tp) * (fl ? 0.6 : 1);
-      if (!this.reduced) this.st += dt * this.speed;
+
     },
-    // how much of a layer is drawn: its intensity squared (the default settings keep a calm scene, the ends are loud),
-    // plus the impulse of a touch
-    // S5.9 → S5.8: a moment of the juice table (garden.FX `kick`) flares scene layers up (flare), k = JUICE (the one knob)
-    flare(names, k = JUICE) { if (!this.running() || this.reduced) return 0; let n = 0; for (const x of names) if (SCENE[x]) { this.kick[x] = Math.max(this.kick[x] || 0, Math.min(1, k)); n++; } return n; },
+    // S5.9 → S5.8: a moment of the juice table (garden.FX `kick`) flares scene layers up, k = JUICE
+    flare(names, k = this.JUICE) { if (!this.running() || this.reduced) return 0; let n = 0; for (const x of names) if (SCENE[x]) { this.kick[x] = Math.max(this.kick[x] || 0, Math.min(1, k)); n++; } return n; },
+    // how much of a scene layer is drawn: its intensity squared (default settings = a calm scene) + the impulse of a touch
     amt(n) { const v = this.sc[n] || 0; return Math.min(1, v * v + 0.8 * (this.kick[n] || 0)); },
+
+    // ---- S8.1 the world: every dimension smoothed toward its aim, the impulses falling, the beat ----
+    updateWorld(dt, now) {
+      const w = this.world, c = { get: this.getter(), L: this.sc, all: this.allAim || lookAll(() => undefined), plants: this.plants, dawn: this.dawnLevel(now), free: !!this.free, nature: this.nature || 0, sites: this.sites || 0, frame: () => fr || (fr = this.framing()) };
+      let fr = null;
+      for (const name in DIMS) {
+        const D = DIMS[name]; let a = 0; try { a = +D.aim(c) || 0; } catch (e) {}
+        const cur = getPath(w, name), kT = this.reduced || !D.tau || cur == null ? 1 : 1 - Math.exp(-dt / D.tau);
+        setPath(w, name, cur == null ? a : cur + (a - cur) * kT);
+      }
+      for (const n in w.pulse) w.pulse[n] = Math.max(0, w.pulse[n] - dt / (PULSES[n] || 0.5));
+      const bp = this.reduced ? null : this.beatPhase(now), b = w.beat;
+      if (bp) { if (b.on && bp.ph < b.ph) this.impulse('beat', bp.strong ? 1 : 0.6); b.ph = bp.ph; b.strong = bp.strong; b.k = (bp.strong ? 1 : 0.55) * Math.exp(-bp.ph * 5); b.on = true; } else { b.on = false; b.k = 0; }
+      // a storm: lightning on some strong beats (or every few seconds without the sequencer), never in reduced motion
+      if (!this.reduced && w.weather.storm > 0.05) {
+        const slot = Math.floor(this.st * 0.7), r = ih(slot, 77);
+        if (slot !== this.boltSlot) { this.boltSlot = slot; if (r < 0.25 + 0.6 * w.weather.storm) { this.impulse('flash', 0.6 + 0.4 * w.weather.storm); this.bolt = { x: 0.15 + 0.7 * ih(slot, 3), seed: slot }; } }
+      }
+      w.cam.x = this.reduced ? 0 : Math.sin(this.st * 0.045) * 0.012 * (0.4 + (w.cam.depth || 0));
+      w.cam.shake = Math.hypot(this.ox, this.oy);
+      w.speed = this.speed; w.t = this.st;
+      return w;
+    },
+    // ---- the camera: recul (zoom about the foot of the street), pan with parallax (depth d), shake ----
+    camera(W, H) {
+      const w = this.world, gd = this.ground || H * 0.76, cam = this.cam || (this.cam = {
+        k(d) { return 1 + (this.zoom - 1) * d; },
+        x(d, x) { const k = this.k(d); return x * k + this.W / 2 * (1 - k) + this.pan * d * this.W + this.ox; },
+        y(d, y) { const k = this.k(d); return y * k + this.gd * (1 - k) + this.oy; },
+        set(g, d) { const k = this.k(d); g.setTransform(k, 0, 0, k, this.W / 2 * (1 - k) + this.pan * d * this.W + this.ox, this.gd * (1 - k) + this.oy); return k; },
+      });
+      cam.W = W; cam.H = H; cam.gd = gd; cam.px = this.px || 3; cam.ox = this.ox || 0; cam.oy = this.oy || 0;
+      const wc = w.cam || {}, z = (wc.frame || 1) * (1 - 0.16 * (wc.back || 0));
+      cam.zoom = z; cam.pan = (wc.x || 0) - ((wc.cx == null ? 0.5 : wc.cx) - 0.5) * z;
+      return cam;
+    },
+    // the framing the camera aims at: the built buildings (x span, the tallest) fill the street, never into the HUD;
+    // at most ×1.6 closer; {z, cx}
+    framing() {
+      const W = this.W || 1, H = this.H || 1, gd = this.ground || H * 0.76, px = this.px || 3, ps = this.plants.concat(this.rares);
+      if (!ps.length) return { z: 1, cx: 0.5 };
+      let x0 = Infinity, x1 = -Infinity, up = 1;
+      for (const p of ps) {
+        const rk = p.row ? ROW_K : 1, hw = 10 * px * rk, hc = p.rare ? 9 : (this.built[p.id] != null ? this.built[p.id] : this.wantOf(p)) + 7;
+        x0 = Math.min(x0, p.x - hw); x1 = Math.max(x1, p.x + hw); up = Math.max(up, gd - p.y + hc * px * rk);
+      }
+      const cx = (x0 + x1) / 2, span = Math.max(1, x1 - x0), room = gd - H * Math.max(this.ceil || 0.1, ...this.zones.map((zz) => zz.b));
+      const z = clamp(Math.min(W * 0.8 / span, room / up), 1, 1.6);
+      // a closer camera keeps the framed lots on screen; at ×1 the whole street is seen as it is
+      return { z, cx: z <= 1.001 ? 0.5 : clamp(cx / W, 0.5 / z, 1 - 0.5 / z) };
+    },
+    // where each building is on screen now (sx, sy = its foot, k = its scale, vis = its built height in sprite px, gy =
+    // built share), from the construction and the camera
+    place(cam, now = this.clock()) {
+      const px = this.px || 3;
+      for (const p of this.plants) {
+        const d = p.row ? ROW_D : 1;
+        p.k = cam.k(d) * (p.row ? ROW_K : 1); p.sx = cam.x(d, p.x); p.sy = cam.y(d, p.y);
+        const e = this.grow[p.id], h = this.heightAt(p.id, now), want = this.built[p.id] != null ? this.built[p.id] : this.wantOf(p);
+        p.spr = e ? e.spr : want; p.h = h;
+        const s = p.spr > 0 ? this.sprite(p, px) : null;
+        p.vis = !s ? 0 : !e ? s.h : Math.min(s.h, h * px);
+        p.gy = s ? p.vis / s.h : 0;
+      }
+      for (const p of this.rares) { p.k = cam.k(1); p.sx = cam.x(1, p.x); p.sy = cam.y(1, p.y); p.spr = 9; const s = this.sprite(p, px); p.vis = s.h; p.gy = 1; }
+    },
     // cached canvases of the scene, rebuilt only when the size changes
     fx(name, W, H, build) {
       const key = name + '|' + W + 'x' + H + '|' + (this.px || 3);
-      let c = this.fxc[name];
+      const c = this.fxc[name];
       if (c && c.key === key) return c.cv;
       this.cacheMisses++;
       const cv = build(W, H, this.px || 3);
@@ -898,228 +1033,6 @@
       return cv;
     },
     canvas(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; },
-    // the sky's layers (under the ground and the plants): tint flash, aurora, rays, clouds, twinkling stars, song
-    drawSky(g, W, gd) {
-      const px = this.px || 3, T = this.st, red = this.reduced;
-      let a;
-      if ((a = this.kick.hue || 0) > 0.02) { g.fillStyle = `rgba(255,200,245,${(0.16 * a).toFixed(3)})`; g.fillRect(0, 0, W, gd); }
-      g.globalCompositeOperation = 'lighter';
-      if ((a = this.amt('aurora')) > 0.03) {
-        const cv = this.fx('aurora', W, gd, (w, h) => {
-          const c = this.canvas(w / 4, h * 0.55 / 4), x = c.getContext('2d');
-          for (let i = 0; i < c.width; i++) for (let r = 0; r < 2; r++) {
-            const y = c.height * (0.35 + 0.22 * Math.sin(i * 0.035 + r * 2.1) + 0.08 * Math.sin(i * 0.11 + r)), hgt = c.height * (0.25 + 0.15 * Math.sin(i * 0.05 + r * 3));
-            const grd = x.createLinearGradient(0, y - hgt, 0, y + 4); grd.addColorStop(0, 'rgba(63,240,255,0)'); grd.addColorStop(0.8, r ? 'rgba(255,63,164,0.45)' : 'rgba(63,240,255,0.45)'); grd.addColorStop(1, 'rgba(63,240,255,0)');
-            x.fillStyle = grd; x.fillRect(i, y - hgt, 1, hgt + 4);
-          }
-          return c;
-        });
-        const dx = red ? 0 : Math.sin(T * 0.25) * W * 0.06;
-        g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.15 + 0.85 * a);
-        g.drawImage(cv, dx - W * 0.06, gd * 0.04, W * 1.12, gd * 0.55); g.imageSmoothingEnabled = false;
-      }
-      if ((a = this.amt('rays')) > 0.03) { // S6.5 searchlights: beams sweeping the sky from the city (Blade Runner)
-        const bh = Math.round(gd * 1.1), cv = this.fx('beam', W, gd, () => {
-          const c = this.canvas(64, 128), x = c.getContext('2d'), grd = x.createLinearGradient(0, 128, 0, 0);
-          grd.addColorStop(0, 'rgba(210,235,255,0.55)'); grd.addColorStop(1, 'rgba(210,235,255,0)');
-          x.fillStyle = grd; x.beginPath(); x.moveTo(30, 128); x.lineTo(34, 128); x.lineTo(64, 0); x.lineTo(0, 0); x.closePath(); x.fill();
-          return c;
-        });
-        const n = 2 + Math.round(a * 3), bw = Math.round(W * 0.09), ox = this.ox || 0, oy = this.oy || 0;
-        g.imageSmoothingEnabled = true;
-        for (let i = 0; i < n; i++) {
-          const bx = W * (0.12 + 0.76 * ((i * 0.618 + 0.2) % 1)), an = (red ? 0.25 : Math.sin(T * (0.25 + 0.07 * i) + i * 2.1)) * 0.5, c = Math.cos(an), sn = Math.sin(an);
-          g.setTransform(c, sn, -sn, c, bx + ox, gd * 0.92 + oy); g.globalAlpha = Math.min(1, 0.5 * a);
-          g.drawImage(cv, -bw / 2, -bh, bw, bh);
-        }
-        g.setTransform(1, 0, 0, 1, ox, oy); g.imageSmoothingEnabled = false;
-      }
-      if ((a = this.amt('twinkle')) > 0.03) { // 48 stars: how many and how fast they twinkle
-        const r = mulberry(31), n = Math.round(8 + 40 * a), s = Math.max(1, px - 1);
-        for (let i = 0; i < n; i++) {
-          const x = Math.floor(r() * W / px) * px, y = Math.floor(r() * gd * 0.8 / px) * px, ph = r() * 6.283;
-          g.globalAlpha = Math.min(1, (0.25 + 0.75 * a) * (red ? 0.7 : 0.5 + 0.5 * Math.sin(T * (1.5 + 5 * a) + ph)));
-          g.fillStyle = i % 5 ? '#f4e6ff' : i % 2 ? '#ff5468' : '#bff6ff'; g.fillRect(x, y, s, s);
-          if (a > 0.5 && i % 7 === 0) { g.fillRect(x - px, y, s, s); g.fillRect(x + px, y, s, s); g.fillRect(x, y - px, s, s); g.fillRect(x, y + px, s, s); }
-        }
-      }
-      g.globalCompositeOperation = 'source-over';
-      if ((a = this.amt('clouds')) > 0.03) { // pixel clouds drifting across the sky (Dérive)
-        const cv = this.fx('cloud', W, gd, (w, h, px) => {
-          const c = this.canvas(48 * px, 12 * px), x = c.getContext('2d'), r = mulberry(5);
-          for (let j = 0; j < 12; j++) for (let i = 0; i < 48; i++) { const d = ((i - 24) / 24) ** 2 + ((j - 8) / (j < 8 ? 7 : 4)) ** 2 + 0.25 * Math.sin(i * 0.7) * (j < 6 ? 1 : 0); if (d < 1 && r() < 0.92) { x.fillStyle = j < 5 ? 'rgba(70,40,100,0.9)' : j < 9 ? 'rgba(120,50,130,0.88)' : 'rgba(190,70,160,0.85)'; x.fillRect(i * px, j * px, px - 1, px - 1); } }
-          return c;
-        });
-        const r = mulberry(17), n = Math.max(1, Math.round(a * 6)), span = W + cv.width;
-        for (let i = 0; i < n; i++) {
-          const x0 = r() * span, y = gd * (0.08 + 0.4 * r()), sc = 0.6 + 0.6 * r(), v = (6 + 10 * r()) * px * (0.3 + a);
-          const x = ((x0 + T * v) % span + span) % span - cv.width;
-          g.globalAlpha = Math.min(1, 0.12 + 0.4 * a); g.drawImage(cv, Math.round(x), Math.round(y), Math.round(cv.width * sc), Math.round(cv.height * sc));
-        }
-      }
-      if ((a = this.sc.song || 0) > 0.01) { g.globalAlpha = 0.7; g.fillStyle = hex(TOK.cyan); g.fillRect(0, 0, Math.round(W * a), Math.max(2, px)); }
-      if ((a = this.kick.song || 0) > 0.02 && !red) { const x = (1 - a) * W * 1.2 - W * 0.1; g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.35 * a; g.fillStyle = '#ffb0ec'; g.fillRect(Math.round(x), 0, Math.round(W * 0.08), gd); g.globalCompositeOperation = 'source-over'; }
-      g.globalAlpha = 1;
-    },
-    // the ground ondulates (rhythm feel): two wavy lines of light along its edge
-    drawGround(g, W, H, gd) {
-      const a = this.amt('ripple'); if (a < 0.03) return;
-      const px = this.px || 3, T = this.st, A = px * (0.5 + 3 * a), st = px * 2, s = Math.max(1, px >> 1);
-      g.globalCompositeOperation = 'lighter';
-      for (let j = 0; j < 2; j++) {
-        g.fillStyle = `rgba(63,240,255,${((0.12 + 0.3 * a) / (j + 1)).toFixed(3)})`;
-        const y0 = gd + px * (2 + 5 * j), f = 0.012 + 0.01 * j;
-        for (let x = 0; x < W; x += st) g.fillRect(x, Math.round(y0 + Math.sin(x * f + T * (2.5 + j)) * A), st - 1, s);
-      }
-      g.globalCompositeOperation = 'source-over';
-    },
-    // S6.5 the wet street: each element reflected upside down under its foot (the previous frame's transform), faded with
-    // distance by a cached overlay with streaks of rain; the finale lights them with their element
-    drawReflections(g, W, H, gd, R) {
-      const ox = this.ox || 0, oy = this.oy || 0;
-      g.globalAlpha = 1;
-      for (const p of this.plants) {
-        if (!p.kx || !p.gy || p.gy < 0.05) continue;
-        const s = this.sprite(p, this.px), ky = p.ky || p.kx, on = p.look ? 0.3 + 0.7 * p.look.on : 1;
-        g.globalAlpha = 0.42 * on * (R ? 0.3 + 0.7 * Math.min(1, this.lit[p.id] || 0) : 1);
-        g.setTransform(p.kx, 0, (p.sway || 0) * ky * p.gy, -ky * p.gy * 0.62, p.x + ox, p.y + oy + this.px); g.drawImage(s.cv, -s.w / 2, -s.h);
-      }
-      g.setTransform(1, 0, 0, 1, ox, oy);
-      const cv = this.fx('wet', W, H - gd, (w, h, px) => {
-        const c = this.canvas(w, h), x = c.getContext('2d'), grd = x.createLinearGradient(0, 0, 0, h);
-        grd.addColorStop(0, rgb(TOK.ground, 1, 0.05)); grd.addColorStop(0.6, rgb(TOK.ground, 1, 0.6)); grd.addColorStop(1, rgb(TOK.ground, 1, 0.95));
-        x.fillStyle = grd; x.fillRect(0, 0, w, h); x.fillStyle = rgb(TOK.ground, 1, 0.55);
-        for (let y = px; y < h; y += 2 * px) x.fillRect(0, y, w, Math.max(1, px >> 1));
-        return c;
-      });
-      g.globalAlpha = 1; g.drawImage(cv, 0, gd);
-    },
-    // S5.8 echo: faded copies of a plant trailing to its right (Écho: how many, how far)
-    drawEcho(g, p, s, kx, ky, sway, gy, ox, oy) {
-      const a = this.amt('echo'); if (a < 0.1 || gy < 0.05) return;
-      const n = 1 + Math.round(a * 2), d = this.px * (3 + 7 * a);
-      for (let i = n; i >= 1; i--) {
-        g.globalAlpha = Math.min(1, (0.08 + 0.3 * a) / i);
-        g.setTransform(kx, 0, -sway * ky * gy, ky * gy, p.x + ox + i * d, p.y + oy); g.drawImage(s.cv, -s.w / 2, -s.h);
-      }
-      g.globalAlpha = 1;
-    },
-    // in front of the plants: mist, fireflies, snow, frost, lens (grid / staff)
-    drawFront(g, W, H, gd) {
-      const px = this.px || 3, T = this.st, red = this.reduced, s = Math.max(1, px - 1);
-      let a;
-      if ((a = this.amt('haze')) > 0.03) {
-        const bh = Math.round(H * 0.32), cv = this.fx('haze', W, H, (w, h) => {
-          const c = this.canvas(w / 4, bh / 4), x = c.getContext('2d'), r = mulberry(11);
-          const grd = x.createLinearGradient(0, 0, 0, c.height); grd.addColorStop(0, 'rgba(200,90,190,0)'); grd.addColorStop(0.6, 'rgba(200,90,190,0.38)'); grd.addColorStop(1, 'rgba(120,60,160,0.12)');
-          x.fillStyle = grd; x.fillRect(0, 0, c.width, c.height);
-          for (let i = 0; i < 14; i++) { const cx = r() * c.width, cy = c.height * (0.35 + 0.4 * r()), R = c.height * (0.2 + 0.3 * r()), gg = x.createRadialGradient(cx, cy, 0, cx, cy, R); gg.addColorStop(0, 'rgba(230,120,210,0.32)'); gg.addColorStop(1, 'rgba(230,120,210,0)'); x.fillStyle = gg; x.fillRect(cx - R, cy - R, 2 * R, 2 * R); }
-          return c;
-        });
-        const off = red ? 0 : ((T * px * 4) % W + W) % W, y = gd - bh * 0.7;
-        g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.9 * a);
-        g.drawImage(cv, off, y, W, bh); g.drawImage(cv, off - W, y, W, bh); g.imageSmoothingEnabled = false;
-      }
-      g.globalCompositeOperation = 'lighter';
-      if ((a = this.amt('fireflies')) > 0.03) {
-        const r = mulberry(23), n = Math.round(4 + 26 * a);
-        for (let i = 0; i < n; i++) {
-          const bx = r() * W, by = gd - (0.08 + 0.5 * r()) * gd * 0.7, ph = r() * 6.283, f = 0.3 + r() * 0.5;
-          const x = bx + (red ? 0 : Math.sin(T * f + ph) * 14 * px), y = by + (red ? 0 : Math.cos(T * f * 1.3 + ph) * 6 * px);
-          g.globalAlpha = Math.min(1, (0.3 + 0.7 * a) * (red ? 0.8 : 0.5 + 0.5 * Math.sin(T * 3 * f + ph * 2)));
-          g.fillStyle = i % 3 ? '#ff5468' : '#e8f6ff'; g.fillRect(Math.round(x / px) * px, Math.round(y / px) * px, s, s);
-          g.globalAlpha *= 0.35; g.fillRect(Math.round(x / px) * px - px, Math.round(y / px) * px - px, 3 * px - 1, 3 * px - 1);
-        }
-      }
-      g.globalCompositeOperation = 'source-over';
-      if ((a = this.amt('snow')) > 0.03) {
-        const r = mulberry(41), n = Math.round(6 + 64 * a); g.fillStyle = '#bff6ff';
-        for (let i = 0; i < n; i++) {
-          const x0 = r() * W, y0 = r() * H, v = (8 + 14 * r()) * px, ph = r() * 6.283;
-          const y = ((y0 + T * v) % H + H) % H, x = x0 + (red ? 0 : Math.sin(T * 0.8 + ph) * 3 * px);
-          g.globalAlpha = Math.min(1, 0.3 + 0.6 * a); g.fillRect(Math.round(x / px) * px, Math.round(y / px) * px, s, s);
-        }
-      }
-      if ((a = this.amt('frost')) > 0.03) {
-        const cv = this.fx('frost', W, H, (w, h, px) => {
-          const c = this.canvas(w, h), x = c.getContext('2d'), r = mulberry(53), q = px * 2;
-          x.fillStyle = 'rgba(200,235,255,0.85)';
-          for (let k = 0; k < 40; k++) { // branches growing in from the edges
-            const side = k % 4; let cx = side === 1 ? w : side === 3 ? 0 : r() * w, cy = side === 0 ? 0 : side === 2 ? h : r() * h;
-            let dx = side === 1 ? -1 : side === 3 ? 1 : (r() - 0.5), dy = side === 0 ? 1 : side === 2 ? -1 : (r() - 0.5);
-            for (let i = 0, L = 6 + r() * 16; i < L; i++) { x.fillRect(Math.round(cx / q) * q, Math.round(cy / q) * q, q - 1, q - 1); cx += dx * q; cy += dy * q; if (r() < 0.3) dx += (r() - 0.5); if (r() < 0.3) dy += (r() - 0.5); }
-          }
-          return c;
-        });
-        g.globalAlpha = Math.min(1, 0.85 * a); g.drawImage(cv, 0, 0);
-      }
-      if ((a = this.amt('lens')) > 0.03) {
-        const cv = this.fx('lens', W, H, (w, h, px) => {
-          const c = this.canvas(w, h), x = c.getContext('2d'), q = px * 12;
-          x.fillStyle = 'rgba(63,240,255,0.45)';
-          for (let X = 0; X < w; X += q) for (let Y = 0; Y < h; Y += px * 3) x.fillRect(X, Y, Math.max(1, px >> 1), Math.max(1, px >> 1));
-          for (let Y = 0; Y < h; Y += q) for (let X = 0; X < w; X += px * 3) x.fillRect(X, Y, Math.max(1, px >> 1), Math.max(1, px >> 1));
-          return c;
-        });
-        const sv = this.sc.lens || 0, k = this.kick.lens || 0;
-        g.globalAlpha = Math.min(1, 0.5 * Math.min(1, 2 * sv) + 0.4 * k); g.drawImage(cv, 0, 0);
-        const staff = Math.max(0, 2 * sv - 1); // Composer: the five lines of a staff across the sky
-        if (staff > 0.02) { g.globalAlpha = Math.min(1, 0.35 * staff + 0.3 * k); g.fillStyle = '#ff9ee0'; for (let i = 0; i < 5; i++) g.fillRect(0, Math.round(gd * 0.18 + i * px * 4), W, Math.max(1, px >> 1)); }
-      }
-      g.globalAlpha = 1;
-    },
-    // full-screen filters, last: the tape band and wobble (Cassette), grain and vignette (Usure), the veil when stopped
-    drawPost(g, W, H) {
-      const px = this.px || 3, T = this.st, red = this.reduced;
-      let a;
-      if ((a = this.amt('tape')) > 0.03) {
-        const bh = Math.round(H * 0.07), cv = this.fx('tape', W, H, (w) => {
-          const c = this.canvas(w / 4, bh), x = c.getContext('2d'), r = mulberry(61);
-          const grd = x.createLinearGradient(0, 0, 0, bh); grd.addColorStop(0, 'rgba(255,255,255,0)'); grd.addColorStop(0.5, 'rgba(220,230,255,0.25)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
-          x.fillStyle = grd; x.fillRect(0, 0, c.width, bh);
-          for (let i = 0; i < 60; i++) { x.fillStyle = ['rgba(255,60,60,0.5)', 'rgba(60,255,200,0.5)', 'rgba(80,120,255,0.5)'][i % 3]; x.fillRect(r() * c.width, bh * (0.3 + 0.4 * r()), 2 + r() * 10, 1); }
-          return c;
-        });
-        const y = red ? H * 0.6 : ((T * H * 0.12) % (H + bh)) - bh;
-        g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, 0.2 + 0.7 * a); g.imageSmoothingEnabled = true;
-        g.drawImage(cv, 0, Math.round(y), W, bh); g.imageSmoothingEnabled = false; g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
-        if (a > 0.2) for (let i = 0; i < 3; i++) { // tracking lines: a dark and a coloured line that jitter (no read-back of the canvas: it would stall)
-          const sy = Math.round(((T * (40 + 30 * i) * px + i * H / 3) % H) / px) * px, dx = red ? 0 : Math.round(Math.sin(T * 9 + i * 2) * a * px * 6);
-          g.globalAlpha = Math.min(1, 0.5 * a); g.fillStyle = 'rgba(0,0,0,0.8)'; g.fillRect(0, sy, W, px);
-          g.globalCompositeOperation = 'lighter'; g.fillStyle = i % 2 ? 'rgba(255,70,90,0.6)' : 'rgba(70,200,255,0.6)'; g.fillRect(dx, sy + px, W, Math.max(1, px >> 1)); g.globalCompositeOperation = 'source-over';
-        }
-        g.globalAlpha = 1;
-      }
-      if ((a = this.amt('grain')) > 0.03) {
-        const nw = Math.ceil(W / (2 * px)), nh = Math.ceil(H / (2 * px)), f = red ? 0 : Math.floor(T * 14) % 4;
-        const cv = this.fx('grain' + f, W, H, () => {
-          const c = this.canvas(nw, nh), x = c.getContext('2d'), d = x.createImageData(nw, nh), r = mulberry(70 + f);
-          for (let i = 0; i < d.data.length; i += 4) { const v = r(), on = v < 0.18; const l = v < 0.09 ? 255 : 0; d.data[i] = d.data[i + 1] = d.data[i + 2] = l; d.data[i + 3] = on ? 90 : 0; }
-          x.putImageData(d, 0, 0); return c;
-        });
-        const vg = this.fx('vignette', W, H, (w, h) => {
-          const c = this.canvas(w / 4, h / 4), x = c.getContext('2d'), gg = x.createRadialGradient(c.width / 2, c.height / 2, c.height * 0.3, c.width / 2, c.height / 2, c.width * 0.62);
-          gg.addColorStop(0, 'rgba(12,0,24,0)'); gg.addColorStop(1, 'rgba(12,0,24,0.9)'); x.fillStyle = gg; x.fillRect(0, 0, c.width, c.height); return c;
-        });
-        g.globalAlpha = Math.min(1, 0.15 + 0.85 * a); g.drawImage(cv, 0, 0, W, H);
-        g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.75 * a); g.drawImage(vg, 0, 0, W, H); g.imageSmoothingEnabled = false;
-      }
-      const pl = this.sc.play == null ? 1 : this.sc.play, pk = this.kick.play || 0;
-      if (pl < 0.98) { g.globalAlpha = 1; g.fillStyle = `rgba(4,2,10,${(0.3 * (1 - pl)).toFixed(3)})`; g.fillRect(0, 0, W, H); }
-      if (pk > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 1; g.fillStyle = `rgba(255,150,230,${(0.12 * pk).toFixed(3)})`; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over'; }
-      this.drawCrt(g, W, H);
-      g.globalAlpha = 1;
-    },
-    // S6.5 a discreet cathode-ray screen over the scene (strength = JUICE; off in reduced motion): its scanlines and violet
-    // vignette are css (body.city .stage::after, opacity --crt, set by V.draw: no canvas cost), the colour fringes are baked
-    // in the sprites; here only a faint band rolling down
-    drawCrt(g, W, H) {
-      const k = this.crt(); if (!k) return 0;
-      const bh = Math.round(H * 0.1), y = ((this.st * H * 0.08) % (H + 3 * bh)) - 2 * bh;
-      g.globalCompositeOperation = 'lighter'; g.fillStyle = '#b8a0ff'; g.globalAlpha = Math.min(1, 0.03 * k); g.fillRect(0, Math.round(y), W, bh);
-      g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
-      return 1;
-    },
 
     // ---- S5.10 combos: each one ON in js/discoveries.js fades in (~0.25 s), and out when it falls; drawn by COMBO_FX ----
     updateCombos(dt) {
@@ -1142,24 +1055,26 @@
 
     // ---- events: queued with their audio time, applied when they sound ----
     onEvent(layer, time, vel) {
-      if (!this.running() || this.replay) return; // the finale lights the plants from the recorded song only
+      if (!this.running() || this.replay) return; // the finale lights the buildings from the recorded song only
       this.pending.push({ layer, time: time || 0, vel: vel == null ? 0.7 : vel });
       if (this.pending.length > 200) this.pending.splice(0, this.pending.length - 200);
     },
     running() { return this.active && this.visible && !this.paused && !(typeof document !== 'undefined' && document.hidden); },
+    // a note of a layer: its building lights up (windows, neon, beacon), a spark flies off its roof
     hit(layer, vel) {
-      const p = this.plants.find((q) => q.id === layer);
+      const p = this.plants.find((qq) => qq.id === layer);
       if (!p) return false;
       this.energy[layer] = Math.min(1, (this.energy[layer] || 0) * 0.5 + 0.5 + vel * 0.5);
-      if (!this.reduced && this.parts.length < PARTS_MAX) {
-        const hC = this.heightCells(p), px = this.px, r = this.rng || (this.rng = mulberry(99));
-        this.parts.push({ x: p.x + (r() - 0.5) * 8 * px, y: p.y - hC * px * (p.sz || 1) * (0.6 + r() * 0.4), vx: (r() - 0.5) * 12 * px, vy: -(8 + r() * 10) * px, life: 1, col: r() < 0.3 ? [255, 233, 168] : p.col, s: r() < 0.5 ? 1 : 2 });
+      this.impulse('note', 0.4 + 0.6 * vel);
+      if (!this.reduced && this.parts.length < PARTS_MAX && p.vis) {
+        const px = this.px, r = this.rng || (this.rng = mulberry(99));
+        this.parts.push({ x: (p.sx || p.x) + (r() - 0.5) * 8 * px, y: (p.sy || p.y) - p.vis * (p.k || 1) * (0.6 + r() * 0.4), vx: (r() - 0.5) * 12 * px, vy: -(8 + r() * 10) * px, life: 1, col: r() < 0.3 ? [255, 233, 168] : p.col, s: r() < 0.5 ? 1 : 2 });
       }
       return true;
     },
 
-    // ---- S5.2 splashes: queued with their audio time (a scheduled note shows when it sounds); at most WAVES_PER_PLANT
-    // per plant, a machine note never pushes out the player's ----
+    // ---- S5.2 splashes: queued with their audio time; at most WAVES_PER_PLANT per building, a machine note never pushes
+    // out the player's ----
     onSplash(ev, d) {
       if (!this.running() || this.replay) return;
       const P = AMB.pianoRoll, s = splash(ev, d, !!(P && P.roll && P.roll.recording));
@@ -1172,68 +1087,144 @@
       }
       this.waves.push({ ...s, t0: s.time, off: null, fired: false });
     },
-    // S5.3 → S5.2: a celebration (kind = 'streak' | 'record' | 'tier', SPLASH) bursts from a plant (the Melody's by default;
-    // S5.9 the juice table passes the opened layer's) at audio time `at` (the jingle's beat), same splashes, same JUICE
+    // a celebration (kind = 'streak' | 'record' | 'tier', SPLASH) bursts from a building (the Melody's by default; the juice
+    // table passes the opened layer's) at audio time `at`, same splashes, same JUICE
     cheer(kind, at, plant) {
       const S = SPLASH[kind]; if (!S || this.free) return false;
       this.onSplash('cheer', { kind, plant, time: at == null ? this.clock() : at });
       return true;
     },
-    // a held note let go (liveOff id), or every note (panic: id null)
     release(id, time) { const t = time == null ? this.clock() : time; for (const w of this.waves) if (w.off == null && w.held != null && (id == null || w.held === id)) w.off = t; },
     // brightness a (0..1) and ring radius r (0..1) of a splash now; null = over. A held note stays lit until released.
     waveEnv(w, now) {
       const S = SPLASH[w.who], age = now - w.t0, held = w.held != null;
       if (held && w.off == null && ((w.held === 'chord' && age > 0.05 && !(AMB.seq && AMB.seq.chordHold)) || age > HELD_MAX)) w.off = now;
-      if (this.reduced) { // a fixed, brief glow, no wave
+      if (this.reduced) {
         const end = held ? (w.off == null ? Infinity : Math.max(w.off, w.t0 + 0.15)) : w.t0 + 0.3;
         return now < end ? { a: 1, r: 0 } : null;
       }
-      const q = Math.min(1, Math.max(0, age) / S.life), r = 1 - (1 - q) ** 3;
-      let a = held ? (q < 1 ? 1 - 0.45 * q : 0.55) : 1 - q;
+      const qq = Math.min(1, Math.max(0, age) / S.life), r = 1 - (1 - qq) ** 3;
+      let a = held ? (qq < 1 ? 1 - 0.45 * qq : 0.55) : 1 - qq;
       if (held && w.off != null) a *= 1 - Math.max(0, now - Math.max(w.off, w.t0)) / 0.35;
       return a > 0.01 ? { a, r } : null;
     },
-    // where a note sits on its plant: low notes near the root, high ones near the top (it bends with the plant)
-    origin(p, pitch) {
-      const h = this.heightCells(p) * this.px * (p.sz || 1) * (p.gy == null ? 1 : p.gy), y = p.y - h * (0.2 + 0.75 * pitch);
-      return { x: p.x + (p.sway || 0) * (p.y - y), y };
-    },
-    // its colour: the plant's, lighter for high notes (5 steps, so the glows stay cached)
+    // where a note sits on its building: low notes near the foot, high ones near the roof
+    origin(p, pitch) { const h = (p.vis || 0) * (p.k || 1); return { x: p.sx != null ? p.sx : p.x, y: (p.sy != null ? p.sy : p.y) - h * (0.2 + 0.75 * pitch) }; },
     tint(col, pitch) { const k = Math.round(pitch * 4) / 4; return col.map((v) => Math.round(v + (255 - v) * 0.55 * k)); },
-    // the moment it sounds: particles fly out, the plant flashes and squashes, a chord or a loud note shakes the scene
+    // the moment it sounds: particles fly out, the building's lights flash, a chord or a loud note shakes the camera
     fire(w, p) {
       w.fired = true;
+      this.impulse(w.who === 'chord' ? 'chord' : 'note', 0.5 + 0.5 * w.vel);
       if (this.reduced) return;
-      const S = SPLASH[w.who], v = 0.4 + 0.6 * w.vel, o = this.origin(p, w.pitch), px = this.px, r = this.rng || (this.rng = mulberry(99));
-      const col = this.tint(p.col, w.pitch), n = Math.round(S.parts * JUICE * v);
+      const S = SPLASH[w.who], J = this.JUICE, v = 0.4 + 0.6 * w.vel, o = this.origin(p, w.pitch), px = this.px, r = this.rng || (this.rng = mulberry(99));
+      const col = this.tint(p.col, w.pitch), n = Math.round(S.parts * J * v);
       for (let k = 0; k < n; k++) {
-        const an = -Math.PI / 2 + (r() - 0.5) * (S.spread || 2.8), sp = (9 + r() * 24) * px * (0.6 + 0.5 * v) * (0.7 + 0.3 * JUICE);
+        const an = -Math.PI / 2 + (r() - 0.5) * (S.spread || 2.8), sp = (9 + r() * 24) * px * (0.6 + 0.5 * v) * (0.7 + 0.3 * J);
         const c = r(), big = w.who !== 'machine' ? (r() < 0.35 ? 3 : 2) : 1;
         this.parts.push({ x: o.x, y: o.y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, life: 1, decay: 1 + r() * 0.7, g: 24, col: c < 0.3 ? [255, 240, 200] : c < 0.65 ? col : p.col, s: big });
       }
       if (this.parts.length > PARTS_MAX) this.parts.splice(0, this.parts.length - PARTS_MAX);
-      this.squash[p.id] = { t0: this.t || 0, amp: S.squash * JUICE * v };
       this.zap[p.id] = Math.max(this.zap[p.id] || 0, S.flash * v);
-      if (w.shake) this.shake = { t0: this.t || 0, amp: Math.max(this.shake ? this.shake.amp * 0.5 : 0, w.shake * JUICE) };
+      this.band = this.band || {}; this.band[p.id] = { pitch: w.pitch, a: S.flash * v };
+      if (w.shake) this.shake = { t0: this.t || 0, amp: Math.max(this.shake ? this.shake.amp * 0.5 : 0, w.shake * J) };
     },
     // drawn in 'lighter' mode: a glow where the note sits (lit as long as it is held) and a ring of LEDs that spreads
     drawSplash(g, now) {
       const px = this.px;
       for (let i = this.waves.length - 1; i >= 0; i--) {
         const w = this.waves[i]; if (w.t0 > now + 0.02) continue;
-        const p = this.plants.find((q) => q.id === w.plant), e = p && this.waveEnv(w, now);
+        const p = this.plants.find((qq) => qq.id === w.plant), e = p && this.waveEnv(w, now);
         if (!e) { this.waves.splice(i, 1); continue; }
         if (!w.fired) this.fire(w, p);
         const S = SPLASH[w.who], o = this.origin(p, w.pitch), A = S.ring * (0.4 + 0.6 * w.vel) * e.a, col = w.col || (w.col = this.tint(p.col, w.pitch));
         const Rg = Math.max(12, Math.round(px * (w.who === 'machine' ? 6 : 12))), gl = this.glow(col, Rg);
         g.globalAlpha = Math.min(1, this.reduced ? 0.8 * S.ring : A); g.drawImage(gl, o.x - Rg, o.y - Rg);
         if (this.reduced) continue;
-        const nd = w.who === 'machine' ? 10 : 20, R = px * (2 + (w.who === 'machine' ? 8 : 22) * (0.5 + 0.5 * w.vel) * (0.6 + 0.4 * JUICE) * e.r), sz = Math.max(1, px - 1);
+        const nd = w.who === 'machine' ? 10 : 20, R = px * (2 + (w.who === 'machine' ? 8 : 22) * (0.5 + 0.5 * w.vel) * (0.6 + 0.4 * this.JUICE) * e.r), sz = Math.max(1, px - 1);
         g.fillStyle = w.fill || (w.fill = rgb(col)); g.globalAlpha = Math.min(1, A);
         for (let k = 0; k < nd; k++) { const an = (k / nd) * 6.283 + w.t0 * 3; g.fillRect(Math.round((o.x + Math.cos(an) * R) / px) * px, Math.round((o.y + Math.sin(an) * R * 0.8) / px) * px, sz, sz); }
       }
       g.globalAlpha = 1;
+    },
+
+    // ---- one building, as it is now: lit, under construction (scaffold, crane, floors up, windows lit one by one) or
+    // being taken down (floors dark and sinking, neon dust); never deformed ----
+    drawBuilding(g, p, now, dark) {
+      const px = this.px, s = this.sprite(p, px), k = p.k, red = this.reduced, e = this.grow[p.id], R = this.replay, w = this.world;
+      const vis = p.vis, building = e && e.h1 > e.h0 && now >= e.start, sinking = e && e.h1 < e.h0 && now >= e.start;
+      g.setTransform(k, 0, 0, k, p.sx, p.sy);
+      if (vis < px * 0.5) { this.drawLot(g, p, s, now); return; }
+      const sy0 = s.h - vis;
+      const a = p.look, off = a ? 1 - a.on : 0, rep = R ? 0.3 + 0.7 * Math.min(1, this.lit[p.id] || 0) : 1;
+      g.globalAlpha = rep;
+      if (building) { // floors up, still dark; their windows light up one by one, a little later
+        g.drawImage(s.dk, 0, sy0, s.w, vis, -s.w / 2, -vis, s.w, vis);
+        const litH = Math.min(vis, Math.max(0, this.heightAt(p.id, now - BUILD.lag) * px));
+        if (litH > 0) g.drawImage(s.cv, 0, s.h - litH, s.w, litH, -s.w / 2, -litH, s.w, litH);
+        const band = vis - litH;
+        if (band > 0) { // the lighting front: each window of the band comes on at its own moment
+          g.fillStyle = rgb(p.col.map((v) => v + (255 - v) * 0.6)); const top = s.h - vis, bot = s.h - litH, gap = px >= 4 ? 1 : 0;
+          for (const [x, y] of s.wins) if (y >= top && y < bot && ih(x, y) > (y - top) / band) g.fillRect(x - s.w / 2, y - s.h, px - gap, px - gap);
+        }
+      } else {
+        g.drawImage(s.cv, 0, sy0, s.w, vis, -s.w / 2, -vis, s.w, vis);
+        if (sinking) { // the top floors go dark before they sink
+          const bandH = Math.min(vis, FLOOR * 2 * px); g.drawImage(s.dk, 0, sy0, s.w, bandH, -s.w / 2, -vis, s.w, bandH);
+        }
+      }
+      // the city's power: a cut darkens it (dk over it), a surge makes its lights glow; a layer switched off: dark
+      const pw = w.power == null ? 0.7 : w.power, cut = Math.max(0, (0.45 - pw) / 0.45) * 0.7 + 0.6 * off;
+      if (cut > 0.02) { g.globalAlpha = Math.min(1, cut) * rep; g.drawImage(s.dk, 0, sy0, s.w, vis, -s.w / 2, -vis, s.w, vis); }
+      // lights: a touch (hot), a note (zap, energy; brighter on the band of its pitch), the dawn, the power
+      const hot = p.hot || 0, zap = this.zap[p.id] || 0, en = this.energy[p.id] || 0, dawn = w.dawn || 0;
+      let L = Math.max(0.5 * hot, 0.55 * zap, 0.45 * en, 0.35 * dawn * (R ? Math.min(1, this.lit[p.id] || 0) : 1), Math.max(0, pw - 0.6) * 0.5) * (1 - off);
+      if (p.kind === 'bell' && !red && !hot) { const b = Math.sin(this.t * 53 + p.phase) + Math.sin(this.t * 7.3) + Math.sin(this.t * 2.1 + 1); if (b > 2.2) L = 0; } // the neon sign buzzes
+      if (L > 0.02 && !dark) {
+        g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, L);
+        g.drawImage(s.em, 0, sy0, s.w, vis, -s.w / 2, -vis, s.w, vis);
+        const bd = this.band && this.band[p.id];
+        if (bd && bd.a > 0.03) { const bh = Math.max(px * 4, vis * 0.3), by = clamp(vis * (0.2 + 0.75 * bd.pitch) - bh / 2, 0, vis - bh); g.globalAlpha = Math.min(1, bd.a); g.drawImage(s.em, 0, s.h - by - bh, s.w, bh, -s.w / 2, -by - bh, s.w, bh); }
+        g.globalCompositeOperation = 'source-over';
+      }
+      g.globalAlpha = 1;
+      if (building) this.drawScaffold(g, p, s, vis, e, now);
+      else if (sinking && !red && Math.random() < 0.5 && this.parts.length < PARTS_MAX) { // neon dust off the cut
+        const r = this.rng || (this.rng = mulberry(99)), x = (r() - 0.5) * (s.l + s.r);
+        this.parts.push({ x: p.sx + x * k, y: p.sy - vis * k, vx: (r() - 0.5) * 6 * px + (w.weather.wind || 0) * 10 * px, vy: -(2 + r() * 6) * px, life: 1, decay: 0.9 + r() * 0.6, g: -2, col: r() < 0.5 ? p.col : [200, 190, 220], s: r() < 0.3 ? 2 : 1 });
+      }
+    },
+    // the building's frame above its built floors up to its future roof, the crane over it, sparks of welding
+    drawScaffold(g, p, s, vis, e, now) {
+      const px = this.px, top = (e.h1 + 1) * px, red = this.reduced, x0 = -s.l, x1 = s.r, lw = Math.max(1, px >> 1), T = this.st;
+      g.globalCompositeOperation = 'lighter';
+      g.fillStyle = rgb(TOK.cyan, 0.7, 0.45); // the frame: two poles, a bar every floor
+      g.fillRect(x0, -top, lw, top - vis + px); g.fillRect(x1 - lw, -top, lw, top - vis + px);
+      for (let y = vis; y <= top; y += FLOOR * px) g.fillRect(x0, -y, x1 - x0, lw);
+      g.fillStyle = rgb(TOK.amber, 1, 0.9); // the working floor's lamps blink
+      for (let x = x0; x < x1; x += 3 * px) if (red || (Math.floor(T * 4 + x) & 1)) g.fillRect(x, -vis - px, px - 1, px - 1);
+      // the tower crane: a mast beside the building, the jib turning slowly (seen from the street: its length changes)
+      const mx = x1 + 2 * px, mt = top + 6 * px, an = red ? 0.6 : Math.sin(T * 0.5 + p.phase), jl = 16 * px * an, cl = 5 * px * an;
+      g.fillStyle = rgb(TOK.amber, 0.8, 0.75);
+      g.fillRect(mx, -mt, px, mt); for (let y = 2 * px; y < mt; y += 3 * px) g.fillRect(mx - px, -y, 3 * px, lw);
+      g.fillRect(Math.min(mx, mx - jl), -mt, Math.abs(jl) + px, px); g.fillRect(Math.min(mx, mx + cl), -mt, Math.abs(cl) + px, px);
+      g.fillRect(mx + cl - (cl < 0 ? px : 0), -mt + px, 2 * px * Math.sign(cl || 1), 2 * px); // counterweight
+      const hx = mx - jl * 0.7; g.fillStyle = rgb(TOK.amber, 0.6, 0.5); g.fillRect(hx, -mt + px, lw, mt - vis - 3 * px); // the hook line, down to the floor being built
+      g.fillStyle = rgb(TOK.amber, 1.1, 0.95); g.fillRect(hx - 2 * px, -vis - 3 * px, 4 * px, px); // a floor slab hanging
+      if (red || Math.floor(T * 3) % 2) { g.fillStyle = rgb(TOK.red, 1.2); g.fillRect(mx, -mt - px, px, px); }
+      g.globalCompositeOperation = 'source-over';
+      if (!red && this.parts.length < PARTS_MAX && Math.random() < 0.35) { // welding sparks
+        const r = this.rng || (this.rng = mulberry(99)), k = p.k;
+        this.parts.push({ x: p.sx + (x0 + r() * (x1 - x0)) * k, y: p.sy - vis * k, vx: (r() - 0.5) * 14 * px, vy: -(4 + r() * 8) * px, life: 0.7, decay: 1.6, g: 30, col: r() < 0.5 ? [255, 240, 200] : TOK.amber, s: 1 });
+      }
+    },
+    // an empty lot (layer switched off, or not built yet): a slab, a fence, a blinking amber lamp
+    drawLot(g, p, s, now) {
+      const px = this.px, hw = Math.max(5 * px, Math.round(Math.min(s.l, s.r) / px) * px);
+      g.fillStyle = rgb(TOK.wall, 1.8); g.fillRect(-hw, -2 * px, 2 * hw, 2 * px); // the foundation slab
+      g.fillStyle = rgb(p.col, 0.5, 0.9); for (let x = -hw; x <= hw; x += 2 * px) g.fillRect(x, -5 * px, Math.max(1, px >> 1), 3 * px); // fence posts
+      for (let x = -hw, i = 0; x < hw; x += px, i++) { g.fillStyle = i % 2 ? rgb(TOK.amber, 0.9) : '#120a08'; g.fillRect(x, -5 * px, px, px); } // a hazard board
+      g.fillStyle = rgb(p.col, 0.35, 0.9); for (let y = 3; y < 9; y += 2) g.fillRect(-px, -(5 + y) * px, 2 * px, Math.max(1, px >> 1)); // the starter of a crane mast
+      if (this.reduced || Math.floor(this.st * 2) % 2) { g.fillStyle = rgb(TOK.amber, 1.2); g.fillRect(-hw, -6 * px, px, px); g.fillRect(hw - px, -6 * px, px, px); }
     },
 
     // ---- one frame (called by AMB.visual.draw while the mode is « Jardin ») ----
@@ -1242,9 +1233,10 @@
       const t0 = this.now();
       if (this.sig == null || this.W !== W || this.H !== H || t0 - (this.lastCheck || 0) > 1000) this.refresh(W, H, this.W !== W || this.H !== H);
       const dt = this.lastT == null ? 1 / 60 : Math.max(0, Math.min(0.1, (t0 - this.lastT) / 1000));
-      this.lastT = t0; this.t = (this.t || 0) + dt;
+      this.lastT = t0; this.t = (this.t || 0) + dt; this.dt = dt; this.dpr = dpr;
       const now = this.clock();
       this.watch(); this.updateScene(dt); this.updateLook(dt); this.updateCombos(dt);
+      if (!this.reduced) this.st += dt * this.speed; // the scene's time: the tempo is its speed, still in reduced motion
       for (let i = this.pending.length - 1; i >= 0; i--) { const e = this.pending[i]; if (e.time <= now + 0.02) { this.pending.splice(i, 1); this.hit(e.layer, e.vel); } }
       const ans = this.answer(now);
       if (ans) this.lightAnswer(ans);
@@ -1254,131 +1246,47 @@
         const e = R.ev[R.i];
         if (e.layer === 'chord') this.setSky(this.chordKey(e.deg)); else if (this.hit(e.layer, e.vel == null ? 0.7 : e.vel)) this.lit[e.layer] = 1;
       }
-
-      // S5.2: the whole scene shakes a little on a forced chord or a loud note (offset ox, oy on every transform)
+      for (const p of this.plants) { const kk = this.kicks[p.id]; p.hot = kk ? Math.max(0, 1 - (this.t - kk.last) / 0.6) : 0; if (kk && this.t - kk.t0 > 0.9 && !p.hot) delete this.kicks[p.id]; }
+      this.updateBuildings(now);
+      // a forced chord or a loud note shakes the camera (offset ox, oy on every layer)
       let ox = 0, oy = 0; const sh = this.shake;
       if (sh) { const age = this.t - sh.t0; if (age > 0.4 || this.reduced) this.shake = null; else { const A = sh.amp * this.px * 2.5 * Math.exp(-age * 11); ox = Math.round(A * Math.sin(age * 95)); oy = Math.round(A * 0.7 * Math.cos(age * 71)); } }
       this.ox = ox; this.oy = oy;
-      g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-over"; g.globalAlpha = 1; g.imageSmoothingEnabled = false;
-      if (ox || oy) { g.fillStyle = hex(TOK.night); g.fillRect(0, 0, W, H); g.setTransform(1, 0, 0, 1, ox, oy); }
-      // sky: the previous chord's, the current one fading in over it, the dawn (finale) and its sun, the stars, the sky
-      // layers, then the far city (its windows light up as layers open, all of them at dawn), the wet street
-      const gd = this.ground, bg = this.background(W, H, gd), sf = Math.min(1, ((this.t || 0) - this.skyT) / SKY_FADE), dawn = this.dawnLevel(now);
-      if (sf < 1) g.drawImage(this.sky(this.skyPrevKey || 'night', W, gd), 0, 0);
-      g.globalAlpha = sf; g.drawImage(this.sky(this.skyKey || 'night', W, gd), 0, 0);
-      if (dawn > 0) {
-        g.globalAlpha = dawn * 0.95; g.drawImage(this.sky('dawn', W, gd), 0, 0);
-        const Rs = Math.max(8, Math.round(gd * 0.26)), sy0 = Math.round(gd + Rs * 0.7 - dawn * Rs * 1.15), gl = this.glow([255, 120, 150], 2 * Rs);
-        g.globalCompositeOperation = 'lighter'; g.globalAlpha = dawn; g.drawImage(gl, Math.round(W / 2 - 2 * Rs), sy0 - 2 * Rs); g.globalCompositeOperation = 'source-over';
-        g.drawImage(this.sun(Rs), Math.round(W / 2 - Rs), sy0 - Rs);
+      const world = this.updateWorld(dt, now), cam = this.camera(W, H);
+      this.place(cam, now); this.now_ = now; this.ans = ans;
+      for (const L of STACK) {
+        g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; g.imageSmoothingEnabled = false;
+        L.draw(g, world, cam, this);
       }
-      g.globalAlpha = 1; this.drawSky(g, W, gd); // S5.8 sky layers
-      g.drawImage(this.skyline(W, Math.max(0.03 + 0.11 * this.plants.length, dawn)), 0, bg.top);
-      g.drawImage(bg.ground, 0, gd); this.drawGround(g, W, H, gd);
-      const px = this.px, red = this.reduced, fs = Math.round(Math.max(11 * dpr, px * 2.6));
-      this.dpr = dpr;
-      this.drawReflections(g, W, H, gd, R);
-      this.drawCombos(g, W, H, gd, 'back'); // S5.10 combos behind the plants
-      // the street's kerb flashes on the beat (stronger on beats 1 and 3); still in reduced motion and during the finale
-      const bp = red || R ? null : this.beatPhase(now);
-      if (bp || dawn > 0) {
-        g.globalCompositeOperation = 'lighter';
-        if (dawn > 0) { g.fillStyle = `rgba(255,122,79,${(dawn * 0.12).toFixed(3)})`; g.fillRect(0, gd, W, H - gd); }
-        if (bp) { const a = (bp.strong ? 0.3 : 0.16) * Math.exp(-bp.ph * 5); this.pulse = a; g.fillStyle = rgb(TOK.pink, 1, Math.min(1, a * 2.2)); g.fillRect(0, gd, W, Math.max(2, px)); g.fillStyle = rgb(TOK.pink, 1, a * 0.16); g.fillRect(0, gd, W, H - gd); }
-        g.globalCompositeOperation = 'source-over';
-      }
-      const all = this.plants.concat(this.rares), sy = {};
-      for (const p of all) {
-        const s = this.sprite(p, px), e = this.energy[p.id] || 0, gy = (sy[p.id] = p.rare ? 1 : this.growth(p.id, now));
-        const a = p.look, kk = this.kicks[p.id], since = kk ? this.t - kk.t0 : 9, hot = (p.hot = kk ? Math.max(0, 1 - (this.t - kk.last) / 0.6) : 0);
-        if (kk && since > 0.9 && !hot) delete this.kicks[p.id];
-        const sq = this.squash[p.id], sqA = sq ? this.t - sq.t0 : 9; if (sq && (sqA > 0.9 || red)) delete this.squash[p.id];
-        const squash = red || !sq ? 0 : -sq.amp * Math.exp(-sqA * 7) * Math.cos(sqA * 22); // S5.2: a note squashes it, then it stretches back
-        const spring = red || !kk ? 0 : Math.exp(-since * 6), bounce = (p.bounce = 0.14 * spring * Math.cos(since * 20) + squash);
-        const sz = a ? this.sizeK(p.id, a.size) : 1;
-        let sway = 0;
-        if (!red) {
-          if (a) {
-            const ph = (this.swPh[p.id] = (this.swPh[p.id] == null ? p.phase : this.swPh[p.id]) + dt * (0.45 + 1.4 * a.pace) * (0.7 + 0.6 * a.sway));
-            sway = (0.015 + 0.075 * a.sway) * (1 + e * 1.5) * (1 + 2.5 * hot) * (Math.sin(ph) + 0.3 * Math.sin(2.7 * ph + p.phase)) + 0.2 * spring * Math.sin(since * 16);
-          } else sway = (Math.sin(this.t * 0.7 + p.phase) * 0.05 + Math.sin(this.t * 1.9 + p.phase * 2) * 0.015) * (1 + e * 1.5);
-        }
-        const k = red ? 1 : 1 + e * 0.05, wide = p.rare ? 1e9 : Math.min(p.roomL / s.l, p.roomR / s.r); // never over a neighbour (phone)
-        const cz = p.rare ? 0 : this.ceilAt(p.x, s.w * 0.35), under = cz > (this.ceil || 0), tall = p.rare ? 1e9 : (p.y - (this.H || 0) * cz) / s.h; // never into the stage HUD (S6.6: shrinks under a corner)
-        const szc = (p.sz = Math.min(sz, under ? Math.max(0.35, tall / k) : Math.max(1, tall / k))), kx = (p.kx = Math.min(k * szc * (1 - 0.6 * bounce), wide)), ky = (p.ky = k * szc * (1 + bounce));
-        p.sway = sway; p.k = k; p.gy = gy; // the Réponse leaves follow the plant (drawAnswer)
-        if (a && a.halo > 0.03 && gy > 0.01) { // S4.6 halo (Espace): a soft aura, radius in 8 cached steps
-          const Rg = Math.round(px * (8 + 18 * Math.round(a.halo * 7) / 7)), gl = this.glow(p.col, Rg);
-          g.setTransform(1, 0, 0, 1, ox, oy); g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, (0.12 + 0.6 * a.halo) * (R ? 0.3 + 0.7 * Math.min(1, this.lit[p.id] || 0) : 1));
-          g.drawImage(gl, p.x - Rg, p.y - this.heightCells(p) * px * p.sz * gy * 0.6 - Rg);
-          g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
-        }
-        if (!p.rare && !R) this.drawEcho(g, p, s, kx, ky, sway, gy, ox, oy); // S5.8 Écho: ghost copies behind it
-        if (R && !p.rare) g.globalAlpha = 0.3 + 0.7 * Math.min(1, this.lit[p.id] || 0); // finale: dark until its layer plays
-        if (a && a.on < 0.99) g.globalAlpha *= 0.3 + 0.7 * a.on; // S5.8: its layer switched off = a dim plant
-        if (p.kind === 'bell' && !red && !hot) { const b = Math.sin(this.t * 53 + p.phase) + Math.sin(this.t * 7.3) + Math.sin(this.t * 2.1 + 1); if (b > 2.2) g.globalAlpha *= 0.55; } // S6.5: the neon sign buzzes
-        if (gy > 0.01) {
-          g.setTransform(kx, 0, -sway * ky * gy, ky * gy, p.x + ox, p.y + oy); g.drawImage(s.cv, -s.w / 2, -s.h); // shear from the base: the element bends, its foot stays put; it grows from there
-          const lit = Math.max(0.5 * hot, 0.75 * (this.zap[p.id] || 0), p.rare ? 0 : 0.3 * dawn * (R ? Math.min(1, this.lit[p.id] || 0) : 1)); // S4.6: lit while touched; S5.2: a flash on each note; S6.5: all lit at dawn
-          if (lit > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, lit); g.drawImage(s.cv, -s.w / 2, -s.h); g.globalCompositeOperation = 'source-over'; }
-          if (hot > 0.02) this.energy[p.id] = Math.max(this.energy[p.id] || 0, 0.55 * hot);
-        }
-        g.globalAlpha = 1;
-        if (!p.rare) { const lb = this.label(p, fs, Math.min(this.slotW * 0.96, 2 * Math.min(p.roomL, p.roomR) - 2)); g.setTransform(1, 0, 0, 1, ox, oy); g.globalAlpha = Math.min(1, 0.85 + 0.15 * hot) * Math.min(1, gy * 2); g.drawImage(lb, Math.round(p.x - lb.width / 2), Math.round(p.y + px * 1.5)); if (hot > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = hot; g.drawImage(lb, Math.round(p.x - lb.width / 2), Math.round(p.y + px * 1.5)); g.globalCompositeOperation = 'source-over'; } g.globalAlpha = 1; }
-      }
-      if (ans) this.drawAnswer(g, ans);
-      this.drawMark(g, fs);
-      g.setTransform(1, 0, 0, 1, ox, oy);
-      g.globalCompositeOperation = 'lighter';
-      for (const p of all) {
-        let e = this.energy[p.id] || 0;
-        if (p.rare) e = Math.max(e, red ? 0.35 : 0.25 + 0.25 * Math.sin(this.t * 1.3 + p.phase));
-        if (e < 0.02) continue;
-        const Rg = Math.max(16, px * (p.rare ? 8 : 12)), gl = this.glow(p.col, Rg), hC = this.heightCells(p) * sy[p.id] * (p.sz || 1);
-        g.globalAlpha = Math.min(1, e);
-        g.drawImage(gl, p.x - Rg, p.y - hC * px * (p.rare ? 0.6 : 0.85) - Rg);
-      }
-      g.globalAlpha = 1;
-      this.drawSplash(g, now);
-      for (let i = this.parts.length - 1; i >= 0; i--) {
-        const q = this.parts[i];
-        q.life -= dt * (q.decay || 0.8); q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= 0.98; q.vy += (q.g || 2) * px * dt;
-        if (q.life <= 0) { this.parts.splice(i, 1); continue; }
-        g.fillStyle = rgb(q.col, 1, q.life * 0.9);
-        g.fillRect(Math.round(q.x / px) * px, Math.round(q.y / px) * px, px * q.s - 1, px * q.s - 1);
-      }
-      g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
-      this.drawRain(g, W, H, 1 - dawn); // S6.5 the rain, which stops at dawn
-      this.drawFront(g, W, H, gd); this.drawCombos(g, W, H, gd, 'front'); g.setTransform(1, 0, 0, 1, 0, 0); this.drawPost(g, W, H); // S5.8 scene layers in front, then the filters
-      g.imageSmoothingEnabled = true; // nearest-neighbour above: crisp LEDs, cheaper shear
+      g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; g.imageSmoothingEnabled = true;
       for (const id in this.zap) this.zap[id] = Math.max(0, this.zap[id] - dt * 3.5);
-      for (const id in this.energy) this.energy[id] = Math.max(0, this.energy[id] - dt * (red ? 1.2 : 1.6));
+      if (this.band) for (const id in this.band) { this.band[id].a -= dt * 3; if (this.band[id].a <= 0) delete this.band[id]; }
+      for (const id in this.energy) this.energy[id] = Math.max(0, this.energy[id] - dt * (this.reduced ? 1.2 : 1.6));
       for (const id in this.lit) this.lit[id] = Math.max(0, this.lit[id] - dt * 0.35);
-      if (!all.length) { g.font = `${fs * 1.3}px VT323, monospace`; g.fillStyle = hex(TOK.pink); g.textAlign = 'center'; g.shadowColor = hex(TOK.pink); g.shadowBlur = fs * 0.6; g.fillText('Ouvre une couche pour rallumer la ville', W / 2, H * 0.42); g.shadowBlur = 0; g.textAlign = 'start'; }
       const ms = this.now() - t0;
       this.times.push(ms); if (this.times.length > 240) this.times.shift();
       this.frames++;
+      if (this.hooks.length) { const info = { W, H, dpr, dt, ms, reduced: this.reduced, juice: this.JUICE }; for (const f of this.hooks.slice()) { try { f(g.canvas, world, info); } catch (e) { if (!this.hookErr) { this.hookErr = 1; console.error(e); } } } }
       return true;
     },
-    // ---- S4.2 « Réponse » on the Melody plant ----
+    // ---- S4.2 « Réponse » on the Melody's building (its neon sign) ----
     LEAF_OK: [143, 227, 160], LEAF_BAD: [235, 84, 64],
-    answer(now) { const P = AMB.puzzles; return !this.free && P && P.view && this.plants.some((q) => q.id === 'bells') ? P.view(now) : null; },
-    // its light: blinks with the phrase, steady while it waits, fades after the answer
+    answer(now) { const P = AMB.puzzles; return !this.free && P && P.view && this.plants.some((qq) => qq.id === 'bells') ? P.view(now) : null; },
     lightAnswer(v) {
       const e = v.phase === 'call' ? (this.reduced ? 0.6 : 0.4 + 0.5 * Math.abs(Math.sin((this.t || 0) * 7)))
         : v.phase === 'answer' ? 0.6 : Math.max(0, 0.5 - v.age / 6);
       this.energy.bells = Math.max(this.energy.bells || 0, e);
     },
-    // one lamp per note of the phrase (S6.5: on brackets up the sign's pole; were leaves), alternately left and right:
-    // dim = to play, green = right, red = wrong. They keep a readable size (≥ 4 CSS px a cell) even on a small element:
-    // the pole then reaches up to carry them.
+    // one lamp per note of the phrase, on brackets up the sign's pole, alternately left and right: dim = to play, green =
+    // right, red = wrong. They keep a readable size (≥ 4 CSS px a cell) even on a small sign: the pole then reaches up.
     drawAnswer(g, v) {
-      const p = this.plants.find((q) => q.id === 'bells'); if (!p) return 0;
-      const gy = p.gy == null ? 1 : p.gy; if (gy < 0.05) return 0; // S4.5w: a plant still growing carries its leaves up
-      const px = this.px, lp = Math.max(px, Math.round(4 * (this.dpr || 1))), gap = lp >= 4 ? 1 : 0, k = p.k || 1;
-      const h = this.heightCells(p) * px * gy * (p.sz || 1), room = Math.max(h, p.y - (this.H || 0) * this.ceilAt(p.x, 0) - 3 * lp);
+      const p = this.plants.find((qq) => qq.id === 'bells'); if (!p) return 0;
+      const gy = p.gy == null ? 1 : p.gy; if (gy < 0.05) return 0; // a sign still being built carries its lamps up
+      const lp = Math.max(this.px, Math.round(4 * (this.dpr || 1))), gap = lp >= 4 ? 1 : 0, k = p.k || 1;
+      // in screen pixels (crisp lamps at any camera scale)
+      const h = this.sprite(p, this.px).h * gy * k, room = Math.max(h, p.sy - (this.H || 0) * this.ceilAt(p.sx, 0) - 3 * lp);
       const y0 = Math.max(h * 0.2, 2 * lp), top = Math.min(room, Math.max(h * 0.88, y0 + (v.len - 1) * 2.4 * lp));
-      g.setTransform(k, 0, -(p.sway || 0) * k * gy, k, p.x + (this.ox || 0), p.y + (this.oy || 0)); // bends with the plant
+      g.setTransform(1, 0, 0, 1, Math.round(p.sx), Math.round(p.sy));
       if (top > h * 0.9) { g.fillStyle = rgb(p.col, 0.7, 0.6); g.fillRect(-Math.floor(lp / 4), -Math.round(top), Math.max(1, Math.round(lp / 2)), Math.round(top - h * 0.85)); }
       let n = 0;
       for (let i = 0; i < v.len; i++) {
@@ -1391,13 +1299,12 @@
       g.setTransform(1, 0, 0, 1, 0, 0);
       return n;
     },
-    // S5.3: the Réponse tier reached (puzzles.mark(): 0 = Phrases, one more per tier), as LED marks beside the Melody
-    // plant's name; the number is the game's, only these few lines draw it (a later skin draws its own)
+    // S5.3: the Réponse tier reached (puzzles.mark()), as LED marks under the Melody's caption
     drawMark(g, fs) {
-      const P = AMB.puzzles, n = this.free ? 0 : Math.min(9, P && P.mark ? P.mark() : 0), p = n && this.plants.find((q) => q.id === 'bells');
+      const P = AMB.puzzles, n = this.free ? 0 : Math.min(9, P && P.mark ? P.mark() : 0), p = n && this.plants.find((qq) => qq.id === 'bells');
       if (!p) return 0;
-      const lp = Math.max(2, Math.round(fs * 0.3)), y = Math.round(p.y + this.px * 1.5 + fs * 1.15), x0 = Math.round(p.x - (n * lp * 1.6) / 2);
-      g.setTransform(1, 0, 0, 1, this.ox || 0, this.oy || 0); g.fillStyle = rgb(p.col);
+      const lp = Math.max(2, Math.round(fs * 0.3)), y = Math.round((p.sy != null ? p.sy : p.y) + this.px * 1.5 + fs * 1.15), x0 = Math.round((p.sx != null ? p.sx : p.x) - (n * lp * 1.6) / 2);
+      g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = rgb(p.col);
       for (let i = 0; i < n; i++) g.fillRect(x0 + Math.round(i * lp * 1.6), y, lp, lp);
       return n;
     },
@@ -1419,23 +1326,420 @@
       bus.on('note', (n) => { if (n) { this.onEvent(n.layer, n.time, n.vel); this.onSplash('note', n); } });
       bus.on('grain', (n) => n && this.onEvent('grains', n.time, n.vel));
       bus.on('perc', (n) => { if (n) { this.onEvent('perc', n.time, n.vel); this.onSplash('perc', n); } });
-      bus.on('live', (n) => { this.onSplash('live', n); if (n && this.running()) { this.starNotes.push({ p: pitchK(n.midi) }); if (this.starNotes.length > 12) this.starNotes.shift(); } }); // S5.2: the player's notes, held until 'liveOff'; S5.10: the constellation's stars
+      bus.on('live', (n) => { this.onSplash('live', n); if (n && this.running()) { this.starNotes.push({ p: pitchK(n.midi) }); if (this.starNotes.length > 12) this.starNotes.shift(); } });
       bus.on('liveOff', (n) => n && this.release(n.id, n.time));
       bus.on('panic', () => this.release(null));
       bus.on('chord', (c) => {
         if (!c) return; this.onEvent('drone', c.time, 0.6); this.onEvent('pad', c.time, 0.3); this.onSplash('chord', c);
         if (this.running() && !this.replay) { this.skyQ.push({ time: c.time || 0, key: this.chordKey(c.deg) }); if (this.skyQ.length > 8) this.skyQ.shift(); }
       });
-      for (const n in SCENE) if (SCENE[n].ev) bus.on(SCENE[n].ev, () => { if (this.running()) this.kick[n] = 1; }); // S5.8: Gel, section
-      bus.on('game:puzzle', (e) => { if (e && e.peg && e.peg.state === 'ok') this.onEvent('bells', 0, 0.9); }); // a right note: a spark
+      for (const n in SCENE) if (SCENE[n].ev) bus.on(SCENE[n].ev, () => { if (this.running()) this.kick[n] = 1; });
+      bus.on('game:puzzle', (e) => { if (e && e.peg && e.peg.state === 'ok') this.onEvent('bells', 0, 0.9); });
       ['game:unlock', 'game:reset', 'game:discovery'].forEach((ev) => bus.on(ev, () => { this.sig = null; }));
     },
+  };
+
+  // ======================================================================================================================
+  // THE CORE LAYERS, back to front. Each draws with the world and the camera only (+ gv's caches and helpers).
+  // sky (z 0): the chord's sky cross-fading, the dawn and its sun, the hue flash, aurora, searchlights, clouds, the song
+  addLayer({ id: 'sky', z: 0, draw(g, w, cam, v) {
+    const W = cam.W, H = cam.H, gd = cam.gd, px = cam.px, T = v.st, red = v.reduced, sf = Math.min(1, ((v.t || 0) - v.skyT) / SKY_FADE), dawn = w.dawn;
+    g.fillStyle = hex(TOK.night); g.fillRect(0, 0, W, H);
+    g.setTransform(1, 0, 0, 1, cam.ox, cam.oy);
+    const sh = Math.max(gd, H * 0.2) + 4 * px; // the sky reaches under the street's edge (the camera may pull back)
+    if (sf < 1) g.drawImage(v.sky(v.skyPrevKey || 'night', W, gd), 0, 0, W, sh);
+    g.globalAlpha = sf; g.drawImage(v.sky(v.skyKey || 'night', W, gd), 0, 0, W, sh);
+    if (dawn > 0) {
+      g.globalAlpha = dawn * 0.95; g.drawImage(v.sky('dawn', W, gd), 0, 0, W, sh);
+      const Rs = Math.max(8, Math.round(Math.min(gd * 0.26, W * 0.22))), sy0 = Math.round(gd + Rs * 0.7 - dawn * Rs * 1.15), gl = v.glow([255, 120, 150], 2 * Rs);
+      g.globalCompositeOperation = 'lighter'; g.globalAlpha = dawn; g.drawImage(gl, Math.round(W / 2 - 2 * Rs), sy0 - 2 * Rs); g.globalCompositeOperation = 'source-over';
+      g.drawImage(v.sun(Rs), Math.round(W / 2 - Rs), sy0 - Rs);
+    }
+    g.globalAlpha = 1;
+    let a;
+    if ((a = v.kick.hue || 0) > 0.02) { g.fillStyle = `rgba(255,200,245,${(0.16 * a).toFixed(3)})`; g.fillRect(0, 0, W, gd); }
+    g.globalCompositeOperation = 'lighter';
+    if ((a = v.amt('aurora')) > 0.03) {
+      const cv = v.fx('aurora', W, gd, (ww, h) => {
+        const c = v.canvas(ww / 4, h * 0.55 / 4), x = c.getContext('2d');
+        for (let i = 0; i < c.width; i++) for (let r = 0; r < 2; r++) {
+          const y = c.height * (0.35 + 0.22 * Math.sin(i * 0.035 + r * 2.1) + 0.08 * Math.sin(i * 0.11 + r)), hgt = c.height * (0.25 + 0.15 * Math.sin(i * 0.05 + r * 3));
+          const grd = x.createLinearGradient(0, y - hgt, 0, y + 4); grd.addColorStop(0, 'rgba(63,240,255,0)'); grd.addColorStop(0.8, r ? 'rgba(255,63,164,0.45)' : 'rgba(63,240,255,0.45)'); grd.addColorStop(1, 'rgba(63,240,255,0)');
+          x.fillStyle = grd; x.fillRect(i, y - hgt, 1, hgt + 4);
+        }
+        return c;
+      });
+      const dx = red ? 0 : Math.sin(T * 0.25) * W * 0.06;
+      g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.15 + 0.85 * a);
+      g.drawImage(cv, dx - W * 0.06, gd * 0.04, W * 1.12, gd * 0.55); g.imageSmoothingEnabled = false;
+    }
+    if ((a = v.amt('rays')) > 0.03) { // searchlights sweeping the sky from the city (Blade Runner)
+      const bh = Math.round(gd * 1.1), cv = v.fx('beam', W, gd, () => {
+        const c = v.canvas(64, 128), x = c.getContext('2d'), grd = x.createLinearGradient(0, 128, 0, 0);
+        grd.addColorStop(0, 'rgba(210,235,255,0.55)'); grd.addColorStop(1, 'rgba(210,235,255,0)');
+        x.fillStyle = grd; x.beginPath(); x.moveTo(30, 128); x.lineTo(34, 128); x.lineTo(64, 0); x.lineTo(0, 0); x.closePath(); x.fill();
+        return c;
+      });
+      const n = 2 + Math.round(a * 3), bw = Math.round(W * 0.09);
+      g.imageSmoothingEnabled = true;
+      for (let i = 0; i < n; i++) {
+        const bx = cam.x(0.6, W * (0.12 + 0.76 * ((i * 0.618 + 0.2) % 1))), an = (red ? 0.25 : Math.sin(T * (0.25 + 0.07 * i) + i * 2.1)) * 0.5, c = Math.cos(an), sn = Math.sin(an);
+        g.setTransform(c, sn, -sn, c, bx, gd * 0.92 + cam.oy); g.globalAlpha = Math.min(1, 0.5 * a);
+        g.drawImage(cv, -bw / 2, -bh, bw, bh);
+      }
+      g.setTransform(1, 0, 0, 1, cam.ox, cam.oy); g.imageSmoothingEnabled = false;
+    }
+    g.globalCompositeOperation = 'source-over';
+    if ((a = v.amt('clouds')) > 0.03) { // pixel clouds drifting across the sky (Dérive), faster in the wind
+      const cv = v.fx('cloud', W, gd, (ww, h, px2) => {
+        const c = v.canvas(48 * px2, 12 * px2), x = c.getContext('2d'), r = mulberry(5);
+        for (let j = 0; j < 12; j++) for (let i = 0; i < 48; i++) { const d = ((i - 24) / 24) ** 2 + ((j - 8) / (j < 8 ? 7 : 4)) ** 2 + 0.25 * Math.sin(i * 0.7) * (j < 6 ? 1 : 0); if (d < 1 && r() < 0.92) { x.fillStyle = j < 5 ? 'rgba(70,40,100,0.9)' : j < 9 ? 'rgba(120,50,130,0.88)' : 'rgba(190,70,160,0.85)'; x.fillRect(i * px2, j * px2, px2 - 1, px2 - 1); } }
+        return c;
+      });
+      const r = mulberry(17), n = Math.max(1, Math.round(a * 6)), span = W + cv.width, wind = 0.5 + 1.5 * (w.weather.wind || 0);
+      for (let i = 0; i < n; i++) {
+        const x0 = r() * span, y = gd * (0.08 + 0.4 * r()), sc = 0.6 + 0.6 * r(), vv = (6 + 10 * r()) * px * (0.3 + a) * wind;
+        const x = ((x0 + T * vv) % span + span) % span - cv.width;
+        g.globalAlpha = Math.min(1, 0.12 + 0.4 * a); g.drawImage(cv, Math.round(x), Math.round(y), Math.round(cv.width * sc), Math.round(cv.height * sc));
+      }
+    }
+    if ((a = v.sc.song || 0) > 0.01) { g.globalAlpha = 0.7; g.fillStyle = hex(TOK.cyan); g.fillRect(0, 0, Math.round(W * a), Math.max(2, px)); }
+    if ((a = v.kick.song || 0) > 0.02 && !red) { const x = (1 - a) * W * 1.2 - W * 0.1; g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.35 * a; g.fillStyle = '#ffb0ec'; g.fillRect(Math.round(x), 0, Math.round(W * 0.08), gd); }
+  } });
+  // stars (z 10): a still field of faint stars (gone at dawn), the twinkling ones of the slow movements
+  addLayer({ id: 'stars', z: 10, draw(g, w, cam, v) {
+    const W = cam.W, gd = cam.gd, px = cam.px, T = v.st, red = v.reduced, s = Math.max(1, px - 1), r = mulberry(7), fade = 1 - w.dawn;
+    if (fade < 0.02) return;
+    g.setTransform(1, 0, 0, 1, cam.ox + cam.pan * W * 0.1, cam.oy);
+    const n0 = Math.round(30 + W / px / 6);
+    for (let i = 0; i < n0; i++) { g.globalAlpha = fade * (0.06 + r() * 0.16); g.fillStyle = '#dcc8ff'; g.fillRect(Math.floor(r() * W / px) * px, Math.floor(r() * gd * 0.55 / px) * px, s, s); }
+    const a = v.amt('twinkle'); if (a < 0.03) { g.globalAlpha = 1; return; }
+    g.globalCompositeOperation = 'lighter';
+    const r2 = mulberry(31), n = Math.round(8 + 40 * a);
+    for (let i = 0; i < n; i++) {
+      const x = Math.floor(r2() * W / px) * px, y = Math.floor(r2() * gd * 0.8 / px) * px, ph = r2() * 6.283;
+      g.globalAlpha = fade * Math.min(1, (0.25 + 0.75 * a) * (red ? 0.7 : 0.5 + 0.5 * Math.sin(T * (1.5 + 5 * a) + ph)));
+      g.fillStyle = i % 5 ? '#f4e6ff' : i % 2 ? '#ff5468' : '#bff6ff'; g.fillRect(x, y, s, s);
+      if (a > 0.5 && i % 7 === 0) { g.fillRect(x - px, y, s, s); g.fillRect(x + px, y, s, s); g.fillRect(x, y - px, s, s); g.fillRect(x, y + px, s, s); }
+    }
+  } });
+  // far city (z 20): the skyline behind the street, its windows lit by the population (all at dawn), the fog in front of it
+  addLayer({ id: 'far', z: 20, draw(g, w, cam, v) {
+    const W = cam.W, gd = cam.gd, bg = v.farCity(W, gd), d = 0.35 * (0.5 + w.cam.depth);
+    const k = Math.max(w.dawn, (0.03 + 0.97 * w.population) * (0.4 + 0.6 * w.power)), sk = v.skyline(k);
+    const kk = cam.k(0.35), x = cam.x(d, (W - bg.FW) / 2), y = cam.y(0.35, gd - bg.bandH);
+    g.drawImage(sk, Math.round(x), Math.round(y), Math.round(bg.FW * kk), Math.round(bg.bandH * kk));
+    const fog = w.cam.fog; // the haze of the horizon: the far city sinks into it
+    if (fog > 0.02) {
+      const fv = v.fx('farfog', W, gd, () => { const c = v.canvas(4, 64), x2 = c.getContext('2d'), grd = x2.createLinearGradient(0, 0, 0, 64); grd.addColorStop(0, 'rgba(120,50,140,0)'); grd.addColorStop(0.7, 'rgba(150,60,150,0.55)'); grd.addColorStop(1, 'rgba(170,70,150,0.7)'); x2.fillStyle = grd; x2.fillRect(0, 0, 4, 64); return c; });
+      g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, fog); g.drawImage(fv, 0, Math.round(gd - bg.bandH * 1.2 + cam.oy), W, Math.round(bg.bandH * 1.25)); g.imageSmoothingEnabled = false;
+    }
+  } });
+  // street (z 30): the wet asphalt, the kerb flashing on the beat, the ground ripple, the buildings reflected
+  addLayer({ id: 'street', z: 30, draw(g, w, cam, v) {
+    const W = cam.W, H = cam.H, gd = cam.gd, px = cam.px, T = v.st, red = v.reduced, R = v.replay;
+    const st = v.street(W, H, gd), k = cam.set(g, 1);
+    g.drawImage(st, Math.round((W - st.width) / 2), gd);
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    // reflections: each building upside down under its foot, faded by distance (cached overlay with rain streaks)
+    for (const p of v.plants) {
+      if (!p.vis) continue;
+      const s = v.sprite(p, px), on = p.look ? 0.3 + 0.7 * p.look.on : 1, rk = p.k;
+      g.globalAlpha = 0.4 * on * (R ? 0.3 + 0.7 * Math.min(1, v.lit[p.id] || 0) : 1) * (0.5 + 0.5 * w.power);
+      g.setTransform(rk, 0, 0, -rk * 0.62, p.sx, p.sy + px * rk); g.drawImage(s.cv, 0, s.h - p.vis, s.w, p.vis, -s.w / 2, -p.vis, s.w, p.vis);
+    }
+    g.setTransform(1, 0, 0, 1, cam.ox, cam.oy); g.globalAlpha = 1;
+    const sgd = cam.y(1, gd) - cam.oy, wet = v.fx('wet', W, H - gd, (ww, h, px2) => {
+      const c = v.canvas(ww, Math.max(1, h)), x = c.getContext('2d'), grd = x.createLinearGradient(0, 0, 0, Math.max(1, h));
+      grd.addColorStop(0, rgb(TOK.ground, 1, 0.05)); grd.addColorStop(0.6, rgb(TOK.ground, 1, 0.6)); grd.addColorStop(1, rgb(TOK.ground, 1, 0.95));
+      x.fillStyle = grd; x.fillRect(0, 0, ww, h); x.fillStyle = rgb(TOK.ground, 1, 0.55);
+      for (let y = px2; y < h; y += 2 * px2) x.fillRect(0, y, ww, Math.max(1, px2 >> 1));
+      return c;
+    });
+    g.drawImage(wet, 0, Math.round(sgd), W, Math.round(H - sgd + 2 * px));
+    // the kerb flashes on the beat (stronger on beats 1 and 3); the dawn warms the street
+    g.globalCompositeOperation = 'lighter';
+    if (w.dawn > 0) { g.fillStyle = `rgba(255,122,79,${(w.dawn * 0.12).toFixed(3)})`; g.fillRect(0, sgd, W, H - sgd); }
+    const bp = red || R ? null : w.beat.on ? w.beat : null;
+    v.pulse_ = 0;
+    if (bp) { const a = (bp.strong ? 0.3 : 0.16) * Math.exp(-bp.ph * 5); v.pulse = a; g.fillStyle = rgb(TOK.pink, 1, Math.min(1, a * 2.2)); g.fillRect(0, sgd, W, Math.max(2, px)); g.fillStyle = rgb(TOK.pink, 1, a * 0.16); g.fillRect(0, sgd, W, H - sgd); }
+    else if (red || R) v.pulse = 0;
+    const a = v.amt('ripple'); // the ground ondulates (rhythm feel): two wavy lines of light along its edge
+    if (a >= 0.03) {
+      const A = px * (0.5 + 3 * a), stp = px * 2, s = Math.max(1, px >> 1);
+      for (let j = 0; j < 2; j++) {
+        g.fillStyle = `rgba(63,240,255,${((0.12 + 0.3 * a) / (j + 1)).toFixed(3)})`;
+        const y0 = sgd + px * (2 + 5 * j), f = 0.012 + 0.01 * j;
+        for (let x = 0; x < W; x += stp) g.fillRect(x, Math.round(y0 + Math.sin(x * f + T * (2.5 + j)) * A), stp - 1, s);
+      }
+    }
+    void k;
+  } });
+  addLayer({ id: 'combos-back', z: 35, draw(g, w, cam, v) { if (Object.keys(v.cx).length) v.drawCombos(g, cam.W, cam.H, cam.gd, 'back'); } });
+  // towers (z 40): the back row, then the front row, then the discoveries; each with its halo and its echo ghosts
+  addLayer({ id: 'towers', z: 40, draw(g, w, cam, v) {
+    const px = cam.px, now = v.now_, R = v.replay;
+    const order = v.plants.slice().sort((a, b) => b.row - a.row);
+    for (const p of order) {
+      const a = p.look;
+      if (a && a.halo > 0.03 && p.vis > px) { // S4.6 halo (Espace): a soft aura, radius in 8 cached steps
+        const Rg = Math.round(px * p.k * (8 + 18 * Math.round(a.halo * 7) / 7)), gl = v.glow(p.col, Rg);
+        g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, (0.12 + 0.6 * a.halo) * (0.4 + 0.6 * w.power) * (R ? 0.3 + 0.7 * Math.min(1, v.lit[p.id] || 0) : 1));
+        g.drawImage(gl, p.sx - Rg, p.sy - p.vis * p.k * 0.6 - Rg);
+        g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+      }
+      const e = v.amt('echo');
+      if (e >= 0.1 && !R && p.vis > px) { // S5.8 Écho: faded copies of the building trailing to its right
+        const s = v.sprite(p, px), n = 1 + Math.round(e * 2), d = px * (3 + 7 * e) * p.k;
+        for (let i = n; i >= 1; i--) { g.globalAlpha = Math.min(1, (0.08 + 0.3 * e) / i); g.setTransform(p.k, 0, 0, p.k, p.sx + i * d, p.sy); g.drawImage(s.cv, 0, s.h - p.vis, s.w, p.vis, -s.w / 2, -p.vis, s.w, p.vis); }
+        g.globalAlpha = 1;
+      }
+      v.drawBuilding(g, p, now, false);
+      // the light of its notes over its roof
+      const en = v.energy[p.id] || 0;
+      if (en > 0.02 && p.vis) { const Rg = Math.max(16, px * 12 * p.k), gl = v.glow(p.col, Rg); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, en); g.drawImage(gl, p.sx - Rg, p.sy - p.vis * p.k * 0.85 - Rg); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; }
+    }
+    for (const p of v.rares) { // the discoveries: holograms on the street, breathing
+      const s = v.sprite(p, px), e = v.reduced ? 0.35 : 0.25 + 0.25 * Math.sin(v.t * 1.3 + p.phase);
+      g.setTransform(p.k, 0, 0, p.k, p.sx, p.sy); g.drawImage(s.cv, -s.w / 2, -s.h);
+      const Rg = Math.max(16, px * 8), gl = v.glow(p.col, Rg); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'lighter'; g.globalAlpha = e; g.drawImage(gl, p.sx - Rg, p.sy - s.h * p.k * 0.6 - Rg); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+    }
+  } });
+  // sparks (z 45): the notes' rings and glows, the particles (notes, welding, dust)
+  addLayer({ id: 'sparks', z: 45, draw(g, w, cam, v) {
+    const px = cam.px, dt = v.dt || 0;
+    g.globalCompositeOperation = 'lighter';
+    v.drawSplash(g, v.now_);
+    for (let i = v.parts.length - 1; i >= 0; i--) {
+      const qq = v.parts[i];
+      qq.life -= dt * (qq.decay || 0.8); qq.x += qq.vx * dt; qq.y += qq.vy * dt; qq.vx *= 0.98; qq.vy += (qq.g == null ? 2 : qq.g) * px * dt;
+      if (qq.life <= 0) { v.parts.splice(i, 1); continue; }
+      g.fillStyle = rgb(qq.col, 1, qq.life * 0.9);
+      g.fillRect(Math.round(qq.x / px) * px, Math.round(qq.y / px) * px, px * qq.s - 1, px * qq.s - 1);
+    }
+  } });
+  // traffic (z 50): flying cars in lanes across the sky (head lights, red tails, light trails) and cars down the street;
+  // how many = traffic, how fast = the scene's speed
+  addLayer({ id: 'traffic', z: 50, draw(g, w, cam, v) {
+    const W = cam.W, H = cam.H, gd = cam.gd, px = cam.px, T = v.reduced ? 0 : v.st, tr = w.traffic;
+    if (tr < 0.03) return;
+    g.globalCompositeOperation = 'lighter';
+    const lanes = [[0.42, 0.7, 1], [0.55, 0.85, -1], [0.3, 0.6, -1], [0.66, 1, 1]];
+    const trail = v.fx('trail', 1, 1, () => { const c = v.canvas(64, 1), x2 = c.getContext('2d'), grd = x2.createLinearGradient(0, 0, 64, 0); grd.addColorStop(0, 'rgba(255,51,72,0)'); grd.addColorStop(1, 'rgba(255,70,110,0.5)'); x2.fillStyle = grd; x2.fillRect(0, 0, 64, 1); return c; });
+    lanes.forEach(([yf, d, dir], li) => {
+      const n = Math.round(tr * (li < 2 ? 4 : 3)); if (!n) return;
+      const k = cam.k(d), y = cam.y(d, gd * yf), span = W * 1.4, sp = W * (0.05 + 0.04 * li) * d;
+      for (let i = 0; i < n; i++) {
+        const x = ((ih(li, i) * span + dir * T * sp * (0.8 + 0.4 * ih(i, li))) % span + span) % span - W * 0.2 + cam.pan * d * W, bob = Math.sin(T * 1.3 + i * 2 + li) * px * 0.5;
+        const len = Math.round((8 + 10 * tr) * px * k), cw = Math.max(2, Math.round(3 * px * k)), ch = Math.max(1, Math.round(px * k));
+        const xx = Math.round(x), yy = Math.round(y + bob);
+        g.globalAlpha = 0.9 * d; g.imageSmoothingEnabled = true;
+        if (dir > 0) g.drawImage(trail, xx - len, yy, len, ch); else { g.setTransform(-1, 0, 0, 1, xx + len, 0); g.drawImage(trail, 0, yy, len, ch); g.setTransform(1, 0, 0, 1, 0, 0); }
+        g.imageSmoothingEnabled = false; g.globalAlpha = 1;
+        g.fillStyle = rgb(TOK.wall, 2.2); g.fillRect(xx - (dir > 0 ? cw : 0), yy - ch, cw, 2 * ch);
+        g.fillStyle = '#fff6e0'; g.fillRect(dir > 0 ? xx : xx - ch, yy - ch, ch, ch);
+      }
+    });
+    // the street: headlights coming towards us, tail lights going away
+    const sgd = cam.y(1, gd), lanesG = [[0.3, 1], [0.6, -1]];
+    lanesG.forEach(([yf, dir], li) => {
+      const n = Math.round(tr * 3); if (!n) return;
+      const y = Math.round(sgd + (H - sgd) * yf), span = W * 1.5;
+      for (let i = 0; i < n; i++) {
+        const x = ((ih(i, 40 + li) * span + dir * T * W * 0.12) % span + span) % span - W * 0.25, cw = 6 * px, col = dir > 0 ? [255, 246, 224] : [255, 51, 72];
+        g.fillStyle = rgb(TOK.wall, 1.8); g.fillRect(Math.round(x), y - 2 * px, cw, 2 * px);
+        g.fillStyle = rgb(col, 1, 0.9); g.fillRect(Math.round(dir > 0 ? x + cw - px : x), y - px, px, px);
+        g.fillStyle = rgb(col, 1, 0.18); g.fillRect(Math.round(dir > 0 ? x + cw : x - 10 * px), y - px, 10 * px, Math.max(1, px >> 1));
+      }
+    });
+  } });
+  // weather (z 60): rain (how much, slanted by the wind; it stops at dawn), splashes on the street, lightning
+  addLayer({ id: 'weather', z: 60, draw(g, w, cam, v) { v.drawRain(g, cam, w); } });
+  // front (z 70): street lamps near the camera (the strongest parallax), then the scene's front layers: smog, drones,
+  // snow, frost, lens
+  addLayer({ id: 'front', z: 70, draw(g, w, cam, v) {
+    const W = cam.W, H = cam.H, gd = cam.gd, px = cam.px, T = v.st, red = v.reduced, s = Math.max(1, px - 1);
+    { // two street lamps, near: dark poles, a sodium glow
+      const d = 1.35, ys = cam.y(d, gd + (H - gd) * 0.35), k = cam.k(d), hgt = Math.min(H * 0.55, (ys - H * 0.08)), xs = W < H ? [0.06] : [0.04, 0.96];
+      for (const xf of xs) {
+        const x = Math.round(cam.x(d, W * xf)), lw = Math.max(2, Math.round(1.6 * px * k)), arm = Math.round(6 * px * k) * (xf < 0.5 ? 1 : -1);
+        g.fillStyle = '#05030a'; g.fillRect(x, Math.round(ys - hgt), lw, Math.round(hgt)); g.fillRect(Math.min(x, x + arm), Math.round(ys - hgt), Math.abs(arm) + lw, lw);
+        const gl = v.glow([255, 170, 90], Math.round(14 * px * k)); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.5 + 0.3 * w.power;
+        g.drawImage(gl, x + arm - gl.width / 2, Math.round(ys - hgt) - gl.height / 2 + lw); g.fillStyle = '#ffd9a0'; g.fillRect(x + arm - lw, Math.round(ys - hgt + lw), 2 * lw, lw);
+        g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+      }
+    }
+    g.setTransform(1, 0, 0, 1, cam.ox, cam.oy);
+    let a;
+    if ((a = v.amt('haze')) > 0.03) {
+      const bh = Math.round(H * 0.32), cv = v.fx('haze', W, H, (ww) => {
+        const c = v.canvas(ww / 4, bh / 4), x = c.getContext('2d'), r = mulberry(11);
+        const grd = x.createLinearGradient(0, 0, 0, c.height); grd.addColorStop(0, 'rgba(200,90,190,0)'); grd.addColorStop(0.6, 'rgba(200,90,190,0.38)'); grd.addColorStop(1, 'rgba(120,60,160,0.12)');
+        x.fillStyle = grd; x.fillRect(0, 0, c.width, c.height);
+        for (let i = 0; i < 14; i++) { const cx = r() * c.width, cy = c.height * (0.35 + 0.4 * r()), R2 = c.height * (0.2 + 0.3 * r()), gg = x.createRadialGradient(cx, cy, 0, cx, cy, R2); gg.addColorStop(0, 'rgba(230,120,210,0.32)'); gg.addColorStop(1, 'rgba(230,120,210,0)'); x.fillStyle = gg; x.fillRect(cx - R2, cy - R2, 2 * R2, 2 * R2); }
+        return c;
+      });
+      const off = red ? 0 : ((T * px * 4 * (0.5 + 1.5 * w.weather.wind)) % W + W) % W, y = gd - bh * 0.7;
+      g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.9 * a);
+      g.drawImage(cv, off, y, W, bh); g.drawImage(cv, off - W, y, W, bh); g.imageSmoothingEnabled = false;
+    }
+    g.globalCompositeOperation = 'lighter';
+    if ((a = v.amt('fireflies')) > 0.03) { // drones blinking between the towers
+      const r = mulberry(23), n = Math.round(4 + 26 * a);
+      for (let i = 0; i < n; i++) {
+        const bx = r() * W, by = gd - (0.08 + 0.5 * r()) * gd * 0.7, ph = r() * 6.283, f = 0.3 + r() * 0.5;
+        const x = bx + (red ? 0 : Math.sin(T * f + ph) * 14 * px), y = by + (red ? 0 : Math.cos(T * f * 1.3 + ph) * 6 * px);
+        g.globalAlpha = Math.min(1, (0.3 + 0.7 * a) * (red ? 0.8 : 0.5 + 0.5 * Math.sin(T * 3 * f + ph * 2)));
+        g.fillStyle = i % 3 ? '#ff5468' : '#e8f6ff'; g.fillRect(Math.round(x / px) * px, Math.round(y / px) * px, s, s);
+        g.globalAlpha *= 0.35; g.fillRect(Math.round(x / px) * px - px, Math.round(y / px) * px - px, 3 * px - 1, 3 * px - 1);
+      }
+    }
+    g.globalCompositeOperation = 'source-over';
+    if ((a = v.amt('snow')) > 0.03) {
+      const r = mulberry(41), n = Math.round(6 + 64 * a); g.fillStyle = '#bff6ff';
+      for (let i = 0; i < n; i++) {
+        const x0 = r() * W, y0 = r() * H, vv = (8 + 14 * r()) * px, ph = r() * 6.283;
+        const y = ((y0 + T * vv) % H + H) % H, x = x0 + (red ? 0 : Math.sin(T * 0.8 + ph) * 3 * px);
+        g.globalAlpha = Math.min(1, 0.3 + 0.6 * a); g.fillRect(Math.round(x / px) * px, Math.round(y / px) * px, s, s);
+      }
+    }
+    if ((a = v.amt('frost')) > 0.03) {
+      const cv = v.fx('frost', W, H, (ww, h, px2) => {
+        const c = v.canvas(ww, h), x = c.getContext('2d'), r = mulberry(53), qq = px2 * 2;
+        x.fillStyle = 'rgba(200,235,255,0.85)';
+        for (let k = 0; k < 40; k++) {
+          const side = k % 4; let cx = side === 1 ? ww : side === 3 ? 0 : r() * ww, cy = side === 0 ? 0 : side === 2 ? h : r() * h;
+          let dx = side === 1 ? -1 : side === 3 ? 1 : (r() - 0.5), dy = side === 0 ? 1 : side === 2 ? -1 : (r() - 0.5);
+          for (let i = 0, L = 6 + r() * 16; i < L; i++) { x.fillRect(Math.round(cx / qq) * qq, Math.round(cy / qq) * qq, qq - 1, qq - 1); cx += dx * qq; cy += dy * qq; if (r() < 0.3) dx += (r() - 0.5); if (r() < 0.3) dy += (r() - 0.5); }
+        }
+        return c;
+      });
+      g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = Math.min(1, 0.85 * a); g.drawImage(cv, 0, 0);
+    }
+    if ((a = v.amt('lens')) > 0.03) {
+      const cv = v.fx('lens', W, H, (ww, h, px2) => {
+        const c = v.canvas(ww, h), x = c.getContext('2d'), qq = px2 * 12;
+        x.fillStyle = 'rgba(63,240,255,0.45)';
+        for (let X = 0; X < ww; X += qq) for (let Y = 0; Y < h; Y += px2 * 3) x.fillRect(X, Y, Math.max(1, px2 >> 1), Math.max(1, px2 >> 1));
+        for (let Y = 0; Y < h; Y += qq) for (let X = 0; X < ww; X += px2 * 3) x.fillRect(X, Y, Math.max(1, px2 >> 1), Math.max(1, px2 >> 1));
+        return c;
+      });
+      const sv = v.sc.lens || 0, k = v.kick.lens || 0;
+      g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = Math.min(1, 0.5 * Math.min(1, 2 * sv) + 0.4 * k); g.drawImage(cv, 0, 0);
+      const staff = Math.max(0, 2 * sv - 1); // Composer: the five lines of a staff across the sky
+      if (staff > 0.02) { g.globalAlpha = Math.min(1, 0.35 * staff + 0.3 * k); g.fillStyle = '#ff9ee0'; for (let i = 0; i < 5; i++) g.fillRect(0, Math.round(gd * 0.18 + i * px * 4), W, Math.max(1, px >> 1)); }
+    }
+  } });
+  addLayer({ id: 'combos-front', z: 75, draw(g, w, cam, v) { if (Object.keys(v.cx).length) v.drawCombos(g, cam.W, cam.H, cam.gd, 'front'); } });
+  // post (z 80): full-screen filters: the tape band and wobble (Cassette), grain and vignette (Usure), the veil when
+  // stopped, a flash when it starts, the lightning, the CRT band
+  addLayer({ id: 'post', z: 80, draw(g, w, cam, v) {
+    const W = cam.W, H = cam.H, px = cam.px, T = v.st, red = v.reduced;
+    let a;
+    if ((a = v.amt('tape')) > 0.03) {
+      const bh = Math.round(H * 0.07), cv = v.fx('tape', W, H, (ww) => {
+        const c = v.canvas(ww / 4, bh), x = c.getContext('2d'), r = mulberry(61);
+        const grd = x.createLinearGradient(0, 0, 0, bh); grd.addColorStop(0, 'rgba(255,255,255,0)'); grd.addColorStop(0.5, 'rgba(220,230,255,0.25)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+        x.fillStyle = grd; x.fillRect(0, 0, c.width, bh);
+        for (let i = 0; i < 60; i++) { x.fillStyle = ['rgba(255,60,60,0.5)', 'rgba(60,255,200,0.5)', 'rgba(80,120,255,0.5)'][i % 3]; x.fillRect(r() * c.width, bh * (0.3 + 0.4 * r()), 2 + r() * 10, 1); }
+        return c;
+      });
+      const y = red ? H * 0.6 : ((T * H * 0.12) % (H + bh)) - bh;
+      g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, 0.2 + 0.7 * a); g.imageSmoothingEnabled = true;
+      g.drawImage(cv, 0, Math.round(y), W, bh); g.imageSmoothingEnabled = false; g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+      if (a > 0.2) for (let i = 0; i < 3; i++) { // tracking lines (no read-back of the canvas: it would stall)
+        const sy = Math.round(((T * (40 + 30 * i) * px + i * H / 3) % H) / px) * px, dx = red ? 0 : Math.round(Math.sin(T * 9 + i * 2) * a * px * 6);
+        g.globalAlpha = Math.min(1, 0.5 * a); g.fillStyle = 'rgba(0,0,0,0.8)'; g.fillRect(0, sy, W, px);
+        g.globalCompositeOperation = 'lighter'; g.fillStyle = i % 2 ? 'rgba(255,70,90,0.6)' : 'rgba(70,200,255,0.6)'; g.fillRect(dx, sy + px, W, Math.max(1, px >> 1)); g.globalCompositeOperation = 'source-over';
+      }
+      g.globalAlpha = 1;
+    }
+    if ((a = v.amt('grain')) > 0.03) {
+      const nw = Math.ceil(W / (2 * px)), nh = Math.ceil(H / (2 * px)), f = red ? 0 : Math.floor(T * 14) % 4;
+      const cv = v.fx('grain' + f, W, H, () => {
+        const c = v.canvas(nw, nh), x = c.getContext('2d'), d = x.createImageData(nw, nh), r = mulberry(70 + f);
+        for (let i = 0; i < d.data.length; i += 4) { const vv = r(), on = vv < 0.18, l = vv < 0.09 ? 255 : 0; d.data[i] = d.data[i + 1] = d.data[i + 2] = l; d.data[i + 3] = on ? 90 : 0; }
+        x.putImageData(d, 0, 0); return c;
+      });
+      g.globalAlpha = Math.min(1, 0.15 + 0.85 * a); g.drawImage(cv, 0, 0, W, H);
+      if (v.post2d !== false) { g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.75 * a); g.drawImage(v.vignette(W, H), 0, 0, W, H); g.imageSmoothingEnabled = false; }
+    }
+    const pl = v.sc.play == null ? 1 : v.sc.play, pk = v.kick.play || 0;
+    if (pl < 0.98) { g.globalAlpha = 1; g.fillStyle = `rgba(4,2,10,${(0.3 * (1 - pl)).toFixed(3)})`; g.fillRect(0, 0, W, H); }
+    if (pk > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 1; g.fillStyle = `rgba(255,150,230,${(0.12 * pk).toFixed(3)})`; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over'; }
+    const fl = w.pulse.flash; // lightning: the whole sky white-violet, a bolt down to the city
+    if (fl > 0.02 && !red) {
+      g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, fl * 0.45); g.fillStyle = '#c8b8ff'; g.fillRect(0, 0, W, cam.gd);
+      const b = v.bolt; if (b && fl > 0.25) { const r = mulberry(b.seed + 1); let x = b.x * W, y = 0; g.globalAlpha = Math.min(1, fl * 1.4); g.fillStyle = '#f4f0ff'; while (y < cam.gd * 0.8) { const ny = y + px * (3 + r() * 5), nx = x + (r() - 0.5) * px * 10; for (let i = 0; i < 6; i++) g.fillRect(Math.round((x + (nx - x) * i / 6) / px) * px, Math.round((y + (ny - y) * i / 6) / px) * px, px, px); x = nx; y = ny; } }
+      g.globalCompositeOperation = 'source-over';
+    }
+    if (v.post2d !== false) v.drawCrt(g, W, H);
+    g.globalAlpha = 1;
+  } });
+  // scene HUD (z 90): the captions under the buildings (above the roofs of the back row), the Réponse lamps, the tier
+  // marks, the line that says what to do when the city is empty
+  addLayer({ id: 'hud', z: 90, draw(g, w, cam, v) {
+    const px = cam.px, fs = Math.round(Math.max(11 * (v.dpr || 1), px * 2.6));
+    for (const p of v.plants) {
+      const lb = v.label(p, fs, Math.min(v.slotW * 0.96, 2 * Math.min(p.roomL, p.roomR) - 2) * (p.row ? 1.4 : 1)), hot = p.hot || 0, off = p.look ? 1 - p.look.on : 0;
+      const y = p.row ? Math.round(p.sy - Math.max(p.vis, 6 * px) * p.k - lb.height - px) : Math.round(p.sy + px * 1.5);
+      g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = Math.min(1, 0.85 + 0.15 * hot) * (1 - 0.5 * off) * (p.row ? 0.8 : 1); g.drawImage(lb, Math.round(p.sx - lb.width / 2), y);
+      if (hot > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = hot; g.drawImage(lb, Math.round(p.sx - lb.width / 2), y); g.globalCompositeOperation = 'source-over'; }
+    }
+    g.globalAlpha = 1;
+    if (v.ans) v.drawAnswer(g, v.ans);
+    v.drawMark(g, fs);
+    if (!v.plants.length && !v.rares.length) { g.setTransform(1, 0, 0, 1, 0, 0); g.font = `${Math.round(fs * 1.3)}px VT323, monospace`; g.fillStyle = hex(TOK.pink); g.textAlign = 'center'; g.shadowColor = hex(TOK.pink); g.shadowBlur = fs * 0.6; g.fillText('Ouvre une couche pour rallumer la ville', cam.W / 2, cam.H * 0.42); g.shadowBlur = 0; g.textAlign = 'start'; }
+  } });
+
+  // rain: streaks drawn directly (far and near, slanted by the wind), falling with the scene's time; splashes on the
+  // street; how many = weather.rain (it stops at dawn)
+  gv.drawRain = function (g, cam, w) {
+    const k = w.weather.rain; if (k < 0.02) return 0;
+    const W = cam.W, H = cam.H, px = cam.px, T = this.st, key = W + 'x' + H + '|' + px;
+    if (!this.rain || this.rain.key !== key) { // [x0, y0, length, speed] per streak, by colour
+      const r = mulberry(131), n = Math.round(90 * Math.min(2.5, Math.max(0.6, W / (this.dpr || 1) / 1000))), by = [[], [], []];
+      for (let i = 0; i < n; i++) { const z = r() < 0.6 ? 0.55 : 1, L = Math.round(px * (3 + 6 * z)); by[i % 13 === 0 ? 2 : z < 1 ? 0 : 1].push([r() * W, r() * H, L, H * (0.55 + 0.5 * z), r()]); }
+      this.rain = { key, by, n, lw: Math.max(1, Math.round(px * 0.34)), cols: [rgb(TOK.rain, 1, 0.2), rgb(TOK.rain, 1, 0.34), rgb(TOK.pink, 1, 0.4)] };
+    }
+    const Rn = this.rain, lw = Rn.lw, slant = 0.06 + 0.5 * (w.weather.wind || 0), mx = cam.pan * W * 1.2;
+    g.setTransform(1, 0, 0, 1, cam.ox, cam.oy);
+    g.globalAlpha = Math.min(1, k * 1.2); g.lineWidth = lw; g.lineCap = 'butt';
+    for (let c = 0; c < 3; c++) { // one path per colour: each streak a line, slanted by the wind
+      g.strokeStyle = Rn.cols[c]; g.beginPath();
+      for (const [x0, y0, L, vv, keep] of Rn.by[c]) {
+        if (keep > k) continue; // lighter rain: fewer streaks
+        const d = y0 + T * vv, y = (d % (H + L)) - L, x = ((x0 - d * slant + mx) % W + W) % W;
+        g.moveTo(x, y); g.lineTo(x - L * slant, y + L);
+      }
+      g.stroke();
+    }
+    const qq = mulberry(Math.floor(T * 9)), gd = cam.y(1, cam.gd) - cam.oy, s = Math.max(1, px >> 1);
+    g.fillStyle = Rn.cols[1]; g.globalAlpha = Math.min(1, k * 0.9);
+    for (let i = 0, n = Math.round(14 * k); i < n; i++) g.fillRect(Math.round(qq() * W / px) * px, Math.round((gd + px * 2 + qq() * (H - gd - px * 3)) / px) * px, 2 * px, s);
+    g.globalAlpha = 1;
+    return Rn.n;
+  };
+  // S6.5 a discreet cathode-ray screen (strength = JUICE; off in reduced motion): scanlines and violet vignette are css
+  // (body.city .stage::after, opacity --crt), the colour fringes are baked in the sprites; here only a faint band
+  gv.drawCrt = function (g, W, H) {
+    const k = this.crt(); if (!k) return 0;
+    const bh = Math.round(H * 0.1), y = ((this.st * H * 0.08) % (H + 3 * bh)) - 2 * bh;
+    g.globalCompositeOperation = 'lighter'; g.fillStyle = '#b8a0ff'; g.globalAlpha = Math.min(1, 0.03 * k); g.fillRect(0, Math.round(y), W, bh);
+    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+    return 1;
+  };
+  gv.vignette = function (W, H) {
+    return this.fx('vignette', W, H, (w, h) => {
+      const c = this.canvas(w / 4, h / 4), x = c.getContext('2d'), gg = x.createRadialGradient(c.width / 2, c.height / 2, Math.min(c.width, c.height) * 0.3, c.width / 2, c.height / 2, Math.max(c.width, c.height) * 0.62);
+      gg.addColorStop(0, 'rgba(12,0,24,0)'); gg.addColorStop(1, 'rgba(12,0,24,0.9)'); x.fillStyle = gg; x.fillRect(0, 0, c.width, c.height); return c;
+    });
   };
 
   try {
     const mq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
     gv.reduced = !!(mq && mq.matches);
-    if (mq && mq.addEventListener) mq.addEventListener('change', () => { gv.reduced = mq.matches; gv.parts.length = 0; gv.squash = {}; gv.shake = null; });
+    if (mq && mq.addEventListener) mq.addEventListener('change', () => { gv.reduced = mq.matches; gv.parts.length = 0; gv.shake = null; });
   } catch (e) {}
   if (typeof document !== 'undefined') {
     document.addEventListener('visibilitychange', () => { if (document.hidden) { gv.pending.length = 0; gv.skyQ.length = 0; gv.waves.length = 0; gv.lastT = null; } });
@@ -1443,23 +1747,23 @@
   }
   AMB.gardenVisual = gv;
 
-  // ---- « Jardin » as a mode of AMB.visual, only in the Parcours ----
+  // ---- « Jardin » as a mode of AMB.visual ----
   const V = AMB.visual;
   if (!V) return;
   const NAME = 'Jardin', FREE_KEY = 'ambient.vizMode';
   const onPath = () => !!(AMB.game && AMB.game.path);
   const get = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
-  const pathPref = () => NAME; // S6.7: the Parcours always shows the city (its chip is gone: css body.game #vizMode)
-  const freePref = () => { const m = get(FREE_KEY); return m === NAME || V.MODES.includes(m) ? m : NAME; }; // S6.7: the city by default
-  const SHOWN = { [NAME]: 'Ville' }; // S6.5: the mode keeps its id (stored preference), the chip says « Ville »
+  const pathPref = () => NAME; // the Parcours always shows the city
+  const freePref = () => { const m = get(FREE_KEY); return m === NAME || V.MODES.includes(m) ? m : NAME; }; // the city by default
+  const SHOWN = { [NAME]: 'Ville' }; // the mode keeps its id (stored preference), the chip says « Ville »
   const chip = () => { const el = typeof document !== 'undefined' && document.getElementById('vizMode'); if (el) el.textContent = SHOWN[V.mode] || V.mode; };
-  const setFree = () => { const free = !onPath(); if (free !== gv.free) { gv.free = free; gv.sig = null; gv.waves.length = 0; gv.parts.length = 0; } };
+  const setFree = () => { const free = !onPath(); if (free !== gv.free) { gv.free = free; gv.sig = null; gv.waves.length = 0; gv.parts.length = 0; gv.built = {}; gv.grow = {}; } };
   const sync = () => { V.mode = onPath() ? pathPref() : freePref(); setFree(); chip(); };
   const baseDraw = V.draw;
   V.draw = function () {
     gv.active = this.mode === NAME;
     setFree();
-    if (gv.active !== gv.shown && typeof document !== 'undefined' && document.body) { // S6.5: the city's CRT (css), set by JUICE
+    if (gv.active !== gv.shown && typeof document !== 'undefined' && document.body) { // the city's CRT (css), set by JUICE
       gv.shown = gv.active; document.body.classList.toggle('city', gv.active); document.body.style.setProperty('--crt', String(Math.min(1, gv.crt() / 1.5 + 0.1)));
     }
     if (gv.active && this.c) {
@@ -1470,11 +1774,11 @@
     return baseDraw.call(this);
   };
   V.cycleMode = function () {
-    if (onPath()) { this.mode = NAME; Promise.resolve().then(chip); return this.mode; } // S6.7: no Orbes / Spectre in the Parcours (they hid the city)
+    if (onPath()) { this.mode = NAME; Promise.resolve().then(chip); return this.mode; }
     const L = [NAME, ...this.MODES];
     this.mode = L[(L.indexOf(this.mode) + 1) % L.length];
     try { localStorage.setItem(FREE_KEY, this.mode); } catch (e) {}
-    Promise.resolve().then(chip); // (ui.js writes the returned id on the chip: the label follows)
+    Promise.resolve().then(chip);
     return this.mode;
   };
   V.gardenSync = sync;

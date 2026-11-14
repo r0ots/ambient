@@ -58,7 +58,7 @@ window.addEventListener('load', async () => {
     st = GV.readState();
     ok(st.layers.length === 8 && st.levels.bells === 1 && Math.abs(st.levels.drone - 1 / 3) < 1e-9 && Math.abs(st.levels.pad - 1 / 3) < 1e-9 && st.levels.bass === 1, 'taille = part des nœuds de la couche débloqués (Mélodie 2/2, Drone 1/3, Pad 1/3)');
     { const W = 700, H = 360; st.levels.bass = 1; GV.refresh(W, H, true); const tall = GV.plants.find((p) => p.id === 'bass') || GV.plants[0];
-      const top = tall.y - GV.sprite({ ...tall, level: 1 }, GV.px).h;
+      const top = tall.y - GV.sprite({ ...tall, level: 1, spr: GV.wantOf({ ...tall, level: 1 }) }, GV.px).h; // S8.1: the tallest it may be built
       ok(top >= H * GV.ceil - GV.px, 'plafond : la plus haute plante (niveau 1) reste sous le HUD (haut ' + top + ' px ≥ ' + Math.round(H * GV.ceil) + ' px)');
       GV.sig = null; }
     const a1 = GV.layout(st, 1280, 800), a2 = GV.layout({ ...st, secrets: ['tons'] }, 1280, 800);
@@ -96,24 +96,25 @@ window.addEventListener('load', async () => {
     ok(GV.parts.length === 0 && GV.energy.bells > 0, 'mouvement réduit : lumière seulement, pas de particules ni de balancement');
     GV.reduced = false;
 
-    // --- S4.5w growth: an opening (growAt = its strong beat) makes the new plant grow in ~1.2 s from its root
-    G.s.nodes = ['racine', 'h.pad', 'm.bells']; GV.sig = null; frame(); // settled, nothing grows
-    ok(!Object.keys(GV.grow).length, 'S4.5w : sans ouverture, aucune croissance (premier dessin, retour d\'état)');
+    // --- S8.1 construction (was S4.5w growth): an opening (growAt = its strong beat) BUILDS the new building from the
+    // ground, floor by floor, on the audio clock; a building never scales
+    G.s.nodes = ['racine', 'h.pad', 'm.bells']; GV.sig = null; frame(); // settled, nothing is built
+    ok(!Object.keys(GV.grow).length, 'S8.1 : sans ouverture, aucun chantier (premier dessin, retour d\'état)');
     { const t0 = GV.clock() + 0.3; GV.growAt(t0); G.s.nodes.push('m.grains'); GV.sig = null; frame();
       const e = GV.grow.grains;
-      ok(e && e.from === 0 && Math.abs(e.start - t0) < 1e-6 && !GV.grow.bells, 'nouvelle couche : sa plante pousse depuis 0, sur le temps fort annoncé, les autres ne bougent pas');
-      const a = GV.growth('grains', t0 - 0.1), b = GV.growth('grains', t0 + 0.3), c = GV.growth('grains', t0 + 0.6), dd = GV.growth('grains', t0 + 1.0);
-      ok(a === 0 && b > 0.05 && b < c && c < 0.8 && dd > 0.85 && dd < 1.1, 'croissance animée : 0 avant le temps fort, puis ' + [b, c, dd].map((x) => x.toFixed(2)).join(' → '));
-      GV.retime(t0 + 2); ok(GV.grow.grains.start === t0 + 2, 'la carte fermée plus tard : la croissance attend (retime)');
-      // mid-growth frame: the sprite is drawn scaled (no new sprite in the cache)
-      const m0 = GV.cacheMisses; GV.grow.grains.start = GV.clock() - 0.5; frame();
-      ok(GV.cacheMisses === m0, 'mi-croissance : le sprite en cache est mis à l\'échelle (aucun re-rendu)');
-      ok(GV.growth('grains', GV.clock() + 5) === 1 && !GV.grow.grains, 'fin de croissance : taille normale');
-      // a taller plant (one more node of its layer) grows from its old height
+      ok(e && e.h0 === 0 && e.h1 >= GV.FLOOR * 3 && e.h1 % GV.FLOOR === 0 && Math.abs(e.start - t0) < 1e-6 && !GV.grow.bells, 'nouvelle couche : son bâtiment se construit depuis le sol (0 → ' + (e && e.h1) + ' cellules, étages entiers), sur le temps fort annoncé ; les autres ne bougent pas');
+      const h = (x) => GV.heightAt('grains', t0 + x), a = h(-0.1), b = h(e.dur * 0.3), c = h(e.dur * 0.6), dd = h(e.dur + 0.01);
+      ok(a === 0 && b > 0 && b < c && c < e.h1 && dd === e.h1 && e.dur >= 1.2 && e.dur <= 4, 'les étages s\'empilent : 0 avant le temps fort, puis ' + [b, c, dd].map((x) => x.toFixed(1)).join(' → ') + ' cellules en ' + e.dur.toFixed(1) + ' s');
+      GV.retime(t0 + 2); ok(GV.grow.grains.start === t0 + 2, 'la carte fermée plus tard : le chantier attend (retime)');
+      const m0 = GV.cacheMisses, P = () => GV.plants.find((p) => p.id === 'grains'); GV.grow.grains.start = GV.clock() - e.dur * 0.5; frame();
+      const s = GV.sprite(P(), GV.px), k0 = GV.plants.find((p) => p.id === 'drone').k;
+      ok(GV.cacheMisses === m0 && P().vis > 0 && P().vis < s.h * 0.9 && P().k === k0, 'mi-chantier : seuls les étages bâtis se dessinent (' + Math.round(P().vis) + ' / ' + s.h + ' px), sprite en cache, même échelle que ses voisins (rien ne s\'étire)');
+      GV.grow.grains.start = GV.clock() - 30; frame();
+      ok(!GV.grow.grains && GV.growth('grains', GV.clock()) === 1 && P().vis === GV.sprite(P(), GV.px).h, 'fin du chantier : le bâtiment entier, toit compris');
       GV.growAt(null); G.s.nodes.push('m.phrase'); GV.sig = null; frame();
-      const t = GV.grow.bells; ok(t && t.from > 0.2 && t.from < 1, 'plante plus haute : pousse depuis son ancienne taille (' + (t && t.from.toFixed(2)) + ')');
+      const t = GV.grow.bells; ok(t && t.h0 > 0 && t.h1 > t.h0 && t.spr === t.h1, 'bâtiment plus haut : ses nouveaux étages se construisent sur les anciens (' + (t && t.h0) + ' → ' + (t && t.h1) + ')');
       GV.reduced = true; GV.growAt(null); G.s.nodes.push('c.seq'); GV.sig = null; frame();
-      ok(!GV.grow.seq, 'mouvement réduit : la plante apparaît sans croître'); GV.reduced = false; GV.grow = {}; }
+      ok(!GV.grow.seq, 'mouvement réduit : le bâtiment est là tout de suite, sans chantier'); GV.reduced = false; GV.grow = {}; }
 
     // --- S4.5w sky: follows the chord (2 cached skies, cross-faded), the scale; the ground pulses on the beat
     { const px = (x, y) => [...cv.getContext('2d').getImageData(x, y, 1, 1).data.slice(0, 3)];
@@ -171,12 +172,18 @@ window.addEventListener('load', async () => {
         'table : un réglage de couche concerne sa plante, Reverb et Volume général toutes les plantes, un grand réglage passe par les réglages qu\'il bouge');
       const dflt = GV.look(() => undefined), same = GV.look((k) => St.get(k));
       ok(JSON.stringify(dflt) === JSON.stringify(same) && GV.ASPECTS.every((k) => Object.values(dflt).every((a) => a[k] >= 0 && a[k] <= 1)), 'look() pur : valeurs par défaut = schéma, ' + GV.ASPECTS.length + ' aspects entre 0 et 1');
-      // Niveau → size, smoothed (no jump), settled in ~0.5 s
-      St.set('pad.vol', 0.05, 'user'); step(40); const small = P().sz, hS = GV.sprite(P(), GV.px).h * small;
-      St.set('pad.vol', 1, 'user'); step(1); const mid = P().sz; step(36); const big = P().sz, hB = GV.sprite(P(), GV.px).h * big;
-      ok(big > small * 1.6 && hB > hS * 1.6, 'Niveau → taille : ' + small.toFixed(2) + ' → ' + big.toFixed(2) + ' (hauteur dessinée ' + Math.round(hS) + ' → ' + Math.round(hB) + ' px)');
-      ok(mid > small && mid < small + (big - small) * 0.3, 'pas de saut : après une image, ' + ((mid - small) / (big - small) * 100).toFixed(0) + ' % du chemin');
-      { St.set('pad.vol', 0.3, 'user'); step(); let n = 1; while (Math.abs(P().sz - GV.sizeK('pad', GV.aim.pad.size)) > 0.01 && n < 100) { step(); n++; } ok(n * 16 >= 250 && n * 16 <= 650, 'se stabilise en ' + n * 16 + ' ms (cible 300–600 ms)'); }
+      // S8.1 Niveau → floors: built (a construction) or taken down, never scaled; the layer switched off = deconstructed
+      const done = () => { for (const id in GV.grow) GV.grow[id].start = GV.clock() - 60; step(1); };
+      St.set('pad.vol', 0.05, 'user'); step(2); done(); const small = GV.built.pad, k0 = P().k / GV.cam.k(1);
+      St.set('pad.vol', 1, 'user'); step(1); const e = GV.grow.pad, big = GV.built.pad;
+      ok(big >= small * 1.6 && e && Math.abs(e.h0 - small) < 1e-9 && e.h1 === big && Math.abs(P().k / GV.cam.k(1) - k0) < 1e-9, 'Niveau → étages : ' + small + ' → ' + big + ' cellules, par un chantier (même échelle : rien ne s\'étire)');
+      ok(P().vis < GV.sprite(P(), GV.px).h * 0.6, 'pas de saut : juste après, seuls les anciens étages sont là (' + Math.round(P().vis) + ' / ' + GV.sprite(P(), GV.px).h + ' px), les nouveaux en échafaudage');
+      done(); ok(!GV.grow.pad && P().vis === GV.sprite(P(), GV.px).h, 'chantier fini : le bâtiment entier');
+      St.set('pad.vol', 0.05, 'user'); step(1); const dn = GV.grow.pad;
+      ok(dn && dn.h1 === small && dn.h0 === big && dn.spr === big, 'Niveau baissé : déconstruction (les étages du haut s\'éteignent et descendent, ' + big + ' → ' + small + ')'); done();
+      St.set('pad.on', false, 'user'); step(1); const off = GV.grow.pad; done();
+      ok(off && off.h1 === 0 && P().vis === 0, 'couche coupée : son bâtiment est déconstruit (terrain vague)');
+      St.set('pad.on', true, 'user'); step(1); ok(GV.grow.pad && GV.grow.pad.h0 === 0 && GV.grow.pad.h1 === small, 'rallumée : reconstruit'); done();
       // Lumière → colour (sprite brightness), petals open
       const lum = (s) => { const d = s.cv.getContext('2d').getImageData(0, 0, s.w, s.h).data; let t = 0, n = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 3]) { t += d[i] + d[i + 1] + d[i + 2]; n++; } return t / Math.max(1, n) / 3; };
       St.set('pad.tone', 0, 'user'); step(40); const dark = GV.sprite(P(), GV.px);
@@ -192,26 +199,28 @@ window.addEventListener('load', async () => {
       // Espace (layer) × Reverb (all): halo
       St.set('fx.space', 0, 'user'); step(40); const h0 = P('bells').look.halo; St.set('fx.space', 1, 'user'); step(40);
       ok(P('bells').look.halo > h0 + 0.3 && P('pad').look.halo > 0.4, 'Reverb → halo de toutes les plantes (' + h0.toFixed(2) + ' → ' + P('bells').look.halo.toFixed(2) + ')');
-      // a touched control: an impulse (bounce, wider sway, lit), on its plant only; the drift (lfo) reshapes without a kick
+      // a touched control: its building lit (highlight), on its building only, never moved nor deformed; a drift (lfo)
+      // reshapes without a kick
       GV.kicks = {}; step(10);
       St.set('pad.tone', 0.4, 'lfo'); step(1); ok(!GV.kicks.pad, 'Dérive / mouvements lents : la forme suit, sans impulsion');
-      St.set('pad.tone', 0.7, 'user'); step(1); const k1 = P();
-      ok(GV.kicks.pad && !GV.kicks.bells && Math.abs(k1.bounce) > 0.08 && k1.hot > 0.9, 'toucher un contrôle : impulsion sur sa plante seulement (rebond ' + k1.bounce.toFixed(2) + ', mise en évidence ' + k1.hot.toFixed(2) + ')');
-      { let mx = 0; for (let i = 0; i < 12; i++) { step(); mx = Math.max(mx, Math.abs(P().sway)); } let mq = 0; for (let i = 0; i < 6; i++) { step(); mq = Math.max(mq, Math.abs(P('bells').sway)); }
-        ok(mx > 0.06 && mx > mq * 1.5, 'ondulation plus forte sur la plante touchée (' + mx.toFixed(3) + ' contre ' + mq.toFixed(3) + ')'); }
-      step(60); ok(!GV.kicks.pad && P().bounce === 0 && P().hot === 0, 'puis elle se calme (impulsion finie en moins d\'1 s)');
-      St.set('pad.tone', 0.3, 'macro'); step(1); ok(GV.kicks.pad && GV.kicks.bells === undefined, 'un grand réglage (source macro) fait réagir les plantes qu\'il touche');
-      // a slider held: one bounce, then the plant follows continuously
-      St.set('pad.vol', 0.1, 'preset'); step(40); GV.kicks = {}; const sz = []; let t0s = new Set();
-      for (let i = 0; i <= 20; i++) { St.set('pad.vol', 0.14 + i * 0.04, 'user'); step(2); sz.push(P().sz); t0s.add(GV.kicks.pad.t0); }
-      ok(t0s.size === 1 && sz.every((v, i) => !i || v >= sz[i - 1] - 1e-9) && sz[20] > sz[0] + 0.3, 'curseur glissé : la plante grandit en continu (' + sz[0].toFixed(2) + ' → ' + sz[20].toFixed(2) + '), un seul rebond');
+      const geo = (p) => { const C = GV.cam, d = p.row ? 0.82 : 1; return [Math.round(p.sx - C.x(d, p.x)), Math.round(p.sy - C.y(d, p.y)), (p.k / C.k(d)).toFixed(4), p.vis].join(); }; // in the camera (which may move)
+      St.set('pad.tone', 0.7, 'user'); step(1); const k1 = P(), g1 = geo(k1);
+      ok(GV.kicks.pad && !GV.kicks.bells && k1.hot > 0.9, 'toucher un contrôle : mise en évidence de son bâtiment seulement (' + k1.hot.toFixed(2) + ')');
+      { let same = true; for (let i = 0; i < 12; i++) { step(); same = same && geo(P()) === g1; } ok(same, 'S8.1 : le bâtiment touché ne bouge ni ne se déforme (position, échelle, hauteur identiques pendant l\'impulsion)'); }
+      step(60); ok(!GV.kicks.pad && P().hot === 0, 'puis il se calme (impulsion finie en moins d\'1 s)');
+      St.set('pad.tone', 0.3, 'macro'); step(1); ok(GV.kicks.pad && GV.kicks.bells === undefined, 'un grand réglage (source macro) fait réagir les bâtiments qu\'il touche');
+      // a slider held: one kick, the building's target follows continuously (floors added as it goes)
+      St.set('pad.vol', 0.1, 'preset'); step(2); done(); GV.kicks = {}; const sz = []; let t0s = new Set();
+      for (let i = 0; i <= 20; i++) { St.set('pad.vol', 0.14 + i * 0.04, 'user'); step(2); sz.push(GV.built.pad); t0s.add(GV.kicks.pad.t0); }
+      ok(t0s.size === 1 && sz.every((v, i) => !i || v >= sz[i - 1]) && sz[20] > sz[0] * 1.5, 'curseur glissé : le bâtiment monte étage par étage (' + sz[0] + ' → ' + sz[20] + ' cellules), une seule impulsion'); done();
       // off screen: no kick kept
       GV.kicks = {}; GV.visible = false; St.set('pad.tone', 0.9, 'user'); GV.visible = true; ok(!GV.kicks.pad, 'hors écran : aucune impulsion gardée');
       // reduced motion: shapes yes, motion no
       GV.reduced = true; GV.kicks = {}; St.set('pad.wave', 'Nappe', 'user'); step(1);
-      ok(GV.quant(P().look).shape === 0 && Math.abs(P().sz - GV.sizeK('pad', GV.aim.pad.size)) < 1e-9, 'mouvement réduit : la forme change tout de suite (Timbre, taille)');
-      let still = true; for (let i = 0; i < 20; i++) { St.set('pad.tone', i / 20, 'user'); step(); still = still && GV.plants.every((p) => p.sway === 0 && !p.bounce); }
-      ok(still && P().hot > 0.9, 'mouvement réduit : ni ondulation ni rebond, la plante touchée reste mise en évidence');
+      St.set('pad.vol', 0.9, 'user'); step(1);
+      ok(GV.quant(P().look).shape === 0 && !GV.grow.pad && GV.built.pad === GV.wantOf(P()) && P().vis === GV.sprite(P(), GV.px).h, 'mouvement réduit : la forme et les étages changent tout de suite (Timbre, Niveau), sans chantier');
+      let still = true; const g2 = geo(P()); for (let i = 0; i < 20; i++) { St.set('pad.tone', i / 20, 'user'); step(); still = still && geo(P()) === g2; }
+      ok(still && P().hot > 0.9, 'mouvement réduit : rien ne bouge, le bâtiment touché reste mis en évidence');
       // v1.14: the default settings = the size of the plants before S4.6 (they grow and shrink around it)
       const defaults = () => Object.entries(AMB.SCHEMA).forEach(([sec, d]) => Object.entries(d.params).forEach(([k, sp]) => St.set(sec + '.' + k, sp.def, 'preset')));
       defaults(); step(2);
@@ -221,9 +230,9 @@ window.addEventListener('load', async () => {
       const mx = { 'global.volume': 1, 'fx.space': 1, 'pad.voicing': 1, 'bells.density': 1, 'grains.density': 1, 'grains.size': 0, 'pad.wave': 'FM', 'bells.wave': 'Pluck', 'seq.wave': 'Pluck', 'bass.wave': 'Pluck', 'drone.wave': 'Orgue' };
       GV.plants.forEach((p) => { mx[p.id + '.vol'] = 1; mx[p.id + '.tone'] = 1; mx[p.id + '.send'] = 1; });
       St.setMany(mx, 'preset'); step(2);
-      const xs = GV.plants.slice().sort((u, v) => u.x - v.x), ext = (p) => { const s = GV.sprite(p, GV.px); return [p.x - s.l * p.kx, p.x + s.r * p.kx]; };
-      const gaps = xs.slice(1).map((p, i) => ext(p)[0] - ext(xs[i])[1]);
-      ok(xs.length === 8 && gaps.every((g) => g >= 0) && xs.some((p) => p.sz > 1.1), '390 px, tout au maximum : aucune fleur sur sa voisine (écart min ' + Math.min(...gaps).toFixed(1) + ' px), les plantes ont grandi (×' + Math.max(...xs.map((p) => p.sz)).toFixed(2) + ')');
+      done(); const ext = (p) => { const s = GV.sprite(p, GV.px); return [p.sx - s.l * p.k, p.sx + s.r * p.k]; }, gaps = [];
+      for (const row of [0, 1]) { const xs = GV.plants.filter((p) => p.row === row).sort((u, v) => u.sx - v.sx); xs.slice(1).forEach((p, i) => gaps.push(ext(p)[0] - ext(xs[i])[1])); }
+      ok(GV.plants.length === 8 && GV.rows === 2 && gaps.every((g) => g >= 0) && GV.plants.every((p) => p.sy - p.vis * p.k >= 780 * GV.ceil - GV.px), '390 × 780, tout au maximum : deux rangées, aucun bâtiment sur son voisin de rangée (écart min ' + Math.min(...gaps).toFixed(1) + ' px), tous sous le plafond');
       cv.width = 1280; cv.height = 800; GV.sig = null;
       GV.reduced = false; GV.now = real; GV.lastT = null; GV.kicks = {};
       defaults(); }
@@ -231,7 +240,7 @@ window.addEventListener('load', async () => {
     // --- S5.2 « Chaque note se voit » (fake audio clock): the player's notes splash from their plant, the machine's smaller
     { const realClock = GV.clock, realNow = GV.now; let T = 100, fake = performance.now(); GV.clock = () => T; GV.now = () => fake;
       const step = (n = 1, ms = 16) => { for (let i = 0; i < n; i++) { T += ms / 1000; fake += ms; frame(); } };
-      const reset = () => { GV.waves.length = 0; GV.parts.length = 0; GV.squash = {}; GV.zap = {}; GV.shake = null; };
+      const reset = () => { GV.waves.length = 0; GV.parts.length = 0; GV.band = {}; GV.grow = {}; GV.zap = {}; GV.shake = null; };
       G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.rythme', 'e.texture']; GV.grow = {}; GV.sig = null; step(3); reset();
       const P = (id) => GV.plants.find((p) => p.id === id);
       ok(typeof GV.JUICE === 'number' && GV.SPLASH.player.parts > GV.SPLASH.machine.parts * 3 && GV.SPLASH.player.ring > GV.SPLASH.machine.ring * 2, 'une seule constante JUICE (' + GV.JUICE + ') ; table SPLASH : la machine plus discrète que le joueur');
@@ -241,21 +250,21 @@ window.addEventListener('load', async () => {
         && sp('note', { layer: 'bass', midi: 40 }).who === 'machine' && !sp('note', { layer: 'bells', live: true }) && !sp('note', { layer: 'drone' }) && sp('perc', { track: 1 }).plant === 'perc'
         && sp('live', { midi: 84 }).pitch > sp('live', { midi: 48 }).pitch && sp('live', { midi: 60, raw: 1 }).shake > 0 && !sp('live', { midi: 60, raw: 0.4 }).shake,
         'déclenchement séparé du dessin : note jouée → Mélodie (Mélodie écrite pendant le Rec live), accord forcé → Pad, machine → sa plante, hauteur → position, forte vélocité → secousse');
-      // a played note: a wave on the Melody plant, particles, flash, squash
+      // a played note: a wave on the Melody plant, particles, its lights flash (S8.1: no squash)
       const lum = (x, y, r = 6) => { const d = cv.getContext('2d').getImageData(Math.round(x - r), Math.round(y - r), 2 * r, 2 * r).data; let t = 0; for (let i = 0; i < d.length; i += 4) t += d[i] + d[i + 1] + d[i + 2]; return t / (d.length / 4); };
       step(2); const o = GV.origin(P('bells'), sp('live', { midi: 76 }).pitch), dark = lum(o.x, o.y);
       AMB.bus.emit('live', { midi: 76, time: T, vel: 0.85, raw: null, id: 1 }); step(1);
       const w1 = GV.waves[0];
-      ok(GV.waves.length === 1 && w1.plant === 'bells' && w1.who === 'player' && w1.fired && GV.parts.length >= 10 && GV.zap.bells > 0.5 && GV.squash.bells, 'note jouée : une onde sur la plante Mélodie auto (' + GV.parts.length + ' particules, éclat ' + GV.zap.bells.toFixed(2) + ', écrasement)');
+      ok(GV.waves.length === 1 && w1.plant === 'bells' && w1.who === 'player' && w1.fired && GV.parts.length >= 10 && GV.zap.bells > 0.5 && GV.band.bells && GV.band.bells.a > 0.5, 'note jouée : une onde sur l\'enseigne Mélodie auto (' + GV.parts.length + ' particules, éclat ' + GV.zap.bells.toFixed(2) + ', ses fenêtres et néons s\'allument à la hauteur de la note)');
       ok(lum(o.x, o.y) > dark + 20, 'l\'onde se voit à l\'écran, à la hauteur de la note (luminosité ' + dark.toFixed(0) + ' → ' + lum(o.x, o.y).toFixed(0) + ')');
-      { let mx = 0; for (let i = 0; i < 8; i++) { step(); mx = Math.max(mx, Math.abs(P('bells').bounce)); } ok(mx > 0.05 && !GV.kicks.bells, 'la plante rebondit (squash & stretch ' + mx.toFixed(2) + '), sans toucher la scène'); }
+      { const C = GV.cam, gb = () => [Math.round(P('bells').sy - C.y(1, P('bells').y)), (P('bells').k / C.k(1)).toFixed(4), P('bells').vis].join(), g0 = gb(); let same = true, gl = ''; for (let i = 0; i < 8; i++) { step(); gl = gb(); same = same && gl === g0; } ok(same && !GV.kicks.bells, 'S8.1 : la note allume, rien ne se déforme (échelle, hauteur, pied identiques), sans toucher la scène'); }
       const pPlayer = GV.parts.length; reset();
       // a machine note: the same, much smaller
       AMB.bus.emit('note', { layer: 'bells', midi: 76, time: T, vel: 0.85 }); step(1);
       const wm = GV.waves[0], pMachine = GV.parts.length - 1; // (the classic leaf of hit() aside)
-      ok(wm && wm.who === 'machine' && wm.plant === 'bells' && pMachine * 3 <= pPlayer && GV.zap.bells < 0.4 && GV.squash.bells.amp < 0.1, 'note de la machine : une onde plus faible (' + pMachine + ' particules contre ' + pPlayer + ', éclat ' + GV.zap.bells.toFixed(2) + ')');
+      ok(wm && wm.who === 'machine' && wm.plant === 'bells' && pMachine * 3 <= pPlayer && GV.zap.bells < 0.4 && GV.band.bells.a < 0.4, 'note de la machine : une onde plus faible (' + pMachine + ' particules contre ' + pPlayer + ', éclat ' + GV.zap.bells.toFixed(2) + ')');
       step(40); ok(!GV.waves.length, 'note brève de la machine : l\'onde finit seule (< 0,7 s)'); reset();
-      AMB.bus.emit('note', { layer: 'bass', midi: 40, time: T + 0.5, vel: 0.8 }); step(1); ok(GV.waves.length === 1 && !GV.waves[0].fired, 'une note à venir attend son heure audio'); step(32); ok(GV.waves[0] && GV.waves[0].fired && GV.squash.bass, 'puis éclate sur la Basse'); reset();
+      AMB.bus.emit('note', { layer: 'bass', midi: 40, time: T + 0.5, vel: 0.8 }); step(1); ok(GV.waves.length === 1 && !GV.waves[0].fired, 'une note à venir attend son heure audio'); step(32); ok(GV.waves[0] && GV.waves[0].fired && GV.zap.bass > 0.05, 'puis éclate sur la Basse'); reset();
       // held: lit as long as it is held, then fades
       AMB.bus.emit('live', { midi: 67, time: T, vel: 0.85, raw: 0.6, id: 7 }); step(90); // 1.44 s, twice its life
       const eh = GV.waveEnv(GV.waves[0], T);
@@ -268,7 +277,7 @@ window.addEventListener('load', async () => {
       step(30); ok(!GV.shake && !GV.ox && !GV.oy, 'la secousse est brève'); reset();
       // S5.3 celebrations (palier, record) go through the same splashes and the same JUICE: bigger than a note
       GV.cheer('tier', T); step(1); const wt = GV.waves[0], pTier = GV.parts.length;
-      ok(wt && wt.plant === 'bells' && wt.who === 'tier' && pTier > pPlayer && GV.shake && GV.squash.bells.amp > GV.SPLASH.player.squash * GV.JUICE && GV.SPLASH.record.parts > GV.SPLASH.streak.parts && !GV.cheer('nope'),
+      ok(wt && wt.plant === 'bells' && wt.who === 'tier' && pTier > pPlayer && GV.shake && GV.zap.bells > 0.9 && GV.SPLASH.record.parts > GV.SPLASH.streak.parts && !GV.cheer('nope'),
         'fête de palier : éclat de la plante Mélodie auto plus fort qu\'une note (' + pTier + ' particules contre ' + pPlayer + '), secousse, même table SPLASH et même JUICE'); step(30); reset();
       for (let i = 0; i < 5; i++) AMB.bus.emit('live', { midi: 60 + i, time: T, vel: 0.8, id: 20 + i });
       AMB.bus.emit('note', { layer: 'bells', midi: 72, time: T, vel: 0.8 });
@@ -276,11 +285,11 @@ window.addEventListener('load', async () => {
       AMB.bus.emit('panic'); step(30); ok(!GV.waves.length, 'panique (■) : les notes tenues s\'éteignent'); reset();
       for (let i = 0; i < 60; i++) { AMB.bus.emit('chord', { time: T, deg: i % 7, midis: [60], forced: true }); step(1); }
       ok(GV.parts.length <= GV.PARTS_MAX, 'plafond de particules (' + GV.parts.length + ' ≤ ' + GV.PARTS_MAX + ')'); reset(); step(60);
-      // reduced motion: a fixed, brief glow; no wave, no particle, no squash, no shake
+      // reduced motion: a fixed, brief glow; no wave, no particle, no flash of the band, no shake
       GV.reduced = true; const p0r = GV.parts.length;
       AMB.bus.emit('live', { midi: 76, time: T, vel: 1, raw: 1, id: 30 }); AMB.bus.emit('note', { layer: 'bass', midi: 40, time: T, vel: 1 }); AMB.bus.emit('chord', { time: T, deg: 1, midis: [60], forced: true }); step(1);
       const e1 = GV.waveEnv(GV.waves.find((w) => w.plant === 'bass'), T); step(10); const e2 = GV.waveEnv(GV.waves.find((w) => w.plant === 'bass'), T);
-      ok(GV.parts.length === p0r && !Object.keys(GV.squash).length && !GV.shake && !GV.ox && e1 && e2 && e1.a === 1 && e2.a === 1 && e1.r === 0, 'mouvement réduit : une lueur fixe (même éclat, sans onde), ni particules, ni rebond, ni secousse');
+      ok(GV.parts.length === p0r && !Object.keys(GV.band || {}).length && !GV.shake && !GV.ox && e1 && e2 && e1.a === 1 && e2.a === 1 && e1.r === 0, 'mouvement réduit : une lueur fixe (même éclat, sans onde), ni particules, ni rebond, ni secousse');
       step(15); ok(!GV.waves.some((w) => w.plant === 'bass') && GV.waves.some((w) => w.held === 30), 'mouvement réduit : brève (0,3 s), la note tenue reste allumée');
       AMB.bus.emit('liveOff', { id: 30, time: T }); step(12); ok(!GV.waves.some((w) => w.held === 30), 'mouvement réduit : relâchée, elle s\'éteint'); GV.reduced = false; reset();
       // free mode: no garden, nothing kept
