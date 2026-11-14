@@ -15,7 +15,7 @@
     },
     Mélancolique: {
       scales: ['Éolien (mineur)', 'Dorien', 'Pentatonique min.'], tempo: [48, 66],
-      drone: ['Sub', 'Chaud', 'Creux'], pad: ['Cordes', 'Nappe', 'Chœur'], bells: ['Verre', 'Pluck', 'Kalimba'],
+      drone: ['Sub', 'Chaud', 'Creux', 'Voix'], pad: ['Cordes', 'Nappe', 'Chœur', 'Vangelis'], bells: ['Verre', 'Pluck', 'Kalimba', 'Piano FM'],
       textures: ['Pluie', 'Vinyle', 'Ville'], progs: ['Aléatoire', 'i–VI–III–VII', 'Pendule I–IV'],
       fx: { space: [0.55, 0.8], shimmer: [0, 0.2], echo: [0.25, 0.5], tape: [0.3, 0.65], lofi: [0.15, 0.45] },
       tone: [0.2, 0.45], density: [0.15, 0.35],
@@ -23,7 +23,7 @@
     },
     Mystérieux: {
       scales: ['Phrygien', 'In Sen', 'Hirajoshi', 'Par tons'], tempo: [40, 60],
-      drone: ['Creux', 'Sub'], pad: ['Chœur', 'FM', 'Onde'], bells: ['Cloche', 'Verre'],
+      drone: ['Creux', 'Sub', 'Spectre', 'Anneau'], pad: ['Chœur', 'FM', 'Onde', 'Brume'], bells: ['Cloche', 'Verre', 'Thérémine'],
       textures: ['Vent', 'Océan', 'Feu'], progs: ['Aléatoire', 'Plane (I)', 'Pendule I–IV'],
       fx: { space: [0.65, 0.95], shimmer: [0.25, 0.6], echo: [0.3, 0.55], tape: [0.1, 0.4], lofi: [0, 0.2] },
       tone: [0.25, 0.55], density: [0.08, 0.3],
@@ -39,7 +39,7 @@
     },
     Nocturne: {
       scales: ['Dorien', 'Éolien (mineur)', 'Mixolydien', 'Pentatonique min.'], tempo: [54, 76],
-      drone: ['Sub', 'Creux'], pad: ['FM', 'Nappe', 'Onde'], bells: ['Pluck', 'Kalimba'],
+      drone: ['Sub', 'Creux', 'Reese', 'Pulsar', 'Néon'], pad: ['FM', 'Nappe', 'Onde', 'Juno', 'Vangelis'], bells: ['Pluck', 'Kalimba', 'Piano FM', 'Néon'],
       textures: ['Ville', 'Pluie', 'Vinyle'], progs: ['i–VI–III–VII', 'Aléatoire', 'I–V–vi–IV'],
       fx: { space: [0.45, 0.7], shimmer: [0, 0.2], echo: [0.35, 0.6], tape: [0.35, 0.7], lofi: [0.2, 0.5] },
       tone: [0.25, 0.5], density: [0.25, 0.45],
@@ -47,7 +47,7 @@
     },
     Aquatique: {
       scales: ['Lydien', 'Dorien', 'Pentatonique maj.', 'Par tons'], tempo: [50, 70],
-      drone: ['Creux', 'Orgue', 'Sub'], pad: ['Onde', 'Verre', 'Cordes'], bells: ['Verre', 'Cloche', 'Kalimba'],
+      drone: ['Creux', 'Orgue', 'Sub', 'Vent'], pad: ['Onde', 'Verre', 'Cordes', 'Brume'], bells: ['Verre', 'Cloche', 'Kalimba'],
       textures: ['Océan', 'Ruisseau', 'Pluie'], progs: ['Aléatoire', 'Pendule I–IV', 'Montée I–ii–iii–IV'],
       fx: { space: [0.6, 0.85], shimmer: [0.2, 0.5], echo: [0.3, 0.55], tape: [0.25, 0.5], lofi: [0, 0.25] },
       tone: [0.35, 0.6], density: [0.18, 0.4],

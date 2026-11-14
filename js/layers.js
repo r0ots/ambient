@@ -51,11 +51,11 @@
     'Vent'(ctx, bus, v) {
       const n = ctx.createBufferSource(); n.buffer = this.windBuf || (this.windBuf = AMB.makeNoiseBuffer(ctx, 4, 'white', 1)); n.loop = true; n.start();
       const wg = ctx.createGain(); wg.gain.value = 1; wg.connect(bus);
-      const bands = [[0, 1.6, 30], [19, 0.9, 40], [12, 0.5, 25]].map(([semi, gn, q]) => {
+      const bands = [[0, 16, 30], [19, 9, 40], [12, 5, 25]].map(([semi, gn, q]) => {
         const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = q; bp.frequency.value = mtof(this.root + semi);
         const g = ctx.createGain(); g.gain.value = gn; n.connect(bp); bp.connect(g); g.connect(wg); return [bp, semi];
       });
-      const bed = ctx.createBiquadFilter(); bed.type = 'lowpass'; bed.frequency.value = 400; const bg = ctx.createGain(); bg.gain.value = 0.06; n.connect(bed); bed.connect(bg); bg.connect(bus);
+      const bed = ctx.createBiquadFilter(); bed.type = 'lowpass'; bed.frequency.value = 400; const bg = ctx.createGain(); bg.gain.value = 0.5; n.connect(bed); bed.connect(bg); bg.connect(bus);
       // gusts: the whistle swells and fades slowly
       const gust = lfoOsc(ctx, 0.07), ga = ctx.createGain(); ga.gain.value = 0.45; gust.connect(ga); ga.connect(wg.gain);
       v.tune.push((m, t) => bands.forEach(([bp, semi]) => bp.frequency.setTargetAtTime(mtof(m + semi), t, 1.2)));
@@ -69,7 +69,7 @@
       [[520, 200, 9, 1], [1250, 500, 11, 0.55], [2500, 120, 13, 0.3]].forEach(([ff, sw, q, gn]) => {
         const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = ff; bp.Q.value = q;
         const d = ctx.createGain(); d.gain.value = sw; vow.connect(d); d.connect(bp.frequency);
-        const g = ctx.createGain(); g.gain.value = gn * 0.9; src.connect(bp); bp.connect(g); g.connect(bus);
+        const g = ctx.createGain(); g.gain.value = gn * 2.8; src.connect(bp); bp.connect(g); g.connect(bus);
       });
       v.stop.push(vib, vow);
     },
@@ -161,7 +161,7 @@
         // S11.9 — supersaw (Juno-style unison: a wide fan of saws, an octave above that shimmers) and Reese (two saws
         // an octave down beating against each other: the slow phasing growl of drum & bass)
         'Néon': [[0, 'sawtooth', 0.15, -17], [0, 'sawtooth', 0.15, 0], [0, 'sawtooth', 0.15, 17], [12, 'sawtooth', 0.06, 9], [-12, 'sine', 0.4, 0]],
-        'Reese': [[-12, 'sawtooth', 0.3, -24], [-12, 'sawtooth', 0.3, 24], [0, 'square', 0.05, 7]],
+        'Reese': [[-12, 'sawtooth', 0.48, -24], [-12, 'sawtooth', 0.48, 24], [0, 'square', 0.08, 7]],
       }[type] || [];
       let dirt = null;
       if (type === 'Abîmé') { // damaged drone: driven into a distortion, then crushed to a few bits
@@ -380,7 +380,7 @@
         filt.frequency.cancelScheduledValues(time); filt.frequency.setValueAtTime(Math.max(120, f), time);
         filt.frequency.exponentialRampToValueAtTime(top, time + rise);
         filt.frequency.setTargetAtTime(cutoff * 0.7, time + rise, dur * 0.4 + 0.2);
-        level = 0.15;
+        level = 0.25;
       } else if (type === 'Brume') { // S11.9 a breath of noise tuned on the note (very narrow bands) over a faint sine: fog in the streets
         const n = ctx.createBufferSource(); n.buffer = this.fog || (this.fog = AMB.makeNoiseBuffer(ctx, 3, 'white', 1)); n.loop = true;
         n.loopStart = 0; n.playbackRate.value = rand(0.9, 1.1); oscs.push(n);
@@ -390,7 +390,7 @@
         });
         add('sine', 1, 0.25, 0);
         filt.frequency.cancelScheduledValues(time); filt.frequency.setValueAtTime(Math.min(14000, f * 6 + tone * 4000), time);
-        level = 0.36;
+        level = 0.5;
       } else if (type === 'Strobe') { // S11.9 trance gate: a saw chord chopped in sixteenths on the tempo (Tron, arcade)
         add('sawtooth', 1, 0.45, -det); add('sawtooth', 1, 0.45, det); add('square', 0.5, 0.2, 0);
         const gate = ctx.createGain(); filt.disconnect(); filt.connect(gate); gate.connect(env);
@@ -398,7 +398,7 @@
         gate.gain.setValueAtTime(0, time);
         for (let k = 0, t0 = time; t0 < lastT && k < 2048; k++, t0 += step) { gate.gain.setTargetAtTime(1, t0, 0.003); gate.gain.setTargetAtTime(0.05, t0 + step * 0.55, 0.012); }
         filt.Q.value = 3;
-        level = 0.2;
+        level = 0.34;
       } else { // Cordes
         add('sawtooth', 1, 0.4, -det); add('sawtooth', 1, 0.4, 0); add('sawtooth', 1, 0.4, det);
         const vib = ctx.createOscillator(); vib.frequency.value = rand(4.8, 5.8);
@@ -450,7 +450,7 @@
       } else env.connect(pan);
       pan.connect((live && live.dest) || this.bus);
       const nodes = [];
-      const amp = 0.5 * vel * ({ 'Verre': 1.6, 'Pluck': 1.7 }[type] || 1);
+      const amp = 0.5 * vel * ({ 'Verre': 1.6, 'Pluck': 1.7, '8 bits': 1.55, 'Orgue': 4, 'Néon': 2.8 }[type] || 1);
       let dur = decay;
       const fm = (ratio, index, idxDecay, carrierType = 'sine') => {
         const car = ctx.createOscillator(); car.type = carrierType; car.frequency.value = f;
@@ -592,7 +592,7 @@
         const o = ctx.createOscillator(); o.setPeriodicWave(w);
         o.frequency.setValueAtTime(f * 2, time); o.frequency.setValueAtTime(f, time + 0.035);
         const vib = ctx.createOscillator(); vib.frequency.value = 7; const va = ctx.createGain(); va.gain.setValueAtTime(0, time + 0.2); va.gain.linearRampToValueAtTime(30, time + 0.5);
-        vib.connect(va); va.connect(o.detune); o.connect(env); nodes.push(o, vib);
+        vib.connect(va); va.connect(o.detune); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = Math.min(16000, f * (4 + tone * 24)); o.connect(lp); lp.connect(env); nodes.push(o, vib);
         dur = decay * 0.6;
       } else if (type === 'Néon') { // S11.9 supersaw stab: three saws fanned wide, a filter that snaps shut (synthwave, trance)
         const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 1.5;
@@ -623,7 +623,7 @@
   class SeqVoice extends Bells { constructor() { super('seq'); } }
 
   // ===================== BASS (step-sequenced, follows the chord root) =====================
-  const BASS_LVL = {}; // S11.9: level of each timbre (measured, tests/timbres.html), 1 = the old ones
+  const BASS_LVL = { 'Acide': 1.5, '808': 0.66 }; // S11.9: level of each timbre (measured, tests/timbres.html), 1 = the old ones
   class Bass extends Layer {
     constructor() {
       super('bass');
