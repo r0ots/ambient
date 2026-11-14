@@ -11,7 +11,7 @@
 AMB.tree = { NODES: [['racine', 'drone.on'], ['t.son', 'drone.wave'], ['h.drone', 'drone.follow'], ['h.pad', 'pad.on'], ['h.pad2', 'pad.attack'], ['h.prog', 'pad.prog'],
   ['m.bells', 'bells.on'], ['m.phrase', 'bells.mode'], ['m.grains', 'grains.on'], ['c.seq', 'seq.on'], ['c.rythme', 'bass.*'], ['c.rythme', 'perc.*'], ['e.texture', 'texture.*'], ['e.reverb', '*.send']].map(([id, p]) => ({ id, params: [p] })) };
 </script>
-<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script><script>if (/[?&]gl=1/.test(location.search)) document.write('<script src="../js/city-gl.js"><\/script>');</script><script src="../js/city-dims.js"></script>
 <canvas id="out"></canvas>
 <script>
 window.addEventListener('load', () => {
@@ -20,6 +20,7 @@ window.addEventListener('load', () => {
   const G = AMB.game, V = AMB.visual, GV = AMB.gardenVisual, St = AMB.store, cv = document.createElement('canvas');
   cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv.style.width = w + 'px'; cv.style.height = h + 'px'; document.body.appendChild(cv);
   V.c = cv; V.g = cv.getContext('2d'); V.dpr = dpr;
+  (Q.get('off') || '').split(',').filter(Boolean).forEach((id) => { const i = GV.STACK.findIndex((l) => l.id === id); if (i >= 0) GV.STACK.splice(i, 1); }); // ?off=<layer ids> (cost per layer)
   let T = 100, fake = 1000; GV.clock = () => T; GV.now = () => fake; GV.visible = true;
   const ALL = ['racine', 't.son', 'h.drone', 'h.pad', 'h.pad2', 'h.prog', 'm.bells', 'm.phrase', 'm.grains', 'c.seq', 'c.rythme', 'e.texture', 'e.reverb'];
   G.setMode('path'); G.s.nodes = ALL.slice(); GV.sig = null; St.setMany({ 'seq.on': true, 'bass.on': true, 'perc.on': true, 'texture.on': true, 'grains.on': true }, 'preset');

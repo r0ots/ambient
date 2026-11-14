@@ -12,7 +12,7 @@ testBus(); AMB.engine = {}; // no audio: the visual's classic modes draw without
 AMB.tree = { NODES: [['racine', 'drone.on'], ['t.son', 'drone.wave'], ['h.drone', 'drone.follow'], ['h.pad', 'pad.on'], ['h.pad2', 'pad.attack'], ['h.prog', 'pad.prog'],
   ['m.bells', 'bells.on'], ['m.phrase', 'bells.mode'], ['m.grains', 'grains.on'], ['c.seq', 'seq.on'], ['c.rythme', 'bass.*'], ['c.rythme', 'perc.*'], ['e.texture', 'texture.*'], ['e.reverb', '*.send']].map(([id, p]) => ({ id, params: [p] })) };
 </script>
-<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script><script src="../js/city-dims.js"></script>
 <canvas id="c" width="1280" height="800" style="width:640px;height:400px;display:block"></canvas>
 <script>
 window.addEventListener('load', async () => {
@@ -303,7 +303,7 @@ window.addEventListener('load', async () => {
       G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.rythme', 'e.texture']; GV.grow = {}; GV.sig = null; step(3);
       const keysOf = (c) => (typeof c === 'string' ? [c] : c.keys || []);
       const lookKeys = new Set(); Object.values(GV.LOOK).forEach((L) => Object.values(L).forEach((c) => keysOf(c).forEach((k) => lookKeys.add(k)))); Object.values(GV.LOOK_ALL).forEach((c) => keysOf(c).forEach((k) => lookKeys.add(k)));
-      const sceneKeys = new Set(); Object.values(GV.SCENE).forEach((L) => (L.keys || []).forEach((k) => sceneKeys.add(k)));
+      const sceneKeys = new Set(); Object.values(GV.SCENE).forEach((L) => (L.keys || []).forEach((k) => sceneKeys.add(k))); (AMB.cityDims ? AMB.cityDims.TABLE : []).forEach((L) => L.keys.forEach((k) => sceneKeys.add(k))); // S8.4: the setting → dimension table
       const all = []; Object.entries(S).forEach(([sec, d]) => Object.keys(d.params).forEach((k) => all.push(sec + '.' + k)));
       const none = all.filter((k) => !k.startsWith('macro.') && k !== 'global.scale' && !lookKeys.has(k) && !sceneKeys.has(k)); // Gamme: the sky of the chord (S4.5w)
       ok(!none.length, 'audit : chacun des ' + all.length + ' réglages a un reflet (plantes ' + lookKeys.size + ', scène ' + sceneKeys.size + ', grands réglages par les réglages qu\'ils bougent)' + (none.length ? ' — sans reflet : ' + none.join(', ') : ''));
