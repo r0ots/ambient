@@ -99,7 +99,8 @@ body.listen .hud { top: 28px; left: 32px; }
 .sel .nsel-btn { max-width: 150px; }
 
 .tog { padding: 5px 10px; cursor: pointer; align-self: center; margin-top: 12px; }
-.panel:has(header .tog:not(.on)) .ctls { opacity: 0.4; }
+.panel:not([data-sec=bells]):has(header .tog:not(.on)) .ctls { opacity: 0.4; } /* (S11.4: the Melody's settings are the keys' too: never dimmed) */
+.panel[data-sec=bells] > header .tog::before { margin-right: 6px; }
 
 .sample-row { display: flex; gap: 6px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
 .sample-name { font-size: 11px; color: var(--muted); }

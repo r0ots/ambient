@@ -18,7 +18,9 @@
     for (const [k, sp] of Object.entries(sec.params)) {
       const key = `${secKey}.${k}`;
       if (sp.hidden) continue;
-      if (sp.type === 'toggle' && k === 'on') head.append(toggle(key, { label: '' }, sec.color));
+      // S11.4: the Melody's voice is also the keys' (Piano): its switch only stops the improvisation, « Auto »
+      if (sp.type === 'toggle' && k === 'on' && secKey === 'bells') head.append(toggle(key, { label: 'Auto', hint: 'La mélodie qui improvise toute seule. Éteinte, les touches gardent ce son et ces réglages.' }, sec.color));
+      else if (sp.type === 'toggle' && k === 'on') head.append(toggle(key, { label: '' }, sec.color));
       else if (sp.type === 'toggle') ctls.append(toggle(key, sp, sec.color));
       else if (sp.type === 'select') ctls.append(select(key, sp));
       else if (sp.type === 'text') ctls.append(textField(key, sp));

@@ -82,6 +82,12 @@ f.addEventListener('load', async () => {
     ok(seenViz.has('Jardin') && V.mode === 'Jardin' && GV.active && GV.free && GV.answer(0) === null && GV.dawnLevel(0) === 0 && d.getElementById('vizMode').textContent === 'Ville',
       'visuel : la Ville par défaut en libre, reflet sans jeu (aucune découverte, Réponse ni aube) ; Orbes, Horizon, Spectre au choix (' + [...seenViz].join(', ') + ')');
 
+    // S11.4: the Melody's switch is « Auto »; off, its settings stay lit (they are the keys' sound too)
+    { const was = A.store.get('bells.on'), tg = d.querySelector('.panel[data-sec=bells] > header .tog'), ctl = d.querySelector('.panel[data-sec=bells] > .ctls');
+      A.store.set('bells.on', false, 'user'); await wait(30);
+      ok(/Auto/.test(tg.textContent) && !tg.classList.contains('on') && w.getComputedStyle(ctl).opacity === '1', 'Mélodie : l\'interrupteur s\'appelle « Auto », éteint ses réglages restent allumés (ce sont ceux des touches)');
+      A.store.set('bells.on', was, 'user'); await wait(30); }
+
     // --- localStorage: no new game key
     const ls1 = LS(), added = Object.keys(ls1).filter(k => !(k in ls0)), changed = Object.keys(ls0).filter(k => ls1[k] !== ls0[k]);
     const bad = added.concat(changed).filter(k => !HARMLESS.includes(k));
