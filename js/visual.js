@@ -10,14 +10,16 @@
     init(canvas) {
       this.c = canvas;
       this.g = canvas.getContext('2d');
+      // S10.1: the density follows the quality level (AMB.quality: haut ≤ 2, moyen / bas 1 — a 3× phone drew 4× the pixels)
       const resize = () => {
-        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        const Q = AMB.quality, dpr = Q ? Q.dpr() : Math.min(2, window.devicePixelRatio || 1);
         const r = canvas.getBoundingClientRect();
         canvas.width = r.width * dpr; canvas.height = r.height * dpr;
         this.dpr = dpr;
       };
       resize();
       window.addEventListener('resize', resize);
+      if (AMB.quality) AMB.quality.on(() => { if (this.dpr !== AMB.quality.dpr()) resize(); });
       AMB.bus.on('note', (n) => this.pending.push(n));
       AMB.bus.on('grain', (n) => this.pending.push(n));
       AMB.bus.on('chord', (c) => { this.chordFlash = c; });

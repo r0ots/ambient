@@ -141,14 +141,17 @@
     if (!b) return;
     const M = AMB.motion, n = (downs.get(b) || 0) + (down ? 1 : -1);
     if (n > 0) downs.set(b, n); else downs.delete(b);
+    // S10.1: the key's box is read FIRST, before any class changes: read after them, it forced a style + layout pass of
+    // the whole page on every strike
+    const r = (down || n <= 0) && M && M.on() ? b.getBoundingClientRect() : null;
     if (down) {
       b.classList.remove('k-rel'); b.classList.add('on'); if (o.chord) b.classList.add('chord');
       if (M) M.press(b, true);
-      keys.fx(b, { source: SRC[o.src] || 'key' }); // S9.2: the neon strike (ring, laser to the city, sparks of its colour)
+      keys.fx(b, { source: SRC[o.src] || 'key', rect: r }); // S9.2: the neon strike (ring, laser to the city, sparks of its colour)
     } else if (n <= 0) {
       b.classList.remove('on', 'chord');
-      if (M) M.press(b, false);
-      keys.release(b); // S9.2: let go = 400 ms brighter
+      if (M) M.press(b, false, r);
+      keys.release(b, r); // S9.2: let go = 400 ms brighter
     }
   }
   function keyUp(key) { const b = struck.get(key); if (b) { struck.delete(key); strike(b, false); } }
@@ -261,14 +264,15 @@
     // the machine's note on key i (padAuto): softer, never squashed (a player's strike goes through strike(), above)
     hit(i, o = {}) {
       const b = padEl(i); if (!b) return null;
+      const M = AMB.motion, r = M && M.on() && !document.hidden ? b.getBoundingClientRect() : null; // (read before the class: no forced layout)
       b.classList.add('auto'); clearTimeout(machineT.get(b)); machineT.set(b, setTimeout(() => b.classList.remove('auto'), o.ms || AUTO_MS));
-      return this.fx(b, { source: 'machine' });
+      return this.fx(b, { source: 'machine', rect: r });
     },
     // the motion of a strike: o = {source: 'mouse' | 'key' | 'midi' | 'machine', vel (0..1)}; off in reduced motion / JUICE 0
     fx(b, o = {}) {
       const soft = o.source === 'machine', M = AMB.motion, i = +b.dataset.deg;
       if (!M || !M.on() || document.hidden) return b;
-      const r = b.getBoundingClientRect(), c = KEY_COL[i] || '#22e6ff', v = o.vel != null ? o.vel : 0.85; if (!r.width) return b;
+      const r = o.rect || b.getBoundingClientRect(), c = KEY_COL[i] || '#22e6ff', v = o.vel != null ? o.vel : 0.85; if (!r.width) return b;
       // the laser: from the key's top up into the city (longer when struck harder; the machine's = shorter, fainter)
       const h = Math.max(50, Math.min(r.top * 0.55, 340)) * (soft ? 0.45 : 0.55 + 0.45 * v), lz = M.ghost('k-laser', { left: r.left + r.width / 2 + 'px', top: r.top - h + 'px', height: h + 'px' });
       lz.style.setProperty('--c', c);
@@ -279,12 +283,12 @@
       const rg = M.ghost('k-ring', { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' }); rg.style.setProperty('--c', c);
       const ar = rg.animate([{ transform: 'scale(1)', opacity: 0.9 }, { transform: `scale(${1 + 0.18 * Math.min(1.5, M.amp())}, ${1 + 0.4 * Math.min(1.5, M.amp())})`, opacity: 0 }], { duration: M.ms('med') + 60 * M.t(), easing: M.EASE.out });
       ar.onfinish = ar.oncancel = () => rg.remove();
-      M.burst(b, { n: 9, spread: 2.6, speed: 300, color: c }); // (the same 9 sparks whatever struck it: S9.1 parity)
+      M.burst({ x: r.left + r.width / 2, y: r.top + r.height / 2 }, { n: 9, spread: 2.6, speed: 300, color: c }); // (the same 9 sparks whatever struck it: S9.1 parity)
       return b;
     },
     // let go: no longer crushed, 400 ms brighter, a few sparks
-    release(b) {
-      const i = +b.dataset.deg, M = AMB.motion; if (M && M.on()) { M.pop(b, 'k-rel', { ms: 400 }); M.burst(b, { n: 6, spread: 2, speed: 220, life: 0.4, color: KEY_COL[i] }); }
+    release(b, r) {
+      const i = +b.dataset.deg, M = AMB.motion; if (M && M.on()) { r = r || b.getBoundingClientRect(); M.pop(b, 'k-rel', { ms: 400 }); if (r.width) M.burst({ x: r.left + r.width / 2, y: r.top + r.height / 2 }, { n: 6, spread: 2, speed: 220, life: 0.4, color: KEY_COL[i] }); }
     },
   };
   AMB.keys = keys;

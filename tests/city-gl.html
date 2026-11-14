@@ -6,6 +6,7 @@
 <script src="lib.js"></script>
 <script>testBus();</script>
 <script src="../js/motion.js"></script>
+<script src="../js/quality.js"></script>
 <div class="stage" style="position:relative;width:640px;height:400px"><canvas id="viz" width="640" height="400" style="width:640px;height:400px;display:block"></canvas></div>
 <script>
 // the stub scene: a dark city with a pink neon bar and a cyan line (what garden-visual.js would have drawn)
@@ -96,11 +97,34 @@ window.addEventListener('load', async () => {
     { const t = []; for (let i = 0; i < 20; i++) { const a = performance.now(); frame(); G.gl.finish(); t.push(performance.now() - a); } t.sort((a, b) => a - b);
       log('coût d\'une image 640×400 avec finish() (swiftshader, CPU) : médiane ' + t[10].toFixed(2) + ' ms'); }
 
-    // --- budget: slow frames → steps down, then 2D
-    { const st = G.frames; G.frames = G.BUDGET.warm + 1; G.last = 0; let n = 0, t = 1000;
-      while (G.mode === 'gl' && n < 1000) { t += 70; G.measure(t, 1); n++; }
-      ok(G.mode === '2d' && G.reason === 'budget' && G.level === G.LEVELS.length - 1, 'budget dépassé (70 ms / image) : qualité réduite pas à pas puis repli 2D après ' + n + ' images');
-      G.enable(); ok(G.mode === 'gl' && G.level === 0, 'réactivable'); }
+    // --- S10.1 the quality governor (js/quality.js): real frame intervals → level down, WebGL follows; the counter
+    { const Q = AMB.quality; ok(Q && !Q.auto && Q.level === Q.pick(), 'qualité : niveau de départ choisi, gouverneur coupé hors de l\'appli (' + Q.name() + ')');
+      const fake = (o) => ({ matchMedia: (q) => ({ matches: q === '(pointer: coarse)' && !!o.coarse }), innerWidth: o.w, screen: { width: o.w } });
+      ok(Q.pick({ hardwareConcurrency: 12, deviceMemory: 8 }, fake({ w: 1440 })) === 0 && Q.pick({ hardwareConcurrency: 8, deviceMemory: 8 }, fake({ w: 412, coarse: true })) === 1
+        && Q.pick({ hardwareConcurrency: 8, deviceMemory: 4 }, fake({ w: 1440 })) === 1 && Q.pick({ hardwareConcurrency: 2, deviceMemory: 2 }, fake({ w: 412, coarse: true })) === 2,
+        'départ : bureau = haut, téléphone (pointeur grossier, petit écran) ou 4 Go = moyen, 2 cœurs = bas');
+      Q.set(0, 'test'); Q.start = 0; Q.auto = true; Q.win.length = 0; Q.winT = 0; G.enable();
+      ok(G.mode === 'gl' && G.level === 2, 'haut : WebGL, deux rayons de bloom');
+      const seen = []; const off = Q.on((e) => seen.push(e.name));
+      for (let i = 0; i < 150; i++) Q.tick(16.7);
+      ok(Q.level === 0, 'images à 60 i/s pendant 2,5 s : le niveau reste haut');
+      for (let i = 0; i < 70; i++) Q.tick(33); // 2.3 s at 30 fps
+      ok(Q.level === 1 && G.mode === 'gl' && G.level === 1 && seen[0] === 'moyen' && document.documentElement.classList.contains('q-moyen'), 'images lentes (33 ms) pendant 2 s : niveau moyen (WebGL à un rayon, classe q-moyen) — ' + Q.why);
+      frame(); ok(G.cv.width > 0, 'moyen : une image rendue (bloom au 1/4)');
+      for (let i = 0; i < 70; i++) Q.tick(40);
+      ok(Q.level === 2 && G.mode === '2d' && G.reason === 'quality' && Q.fx() === 0, 'encore lentes : niveau bas, plus de WebGL (2D), plus de particules');
+      for (let i = 0; i < 20; i++) Q.tick(5000); ok(Q.level === 2, 'une pause (onglet caché) ne compte pas');
+      let n = 0; while (Q.level > 0 && n < 6000) { Q.tick(16.7); n++; }
+      ok(Q.level === 0 && G.mode === 'gl' && n * 16.7 >= 2 * Q.UP_S * 1000 - 100, 'fluide de nouveau : remonte prudemment, un niveau à la fois (' + (n * 16.7 / 1000).toFixed(0) + ' s), WebGL revient');
+      Q.set(1, 'test'); Q.start = 1; for (let i = 0; i < 1200; i++) Q.tick(16.7); ok(Q.level === 1, 'jamais au-dessus du niveau de départ');
+      Q.start = 0; Q.set(0, 'test'); off();
+      // the counter: average and worst over 2 s, level, density, WebGL
+      Q.ring.length = 0; Q.ringT = 0; for (let i = 0; i < 100; i++) Q.tick(i % 10 ? 16 : 40);
+      const st = Q.stat(); ok(st.worst === 25 && st.avg > 45 && st.avg < 58, 'compteur : moyenne ' + st.avg + ' i/s, pire ' + st.worst + ' i/s sur 2 s');
+      Q.showMeter(true, false); await wait(30); const m = document.querySelector('.fps-meter');
+      ok(m && /i\/s/.test(m.textContent) && /pire 25/.test(m.textContent) && /haut/.test(m.textContent) && /WebGL/.test(m.textContent) && getComputedStyle(m).pointerEvents === 'none', 'compteur affiché : « ' + (m && m.textContent.replace(/\n/g, ' / ')) + ' »');
+      Q.showMeter(false, false); ok(!document.querySelector('.fps-meter'), 'compteur caché');
+      Q.auto = false; }
 
     // --- lost context (WEBGL_lose_context) → 2D, restored → WebGL
     const ext = G.gl.getExtension('WEBGL_lose_context');

@@ -232,6 +232,7 @@
         return i;
       },
       burst(n, src, o = {}) {
+        if (AMB.quality && !o.sparkQ) n = Math.round(n * AMB.quality.fx()); // S10.1 (parties' confetti: half at moyen, none at bas)
         const L = this.layer(), cv = L.querySelector('canvas'), W = innerWidth, H = innerHeight;
         if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
         if (!this.bins) this.bins = this.COLORS.map(() => []);
@@ -290,10 +291,10 @@
       let x = at.x, y = at.y;
       const el = at.getBoundingClientRect ? at : null;
       if (el) { const r = el.getBoundingClientRect(); if (!r.width) return 0; x = r.left + r.width / 2; y = r.top + r.height / 2; }
-      const n = Math.min(40, Math.round((o.n || 8) * this.JUICE));
+      const n = Math.min(40, Math.round((o.n || 8) * this.JUICE * (AMB.quality ? AMB.quality.fx() : 1))); // S10.1: half at moyen, none at bas
       if (!n) return 0;
       const color = o.color || (el && sparkColor(el)) || '#ffb347';
-      return this.particles.burst(n, null, { x, y, angle: o.angle != null ? o.angle : -Math.PI / 2, spread: o.spread != null ? o.spread : Math.PI * 1.6,
+      return this.particles.burst(n, null, { sparkQ: 1, x, y, angle: o.angle != null ? o.angle : -Math.PI / 2, spread: o.spread != null ? o.spread : Math.PI * 1.6,
         speed: (o.speed || 320) * Math.min(1.6, 0.6 + 0.4 * this.JUICE), life: o.life || 0.45, size: o.size || 3 + (Math.random() < 0.3 ? 1 : 0), G: o.G != null ? o.G : 900, color });
     },
     // a knob turned by hand: dv = the change (fraction of its course), deg = the needle's new angle. Each notch (1/40 of
@@ -462,12 +463,16 @@
 
     // ---- S9.1 ONE press, whatever the input (pointer, finger, a keyboard shortcut, MIDI): sinks while held (css
     // .is-pressed), springs back with sparks when let go. tap() = a shortcut that presses and lets go at once.
-    press(el, down) {
+    // S10.1: let go, the box and the colour are read BEFORE the classes change (else: a forced style + layout pass);
+    // `r` = a box already read by the caller; `quiet` = the caller sparks itself (the keys: play.js)
+    press(el, down, r, quiet) {
       if (!el || !el.isConnected) return false;
       if (down) { this.unpop(el, 'is-released'); el.classList.add('is-pressed'); return true; }
+      const spark = !quiet && this.on() && !el.classList.contains('knob');
+      const box = spark ? r || el.getBoundingClientRect() : null, color = spark && box.width ? sparkColor(el) : null;
       el.classList.remove('is-pressed');
       this.pop(el, 'is-released', { ms: this.ms('slow') + 40 });
-      if (!el.classList.contains('knob') && el.offsetWidth) this.burst(el, { n: el.matches(SPARKY) ? 16 : 10 }); // let go: it sparks (toggles, chips: more)
+      if (box && box.width) this.burst({ x: box.left + box.width / 2, y: box.top + box.height / 2 }, { n: el.matches(SPARKY) ? 16 : 10, color: color || undefined }); // let go: it sparks (toggles, chips: more)
       return true;
     },
     tap(el) {

@@ -255,7 +255,7 @@
   // ======================================================================================================================
   // THE LAYERS (screen coordinates; the camera's shake is in the buildings' positions)
   const timed = (f) => function (g, w, cam, v) { if (!C.any) return; const t0 = performance.now(); f(g, w, cam, v); C.cost_ += performance.now() - t0; };
-  const phone = (cam) => cam.W / (gv.dpr || 1) < 600;
+  const phone = (cam) => cam.W / (gv.dpr || 1) < 600 || !!(AMB.quality && AMB.quality.lite()); // S10.1: the SUPERs in their light version at moyen / bas
   // sky (z 13): aurora curtains, hyperspace streaks, the mirrored city, the disco ball and its beams
   gv.addLayer({ id: 'combo-sky', z: 13, draw: timed((g, w, cam, v) => {
     const W = cam.W, H = cam.H, gd = cam.y(1, cam.gd), px = cam.px, T = C.T, s = C.soft(), k = C.cur;
