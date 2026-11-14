@@ -279,7 +279,7 @@
       const rg = M.ghost('k-ring', { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' }); rg.style.setProperty('--c', c);
       const ar = rg.animate([{ transform: 'scale(1)', opacity: 0.9 }, { transform: `scale(${1 + 0.18 * Math.min(1.5, M.amp())}, ${1 + 0.4 * Math.min(1.5, M.amp())})`, opacity: 0 }], { duration: M.ms('med') + 60 * M.t(), easing: M.EASE.out });
       ar.onfinish = ar.oncancel = () => rg.remove();
-      M.burst({ x: r.left + r.width / 2, y: r.top + 6 }, { n: 10 + Math.round(6 * v), spread: 2.6, speed: 300, life: 0.5, color: c });
+      M.burst(b, { n: 9, spread: 2.6, speed: 300, color: c }); // (the same 9 sparks whatever struck it: S9.1 parity)
       return b;
     },
     // let go: no longer crushed, 400 ms brighter, a few sparks
