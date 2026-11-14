@@ -449,3 +449,7 @@ Retours de l'utilisateur (2026-11-14) : pas de mode Écouter ; textes sans jargo
 - Acquis : plus de mode Écouter ; textes sans jargon ; une seule police (Chakra Petch, logo Monoton) ; tout en tubes néon, menus maison, plus de BD ; touches néon avec laser, même frappe souris/clavier/MIDI ; arbre en circuit hexagonal qui ne montre que les pièces ouvertes et prêtes ; ville vide au départ qui se construit quand une fonction est débloquée et activée, et ne bouge que quand ça joue ; 60 fps au bureau et en 390×780 CPU 4×.
 - Questions à l'utilisateur : écouter les 4 WAV sombres (paysages doux à supprimer ?) ; renommer le dépôt GitHub en junojuno ?
 - Reste ouvert : noms de paysages tronqués sur téléphone couché.
+
+## Saison 10 — fluide sur téléphone
+Retour de l'utilisateur (2026-11-14, sur son téléphone via https://r0ots.github.io/ambient/) : « beaucoup d'effets font laguer ». Les mesures en Chrome headless CPU 4× (60 fps) ne reflètent pas un vrai téléphone (GPU mobile, Safari, densité de pixels 3×).
+- [ ] S10.1 Passe d'optimisation mobile : compteur d'images affichable sur le téléphone, niveaux de qualité automatiques réglés sur les vraies images, chasse aux effets coûteux (flous, ombres animées, lueurs, WebGL plein écran en densité 3×)
