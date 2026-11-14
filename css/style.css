@@ -100,7 +100,13 @@ body.listen .hud { top: 28px; left: 32px; }
 
 .tog { padding: 5px 10px; cursor: pointer; align-self: center; margin-top: 12px; }
 .panel:not([data-sec=bells]):has(header .tog:not(.on)) .ctls { opacity: 0.4; } /* (S11.4: the Melody's settings are the keys' too: never dimmed) */
-.panel[data-sec=bells] > header .tog::before { margin-right: 6px; }
+.panel .sub { margin-top: 12px; padding: 10px 12px 12px; border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); border-radius: 6px;
+  background: color-mix(in srgb, var(--c) 5%, transparent); }
+.panel .sub > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.panel .sub h3 { margin: 0; font: 700 11px var(--f); letter-spacing: .24em; text-transform: uppercase; color: var(--c); }
+.panel .sub > header .tog { margin: 0; padding: 4px 10px; }
+.panel .sub > header .tog::before { margin-right: 6px; }
+.panel .sub:has(> header .tog:not(.on)) > .ctls { opacity: 0.4; } /* (Auto off: only the improvisation's settings dim) */
 
 .sample-row { display: flex; gap: 6px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
 .sample-name { font-size: 11px; color: var(--muted); }
@@ -1192,7 +1198,7 @@ html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 .app > .pads { grid-area: pads; margin: 0; }
 body.game .app > .pads { position: relative; bottom: auto; padding: 0; background: none; border-radius: 0; } /* (was sticky under the page) */
 /* the drawer: Sculpter / Composer panels on glass; the city shows through and beside it */
-.drawer { grid-area: drawer; display: none; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; container-type: inline-size; scrollbar-width: thin;
+.drawer { grid-area: drawer; display: none; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; overflow-anchor: none; /* (S11.10: a piece opening above never scrolls the drawer away) */ container-type: inline-size; scrollbar-width: thin;
   padding: 10px; border-radius: 6px; background: var(--glass); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-line); box-shadow: 0 10px 34px #000a; }
 body.mode-sculpt .drawer, body.mode-compose .drawer { display: block; animation: s8-in-side var(--m-slow) var(--m-spring) both; }

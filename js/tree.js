@@ -228,7 +228,7 @@
   tree.SOLO = ['drone', 'pad', 'bells', 'grains', 'texture', 'seq', 'bass', 'perc'];
   tree.solo = function (g = AMB.game) {
     if (typeof document === 'undefined') return;
-    const tg = this.SOLO.map((l) => document.querySelector(`.panel[data-sec="${l}"] > header .tog[data-key="${l}.on"]`)).filter((b) => b && !b.closest('.is-locked'));
+    const tg = this.SOLO.map((l) => document.querySelector(`.panel[data-sec="${l}"] .tog[data-key="${l}.on"]`)).filter((b) => b && !b.closest('.is-locked'));
     document.querySelectorAll('.tog.is-solo').forEach((b) => b.classList.remove('is-solo'));
     if (g && g.path && tg.length === 1 && AMB.store.get(tg[0].dataset.key)) document.querySelectorAll(`.tog[data-key="${tg[0].dataset.key}"]`).forEach((b) => b.classList.add('is-solo')); // (its panel header)
   };

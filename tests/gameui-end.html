@@ -14,7 +14,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, goals, buyAll, sdiff, KEY, settle
     ok(A.store.get('drone.on') && dOn.classList.contains('is-solo') && w.getComputedStyle(dOn).display!=='none' && !d.querySelector('.layer-chips'), 'Graine : le drone, seule couche ouverte, garde son interrupteur (S11.3 : c\'est le bouton d\'allumage de la machine)');
     A.store.set('drone.on', false, 'game'); ok(!dOn.classList.contains('is-solo'), 'drone coupé (paysage, ancienne sauvegarde) : sa coupure revient pour le rallumer'); A.store.set('drone.on', true, 'game');
     g.unlock('m.bells'); await wait(30);
-    const bOn=d.querySelector('.panel[data-sec=bells] > header .tog[data-key="bells.on"]');
+    const bOn=d.querySelector('.panel[data-sec=bells] .tog[data-key="bells.on"]');
     ok(!dOn.classList.contains('is-solo') && w.getComputedStyle(dOn).display!=='none' && w.getComputedStyle(bOn).display!=='none', 'Mélodie auto ouverte : deux couches, deux coupures');
     const b=d.getElementById('play'); PE('pointerdown',b);
     ok(b.classList.contains('is-pressed') && /press-in/.test(w.getComputedStyle(b).animationName), 'appui : le bouton s\'enfonce (is-pressed) '+b.className+' / '+w.getComputedStyle(b).animationName);
