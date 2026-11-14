@@ -241,7 +241,7 @@
     fitTree(all) {
       const map = $('#treeDlg .tree-map'); if (!map || !map.clientWidth) return;
       const lay = this.treeLayout(), lim = this.kLimits(), v = this.view;
-      this.fitW = map.clientWidth;
+      this.fitW = window.innerWidth; // (the window's, not the map's: a scrollbar that comes or goes is not a resize)
       const narrow = !all && lay.nar;
       // S5.7: a phone opens on the whole narrow map (its width, or its height), no smaller than 0.45 (then it pans)
       v.k = narrow ? clamp(Math.max(0.45, lim.fit), lim.min, lim.max) : !all && map.clientWidth < 560 ? clamp(0.6, lim.min, lim.max) : Math.min(lim.fit, 1.15);
@@ -384,7 +384,7 @@
       // any click during the unlock sequence fast-forwards it
       if (dlg) dlg.addEventListener('click', (e) => { if (this.seq) { e.stopPropagation(); e.preventDefault(); this.seqFinish(); } }, true);
       // refit only when the width changes (a mobile address bar showing / hiding changes the height only)
-      window.addEventListener('resize', () => { if (!dlg || dlg.hidden) return; if (map.clientWidth !== this.fitW) { this.renderTree(); this.fitTree(); } else this.applyView(); }); // (S5.7: across 560 px, the other fan)
+      window.addEventListener('resize', () => { if (!dlg || dlg.hidden) return; if (window.innerWidth !== this.fitW) { this.renderTree(); this.fitTree(); } else this.applyView(); }); // (S5.7: across 560 px, the other fan)
     },
 
     // ---- unlock sequence (G8.5): a challenge just opened a node ----

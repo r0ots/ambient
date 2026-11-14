@@ -30,8 +30,9 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
     // pan (drag) and wheel zoom move the stage; the click that ends a drag does nothing
     const map=d.querySelector('#treeDlg .tree-map'), v=A.garden.view, k0=v.k;
     map.dispatchEvent(new w.WheelEvent('wheel',{bubbles:true,cancelable:true,deltaY:-200,clientX:600,clientY:400})); ok(v.k>k0 && /scale/.test(d.querySelector('.tree-stage').style.transform), 'molette : zoom '+k0.toFixed(2)+' → '+v.k.toFixed(2));
+    A.garden.zoomAt(600,400,2); { const mp=map.clientWidth, sw=A.garden.treeLayout().W*v.k; v.tx=(mp-sw)/2; A.garden.applyView(); } // (a known view, zoomed in, room to pan both ways: the drag is not clamped whatever the map's size)
     const tx0=v.tx; pe('pointerdown',tn('h.key'),{clientX:300,clientY:300}); pe('pointermove',tn('h.key'),{clientX:380,clientY:330}); pe('pointerup',tn('h.key'),{clientX:380,clientY:330}); tn('h.key').dispatchEvent(new w.MouseEvent('click',{bubbles:true,detail:1}));
-    ok(v.tx>tx0+40 && A.garden.sel==='h.pad', 'glisser : la carte suit le doigt, pas de sélection en fin de glissé');
+    ok(v.tx>tx0+40 && A.garden.sel==='h.pad', 'glisser : la carte suit le doigt, pas de sélection en fin de glissé ('+Math.round(tx0)+' → '+Math.round(v.tx)+')');
     pe('pointerdown',map,{pointerType:'mouse',pointerId:1}); pe('pointerup',map,{pointerType:'mouse',pointerId:1}); A.garden.fitTree(); }
   // S4.6 + G8.5: a challenge won makes its node READY — a chime, « ✦ Ouvrir : Pad » pulsing on the LCD, the tree says « prêt »;
   // nothing opens by itself. A tap says what it gives, « Ouvrir » plays the opening sequence on the map (link, node born at the

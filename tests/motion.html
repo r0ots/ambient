@@ -129,6 +129,14 @@ EventTarget.prototype.addEventListener = function (...a) { LISTENERS++; return a
     ok(!card.getAnimations().length && !M.boom(rec) && !M.neon(tg, false), 'mouvement réduit : fenêtre ouverte sans animation, pas d\'explosion ni de néon');
     dlg.hidden = true; await wait(0);
     ok(!document.querySelector('.m-ghost-card'), 'mouvement réduit : pas de fantôme à la fermeture');
+    // S7.5: ONE rule (.m-still) stops every loop of the app, older ones too (a legacy hard-coded pulse, the ▶ beat), state kept
+    { const ld = document.createElement('div'); ld.className = 'dc-head fresh'; ld.textContent = '✦ Découvertes'; document.querySelector('.app').append(ld); document.body.classList.add('playing'); await wait(30);
+      const still = (e) => e.getAnimations().every((a) => a.playState !== 'running');
+      ok(root.classList.contains('m-still') && still(ld) && still(rec) && cs(ld).animationName !== 'none' && /underline/.test(cs(ld).textDecorationLine), 'mouvement réduit : les boucles anciennes (carnet qui pulse : souligné à la place) et nouvelles s\'arrêtent, état visible gardé ' + root.className + ' ' + cs(ld).animationName + ' ' + ld.getAnimations().map((a) => a.playState).join());
+      M.set({ reduced: null }); await wait(30);
+      ok(ld.getAnimations().some((a) => a.playState === 'running'), 'mouvement rendu : la boucle repart ' + cs(ld).animationName + ' ' + ld.getAnimations().map((a) => a.playState).join());
+      M.set({ juice: 0 }); await wait(30); ok(still(ld), 'JUICE 0 : la boucle s\'arrête aussi'); M.set({ juice: 1 });
+      ld.remove(); document.body.classList.remove('playing'); }
     M.set({ reduced: null });
     await wait(M.MS.slow + 300);
     // 8b. S7.2 fx (a Web Animation over the css ones) and shatter (a ghost squashes, then sparks): nothing stays

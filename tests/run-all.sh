@@ -7,6 +7,15 @@ PAGES="gameui gameui-play garden-visual generator dark gameui-end midi-path phra
 SLOW="engines smoke spectrum"
 [ -n "$ALL" ] && PAGES="$SLOW $PAGES"
 T0=$(date +%s); TMP=$(mktemp -d); FAIL=0; export TMP SCALE
+# its own static server for the run (any free port): threaded, with a deep listen backlog. python's plain http.server
+# (backlog 5) resets connections when several headless Chromes fetch their ~40 scripts at once, and pages failed to load
+python3 -u -c 'import http.server as h, functools, sys
+class S(h.ThreadingHTTPServer): request_queue_size = 512; daemon_threads = True
+s = S(("127.0.0.1", 0), functools.partial(h.SimpleHTTPRequestHandler, directory=".."))
+print(s.server_address[1], file=open(sys.argv[1], "w"), flush=True); s.serve_forever()' "$TMP/port" 2> "$TMP/server.log" &
+SRV=$!; trap 'kill $SRV 2>/dev/null' EXIT
+for _ in $(seq 1 50); do [ -s "$TMP/port" ] && break; sleep 0.1; done
+export PORT=$(cat "$TMP/port") LOG="$TMP/server.log" HOST=127.0.0.1 LOCK_S=0.25
 run() { local t0=$(date +%s); ./run.sh $1.html "${SCALE:-0.4}" > "$TMP/$1.out"; echo "$1 $(( $(date +%s) - t0 ))" >> "$TMP/times"; }
 export -f run
 # job pool (not fixed batches): a slow page no longer holds back the others

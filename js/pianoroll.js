@@ -217,8 +217,9 @@
       this.tabs = [...wrap.querySelectorAll('[data-slot]')];
       this.tabs.forEach((b) => b.addEventListener('click', () => store.set('seq.slot', b.dataset.slot, 'user')));
       this.bindMouse();
-      store.on((k) => { if (k.startsWith('seq.') || k === 'global.key' || k === 'global.scale') this.draw(); });
-      window.addEventListener('resize', () => this.draw());
+      const redraw = () => { if (this.seen) this.draw(); else this.renderTabs(); }; // (S7.5 off screen: the Dérive moving seq.* no longer redraws the roll for nobody)
+      store.on((k) => { if (k.startsWith('seq.') || k === 'global.key' || k === 'global.scale') redraw(); });
+      window.addEventListener('resize', redraw);
       // S7.2: the playhead and the notes that flash follow the step HEARD (seq.heard), not the scheduler; while an
       // effect lives (a note placed, erased, played, a selection), the roll is drawn each frame, else only on changes
       const loop = () => {
