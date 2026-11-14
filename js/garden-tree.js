@@ -9,7 +9,7 @@
   const STATE_TXT = { owned: 'ouvert', ready: 'prêt', available: 'à ouvrir', locked: 'encore dans le noir' };
   // S11.8 layout units: row height, room above (branch names) and below, side margin, gap between two subtrees, the hexagon,
   // labels (13 px capitals: CH = width of a letter, ONE = the widest single line before it splits, PAD = its plate)
-  const L = { ROW: 136, TOP: 110, BOT: 110, M: 60, GAP: 30, LED: 46, CH: 8.4, ONE: 100, PAD: 14, KR: 0.86 };
+  const L = { ROW: 136, TOP: 110, BOT: 110, M: 60, GAP: 30, LED: 46, CH: 8.4, ONE: 100, PAD: 14, KR: 0.86, MINW: 1000 };
   const SEQ = { link: 380, end: 1700, reduced: 650 }; // unlock sequence timing (ms; S4.6: a bit longer, to see it)
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -102,9 +102,9 @@
           key[id] = xs.length ? (P.x[id] + xs.reduce((u, v) => u + v, 0) / xs.length) / 2 : P.x[id];
         }
       }
-      const maxL = Math.max(...NS.map((n) => dep(n.id))), pos = {};
-      for (const n of NS) pos[n.id] = { x: Math.round(P.x[n.id]), y: L.TOP + (maxL - dep(n.id)) * L.ROW, l: dep(n.id), w: Math.round(W[n.id]) };
-      return (this._lay = { sig, pos, prim, lab, W: Math.round(P.w), H: L.TOP + maxL * L.ROW + L.BOT, maxL });
+      const maxL = Math.max(...NS.map((n) => dep(n.id))), pos = {}, sw = Math.max(P.w, L.MINW), dx = (sw - P.w) / 2; // (a young tree on a stage wide enough to pan)
+      for (const n of NS) pos[n.id] = { x: Math.round(P.x[n.id] + dx), y: L.TOP + (maxL - dep(n.id)) * L.ROW, l: dep(n.id), w: Math.round(W[n.id]) };
+      return (this._lay = { sig, pos, prim, lab, W: Math.round(sw), H: L.TOP + maxL * L.ROW + L.BOT, maxL });
     },
     // id: S11.1 open on that piece (« ✦ Pad est prêt » in the Objectifs widget), else the first ready one
     showTree(on, id = null) {

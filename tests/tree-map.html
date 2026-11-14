@@ -1,5 +1,7 @@
 <!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
 <!-- Tree screen (v0.99 fixes): narrow-screen opening, refit on width only, legend / zoom buttons, node card, pointers.
+     S11.8: a real tree — no node or label overlaps another (partial and full tree, phone and desktop), each piece above
+     its main parent, labels on two lines at most and readable (≥ 11 px on screen when the Arbre opens).
      S4.3: a map to look at — touching a node shows what opens it (challenge, Écho, secret), never buys. -->
 <script src="lib.js"></script>
 <script>localStorage.removeItem('ambient.game.treemap');</script>
@@ -13,11 +15,11 @@ f.addEventListener('load', async ()=>{
   G.setMode('path'); Gd.welcome(false); ['m.bells','h.pad','t.son','e.reverb'].forEach(i=>G.unlock(i));
   const map=d.querySelector('#treeDlg .tree-map'), R=(e)=>e.getBoundingClientRect();
   Gd.showTree(true); await wait(60);
-  // --- narrow screen (S5.7): a narrow fan, the whole map in sight and filling its height (k ≥ 0.45), root at the bottom
-  const root=map.querySelector('.tree-node[data-id=racine] .led'), mr=R(map), rr=R(root);
-  const leds=[...map.querySelectorAll('.tree-node .led')].map(R).filter(r=>r.width>0), lo=Math.min(...leds.map(r=>r.left)), hi=Math.max(...leds.map(r=>r.right)), top=Math.min(...leds.map(r=>r.top));
-  ok(Gd.treeLayout().nar && Gd.view.k>=0.45 && lo>=mr.left-30 && hi<=mr.right+30, 'écran étroit ('+map.clientWidth+' px) : éventail étroit, toute la carte en largeur (k='+Gd.view.k.toFixed(2)+', '+Math.round(lo-mr.left)+'…'+Math.round(mr.right-hi)+' px des bords)');
-  ok(Math.abs((rr.left+rr.width/2)-(mr.left+mr.width/2))<40 && rr.bottom<=mr.bottom && rr.top>mr.top && mr.bottom-rr.bottom<70 && top-mr.top<110, 'racine en bas, la carte remplit la hauteur (pas de quart vide : '+Math.round(mr.bottom-rr.bottom)+' px sous la racine, '+Math.round(top-mr.top)+' px au-dessus)');
+  // --- narrow screen (S11.8): what is lit, in sight, labels readable (≥ 11 px), the root at the bottom
+  const root=map.querySelector('.tree-node[data-id=racine] .led'), mr=R(map), rr=R(root), fs=()=>parseFloat(w.getComputedStyle(map.querySelector('.tree-node b')).fontSize)*Gd.view.k;
+  const leds=[...map.querySelectorAll('.tree-node .led')].map(R).filter(r=>r.width>0);
+  ok(fs()>=10.95 && leds.length>=5 && leds.every(r=>r.left>=mr.left-1 && r.right<=mr.right+1 && r.top>=mr.top-1 && r.bottom<=mr.bottom+1), 'écran étroit ('+map.clientWidth+' px) : tout ce qui est allumé en vue, étiquettes de '+fs().toFixed(1)+' px (k='+Gd.view.k.toFixed(2)+')');
+  ok(leds.every(r=>r.top<=rr.top+1), 'la racine en bas de l\'arbre, tout pousse au-dessus');
   ok(/conic-gradient/.test(w.getComputedStyle(d.querySelector('.tree-legend i.st-owned')).backgroundImage), 'S5.7 légende : « ouvert » = la couleur de sa branche (pastille aux 5 couleurs), plus « vert »');
   // --- legend on one line, zoom buttons clear of it
   const items=[...d.querySelectorAll('.tree-legend > span:not(.tree-tip)')], tops=new Set(items.map(e=>Math.round(R(e).top)));
@@ -64,6 +66,34 @@ f.addEventListener('load', async ()=>{
   ok(!spans.some(t=>/✧/.test(t)) && spans.every(t=>/^(✓|✦ prêt|✦|◇ \d\/[23]|)$/.test(t)) && spans.some(t=>/^◇ 0\/2$/.test(t)) && spans.includes('✓'), 'S11.1 nœuds : ✓, ◇ objectifs faits / à faire (« ◇ 0/2 »), aucun coût');
   ok(/^\d+ ouverts?$/.test(d.querySelector('.tree-count').textContent), 'en-tête : nœuds ouverts '+d.querySelector('.tree-count').textContent);
   Gd.select(null); Gd.showTree(false);
+  // --- S11.8 layout: no overlap between pieces (hexagon, name, state) nor branch names; each piece above its main parent;
+  // labels on 1–2 lines; partial tree, a ready piece, the whole tree; phone, then desktop
+  const check=async (what)=>{
+    Gd.showTree(true); await wait(40); const v=Gd.view; v.k=1; Gd.applyView(); d.getAnimations().forEach(x=>x.cancel()); // (measured at scale 1, still: no entrance nor levitation)
+    const lay=Gd.treeLayout(), nodes=[...map.querySelectorAll('.tree-node')].filter(b=>w.getComputedStyle(b).display!=='none');
+    const parts=nodes.flatMap(b=>[...b.querySelectorAll('.led, b, span')].map(e=>({id:b.dataset.id,r:R(e)}))).filter(o=>o.r.width>0)
+      .concat([...map.querySelectorAll('.tree-bname')].filter(t=>w.getComputedStyle(t).display!=='none').map(t=>({id:'#'+t.dataset.b,r:t.getBoundingClientRect()})));
+    const M=3, hit=[]; // (3 px of air at least)
+    for (let i=0;i<parts.length;i++) for (let j=i+1;j<parts.length;j++) { const a=parts[i], b=parts[j]; if (a.id===b.id) continue;
+      if (a.r.left<b.r.right+M && b.r.left<a.r.right+M && a.r.top<b.r.bottom+M && b.r.top<a.r.bottom+M) hit.push(a.id+'/'+b.id); }
+    ok(nodes.length>1 && !hit.length, what+' : '+nodes.length+' pièces, aucun chevauchement'+(hit.length?' — '+[...new Set(hit)].slice(0,6).join(' '):''));
+    const bad=nodes.filter(b=>{ const p=lay.prim[b.dataset.id]; if (!p) return false; const a=R(b.querySelector('.led')), c=R(map.querySelector('.tree-node[data-id="'+p+'"] .led')); return !(a.bottom<c.top-40 && lay.pos[b.dataset.id].y<lay.pos[p].y); });
+    const two=nodes.filter(b=>{ const e=b.querySelector('b'), lh=parseFloat(w.getComputedStyle(e).lineHeight)||15; return e.querySelectorAll('br').length>1 || R(e).height>lh*2+6; });
+    ok(!bad.length && !two.length, what+' : chaque pièce au-dessus de son parent principal, étiquettes sur 2 lignes au plus'+(bad.length?' — sous : '+bad.map(b=>b.dataset.id).join(' '):'')+(two.length?' — longues : '+two.map(b=>b.dataset.id).join(' '):''));
+    const solid=map.querySelectorAll('.tree-link:not(.x):not(.gone)').length, dot=map.querySelectorAll('.tree-link.x:not(.gone):not(.dark)');
+    ok([...map.querySelectorAll('.tree-link:not(.gone)')].every(p=>/^M[\d.-]+ [\d.-]+(V[\d.-]+(H[\d.-]+V[\d.-]+)?)$/.test(p.getAttribute('d'))) && [...dot].every(p=>parseFloat(w.getComputedStyle(p).strokeWidth)<2), what+' : traces à angle droit, parent principal en trait plein ('+solid+'), autres prérequis en pointillé fin ('+dot.length+')');
+    Gd.showTree(false);
+  };
+  await check('390 px, début (5 pièces)');
+  G.ready('h.key','test'); await check('390 px, une pièce prête');
+  for (let k=0;k<8;k++) T.NODES.forEach(n=>{ if (T.status(n.id)==='available') G.unlock(n.id); });
+  await check('390 px, arbre complet');
+  Gd.showTree(true); await wait(40);
+  ok(fs()>=10.95, 'arbre complet au téléphone : ouvert lisible (étiquettes '+fs().toFixed(1)+' px), on se déplace');
+  d.querySelector('[data-zoom=fit]').click(); { const m=R(map), lit=[...map.querySelectorAll('.tree-node:not(.dark) .led')].map(R); ok(lit.every(r=>r.left>=m.left-1 && r.right<=m.right+1 && r.top>=m.top-1 && r.bottom<=m.bottom+1), '⤢ : tout l\'arbre en vue (k='+Gd.view.k.toFixed(2)+')'); }
+  Gd.showTree(false);
+  f.style.width='1280px'; f.style.height='800px'; await wait(200);
+  await check('1280 px, arbre complet');
   localStorage.removeItem('ambient.game.treemap');
   done();
   }catch(e){ fail(e); }
