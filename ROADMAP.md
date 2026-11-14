@@ -457,5 +457,5 @@ Retour de l'utilisateur (2026-11-14, sur son téléphone via https://r0ots.githu
 ## Saison 11 — des objectifs qu'on voit, une machine qui se réveille
 Retour de l'utilisateur (2026-11-14) : le LCD du milieu est trop petit et s'efface ; déblocages trop rapides ; tout doit passer par l'Arbre ; le piano se débloque aussi, la machine démarre éteinte.
 - [x] S11.1 (v1.48) Widget Objectifs, ouverture par l'Arbre seulement, 2–3 objectifs par pièce, pièce Piano, machine en veille. Décision : LCD supprimé ; widget au-dessus du tiroir (carte dépliable au téléphone), objectifs faits barrés « → pièce » ; carte d'ouverture et « Tout ouvrir » supprimés ; balance : 1re pièce ~1 min 30, une pièce / ~3 min, neveu 1 h 25–1 h 35 ; départ Drone seul, bouton ⏻ qui clignote, puis Mélodie auto, puis Piano (touches, A–L, notes MIDI).
-- [ ] S11.2 Le réveil se voit de loin (poussière qui s'envole, néons en cascade, flash CRT, tour du Drone).
+- [x] S11.2 Le réveil se voit de loin. Décision : 5 étapes (CRT et poussière, barre et logo qui grésillent, widget, éditeurs et touches, ville) ; état final direct en reduced-motion et qualité basse. Reste : allumer la tour du Drone au réveil.
 
