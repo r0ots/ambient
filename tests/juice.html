@@ -17,13 +17,14 @@ f.addEventListener('load', async () => {
     const plays = []; const fp0 = G.fxPlay; G.fxPlay = function (k, o) { const r = fp0.apply(this, arguments); plays.push(r); return r; };
     const has = (sel, cls) => { const e = d.querySelector(sel); return !!e && e.classList.contains(cls); };
     const C = G.confetti, flying = () => C.bins ? C.bins.reduce((s, b) => s + b.length, 0) : 0;
+    let spawned = 0; const burst0 = C.burst; C.burst = function () { const k = burst0.apply(this, arguments); spawned += k || (this.n >= this.MAX ? 1 : 0); return k; }; // (S8.8: count what was thrown — or the emitter full at that moment — not what still flies: confetti landing made it flaky)
 
     // --- 1. each recipe of the table plays all its ingredients (stopped: right away)
     const kinds = Object.keys(G.FX), bad = [];
     ok(GV.running(), 'le Jardin dessine (les calques de la scène peuvent s\'allumer)');
     ok(['first', 'ready', 'consolation', 'defi', 'open', 'streak', 'record', 'tier', 'end', 'discovery'].every((k) => kinds.includes(k)) && !kinds.includes('secret'), 'table FX (S5.10 : plus de recette « secret », une découverte = « discovery ») : ' + kinds.join(', '));
     for (const k of kinds) {
-      const R = G.FX[k], el = d.getElementById('dice'); chimes.length = 0; const c0 = flying(), pops0 = d.querySelectorAll('.fx-pop').length;
+      const R = G.FX[k], el = d.getElementById('dice'); chimes.length = 0; const c0 = spawned, pops0 = d.querySelectorAll('.fx-pop').length;
       for (const n in GV.kick) delete GV.kick[n]; const run0 = GV.running(); G._pop = null; G.fx(k, { n: 3, name: 'Brume néon', el }); await tick(); // (each recipe alone: S6.7 a smaller bubble never covers a bigger one)
       const p = G.fxLast, miss = [];
       if (!p || p.kind !== k) miss.push('plan');
@@ -36,7 +37,7 @@ f.addEventListener('load', async () => {
       if (R.bounce && !d.body.classList.contains('fx-bounce')) miss.push('bounce');
       if (R.hop && !(R.hop === 'el' ? el : d.querySelector(R.hop)).classList.contains('fx-hop')) miss.push('hop');
       if (R.pop && d.querySelectorAll('.fx-pop').length <= Math.min(pops0, 2)) miss.push('pop');
-      if (R.confetti && !(flying() > c0 || C.n >= C.MAX)) miss.push('confetti');
+      if (R.confetti && !(spawned > c0 || C.n >= C.MAX)) miss.push('confetti');
       if (R.splash && GV.running() && !GV.waves.some((v) => v.who === R.splash)) miss.push('splash');
       if (R.kick && (!run0 || !R.kick.every((n) => GV.kick[n] > 0.5))) miss.push('kick'); // S5.8 scene layers flare up
       if (miss.length) bad.push(k + ':' + miss.join('+'));

@@ -216,8 +216,8 @@
     const off = ((T * W * 0.01 * (0.3 + 2 * (w.weather.wind || 0))) % W + W) % W;
     g.setTransform(1, 0, 0, 1, cam.ox, cam.oy); g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, a);
     g.drawImage(cv, off, 0, W, gd * 0.5); g.drawImage(cv, off - W, 0, W, gd * 0.5);
-    const fl = w.pulse.flash || 0;
-    if (fl > 0.05 && !v.reduced) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, fl * 0.8); g.drawImage(cv, off, 0, W, gd * 0.5); g.drawImage(cv, off - W, 0, W, gd * 0.5); g.fillStyle = 'rgba(150,120,255,0.25)'; g.fillRect(0, 0, W, gd * 0.45); }
+    const fl = (w.pulse.flash || 0) * Math.min(1, D.juice());
+    if (fl > 0.05 && !v.reduced) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, fl * 0.6); g.drawImage(cv, off, 0, W, gd * 0.5); g.drawImage(cv, off - W, 0, W, gd * 0.5); g.fillStyle = 'rgba(120,80,255,0.14)'; g.fillRect(0, 0, W, gd * 0.45); }
     g.imageSmoothingEnabled = false;
   } });
   // fog in layers (z 22 behind the background city, z 27 in front of it, z 36 at the foot of the towers): Espace
@@ -226,8 +226,8 @@
     const W = cam.W, gd = cam.gd, T = v.reduced ? 0 : v.st, bh = Math.round(gd * hK);
     const cv = v.fx('dims-fog', W, gd, () => {
       const c = v.canvas(96, 32), x = c.getContext('2d'), r = mulberry(404), grd = x.createLinearGradient(0, 0, 0, 32);
-      grd.addColorStop(0, 'rgba(150,80,170,0)'); grd.addColorStop(0.6, 'rgba(160,90,180,0.45)'); grd.addColorStop(1, 'rgba(110,60,150,0.2)'); x.fillStyle = grd; x.fillRect(0, 0, 96, 32);
-      for (let i = 0; i < 16; i++) { const cx = r() * 96, cy = 10 + r() * 16, R = 6 + r() * 10, gg = x.createRadialGradient(cx, cy, 0, cx, cy, R); gg.addColorStop(0, 'rgba(210,130,220,0.35)'); gg.addColorStop(1, 'rgba(210,130,220,0)'); x.fillStyle = gg; x.fillRect(cx - R, cy - R, 2 * R, 2 * R); }
+      grd.addColorStop(0, 'rgba(40,12,70,0)'); grd.addColorStop(0.6, 'rgba(48,16,84,0.6)'); grd.addColorStop(1, 'rgba(26,8,52,0.35)'); // S8.8: dark haze, not a milky veil x.fillStyle = grd; x.fillRect(0, 0, 96, 32);
+      for (let i = 0; i < 16; i++) { const cx = r() * 96, cy = 10 + r() * 16, R = 6 + r() * 10, gg = x.createRadialGradient(cx, cy, 0, cx, cy, R); gg.addColorStop(0, 'rgba(120,50,170,0.3)'); gg.addColorStop(1, 'rgba(120,50,170,0)'); x.fillStyle = gg; x.fillRect(cx - R, cy - R, 2 * R, 2 * R); }
       return c;
     });
     const off = ((T * W * 0.006 * depth * (0.5 + 1.5 * (w.weather.wind || 0)) + cam.pan * depth * W) % W + W) % W, y = Math.round(cam.y(depth, gd) - bh * 0.85);
@@ -392,7 +392,7 @@
     if (a > 0.02) { // magenta-sepia: a warm magenta multiply, then washed blacks (two plain fills: cheap on any canvas)
       g.setTransform(1, 0, 0, 1, 0, 0);
       g.globalCompositeOperation = 'multiply'; g.globalAlpha = 0.5 * a; g.fillStyle = '#ffa8c0'; g.fillRect(0, 0, W, H);
-      g.globalCompositeOperation = 'source-over'; g.globalAlpha = 0.22 * a; g.fillStyle = '#4a2440'; g.fillRect(0, 0, W, H);
+      g.globalCompositeOperation = 'source-over'; g.globalAlpha = 0.1 * a; g.fillStyle = '#3a1834'; g.fillRect(0, 0, W, H); // (S8.8: blacks barely lifted)
     }
     const tk = D.track; if (tk < 0.03 || v.reduced || !g.canvas) return;
     g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;

@@ -33,8 +33,9 @@
   const FUNC_COL = { T: [255, 70, 196], S: [56, 226, 255], D: [255, 154, 52] };
   const MELODY = new Set(['bells', 'seq']);
   const CAPS = { lasers: 28, stars: 8, waves: 5 };
-  // per who: width (in cells), brightness, minimum length (s)
-  const WHO = { player: { w: 1, a: 1, min: 0.32 }, loop: { w: 0.7, a: 0.75, min: 0.2 }, machine: { w: 0.7, a: 0.6, min: 0.16 } };
+  // per who: width (in cells), brightness, minimum length (s), max: the longest beam (S8.8: the machine's and the looper's notes are SHOTS — a legato Mélodie auto of 1.6 s notes kept a
+  // beam standing all the time, one bar frozen over the city; the player's held notes stay held)
+  const WHO = { player: { w: 1, a: 1, min: 0.32, max: 1.6 }, loop: { w: 0.7, a: 0.75, min: 0.2, max: 0.5 }, machine: { w: 0.7, a: 0.6, min: 0.16, max: 0.4 } };
   const STAR_GAP = { player: 1.5, machine: 6 }; // s between two shooting stars of the same source (rare)
 
   const CM = {
@@ -125,7 +126,7 @@
       const d = e.d;
       if (e.kind === 'laser') {
         this.act = Math.min(1, this.act + (d.who === 'player' ? 0.18 : 0.08));
-        this.laser(d.layer, d.midi, d.vel, d.who, e.time, d.held != null ? Infinity : e.time + Math.max(WHO[d.who].min, Math.min(1.6, +d.dur || 0.3)), d.held);
+        this.laser(d.layer, d.midi, d.vel, d.who, e.time, d.held != null ? Infinity : e.time + Math.max(WHO[d.who].min, Math.min(WHO[d.who].max, +d.dur || 0.3)), d.held);
         if (d.midi >= 84 || (d.who === 'player' && (d.raw != null ? d.raw : d.vel) >= 0.92)) this.star(d.who === 'player' ? 'player' : 'machine', e.time);
       } else if (e.kind === 'off') {
         for (const L of this.lasers) if (L.held === d.id && L.t1 === Infinity) L.t1 = Math.max(e.time, L.t0 + WHO.player.min);
@@ -152,6 +153,16 @@
         let i = this.lasers.findIndex((L) => L.who !== 'player');
         if (i < 0) { if (who !== 'player') return null; i = 0; }
         this.lasers.splice(i, 1);
+      }
+      // S8.8: a note repeated on the same beam (same roof, same pitch) RE-LIGHTS that beam instead of stacking another one
+      // on it: additive beams piled at the same angle made a huge white bar that never went away
+      if (!spread && held == null) {
+        const p0 = this.plant(layer), pid = p0 ? p0.id : null, el = this.elevOf(midi);
+        for (const L of this.lasers) {
+          if (L.plant !== pid || L.held != null || Math.abs(L.elev - el) > 2.5 || (L.t1 !== Infinity && t0 > L.t1 + L.rel)) continue;
+          L.t1 = Math.max(L.t1, t1); L.a = Math.max(L.a, (WHO[who] || W).a * (0.55 + 0.45 * clamp(vel == null ? 0.7 : +vel))); if (who === 'player') L.who = who;
+          return L;
+        }
       }
       const p = this.plant(layer) || GV.plants.filter((qq) => qq.vis > 0).sort((a, b) => b.vis * b.k - a.vis * a.k)[0];
       const lay = GV.LAYERS.find((l) => l.id === layer), col = (p && p.id === layer ? p.col : lay && lay.col) || [255, 196, 92];
@@ -333,7 +344,7 @@
     const G = CM.grid, W = cam.W, H = cam.H, hz = cam.y(1, cam.gd); if (hz >= H - 2) return;
     const rows = Math.max(4, Math.round(8 * CM.q)), cols = Math.max(6, Math.round(12 * CM.q)), ph = G.phase, ZF = 4; // rows: z step 1/rows, up to z = ZF
     CM.gridInfo = { project: (u, z) => CM.project(cam, u, z), phase: ph, rows, cols, flash: G.flash };
-    const base = (0.07 + 0.05 * G.base) * (0.5 + 0.5 * (w.play == null ? 1 : w.play)), a = (base + 0.75 * G.flash) * (CM.out() ? 0.1 : 1);
+    const base = (0.07 + 0.05 * G.base) * (0.5 + 0.5 * (w.play == null ? 1 : w.play)), a = (base + 0.55 * G.flash) * (CM.out() ? 0.1 : 1);
     if (a < 0.01) return;
     const lw = Math.max(1, Math.round(cam.px * (0.35 + 0.35 * G.flash)));
     g.globalCompositeOperation = 'lighter'; g.lineWidth = lw;
@@ -344,7 +355,7 @@
     // the rows (z step 1/rows), one per beat, coming towards us; brighter near us
     for (let i = 1; i <= rows * ZF; i++) {
       const z = (i - ph) / rows; if (z <= 0) continue;
-      const p = CM.project(cam, 0, z), aa = a * 1.3 / (1 + z) ** 0.8;
+      const p = CM.project(cam, 0, z), aa = a * 1.3 / (1 + z) ** 1.7; // (S8.8: the far rows fade: no bright slab at the horizon)
       g.fillStyle = rgba(G.flash > 0.3 ? [255, 120, 210] : [255, 63, 164], aa); g.fillRect(0, Math.round(p.y), W, lw);
     }
     g.fillStyle = rgba([63, 240, 255], Math.min(1, a * 1.6)); g.fillRect(0, Math.round(hz), W, lw); // the horizon line

@@ -119,12 +119,17 @@ f.addEventListener('load', async () => {
       const frame = (n) => { for (let i = 0; i < n; i++) { GV.lastT = GV.now() - 33; GV.paused = false; GV.frame(g, W0, H0); GV.paused = true; } return g.getImageData(0, 0, W0, H0).data; };
       const stepC = C.step.bind(C); let force = null; C.step = function (dt) { if (force) { this.cur = force; this.lvl = { [force.id]: 1 }; this.any = true; this.T = GV.st; return 1; } return stepC(dt); };
       GV.refresh(W0, H0, true); force = null; C.stop(); const ref = frame(40);
-      const rep2 = [], weak = [];
+      const rep2 = [], weak = [], wash = [], washed = []; let wire = null;
       for (const c of C.COMBOS) {
         force = { id: c.id, n: c.n, phase: 'super', charge: 1, beats: 9, sp: 0.6, rounds: 0, left: false }; C.bolts.length = 0; if (c.id === 'orage') { C.strike(C.roofs()[0], 1); C.strike(null, 2); }
         const px = frame(12); let n = 0; for (let i = 0; i < px.length; i += 16) if (Math.abs(px[i] - ref[i]) + Math.abs(px[i + 1] - ref[i + 1]) + Math.abs(px[i + 2] - ref[i + 2]) > 30) n++;
         const share = n / (px.length / 16); rep2.push(c.id + ' ' + Math.round(share * 100) + ' %'); if (share < 0.08) weak.push(c.id);
+        let wh = 0, dk = 0, gr = 0; for (let i = 0; i < px.length; i += 16) { const r = px[i], gg = px[i + 1], b = px[i + 2]; if (r > 225 && gg > 225 && b > 225) wh++; if (r + gg + b < 60) dk++; if (Math.max(r, gg, b) > 150) gr++; }
+        const N = px.length / 16; wash.push(c.id + ' ' + (100 * wh / N).toFixed(1) + ' %'); if (wh / N > 0.04) washed.push(c.id);
+        if (c.id === 'wire') wire = { dark: dk / N, green: gr / N };
       }
+      ok(!washed.length, 'S8.8 : aucun SUPER ne lave l\'image en blanc (pixels blancs : ' + wash.join(', ') + ')' + (washed.length ? ' — lavés : ' + washed : ''));
+      ok(wire && wire.dark > 0.55 && wire.green > 0.002 && wire.green < 0.25, 'S8.8 : 1984 = écran noir (' + Math.round(wire.dark * 100) + ' %) et fines lignes vectorielles (' + (wire.green * 100).toFixed(1) + ' % de pixels allumés), tracées depuis le modèle');
       ok(!weak.length, 'chaque SUPER change l\'écran (part des pixels, 640×400, sans WebGL) : ' + rep2.join(', ') + (weak.length ? ' — trop faibles : ' + weak : ''));
       // cost at 1280×800: each combo in SUPER, frames in a burst, median of the JS of the whole city
       const big = d.createElement('canvas'); big.width = 1280; big.height = 800; const gb = big.getContext('2d');

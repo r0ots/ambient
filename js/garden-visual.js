@@ -241,7 +241,7 @@
     play: { tau: 0.3, at: 'lecture', aim: (c) => c.L.play },
   };
   // ---- IMPULSES: name → decay time (s). gv.impulse(name, v) sets one (max), it falls to 0 linearly.
-  const PULSES = { note: 0.3, chord: 1, beat: 0.35, kick: 0.8, flash: 0.4, build: 0.6 };
+  const PULSES = { note: 0.3, chord: 1, beat: 0.35, kick: 0.8, flash: 0.28, build: 0.6 };
   function makeWorld() {
     const w = { pulse: {}, beat: { ph: 0, strong: false, k: 0, on: false }, cam: {}, weather: {} };
     for (const n in PULSES) w.pulse[n] = 0;
@@ -1438,10 +1438,10 @@
     }
     const pl = v.sc.play == null ? 1 : v.sc.play, pk = v.kick.play || 0;
     if (pl < 0.98) { g.globalAlpha = 1; g.fillStyle = `rgba(4,2,10,${(0.3 * (1 - pl)).toFixed(3)})`; g.fillRect(0, 0, W, H); }
-    if (pk > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 1; g.fillStyle = `rgba(255,150,230,${(0.12 * pk).toFixed(3)})`; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over'; }
-    const fl = w.pulse.flash; // lightning: the whole sky white-violet, a bolt down to the city
+    if (pk > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 1; g.fillStyle = `rgba(255,80,200,${(0.05 * pk).toFixed(3)})`; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over'; }
+    const fl = w.pulse.flash * (v.JUICE == null ? 1 : Math.min(1, Math.max(0, v.JUICE))); // lightning: the sky lit violet, a bolt down to the city (S8.8: none at JUICE 0)
     if (fl > 0.02 && !red) {
-      g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, fl * 0.45); g.fillStyle = '#c8b8ff'; g.fillRect(0, 0, W, cam.gd);
+      g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, fl * 0.3); g.fillStyle = '#9a80ff'; g.fillRect(0, 0, W, cam.gd);
       const b = v.bolt; if (b && fl > 0.25) { const r = mulberry(b.seed + 1); let x = b.x * W, y = 0; g.globalAlpha = Math.min(1, fl * 1.4); g.fillStyle = '#f4f0ff'; while (y < cam.gd * 0.8) { const ny = y + px * (3 + r() * 5), nx = x + (r() - 0.5) * px * 10; for (let i = 0; i < 6; i++) g.fillRect(Math.round((x + (nx - x) * i / 6) / px) * px, Math.round((y + (ny - y) * i / 6) / px) * px, px, px); x = nx; y = ny; } }
       g.globalCompositeOperation = 'source-over';
     }
