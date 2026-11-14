@@ -101,7 +101,7 @@ window.addEventListener('load', async () => {
     // --- 7. Nostalgie: VHS, grading, tracking at the gesture
     { settle('nostalgia', 0); const v0 = GL.base.vhs, c0 = GL.base.chroma; GL.pulses.length = 0; turn('nostalgia', 1, 0.6);
       const tk = D.track; step(3);
-      ok(GL.base.vhs > v0 + 0.8 && GL.base.chroma > c0 + 0.5 && GV.world.vhs > 0.8 && tk > 0.3 && GL.pulses.some((p) => p.n === 'vhs'), 'Nostalgie 0 → 1 : VHS ' + v0.toFixed(2) + ' → ' + GL.base.vhs.toFixed(2) + ', chroma, bandes de tracking au geste (' + tk.toFixed(2) + ')');
+      ok(GL.base.vhs > v0 + 0.6 && GL.base.chroma > c0 + 0.5 && GV.world.vhs > 0.8 && tk > 0.3 && GL.pulses.some((p) => p.n === 'vhs'), 'Nostalgie 0 → 1 : VHS ' + v0.toFixed(2) + ' → ' + GL.base.vhs.toFixed(2) + ', chroma, bandes de tracking au geste (' + tk.toFixed(2) + ')');
       settle('nostalgia', 0.25); }
 
     await wait(0);

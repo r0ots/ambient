@@ -372,7 +372,8 @@
     const T = D.trail, x = T.getContext('2d');
     g.setTransform(1, 0, 0, 1, 0, 0); g.imageSmoothingEnabled = true; g.globalCompositeOperation = 'lighten'; g.globalAlpha = Math.min(1, 0.2 + 0.5 * a);
     g.drawImage(T, 0, 0, cv.width, cv.height);
-    x.imageSmoothingEnabled = false; x.globalCompositeOperation = 'multiply'; x.globalAlpha = Math.min(1, (1.15 - a) * (D.dt || 1 / 60) * 60); x.drawImage(T, 0, 0);
+    const k60 = (D.dt || 1 / 60) * 60; x.imageSmoothingEnabled = false; x.globalCompositeOperation = 'multiply'; x.globalAlpha = Math.min(1, (1.15 - a) * k60); x.drawImage(T, 0, 0);
+    x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1; x.fillStyle = `rgba(0,0,0,${Math.min(1, (0.3 - 0.22 * a) * k60).toFixed(3)})`; x.fillRect(0, 0, tw, th); // even pure white fades (a few frames)
     x.globalCompositeOperation = 'lighten'; x.globalAlpha = 1; x.imageSmoothingEnabled = true; x.drawImage(cv, 0, 0, cv.width, cv.height, 0, 0, tw, th);
     g.imageSmoothingEnabled = false;
     D.cost('trails', performance.now() - t0);
@@ -382,8 +383,8 @@
     const a = clamp(((w.vhs || 0) - 0.3) / 0.7), W = cam.W, H = cam.H, px = cam.px; // the default Nostalgie: no grading
     if (a > 0.02) { // magenta-sepia: a warm magenta multiply, then washed blacks (two plain fills: cheap on any canvas)
       g.setTransform(1, 0, 0, 1, 0, 0);
-      g.globalCompositeOperation = 'multiply'; g.globalAlpha = 0.6 * a; g.fillStyle = '#ffa8c0'; g.fillRect(0, 0, W, H);
-      g.globalCompositeOperation = 'source-over'; g.globalAlpha = 0.3 * a; g.fillStyle = '#4a2440'; g.fillRect(0, 0, W, H);
+      g.globalCompositeOperation = 'multiply'; g.globalAlpha = 0.5 * a; g.fillStyle = '#ffa8c0'; g.fillRect(0, 0, W, H);
+      g.globalCompositeOperation = 'source-over'; g.globalAlpha = 0.22 * a; g.fillStyle = '#4a2440'; g.fillRect(0, 0, W, H);
     }
     const tk = D.track; if (tk < 0.03 || v.reduced || !g.canvas) return;
     g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
@@ -406,10 +407,10 @@
     if (G && G.set) {
       const P = clamp(w.power || 0, 0, 1.3), vh = w.vhs || 0;
       G.set('bloom', 0.35 + 1.25 * P + 0.6 * sur('light') + 0.3 * (w.weather.storm || 0));
-      const old = clamp((vh - 0.3) / 0.7, 0, 1.3); // the default Nostalgie (~0.3) = the clean S8.2 look
-      G.set('chroma', 0.35 + 1.1 * old);
-      G.set('vhs', 1.5 * old);
-      G.set('grain', 0.2 + 0.7 * old);
+      const old = clamp((vh - 0.3) / 0.7, 0, 1.6); // the default Nostalgie (~0.3) = the clean S8.2 look; worn, still readable
+      G.set('chroma', 0.35 + 0.8 * old);
+      G.set('vhs', 0.85 * old);
+      G.set('grain', 0.2 + 0.5 * old);
       G.set('fog', 0.85 * (w.cam.fog || 0) + 0.15 * (w.weather.rain || 0));
     }
     D.ms.push(performance.now() - t0); if (D.ms.length > 120) D.ms.shift();
