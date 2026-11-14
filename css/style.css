@@ -1413,8 +1413,8 @@ body.listen .app > .stage { height: auto; }
 :is(.q-moyen, .q-bas) .is-new, :is(.q-moyen, .q-bas) .is-new.is-appearing { animation-name: q-breathe; outline-color: #fff; }
 :is(.q-moyen, .q-bas) .is-new.is-appearing { animation-name: m-appear, q-breathe; }
 :is(.q-moyen, .q-bas) .tree-link.available { filter: none; }
-/* the counter: a small neon box in the bottom-left corner, never in the way */
-.fps-meter { position: fixed; z-index: 95; left: max(6px, env(safe-area-inset-left)); bottom: max(6px, env(safe-area-inset-bottom)); pointer-events: none;
+/* the counter: a small neon box at the bottom-left of the free city (above the keys and the drawer), click-through */
+.fps-meter { position: fixed; z-index: 95; left: calc(var(--free-l) + 8px); bottom: calc(var(--free-b) + 8px); pointer-events: none; opacity: .85;
   contain: strict; width: 16ch; height: 3.1em; padding: 3px 7px; box-sizing: content-box; white-space: pre; font: 600 11px/1.4 var(--f); letter-spacing: .04em;
   color: var(--cyan); background: #05030cd9; border: 1px solid var(--cyan); border-radius: 4px; }
 .fps-meter.slow { color: var(--magenta); border-color: var(--magenta); }

@@ -576,7 +576,7 @@
   const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} return null; };
 
   const Q = {
-    LEVELS, NAMES, SLOW_MS: 20, FAST_MS: 17.5, WINDOW_MS: 2000, UP_S: 10, GRACE_MS: 4000,
+    LEVELS, NAMES, SLOW_MS: 20, FAST_MS: 17.5, WINDOW_MS: 2000, UP_S: 10, GRACE_MS: 10000, // (the first 10 s: the load and the first sounds build caches)
     level: 0, start: 0, auto: true, why: 'start', subs: [],
     cur() { return LEVELS[this.level]; },
     name() { return this.cur().name; },
