@@ -41,7 +41,7 @@ f.addEventListener('load', async () => {
 
     // --- 7. at 19 nodes the bar grows: the pads stay in sight (they stick to the bottom of the window)
     ['m.bells', 'h.pad', 't.son', 't.viz', 't.journal', 't.rec', 't.share', 'h.key', 'h.drone', 'h.pad2', 'e.reverb', 'e.salle', 'e.echo', 'm.tempo', 'm.phrase', 't.macros', 't.dice', 'm.grains'].forEach((i) => G.unlock(i));
-    for (let t = 0; t < 60 && Gd.seq; t++) await wait(40); Gd.showTree(false); A.perform.setMode('listen'); w.scrollTo(0, 0); await wait(80);
+    for (let t = 0; t < 60 && Gd.seq; t++) await wait(40); Gd.showTree(false); A.perform.setMode('sculpt'); w.scrollTo(0, 0); await wait(80);
     const pr = d.getElementById('pads').getBoundingClientRect();
     const hit = d.elementFromPoint(pr.left + pr.width / 2, pr.top + pr.height / 4); // S8.3: the pads float over the city, at the bottom of the window
     ok(G.s.nodes.length === 19 && !!hit && !!hit.closest('#pads') && pr.top < w.innerHeight - 100 && pr.bottom <= w.innerHeight + 8, // (a party's hop may lift them a few px)
@@ -56,7 +56,7 @@ f.addEventListener('load', async () => {
       dr.scrollTop = 0;
       lcd.style.display = 'none'; const hid = D.seen(); lcd.style.display = '';
       ok(!hid, 'la règle reste : un LCD invisible → aucune demande'); }
-    A.perform.setMode('listen');
+    A.perform.setMode('sculpt');
 
     // --- 2. the countdown: « prêt ? », 3, 2, 1, « MAINTENANT ! » on the 1 (never « sur le 1 » in the texts)
     { const SD = 0.25, BEAT = 1; let now = 100; const n0 = D.now; D.now = () => now;

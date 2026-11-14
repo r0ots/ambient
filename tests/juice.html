@@ -11,7 +11,7 @@ f.addEventListener('load', async () => {
   try {
     const w = f.contentWindow, d = f.contentDocument, A = w.AMB, G = A.garden, GV = A.gardenVisual;
     w.addEventListener('error', e => log('ERROR ' + e.message + ' @' + e.filename + ':' + e.lineno));
-    A.game.setMode('path'); G.welcome(false); A.game.unlock('m.bells'); await wait(300); G.showTree(false); A.perform.setMode('listen'); A.visual.gardenSync();
+    A.game.setMode('path'); G.welcome(false); A.game.unlock('m.bells'); await wait(300); G.showTree(false); A.perform.setMode('sculpt'); A.visual.gardenSync();
     const tick = () => new Promise((r) => setTimeout(r, 0));
     const chimes = []; const ch0 = G.chime; G.chime = function (k, o) { chimes.push({ k, at: o && o.at }); return ch0.apply(this, arguments); };
     const plays = []; const fp0 = G.fxPlay; G.fxPlay = function (k, o) { const r = fp0.apply(this, arguments); plays.push(r); return r; };

@@ -10,7 +10,7 @@ EventTarget.prototype.addEventListener = function (...a) { LISTENERS++; return a
 </script>
 <script src="../js/motion.js"></script>
 <div class="app">
-  <div class="modes" role="group"><button class="mode-btn on" data-mode="listen">Écouter</button><button class="mode-btn" data-mode="sculpt">Sculpter</button><button class="mode-btn" data-mode="compose">Composer</button></div>
+  <div class="modes" role="group"><button class="mode-btn on" data-mode="sculpt">Sculpter</button><button class="mode-btn" data-mode="compose">Composer</button></div>
   <button id="b" class="btn">Bouton</button> <button id="t" class="tog on" style="--c:#ff3fa4">Drone</button>
   <div class="ctl knob" id="k" role="slider" style="--c:#3ff0ff"><svg viewBox="0 0 60 60" style="width:52px;height:52px"><circle cx="30" cy="30" r="17" class="k-body"></circle></svg><div class="k-val" id="v">12</div></div>
   <div id="list" style="display:flex;gap:6px"><span class="btn" id="i0">A</span><span class="btn" id="i1">B</span><span class="btn" id="i2">C</span></div>
@@ -96,8 +96,8 @@ EventTarget.prototype.addEventListener = function (...a) { LISTENERS++; return a
 
     // 7. the lit key slides to the active mode
     const g = $('.modes'), ind = M.slide(g), btns = g.querySelectorAll('.mode-btn');
-    btns[0].classList.remove('on'); btns[2].classList.add('on'); M.slide(g);
-    ok(g.classList.contains('m-placed') && ind.style.transform.includes(`translateX(${btns[2].offsetLeft}px)`) && cs(ind).transitionDuration !== '0s', 'mode : le témoin glisse vers la touche active (' + ind.style.transform + ')');
+    btns[0].classList.remove('on'); btns[1].classList.add('on'); M.slide(g);
+    ok(g.classList.contains('m-placed') && ind.style.transform.includes(`translateX(${btns[1].offsetLeft}px)`) && cs(ind).transitionDuration !== '0s', 'mode : le témoin glisse vers la touche active (' + ind.style.transform + ')');
 
     // 8. toast: hidden = small, above, transparent; shown = in place
     const ts = $('#toast'), hid = [cs(ts).opacity, cs(ts).scale];

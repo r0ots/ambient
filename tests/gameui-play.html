@@ -5,10 +5,10 @@
 <script>
 gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, settle }) => {
   // --- S4.4 touch pads: under the screen once the Melody is owned, play like A–L (held, multitouch), long press = chord
-  { A.game.reset(); A.perform.setMode('listen'); await wait(30);
+  { A.game.reset(); A.perform.setMode('sculpt'); await wait(30);
     const bar=d.getElementById('pads'), pads=[...bar.querySelectorAll('.pad')], PE=(t,id)=>new w.PointerEvent(t,{bubbles:true,pointerId:id,pointerType:'touch'});
     ok(!bar.hidden && shown('#pads'), 'S5.7 : pastilles dès la Graine (le premier défi est une note)');
-    A.game.unlock('m.bells'); await settle(300); A.garden.showTree(false); A.perform.setMode('listen'); await wait(30);
+    A.game.unlock('m.bells'); await settle(300); A.garden.showTree(false); A.perform.setMode('sculpt'); await wait(30);
     const br=bar.getBoundingClientRect(), H=w.innerHeight, hit=d.elementFromPoint(br.left+br.width/2, br.top+br.height/2); // S8.3: the city fills the window, the pads float at its bottom
     ok(!bar.hidden && pads.length===9 && A.play.PADS.length===9 && br.bottom<=H+1 && br.top>H/2 && !!hit && !!hit.closest('#pads'), 'pastilles : 9, en bas de l\'écran par-dessus la ville, touchables, dès la Mélodie auto');
     const sp=A.seq.playMidi, rel=[], lives=[]; A.bus.on('live',e=>lives.push(e.midi)); A.seq.playing=true;
@@ -63,7 +63,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
   A.game.setMode('free'); ok(A.garden.chime('unlock')===0, 'pas de carillon en mode libre'); A.game.setMode('path');
   // --- S4.2 « Réponse » in the app: the phrase in the music, « ↺ À toi » on the LCD, leaves on the Melody plant, the pads stay
   { const P=A.puzzles, gv=A.gardenVisual; A.game.reset(); ['m.bells','h.pad','t.son'].forEach(i=>A.game.unlock(i)); await settle(300);
-    A.garden.showTree(false); A.perform.setMode('listen'); A.visual.gardenSync(); P.cancel(); P.wait=99;
+    A.garden.showTree(false); A.perform.setMode('sculpt'); A.visual.gardenSync(); P.cancel(); P.wait=99;
     const st=A.contracts.state(); st.active=['p.premier']; st.prog['p.premier']={n:0}; A.garden.renderContracts();
     const sd=0.05, snap=JSON.stringify(A.store.stableSnapshot());
     ok(P.launch(ctx.currentTime+0.05, sd) && P.cur.len===3 && P.view().phase==='call' && shown('#pads') && d.body.classList.contains('game'), 'une phrase marquée pendant le jeu : pas de carte, les pastilles restent');
@@ -115,7 +115,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
     const at=ctx.currentTime+0.6; A.garden.chime('unlock',{at,deg:2});
     ok(ctx.state!=='running' || starts.length===12 && Math.abs(Math.min(...starts)-at)<1e-6, 'carillon placé à l\'heure demandée (temps fort), note propre à la couche');
     // real clock: the Pad opened by a challenge while playing
-    await A.ui.play(); A.game.reset(); A.perform.setMode('listen'); A.game.unlock('m.bells'); await settle(300); A.garden.showTree(false); A.perform.setMode('listen'); await wait(300);
+    await A.ui.play(); A.game.reset(); A.perform.setMode('sculpt'); A.game.unlock('m.bells'); await settle(300); A.garden.showTree(false); A.perform.setMode('sculpt'); await wait(300);
     const Sq=A.seq; A.contracts.finish('m.notes'); starts.length=0; A.garden.openNode('h.pad'); // (the success's own chime is not the opening's)
     const b=A.garden.lastBeat, sd=Sq.stepDur(), now=ctx.currentTime, k=(b.at-Sq.nextTime)/sd+Sq.step-(Sq.origin||0), lv=A.layers.pad.ch.level.gain, target=Math.pow(A.store.get('pad.vol'),1.6);
     ok(A.game.has('h.pad') && b.id==='h.pad' && b.at>=now+0.44 && Math.abs(k-Math.round(k))<1e-6 && Math.round(k)%8===0 && b.deg===2, 'ouverture du Pad en jeu : le temps fort suivant (pas '+Math.round(k)+', dans '+(b.at-now).toFixed(2)+' s), note du Pad');
@@ -129,7 +129,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
     ctx.createOscillator=co; A.garden.chime=ch0; A.garden.showTree(false); A.ui.stop(); }
   // --- S5.7: the first challenge « Joue une note » — the pads are there from the Graine, the first note starts the sound;
   // S6.2: the screen is a reflection: touching it does nothing
-  { await wait(300); A.game.reset(); A.perform.setMode('listen'); await wait(50);
+  { await wait(300); A.game.reset(); A.perform.setMode('sculpt'); await wait(50);
     const pads=d.getElementById('pads'), v=d.getElementById('viz'), r=v.getBoundingClientRect(), PE=(t)=>new w.PointerEvent(t,{bubbles:true,pointerId:11,clientX:r.left+r.width*0.3,clientY:r.top+r.height*0.5});
     ok(!A.seq.playing && A.game.s.active[0]==='k.note' && !pads.hidden && !A.game.has('m.bells') && !d.getElementById('xyTip') && w.getComputedStyle(d.querySelector('.stage .hint')).display==='none', 'S5.7 : premier défi « Joue une note », pastilles dès la Graine, pas d\'aide sur le visuel');
     v.dispatchEvent(PE('pointerdown')); await wait(400); v.dispatchEvent(PE('pointerup'));

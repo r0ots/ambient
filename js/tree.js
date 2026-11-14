@@ -211,7 +211,7 @@
     // top-bar groups whose buttons are all locked disappear with their caption
     document.querySelectorAll('.tgrp').forEach((t) => {
       const tagged = t.querySelectorAll('[data-node]');
-      lock(t, on && tagged.length > 0 && !t.querySelector('[data-node]:not(.is-locked)'));
+      lock(t, on && tagged.length > 0 && !t.querySelector('[data-node]:not(.is-locked), .mode-btn:not([data-node])')); // (Sculpter is always there)
     });
     this.solo(g);
     if (live && on && fresh.length) this.appear(fresh);

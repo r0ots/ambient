@@ -321,7 +321,7 @@
       const fresh = box.hidden || box.dataset.id !== id; // S7.3: a new card slides in (the same one repainted does not)
       box.dataset.id = id; box.className = `tree-info st-${st}`;
       box.innerHTML = `<p class="ti-h"><b>${n.name}</b> <small>${br.name} · ${STATE_TXT[st]}</small></p>`
-        + `<p class="ti-d">${n.desc}</p>`
+        + `<p class="ti-d">${st === 'ready' ? g.txt(n.why) : n.desc}</p>`
         + `<p class="ti-g">Ouvre : ${T.grantsText(id) || '—'}</p>`
         + (n.req.length ? `<p class="ti-r">Il faut d'abord : ${req}</p>` : '')
         + (ops.length ? `<p class="ti-o">Pour l'ouvrir : ${opTxt.map((t) => `<span>${t}</span>`).join(' · ou ')}${now && !wait ? ' <em>(le défi en cours)</em>' : ''}</p>` : '')
@@ -387,7 +387,8 @@
       map.addEventListener('focusin', (e) => { const b = e.target.closest('.tree-node'); if (!b) return; this.mark(b.dataset.id); this.showInfo(b.dataset.id); this.panToNode(b.dataset.id); });
       // click (mouse, finger or keyboard): select the node, its card says what opens it
       const info = $('#treeDlg .tree-info');
-      if (info) info.addEventListener('click', (e) => { if (e.target.closest('.ti-open')) { const id = info.dataset.id; this.showTree(false); this.ask(id); } });
+      // S9.1: ✦ Ouvrir in the Arbre opens right there (its card already says what it gives): the sequence plays on the map
+      if (info) info.addEventListener('click', (e) => { if (e.target.closest('.ti-open')) this.openNode(info.dataset.id); });
       map.addEventListener('click', (e) => {
         const b = e.target.closest('.tree-node');
         if (!b) { this.select(null); return; }

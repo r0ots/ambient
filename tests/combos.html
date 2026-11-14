@@ -114,7 +114,7 @@ f.addEventListener('load', async () => {
       GV.reduced = false; }
 
     // --- 6. each SUPER transforms the screen (pixels that change vs the same city without it), and its cost
-    { own(); base(); A.perform.setMode('listen'); A.visual.gardenSync(); GV.active = true; GV.visible = true; GV.post2d = true; // (1984 drawn in 2D: no WebGL here)
+    { own(); base(); A.perform.setMode('sculpt'); A.visual.gardenSync(); GV.active = true; GV.visible = true; GV.post2d = true; // (1984 drawn in 2D: no WebGL here)
       const W0 = 640, H0 = 400, cv = d.createElement('canvas'); cv.width = W0; cv.height = H0; const g = cv.getContext('2d');
       const frame = (n) => { for (let i = 0; i < n; i++) { GV.lastT = GV.now() - 33; GV.paused = false; GV.frame(g, W0, H0); GV.paused = true; } return g.getImageData(0, 0, W0, H0).data; };
       const stepC = C.step.bind(C); let force = null; C.step = function (dt) { if (force) { this.cur = force; this.lvl = { [force.id]: 1 }; this.any = true; this.T = GV.st; return 1; } return stepC(dt); };

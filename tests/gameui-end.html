@@ -32,7 +32,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
     ok(css('#bigPlay','display')!=='none' && !d.querySelector('.tog.is-solo'), 'mode libre : « ▶ Lancer le paysage » et toutes les coupures, comme avant');
     PE('pointerdown',b); const fp=b.classList.contains('is-pressed'); PE('pointerup',b);
     ok(fp && b.classList.contains('is-released'), 'S7.1 mode libre : le même retour de pression (le mouvement est l\'apparence de l\'app ; son et commandes intacts)');
-    g.setMode('path'); g.reset(); A.perform.setMode('listen'); await wait(30); }
+    g.setMode('path'); g.reset(); A.perform.setMode('sculpt'); await wait(30); }
   // --- the instrument handed over (G6.3, S3.7): on the instrument, no dialog; the sound stays, the game interface goes
   { buyAll(); await wait(200); // macro positions settle (perform.js syncs them 60 ms after a change)
     ok(A.garden.complete() && !A.game.s.ended && task.dataset.id==='c.morceau' && shown('#lcdTask'), 'arbre complet : le dernier défi d\'abord, « '+task.querySelector('.lcd-task-txt').textContent+' »');
@@ -58,7 +58,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
     A.game.reset(); }
   // --- S4.5w: a real ending — the recorded song is replayed (night → dawn, plants lit by their layer), then handed over and offered
   await A.ui.ensureStarted(); if (A.engine.ctx.state!=='running') await A.engine.ctx.resume(); // (the audio context: the replay decodes the WAV)
-  { await wait(300); A.perform.setMode('listen'); w.scrollTo(0,0); window.scrollTo(0,0); buyAll(); await wait(200); // (the Jardin only draws on screen: an opening scrolled down to its controls, this page too)
+  { await wait(300); A.perform.setMode('sculpt'); w.scrollTo(0,0); window.scrollTo(0,0); buyAll(); await wait(200); // (the Jardin only draws on screen: an opening scrolled down to its controls, this page too)
     const sr=A.engine.ctx.sampleRate, n=Math.round(3*sr), ab=new ArrayBuffer(44+n*4), dv=new DataView(ab), W=(o,x)=>{ for(let i=0;i<x.length;i++) dv.setUint8(o+i,x.charCodeAt(i)); };
     W(0,'RIFF'); dv.setUint32(4,36+n*4,true); W(8,'WAVEfmt '); dv.setUint32(16,16,true); dv.setUint16(20,1,true); dv.setUint16(22,2,true); dv.setUint32(24,sr,true); dv.setUint32(28,sr*4,true); dv.setUint16(32,4,true); dv.setUint16(34,16,true); W(36,'data'); dv.setUint32(40,n*4,true);
     for (let i=0;i<n;i++){ const x=Math.round(Math.sin(i/sr*2*Math.PI*440)*2000); dv.setInt16(44+i*4,x,true); dv.setInt16(46+i*4,x,true); }
@@ -87,7 +87,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
     const had=!!GV.replay; A.ui.stop(); await wait(50);
     for (let i=0;i<20 && !/INSTRUMENT/.test(top.textContent);i++) await wait(50);
     ok(had && !GV.replay && !A.garden.playback && /INSTRUMENT EST À TOI/.test(top.textContent), '■ Stop pendant la relecture de fin : elle s\'arrête, puis la remise');
-    await wait(450); A.rec.download=od; A.game.reset(); A.perform.setMode('listen'); }
+    await wait(450); A.rec.download=od; A.game.reset(); A.perform.setMode('sculpt'); }
   // --- S3.7: the handover is saved: ↷ on the last contract hands over too; a reload keeps the instrument handed over
   { g.setMode('path'); buyAll(); await wait(200); task.querySelector('.lcd-skip').click(); await wait(600);
     ok(A.game.s.ended && !shown('#lcdTask'), '↷ sur le dernier défi : remise aussi');
