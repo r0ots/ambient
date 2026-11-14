@@ -52,7 +52,7 @@
     { name: 'Volumes', keys: ['drone.vol', 'pad.vol', 'bells.vol', 'texture.vol', 'grains.vol', 'seq.vol', 'bass.vol', 'perc.vol', 'global.volume'], dim: 'look:size', at: 'étages de chaque bâtiment (construits / déconstruits)' },
     { name: 'Coupure des couches', keys: ['drone.on', 'pad.on', 'bells.on', 'texture.on', 'grains.on', 'seq.on', 'bass.on', 'perc.on'], dim: 'look:on', at: 'couche coupée : son élément est déconstruit, il n\'en reste rien (S9.3)' },
     { name: 'Tempo', keys: ['global.tempo', 'global.time'], dim: 'speed', at: 'vitesse de toute la scène (pluie, trafic, nuages)' },
-    { name: 'Tonalité / gamme', keys: ['global.key', 'global.tuning'], dim: 'scene:hue', at: 'teinte du ciel (et ciel de chaque accord)' },
+    { name: 'Tonalité / gamme', keys: ['global.key'], dim: 'scene:hue', at: 'teinte du ciel (et ciel de chaque accord)' },
   ];
 
   const D = {
@@ -175,11 +175,11 @@
   gv.addDim('cam.dx', { tau: 0, at: 'caméra : travelling latéral (Espace)', aim: () => (gv.reduced ? 0 : D.mac('space') * 0.05 * Math.sin((gv.st || 0) * 0.13) + (D.camKick || 0)) });
   gv.addDim('trails', { tau: 0.6, at: 'traînées des néons (Reverb × Taille ; Salle Cloud plus longue, Pré-délai un peu moins)', aim: () => get('fx.space') * (0.35 + 0.45 * get('fx.size') + 0.2 * get('fx.revType')) * (1 - 0.3 * get('fx.predelay')) });
   gv.addDim('vhs', { tau: 0.4, at: 'usure VHS (Nostalgie : Cassette, Usure)', aim: () => clamp((0.5 * get('fx.tape') + 0.5 * get('fx.lofi')) / 0.72 + 0.6 * sur('nostalgia'), 0, 1.6) });
-  const nat = () => D.mac('nature');
-  gv.addDim('weather.rain', { tau: 1, at: 'pluie (Nature) : rien à 0, bruine, averse', aim: (c) => (1 - c.dawn) * (nat() < 0.04 ? 0 : 0.1 + 0.9 * nat()) });
-  gv.addDim('weather.wind', { tau: 1, at: 'vent (Nature, Dérive)', aim: (c) => clamp(0.05 + 0.85 * Math.pow(nat(), 1.4) + 0.2 * (c.L.clouds || 0) + 0.4 * sur('nature')) });
-  gv.addDim('weather.storm', { tau: 1, at: 'orage (Nature haute)', aim: (c) => (1 - c.dawn) * clamp((nat() - 0.62) / 0.33) });
-  gv.addDim('weather.clear', { tau: 1, at: 'ciel clair étoilé (Nature à 0)', aim: (c) => (1 - c.dawn) * Math.pow(clamp(1 - nat() / 0.45), 2) });
+  const nat = () => D.mac('nature'), wx = () => (gv.featK && gv.featK.weather) || 0; // S9.4: no weather before Nature is open (and the music heard)
+  gv.addDim('weather.rain', { tau: 1, at: 'pluie (Nature) : rien à 0, bruine, averse', aim: (c) => wx() * (1 - c.dawn) * (nat() < 0.04 ? 0 : 0.1 + 0.9 * nat()) });
+  gv.addDim('weather.wind', { tau: 1, at: 'vent (Nature, Dérive)', aim: (c) => clamp(0.05 + wx() * 0.85 * Math.pow(nat(), 1.4) + 0.2 * (c.L.clouds || 0) + 0.4 * sur('nature')) });
+  gv.addDim('weather.storm', { tau: 1, at: 'orage (Nature haute)', aim: (c) => wx() * (1 - c.dawn) * clamp((nat() - 0.62) / 0.33) });
+  gv.addDim('weather.clear', { tau: 1, at: 'ciel clair étoilé (Nature à 0)', aim: (c) => wx() * (1 - c.dawn) * Math.pow(clamp(1 - nat() / 0.45), 2) });
 
   // ======================================================================================================================
   // THE LAYERS (gv.addLayer)

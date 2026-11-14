@@ -58,12 +58,12 @@
       el.innerHTML = `
         <span class="sc-title">Scènes</span>
         <button class="sc-slot" data-slot="A" title="Clic : rappeler · Maj+clic : mémoriser">A</button>
-        <input class="sc-morph" type="range" min="0" max="1000" value="0" aria-label="Morph A ↔ B">
+        <input class="sc-morph" type="range" min="0" max="1000" value="0" aria-label="De A à B">
         <button class="sc-slot" data-slot="B" title="Clic : rappeler · Maj+clic : mémoriser">B</button>
-        <button class="btn small sc-store" data-store="A">→ A</button>
-        <button class="btn small sc-store" data-store="B">→ B</button>
-        <label class="sc-auto" title="Morph automatique lent entre A et B">Auto
-          <select><option value="0">off</option><option value="1">1 min</option><option value="3">3 min</option><option value="8">8 min</option><option value="20">20 min</option></select>
+        <button class="btn small sc-store" data-store="A" title="Garder le son de maintenant dans A">Garder A</button>
+        <button class="btn small sc-store" data-store="B" title="Garder le son de maintenant dans B">Garder B</button>
+        <label class="sc-auto" title="Glisse tout seul de A à B et retour, lentement">Va-et-vient
+          <select><option value="0">non</option><option value="1">1 min</option><option value="3">3 min</option><option value="8">8 min</option><option value="20">20 min</option></select>
         </label>`;
       this.slider = el.querySelector('.sc-morph');
       this.slider.addEventListener('input', () => this.setMorph(this.slider.value / 1000));

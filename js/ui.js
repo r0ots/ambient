@@ -5,7 +5,7 @@
   const { $, h, bind } = AMB.dom;
   const { registry: widgets, knob, select, textField, toggle } = AMB.widgets;
   const { setMode } = AMB.perform;
-  const { toggleRec, setSleep } = AMB.rec;
+  const { toggleRec } = AMB.rec;
 
   function section(secKey) {
     const sec = AMB.SCHEMA[secKey];
@@ -286,13 +286,7 @@
     if (mac) {
       mac.append(section('macro'));
     }
-    // reference pitch
-    const applyTuning = () => {
-      AMB.theory.A4 = store.get('global.tuning') === '432 Hz' ? 432 : 440;
-      if (AMB.layers.drone && AMB.layers.drone.setRoot) AMB.layers.drone.setRoot(AMB.layers.drone.root, AMB.engine.ctx.currentTime);
-    };
-    store.on((k) => { if (k === 'global.tuning') applyTuning(); });
-    AMB.theory.A4 = store.get('global.tuning') === '432 Hz' ? 432 : 440;
+    AMB.theory.A4 = 440; // (S9.4: the Diapason setting is gone, 440 Hz)
     document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
     // first visit = Sculpter; returning users get their last mode (an old 'listen' = Sculpter, perform.setMode)
     let saved = null;
@@ -329,7 +323,6 @@
     bind('#preset', 'change', updatePatchButtons);
     updatePatchButtons();
     bind('#rec', 'click', (e) => toggleRec(e.currentTarget));
-    bind('#sleep', 'change', (e) => setSleep(Number(e.target.value), $('#sleepLeft')));
 
     document.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
@@ -404,7 +397,9 @@
       raf = 0;
       const W = window.innerWidth || 1, H = window.innerHeight || 1, f = { t: 0, r: 0, b: 0, l: 0 };
       for (const e of P) {
-        const r = e.getBoundingClientRect(); if (!r.width || !r.height) continue;
+        // (S9.4: the layout box, not the painted one — a drawer sliding in was measured 70 px off and hid the stage's buttons)
+        const o = e.offsetParent && e.offsetParent.getBoundingClientRect(), r = o ? { left: o.left + e.offsetLeft, top: o.top + e.offsetTop, width: e.offsetWidth, height: e.offsetHeight } : (({ left, top, width, height }) => ({ left, top, width, height }))(e.getBoundingClientRect());
+        r.right = r.left + r.width; r.bottom = r.top + r.height; if (!r.width || !r.height) continue;
         if (r.height > H / 2) { if (r.left + r.width / 2 > W / 2) f.r = Math.max(f.r, W - r.left); else f.l = Math.max(f.l, r.right); }
         else if (r.top + r.height / 2 < H / 2) f.t = Math.max(f.t, r.bottom); else f.b = Math.max(f.b, H - r.top);
       }

@@ -16,7 +16,7 @@
 //     the GL canvas hides, #viz shows again with the css CRT (body.city .stage::after) and the 2D post of garden-visual
 //     (gardenVisual.post2d). A restored context brings WebGL back; a budget fallback stays for the session.
 //     ?gl=0 = never WebGL; ?gl=1 = WebGL without the budget fallback (dev captures).
-//   - resolution: output = source size × min(1, 1.5 / devicePixelRatio) × quality scale; bloom at 1/2 and 1/4 of it.
+//   - resolution: output = source size × 1/ceil(devicePixelRatio / 1.5) (S9.4: a whole fraction, nearest, pixelated) × quality scale; bloom at 1/2 and 1/4 of it.
 //     Follows any size of #viz (ResizeObserver: S8.3 full screen); the overlay copies #viz's box and its punch animations.
 // Hook: wraps AMB.visual.draw (loaded after garden-visual.js) → render after every frame of any visual mode; nothing
 // drawn when the tab is hidden or the city is off screen. No change in garden-visual.js or visual.js.
@@ -202,9 +202,13 @@ gl_FragColor=vec4(col,1.);}`;
       if (gl.isContextLost()) { this.fallback('lost'); return false; }
       if (!src.width || !src.height) return false;
       const dpr = (AMB.visual && AMB.visual.dpr) || window.devicePixelRatio || 1, L = LEVELS[this.level];
-      const sc = Math.min(1, 1.5 / dpr) * L.scale, w = Math.max(2, Math.round(src.width * sc)), h = Math.max(2, Math.round(src.height * sc));
+      // S9.4: a whole fraction of the source (1, 1/2, 1/3), sampled to the nearest texel and shown pixelated (css): the
+      // pixel cells stay sharp on a phone or a retina screen (0.75 blurred them)
+      const sc = 1 / Math.max(1, Math.ceil(dpr / 1.5 - 0.01)) * L.scale, w = Math.max(2, Math.round(src.width * sc)), h = Math.max(2, Math.round(src.height * sc));
       if (this.cv.width !== w || this.cv.height !== h) { this.cv.width = w; this.cv.height = h; this.place(); }
       this.targets(w, h);
+      const near = sc < 1 && L.scale === 1;
+      if (this.near !== near) { this.near = near; gl.bindTexture(gl.TEXTURE_2D, this.tex); const f = near ? gl.NEAREST : gl.LINEAR; gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, f); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f); }
       // time runs only when motion does (JUICE 0 / reduced motion: a still image)
       const live = !this.reduced() && this.juice() > 0;
       if (live) this.T = (this.T + Math.min(0.1, Math.max(0, (now - (this.tLast || now)) / 1000))) % 1000;

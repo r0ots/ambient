@@ -16,7 +16,6 @@
         time: { label: 'Temps', hint: 'Pulsé : notes sur les temps. Flottant : notes qui flottent sans pulsation.', type: 'select', options: ['Pulsé', 'Flottant'], def: 'Pulsé' },
         swing: { label: 'Swing', min: 0, max: 1, def: 0.12, hint: 'Chaloupé général : retarde une double-croche sur deux, pour toutes les pistes.' },
         humanize: { label: 'Imprécision', hint: 'Petits décalages de temps et de force pour un jeu moins mécanique.', min: 0, max: 1, def: 0.2 },
-        tuning: { label: 'Diapason', hint: 'Fréquence de référence du La (440 Hz standard, 432 Hz un peu plus grave).', type: 'select', options: ['440 Hz', '432 Hz'], def: '440 Hz' },
         volume: { label: 'Volume', hint: 'Volume général.', min: 0, max: 1, def: 0.8 },
       },
     },

@@ -46,9 +46,8 @@
           <div class="tgrp-row recgrp">
             <button id="rec" class="btn" title="Enregistrer ce que tu entends dans un fichier">● Rec</button>
             <details class="rec-opts">
-              <summary class="btn" title="Format et durée de l'enregistrement">▾</summary>
+              <summary class="btn" title="Durée de l'enregistrement">▾</summary>
               <div class="menu">
-                <label class="menu-row">Format <select id="recFmt"><option value="wav">WAV (sans perte)</option><option value="comp">Compressé (léger)</option></select></label>
                 <label class="menu-row">Durée <select id="recDur"><option value="0">libre (j'arrête moi-même)</option><option value="1">1 min</option><option value="3">3 min</option><option value="10">10 min</option><option value="20">20 min</option></select></label>
                 <p class="menu-note">Avec une durée fixe, le son fait un fondu et le fichier se télécharge tout seul.</p>
               </div>
@@ -64,7 +63,6 @@
         <div class="tgrp tree-grp"><small>Parcours</small>
           <div class="tgrp-row"><button id="treeBtn" class="btn tree-btn" title="L'arbre du Parcours : ce qui est ouvert et ce qui t'attend">🕹 Arbre</button></div>
         </div>
-        <span id="sleepLeft" class="sleep-left" title="Minuteur de sommeil"></span>
         <details class="more">
           <summary class="btn" title="Plus d'options">⋯</summary>
           <div class="menu">
@@ -75,15 +73,6 @@
             <label class="btn" title="Importer un fichier exporté">⬆ Importer des paysages<input id="importFile" type="file" accept="application/json,.json" hidden></label>
             <button id="exportMidi" class="btn" title="Progression, séquenceur et pulsations en fichier .mid">🎼 Exporter en MIDI</button>
             <button id="share" class="btn" title="Copier un lien vers ce paysage">🔗 Partager (lien)</button>
-            <label class="sleep" title="Minuteur de sommeil : fondu puis arrêt">☾ Sommeil
-              <select id="sleep">
-                <option value="0">off</option>
-                <option value="15">15 min</option>
-                <option value="30">30 min</option>
-                <option value="60">60 min</option>
-                <option value="120">2 h</option>
-              </select>
-            </label>
             <button id="gameMode" class="btn" title="Parcours (ouvrir l'instrument pièce par pièce) ou mode libre (tout ouvert)">🕹 Parcours</button>
             <button id="help" class="btn" title="Aide et raccourcis (?)">? Aide &amp; raccourcis</button>
           </div>
@@ -190,7 +179,7 @@
           <div><h4>Démarrer</h4><ul>
             <li><b>✦ Nouveau paysage</b> : en génère un, cohérent, selon une humeur</li>
             <li><b>Paysage</b> (le menu) : des points de départ soignés, et les tiens (⋯ Sauver le paysage)</li>
-            <li><b>Scènes A/B</b> : mémorise deux états et glisse de l'un à l'autre (Auto = fondu lent)</li></ul></div>
+            <li><b>Scènes A/B</b> : mémorise deux états et glisse de l'un à l'autre (Va-et-vient : il glisse tout seul, lentement)</li></ul></div>
           <div><h4>Jouer</h4><ul>
             <li><kbd>A</kbd>…<kbd>L</kbd> notes · <kbd>Q</kbd>…<kbd>P</kbd> octave au-dessus · <kbd>Z</kbd>…<kbd>M</kbd> accords</li>
             <li><b>MIDI</b> : notes graves = accords (tenus tant que les touches ou la pédale le sont), au-dessus = notes, même à l'arrêt ; vélocité = force et éclat · CC1 Densité, CC74 Lumière, CC91 Espace, CC93 Nostalgie, CC64 pédale</li></ul></div>
@@ -210,7 +199,7 @@
           <div><h4>Garder</h4><ul>
             <li><b>Rec</b> WAV ou compressé, durée fixe avec fondu</li>
             <li><b>Partager</b> : lien qui contient tout le paysage</li>
-            <li><b>☾</b> minuteur de sommeil · <b>⤢ Plein écran</b></li></ul></div>
+            <li><b>⤢ Plein écran</b></li></ul></div>
         </div>
         </div>
         <p class="muted"><kbd>Barre d'espace</kbd> lecture/stop · <kbd>⌘Z</kbd> annuler · <kbd>⇧⌘Z</kbd> rétablir · <kbd>?</kbd> cette aide · <kbd>Échap</kbd> fermer</p>

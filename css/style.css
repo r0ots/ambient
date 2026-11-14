@@ -140,10 +140,10 @@ body.mode-compose .macros, body.mode-compose .globals, body.mode-compose .layers
 /* composition order: song (sections) → chords → written melody → bass → rhythm → automation */
 .seqrow .chords-panel { order: 1; } .seqrow [data-sec="seq"] { order: 2; } .seqrow [data-sec="bass"] { order: 3; }
 .seqrow [data-sec="perc"] { order: 4; } .seqrow [data-sec="auto"] { order: 5; } .seqrow .song-panel { order: 0; } /* S6.3: the section picked here is what the editors below show */
-.macros .ctls { justify-content: space-around; }
+.macros .ctls { justify-content: space-between; flex-wrap: nowrap; gap: 0; } /* S9.4: the five always on one row */
 body.game .macros .panel:not(:has(.ctls > :not(.is-locked))) > header { display: none; } /* Parcours, grands réglages fermés : les couches seules, sans titre */
-.macros .ctl { width: 110px; }
-.macros .knob svg { width: 92px; height: 92px; }
+.macros .ctl { width: auto; flex: 1 1 0; min-width: 0; }
+.macros .knob svg { width: clamp(48px, 13cqi, 84px); height: clamp(48px, 13cqi, 84px); }
 .macros .k-val { font-size: 13px; }
 .macros .k-lab { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
 
@@ -274,7 +274,7 @@ body { background: var(--bg); }
 .k-body { fill: var(--bg); stroke: color-mix(in srgb, var(--c) 45%, transparent); stroke-width: 1.5; }
 .k-dot { fill: #fff; filter: drop-shadow(0 0 2px var(--c)); }
 .k-val { font: 600 12px var(--f); color: var(--text); }
-.k-lab { font: 600 10px var(--f); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); max-width: 100%; overflow-wrap: anywhere; }
+.k-lab { font: 600 10px var(--f); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); width: max-content; max-width: calc(100% + 14px); white-space: nowrap; overflow: hidden; text-overflow: clip; } /* (S9.4: a word never cut in two) */
 
 /* buttons: tubes (rest = dim, .on / primary = lit; hover and press: S7.1 block) */
 .btn, select { font: 600 13px/1.15 var(--f); letter-spacing: .08em; background: transparent; color: #e9e1ff; border: 1.5px solid var(--line-hi); border-radius: var(--radius-btn); box-shadow: none; }
@@ -341,7 +341,13 @@ footer { color: var(--muted); font: 500 10px var(--f); letter-spacing: .14em; te
 :focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 /* S8.2 the WebGL pass (js/city-gl.js): a click-through canvas over #viz (its box copied by js), which then goes transparent;
    its CRT (scanlines, curvature, vignette) replaces the css one above, kept for the 2D fallback */
-.city-gl { position: absolute; display: block; pointer-events: none; }
+.city-gl { position: absolute; display: block; pointer-events: none; image-rendering: pixelated; }
+/* S9.4 the captions under the buildings (garden-visual.js tags): small, sharp, out of the WebGL pass */
+.city-tags { position: absolute; pointer-events: none; overflow: hidden; }
+body:not(.city) .city-tags { display: none; }
+.city-tags span { position: absolute; left: 0; top: 0; font: 600 10px/1 var(--f); letter-spacing: .16em; white-space: nowrap; color: color-mix(in srgb, var(--c) 55%, #fff); text-shadow: 0 0 6px var(--c); will-change: transform; }
+.city-tags span.hot { color: #fff; text-shadow: 0 0 6px var(--c), 0 0 12px var(--c); }
+.city-tags span[hidden] { display: none; }
 .city-gl[hidden] { display: none; }
 .stage.gl::after { display: none; }
 @media (prefers-reduced-motion: reduce) { .stage::after { display: none; } } /* (every loop stops: .m-still, end of the S7.1 block) */

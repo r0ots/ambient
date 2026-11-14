@@ -30,7 +30,7 @@
     N('h.pad', 'harmonie', 'Pad', ['racine'], ['pad.on', 'pad.vol', 'pad.wave', 'pad.tone'], [], 'Des accords tenus au-dessus du drone.'),
     N('h.drone', 'harmonie', 'Drone qui suit', ['h.pad'], ['drone.follow'], [], 'Le drone change de note avec les accords.'),
     N('h.pad2', 'harmonie', 'Accords riches', ['h.pad'], ['pad.attack', 'pad.voicing', 'pad.counter', 'pad.length'], [], 'Attaque, accords enrichis, voix intérieure, durée des accords.'),
-    N('h.key', 'harmonie', 'Tonalité', ['h.pad'], ['global.key', 'global.tuning'], [], 'Changer la note de départ de tout le morceau.'),
+    N('h.key', 'harmonie', 'Tonalité', ['h.pad'], ['global.key'], [], 'Changer la note de départ de tout le morceau.'),
     N('h.scale', 'harmonie', 'Gammes', ['h.key'], ['global.scale'], [], '11 gammes, de la plus lumineuse à la plus mélancolique.'),
     N('h.prog', 'harmonie', 'Progression', ['h.scale', 'h.pad2'], ['pad.prog', 'pad.custom'], ['chords', 'mode-compose'], 'Écrire sa suite d\'accords case par case.'),
 
