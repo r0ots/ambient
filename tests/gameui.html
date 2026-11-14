@@ -99,7 +99,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
     ok(/^\d+ ouverts?$/.test(d.querySelector('.tree-count').textContent) && card.getBoundingClientRect().bottom<=de.clientHeight+1, '390 px : nœuds ouverts '+d.querySelector('.tree-count').textContent+', carte dans l\'écran');
     A.garden.showTree(false); f.style.width='1300px'; f.style.height='900px'; await wait(200); A.garden.showTree(true); await wait(30); }
   d.querySelector('#treeDlg [data-close]').click(); ok(d.getElementById('treeDlg').hidden, 'fermeture');
-  ok(!locked('#play') && !locked('[data-key="drone.vol"]') && !locked('[data-mode=sculpt]'), 'racine visible (lecture, drone, Sculpter)');
+  ok(!locked('#play') && !locked('[data-key="drone.vol"]') && locked('.modes') && A.mode==='sculpt', 'racine visible (lecture, drone) ; S9.1 : on est dans Sculpter, le groupe Mode attend Composer (un seul mode, pas de choix)');
   ok(locked('#dice') && locked('[data-key="fx.echo"]') && locked('[data-mode=compose]') && locked('#scenes') && locked('.recgrp'), 'le reste caché');
   ok(locked('.panel[data-sec=fx]') && locked('.panel[data-sec=bells]') && !locked('.panel[data-sec=drone]') && locked('.chords-panel'), 'panneaux vides cachés');
   A.perform.setMode('sculpt'); await wait(50);
