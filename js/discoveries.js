@@ -1,15 +1,16 @@
 // « Découvertes » (S5.10): ONE system for everything the player finds by playing, never listed in the tree (« ??? »).
-// Two kinds of condition, one discovery each, found once, saved, celebrated (garden.fx('discovery', {name}): huge):
-//   - COMBOS: a state of the music held for a while (settings, S5.8 scene layers, gestures in progress: notes held,
-//     a chord held, a Réponse tier…), checked on every beat of the sequencer (`onStep`, no timer). While its condition
-//     holds, the combo is ON: the Jardin draws its own emergent effect (garden-visual.js COMBO_FX), gone when it falls.
+// Two kinds, one discovery each, found once, saved, celebrated (garden.fx('discovery', {name}): huge):
+//   - COMBOS (S8.7): the huge combos of js/city-combos.js (its table COMBOS: two or three knobs pushed together, held
+//     until the charge is full). A combo's FIRST « SUPER ! » is its discovery (`superCombo`, called by city-combos); the
+//     combo itself is the instrument's (free mode too), only the discovery and its node are the Parcours'. `gate` (set
+//     here) keeps a combo out of reach in the Parcours until its nodes are owned.
 //   - GESTES: the former secrets (G10.1–S4.6): a musical gesture, detected on the bus (live notes, forced chords, user
 //     changes of the store). They have no lasting effect; two give a timbre (Givre, Aube).
 // Some discoveries make a node READY (table OPENS, the only one): its missing prerequisites too; if it is already owned,
-// the next node of the path (contracts.nextNode) instead, never a dead reward. Path only: free mode detects and shows
-// nothing (the Jardin does not exist there). Never while a Réponse waits for its answer (S4.2) for the gestures; the combos
-// keep running (a state, not notes), but the notes of a Réponse do not count.
-// Saved in game.s.secrets (the field keeps its old name: older saves' secrets found ARE discoveries found):
+// the next node of the path (contracts.nextNode) instead, never a dead reward. Path only: free mode finds and shows
+// nothing. Never while a Réponse waits for its answer (S4.2) for the gestures.
+// Saved in game.s.secrets (the field keeps its old name: older saves' secrets found ARE discoveries found; the 15 small
+// combos of S5.10 found in an older save count as the huge combo that replaced them, table RENAMED):
 //   found {id: time}, midi (a MIDI keyboard was connected), gifts {timbres [{sec, opt}]}, opened {id: node}.
 // The notebook (« Découvertes n/N ») lives in the tree screen: found ones (name, effect, reward), then the others as
 // « ??? » with their hint (the riddles); the clear hint of a gesture opens after HINT2.found discoveries.
@@ -21,49 +22,13 @@
     givre: { type: 'timbre', sec: 'bells', opt: 'Givre', label: 'timbre « Givre » (Mélodie auto)' },
     aube: { type: 'timbre', sec: 'pad', opt: 'Aube', label: 'timbre « Aube » (Pad)' },
   };
-  const DARK = ['Éolien (mineur)', 'Dorien', 'Phrygien', 'Pentatonique min.', 'Hirajoshi', 'In Sen'];
 
-  // ---- COMBOS: C(id, name, need (nodes that make it reachable), hint, effect (what the Jardin draws, in words), hold (bars),
-  // when(X) -> true while the combo holds). X (context()): get(k) store value, L (S5.8 scene layers 0..1), on (layers that
-  // sound), light (mean Lumière of the layers that sound), notes(steps) (notes the player played lately), held (notes held
-  // now), chordHold (a chord forced and held), tier / streak (Réponse), keys(steps) (Tonalité changes lately). The effect
-  // itself is drawn by garden-visual.js (COMBO_FX[id]): this table knows nothing of the drawing. ----
-  const C = (id, name, need, hint, effect, hold, when) => ({ id, kind: 'combo', name, need, hint, effect, hold, when });
-  const COMBOS = [
-    // easy, from the start of the path (the child)
-    C('monolithe', 'Monolithe', ['racine'], 'Quand le Drone chante seul, tout au fond du noir, quelque chose se dresse.',
-      'un obélisque noir cerclé de lumière', 2, (X) => X.on.length === 1 && X.on[0] === 'drone' && X.light < 0.2),
-    C('constellation', 'Constellation vive', ['m.bells'], 'Une pluie de notes à toi, sans t\'arrêter, dessine des figures dans le ciel.',
-      'tes notes reliées en constellation', 1, (X) => X.notes(16) >= 6),
-    C('soleil', 'Soleil binaire', ['h.pad'], 'Pousse la lumière à son comble pendant que le Pad tient ses accords : le ciel voit double.',
-      'deux soleils qui tournent l\'un autour de l\'autre', 2, (X) => X.on.includes('pad') && X.light > 0.8),
-    C('portail', 'Portail harmonique', ['m.bells'], 'Trois notes tenues à la fois, longtemps, ouvrent un passage.',
-      'un anneau de LED qui tourne au centre', 1, (X) => X.held >= 3),
-    // the middle of the path
-    C('brume', 'Brume néon', ['e.reverb', 'e.texture'], 'Une grande salle, de la pluie, presque pas de lumière : la ville s\'allume dans le brouillard.',
-      'un brouillard rose et cyan rayé de néon', 2, (X) => X.get('fx.space') > 0.8 && X.light < 0.3 && X.on.includes('texture') && X.get('texture.type') === 'Pluie'),
-    C('maree', 'Marée lente', ['m.tempo', 'e.texture'], 'L\'océan, sans pulsation, au plus lent du temps.',
-      'des vagues de lumière qui montent du sol', 2, (X) => X.get('global.time') === 'Flottant' && X.get('global.tempo') <= 50 && X.on.includes('texture') && X.get('texture.type') === 'Océan'),
-    C('miroir', 'Miroir infini', ['e.echo'], 'Des échos qui ne s\'arrêtent presque plus, et quelques notes à toi pour s\'y refléter.',
-      'la ville reflétée dans la rue mouillée, qui ondule', 1, (X) => X.get('fx.echo') >= 0.7 && X.get('fx.feedback') >= 0.7 && X.notes(16) >= 3),
-    C('blizzard', 'Vortex de givre', ['m.grains'], 'Des grains minuscules, par milliers, finissent par tourbillonner.',
-      'un tourbillon de pixels de givre', 2, (X) => X.on.includes('grains') && X.get('grains.density') >= 0.8 && X.get('grains.size') <= 0.25),
-    // further (the musician): settings pushed far, harmony, rhythm, the Réponse, MIDI chords
-    C('cathedrale', 'Cathédrale de verre', ['e.halo', 'e.salle'], 'Du verre qui sonne, dans la plus grande salle, sous un halo qui scintille.',
-      'des piliers de lumière en vitrail', 2, (X) => X.L.aurora >= 0.7 && X.get('fx.size') >= 0.8 && (X.get('pad.wave') === 'Verre' && X.on.includes('pad') || X.get('bells.wave') === 'Verre' && X.on.includes('bells'))),
-    C('vhs', 'Signal 2089', ['e.lofi'], 'Une cassette très usée, poussée à fond, se souvient d\'un futur.',
-      'l\'image qui déraille, rouge et bleu, ● REC 2089', 2, (X) => X.L.tape >= 0.75 && X.L.grain >= 0.6),
-    C('kaleido', 'Kaléidoscope', ['h.key'], 'Change trois fois de tonalité en deux mesures, pendant que ça joue.',
-      'le ciel en kaléidoscope', 0, (X) => X.keys(32) >= 3),
-    C('eclipse', 'Éclipse mineure', ['h.scale', 'h.pad'], 'Dans une gamme sombre, tiens toi-même un accord (notes graves ou appui long) deux mesures.',
-      'une lune noire et sa couronne', 2, (X) => DARK.includes(X.get('global.scale')) && X.chordHold),
-    C('quintes', 'Roue des quintes', ['m.bells'], 'Réponds juste, deux fois d\'affilée, une quinte plus haut que la phrase.',
-      'l\'étoile des douze quintes qui tourne', 1, (X) => X.tier >= 3 && X.streak >= 2),
-    C('grille', 'Autoroute 2084', ['c.rythme'], 'Basse et pulsations ensemble, à toute vitesse, sans flotter.',
-      'une grille au néon qui file vers l\'horizon', 2, (X) => X.on.includes('bass') && X.on.includes('perc') && X.get('global.tempo') >= 110 && X.get('global.time') === 'Pulsé'),
-    C('reseau', 'Chœur des machines', ['c.seq'], 'Six couches qui jouent ensemble se mettent à se parler.',
-      'des arcs de lumière entre les tours', 2, (X) => X.on.length >= 6),
-  ];
+  // ---- COMBOS (S8.7): the table of js/city-combos.js (loaded before), as discoveries
+  const CC = AMB.cityCombos;
+  const COMBOS = (CC ? CC.COMBOS : []).map((c) => ({ id: c.id, kind: 'combo', name: c.name, need: c.need, hint: c.hint, effect: c.effect, n: c.n }));
+  // the 15 small combos of S5.10 (older saves) → the huge combo that replaced each of them
+  const RENAMED = { monolithe: 'orage', blizzard: 'orage', constellation: 'hyper', portail: 'hyper', grille: 'hyper', vhs: 'wire', soleil: 'wire', quintes: 'wire',
+    reseau: 'bouchon', maree: 'aurore', cathedrale: 'aurore', brume: 'kaiju', kaleido: 'disco', eclipse: 'disco', miroir: 'miroir' };
 
   // ---- GESTES (the former secrets): G(id, name, hint, hint2 (clear, after HINT2), reward, detect, need, midi) ----
   // detect = { live(note, D), chord(c, D), param(k, v, D) } -> true when the gesture is complete; midi: needs a MIDI keyboard
@@ -99,20 +64,17 @@
   ];
   const ALL = COMBOS.concat(GESTES);
   const byId = Object.fromEntries(ALL.map((d) => [d.id, d]));
-  // THE table: discovery -> the node it makes ready (former secrets unchanged; 5 combos open nodes of the start)
+  // THE table: discovery -> the node it makes ready (former secrets unchanged; S8.7: each huge combo opens a node of
+  // its world — or, owned already, the next node of the path)
   const OPENS = {
     tons: 'm.phrase', dim: 'h.pad2', jazz: 'h.prog', lent: 'm.evolve', pulse: 'm.tempo', silence: 'e.salle', velo: 'c.seq', chroma: 'h.scale', cinq: 't.rec',
-    monolithe: 't.viz', constellation: 'm.grains', soleil: 'h.drone', brume: 'e.halo', maree: 'm.lfo',
+    orage: 'e.texture', hyper: 'm.tempo', wire: 't.viz', bouchon: 'm.grains', aurore: 'e.halo', kaiju: 'e.salle', disco: 'c.seq', miroir: 'e.tape',
   };
   const HINT2 = { found: 2 }; // the clear hint of a gesture opens after this many discoveries (no time)
-  const LAYERS = ['drone', 'pad', 'bells', 'texture', 'grains', 'seq', 'bass', 'perc'];
-  const TONE = ['drone', 'pad', 'bells', 'texture', 'seq', 'bass', 'perc'];
 
   const D = {
-    COMBOS, GESTES, ALL, byId, GIFT, HINT2, OPENS, DARK,
+    COMBOS, GESTES, ALL, byId, GIFT, HINT2, OPENS, RENAMED,
     w: [], chords: [], mem: {}, BASE: {},
-    on: new Set(), // combos ON now (the Jardin draws them)
-    since: {}, step: 0, played: [], keyAt: [], holding: new Set(),
     now: () => Date.now(), // overridable by tests
 
     // ---- persistent state (inside the game state; older saves get it lazily) ----
@@ -122,6 +84,10 @@
       const q = s.secrets;
       q.found = q.found || {}; q.midi = !!q.midi;
       q.gifts = q.gifts || {}; q.gifts.timbres = q.gifts.timbres || []; // older saves: themes / mirror ignored
+      for (const [o, n] of Object.entries(RENAMED)) if (o !== n && byId[n]) { // S8.7: the combos of S5.10 found → their huge combo
+        if (q.found[o] != null) { if (q.found[n] == null) q.found[n] = q.found[o]; delete q.found[o]; }
+        if (q.opened && q.opened[o] != null) { if (q.opened[n] == null) q.opened[n] = q.opened[o]; delete q.opened[o]; }
+      }
       return q;
     },
     // gestures: path only (also once the instrument is handed over), never while a Réponse waits for its answer
@@ -155,50 +121,15 @@
       for (const nid of Object.values(q.opened)) if (AMB.tree.byId[nid]) g.readyChain(nid);
     },
 
-    // ---- COMBOS: the context of a beat, then each combo's condition, held `hold` bars (16 steps) ----
-    context() {
-      const get = (k) => store.get(k), T = AMB.tree, g = AMB.game, P = AMB.puzzles, GV = AMB.gardenVisual, step = this.step;
-      const open = (k) => !T || !g.path || T.paramUnlocked(k, g);
-      const on = LAYERS.filter((l) => get(l + '.on') && open(l + '.on') && get(l + '.vol') > 0.05);
-      const tones = TONE.filter((l) => on.includes(l)), light = tones.length ? tones.reduce((s, l) => s + get(l + '.tone'), 0) / tones.length : get('drone.tone');
-      const sc = P && P.score ? P.score(g) : null;
-      return {
-        get, on, light, step, L: GV && GV.scene ? GV.scene(get) : {},
-        notes: (n) => this.played.filter((s) => s > step - n).length,
-        keys: (n) => this.keyAt.filter((s) => s > step - n).length,
-        held: this.holding.size, chordHold: !!(AMB.seq && AMB.seq.chordHold),
-        tier: sc ? sc.tier : -1, streak: sc ? sc.streak : 0,
-      };
-    },
-    // called by the sequencer at each step (js/sequencer.js); combos are judged on each beat
-    onStep(step) {
-      this.step = step;
-      if (step % 4 || !AMB.game || !AMB.game.path) return;
-      this.judge(this.context());
-    },
-    judge(X) {
-      const g = AMB.game;
-      for (const c of COMBOS) {
-        let ok = false;
-        if (this.reach(c, g)) try { ok = !!c.when(X); } catch (e) { ok = false; }
-        if (!ok) { delete this.since[c.id]; if (this.on.delete(c.id)) this.emitCombo(c.id, false); continue; }
-        if (this.since[c.id] == null) this.since[c.id] = X.step;
-        if (!this.on.has(c.id) && X.step - this.since[c.id] >= c.hold * 16) {
-          this.on.add(c.id); this.emitCombo(c.id, true);
-          if (!this.has(c.id)) this.find(c.id);
-        }
-      }
-      return [...this.on];
-    },
-    emitCombo(id, on) { if (AMB.bus) AMB.bus.emit('combo', { id, on }); },
-    // playback stopped, mode changed, path restarted: every combo falls, the windows start again
-    stopAll() {
-      for (const id of this.on) this.emitCombo(id, false);
-      this.on.clear(); this.since = {}; this.played = []; this.keyAt = []; this.holding.clear();
+    // ---- COMBOS (S8.7): a combo's first SUPER (js/city-combos.js) = its discovery; true when it is new (celebrated)
+    superCombo(id) {
+      const d = byId[id], g = AMB.game;
+      if (!d || d.kind !== 'combo' || !g || !g.path || this.has(id) || !this.reach(d, g)) return false;
+      return this.find(id);
     },
 
     // ---- GESTES: pattern detector helpers (relative intervals: independent of the key) ----
-    reset() { this.w = []; this.chords = []; this.mem = {}; this.stopAll(); },
+    reset() { this.w = []; this.chords = []; this.mem = {}; },
     tail(n) { return this.w.length >= n ? this.w.slice(-n) : null; },
     ivs(n) { const t = this.w.slice(-n); return t.slice(1).map((x, i) => x.midi - t[i].midi); },
     gapsOk(n, maxGap) { const t = this.w.slice(-n); return t.slice(1).every((x, i) => x.time - t[i].time <= maxGap); },
@@ -258,8 +189,6 @@
     },
     onLive(n) {
       if (!this.active()) return;
-      this.played.push(this.step); if (this.played.length > 64) this.played.shift(); // (combos: notes lately, in steps)
-      if (n.id != null) this.holding.add(n.id);
       const last = this.w[this.w.length - 1];
       if (last && n.time - last.time > 3) this.w = []; // a phrase: a long pause starts a new one
       this.w.push({ midi: n.midi, time: n.time, vel: n.vel, raw: n.raw == null ? null : n.raw });
@@ -291,7 +220,7 @@
     },
     celebrate(d, node) {
       const GD = AMB.garden, gift = d.reward && d.reward.gift; // the juice table (S5.9 FX.discovery); its node waits on « ✦ Ouvrir »
-      if (GD && GD.fx) GD.fx('discovery', { name: d.name, ms: 6000, toast: `✦ Découverte : ${d.name}${node ? ` · ${node.name} prêt à ouvrir` : ''}${gift ? ' · ' + gift.label : ''}` });
+      if (GD && GD.fx) GD.fx('discovery', { name: d.name, ms: 6000, boom: d.kind === 'combo' ? 'SUPER!' : undefined, toast: `✦ Découverte : ${d.name}${node ? ` · ${node.name} prêt à ouvrir` : ''}${gift ? ' · ' + gift.label : ''}` });
       this.render(true);
     },
     giveGift(gift) {
@@ -371,18 +300,14 @@
   // ---- sources ----
   if (AMB.bus) {
     AMB.bus.on('live', (n) => n && D.onLive(n));
-    AMB.bus.on('liveOff', (n) => n && D.holding.delete(n.id));
-    AMB.bus.on('panic', () => D.stopAll());
     AMB.bus.on('act', (id) => { if (id === 'midiConnect' && AMB.game.path && !D.state().midi) { D.state().midi = true; AMB.game.save(); D.render(); } });
     AMB.bus.on('chord', (c) => c && D.onChord(c));
     ['reset', 'mode'].forEach((e) => AMB.bus.on('game:' + e, () => { D.reset(); D.known = null; D.applyGifts(); D.render(); }));
     ['unlock', 'ready'].forEach((e) => AMB.bus.on('game:' + e, () => D.render()));
   }
-  store.on((k, v, src) => {
-    if (src !== 'user') return;
-    if (k === 'global.key' && AMB.game && AMB.game.path && AMB.seq && AMB.seq.playing) { D.keyAt.push(D.step); if (D.keyAt.length > 16) D.keyAt.shift(); }
-    D.run('param', k, v);
-  });
+  store.on((k, v, src) => { if (src === 'user') D.run('param', k, v); });
+  // in the Parcours, a combo waits for its nodes (free mode: always, it is the instrument's)
+  if (CC) CC.gate = (c) => { const g = AMB.game; return !g || !g.path || D.reach(byId[c.id] || c, g); };
   AMB.discoveries = D;
   D.migrate();
   D.applyGifts();

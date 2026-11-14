@@ -3,7 +3,8 @@
 // it (.city-gl, click-through; #viz stays in the page, transparent, and keeps drawing). No dependency, raw WebGL1.
 //   - passes: bright pass (threshold) at half resolution → 9-tap gaussian blur (H, V) at half then quarter resolution
 //     (neon bloom, two radii) → one composite: barrel curvature, chromatic aberration, VHS (tracking bands, colour bleed),
-//     warp (hyperspace radial blur), wire (Sobel edges, 1984 vector look), fog, bloom, CRT (scanlines, vignette, optional
+//     warp (hyperspace radial blur), wire (Sobel edges, 1984 vector look: 0..1 phosphor green, 1..2 the scene's own neon
+//     colours, S8.7), fog, bloom, CRT (scanlines, vignette, optional
 //     shadow mask `mask`), grain, flash.
 //   - named inputs (0..2), driven later from the world model: bloom, chroma, crt, fog, vhs, flash, shake, warp, wire,
 //     grain, mask. AMB.cityGL.set(name, v) sets the base level; pulse(name, amount, ms) adds a decaying impulse on top.
@@ -54,7 +55,7 @@ float roll=smoothstep(.97,1.,fract(u.y*.8-T*.21));col+=VH*(roll*.5+.06)*hs(vec2(
 if(WR>.001){vec2 e=TX*1.5;
 float a=lu(tx(u+e*vec2(-1.,1.))),b=lu(tx(u+e*vec2(0.,1.))),f=lu(tx(u+e)),g=lu(tx(u+e*vec2(-1.,0.))),h=lu(tx(u+e*vec2(1.,0.))),i=lu(tx(u-e)),j=lu(tx(u+e*vec2(0.,-1.))),k=lu(tx(u+e*vec2(1.,-1.)));
 float gx=(f+2.*h+k)-(a+2.*g+i),gy=(a+2.*b+f)-(i+2.*j+k);float ed=smoothstep(.06,.3,length(vec2(gx,gy)));
-vec3 w=mix(vec3(.2,1.,.85),normalize(col+.04)*1.5,.35)*ed+vec3(0.,.015,.03);col=mix(col,w,min(1.,WR));}
+float nm=.15+.85*clamp(WR-1.,0.,1.);vec3 w=mix(vec3(.2,1.,.55),normalize(col+.04)*1.6,nm)*ed+vec3(0.,.015,.03)*(1.-nm);col=mix(col,w,min(1.,WR));}
 vec3 bl=texture2D(B1,u).rgb*.75+texture2D(B2,u).rgb;col+=bl*BL*(1.+FG*.8);
 if(FG>.001){float n=.5+.25*sin(u.x*6.+T*.3+sin(u.y*9.-T*.2))+.25*sin(u.x*13.-T*.5+u.y*4.);float fo=FG*(1.-smoothstep(.05,.9,u.y))*(.45+.55*n);col=mix(col,FC*1.4+bl*.7,clamp(fo,0.,.9));}
 float s=.5+.5*sin(gl_FragCoord.y*3.14159/SL);col*=1.-CR*.28*(1.-s);

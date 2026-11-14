@@ -438,6 +438,11 @@
       bien: { rank: 3, stamp: 1, boom: 'ZIP!', flash: 0.25, confetti: 50, shake: 1, lcd: 'glitch', jingle: 'streak', pop: (o) => o.n > 1 ? `BIEN ! ×${o.n}` : 'BIEN !', kick: ['twinkle'],
         say: (o) => `✓ Bien !${o.n > 1 ? ' ×' + o.n : ''}${o.node ? ' · ✦ ' + o.node : ''}` },
       rate: { city: 'blackout', rank: 1, stamp: 1, boom: 'BZZT!', lcd: 'glitch', say: (o) => `✗ Raté${o.why ? ' · ' + o.why : ''} : la musique continue` },
+      // S8.7 the huge combos (js/city-combos.js), the instrument's: they play in free mode too (`free`), silent (no
+      // jingle: the music is the player's), never a flash (the city flashes itself, × JUICE). A combo's first SUPER is a
+      // discovery: the `discovery` recipe, its onomatopoeia « SUPER! » (o.boom)
+      combo: { free: 1, rank: 3, boom: 'COMBO!', confetti: 30, pop: (o) => `COMBO ×${o.n || 2}`, say: (o) => `⚡ Combo ×${o.n || 2}${o.name ? ' · ' + o.name : ''} : tiens la position !` },
+      super: { free: 1, city: 'stars', rank: 8, boom: 'SUPER!', confetti: 300, shake: 2, bounce: 1, punch: 2, beats: 3, pop: (o) => `${String(o.name || 'combo').toUpperCase()} !!!`, say: (o) => `⚡ SUPER ! ${o.name || ''}` },
       discovery: { city: 'stars', rank: 9, boom: 'ZAP!', flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => o.name ? `${String(o.name).toUpperCase()} !!!` : 'DÉCOUVERTE !!!', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `✦ Découverte${o.name ? ' : ' + o.name : ' !'}` },
     },
     // the bus events that are moments (the others call fx() where they happen: an opening, a discovery, the end, a first touch)
@@ -457,8 +462,8 @@
     juice() { const GV = AMB.gardenVisual; return GV && GV.JUICE != null ? GV.JUICE : 1; },
     // a moment: its message at once (LCD, toast), its effects on the next beat. Returns the queued {kind, o} or null.
     fx(kind, o = {}) {
-      const R = this.FX[kind]; if (!R || !AMB.game || !AMB.game.path) return null;
-      const say = o.say || (typeof R.say === 'function' ? R.say(o) : R.say);
+      const R = this.FX[kind]; if (!R || !AMB.game || !(AMB.game.path || R.free)) return null;
+      const say = !AMB.game.path ? null : o.say || (typeof R.say === 'function' ? R.say(o) : R.say); // (free mode: the LCD stays the sound's)
       if (say) this.lcd(say, o.ms || 3500, !!R.stamp);
       if (o.toast && AMB.ui && AMB.ui.toast) AMB.ui.toast(o.toast);
       const q = this._fxQ;
@@ -470,7 +475,7 @@
     // plays a recipe now (fx merges first): the jingle and the plant's splash are placed on the audio clock, the rest is
     // timed to the same beat. Returns the plan {kind, at, delay, did: [ingredients]}.
     fxPlay(kind, o = {}) {
-      const R = this.FX[kind]; if (!R || !AMB.game.path) return null;
+      const R = this.FX[kind]; if (!R || !(AMB.game.path || R.free)) return null;
       const ctx = AMB.engine && AMB.engine.ctx, run = !!(ctx && ctx.state === 'running');
       const at = o.at != null ? o.at : run ? this.strongBeat(0.08, undefined, undefined, 4) : null;
       const delay = at != null && run ? Math.max(0, (at - ctx.currentTime + (ctx.outputLatency || 0)) * 1000) : 0;
@@ -479,11 +484,12 @@
       if (R.jingle) { this.chime(R.jingle, { at, n: o.n || 0, deg: o.deg || 0 }); did.push('jingle'); }
       if (R.splash && GV) { GV.cheer(R.splash, at, o.plant); did.push('splash'); }
       if (!red) for (const k of ['confetti', 'shake', 'lcd', 'bounce', 'hop', 'punch', 'pop', 'kick']) if (R[k]) did.push(k);
-      if (!red && R.boom && J > 0) did.push('boom');
+      const boom = o.boom || R.boom; // (S8.7: a combo's discovery says « SUPER! »)
+      if (!red && boom && J > 0) did.push('boom');
       const beatMs = AMB.seq && AMB.seq.playing ? AMB.seq.stepDur() * 4000 : 380;
       let waits = 0;
       const fire = () => {
-        if (!AMB.game.path) return;
+        if (!AMB.game.path && !R.free) return;
         // S5.7: never over a window (Arbre, carnet, carte) — the party comes on the instrument once it closes, 6 s at most
         if (this.modalUp()) { if (++waits < 40) setTimeout(fire, 150); return; }
         const stage = $('.stage');
@@ -496,7 +502,7 @@
         if (R.bounce) this.fxClass(document.body, 'fx-bounce', 800);
         const el = R.hop === 'el' ? o.el : R.hop && $(R.hop); if (el) this.fxClass(el, 'fx-hop', 550);
         if (R.kick && GV && GV.flare) GV.flare(R.kick, J);
-        if (R.pop || R.boom) this.fxPop(R.pop ? (typeof R.pop === 'function' ? R.pop(o) : R.pop) : '', stage, R.rank, J > 0 ? R.boom : null, J);
+        if (R.pop || boom) this.fxPop(R.pop ? (typeof R.pop === 'function' ? R.pop(o) : R.pop) : '', stage, R.rank, J > 0 ? boom : null, J);
         if (R.confetti) {
           const src = R.from === 'el' ? o.el : R.from ? $(R.from) : stage, n = Math.round(R.confetti * J);
           this.confetti.burst(n, src || stage);
