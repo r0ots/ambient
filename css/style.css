@@ -1295,7 +1295,7 @@ body.listen .app > .stage { height: auto; }
 /* (tablet, phone on its side) two fixed rows: LCD · play · rec · tree · ⋯ / landscape · modes */
 @media (min-width: 561px) and (max-width: 1239px) {
   .app > .top { display: grid; grid-template-columns: minmax(0, 1fr) repeat(5, auto); align-items: center;
-    grid-template-areas: "lcd play rec sleep tree more" "land land land mode mode mode"; }
+    grid-template-areas: "lcd play rec sleep tree more" "land mode mode mode mode mode"; }
   .transport { display: contents; }
   .transport .tgrp { padding: 0; border: 0; }
   .lcd { grid-area: lcd; min-width: 0; }
@@ -1340,6 +1340,8 @@ body.listen .app > .stage { height: auto; }
   .transport { gap: 4px; }
   .transport .tgrp { padding: 0 4px; }
   .transport .btn, .transport summary, .transport select, .mode-btn { padding-top: 5px; padding-bottom: 5px; }
+  .transport .btn.primary { min-width: 0; } /* (the LCD keeps the width: a challenge stays on one line) */
+  #dice { font-size: 0; white-space: nowrap; } #dice .m-die { font-size: 16px; } /* ✦ alone (its name stays for screen readers and in its title) */
   .lcd { font-size: 18px; padding: 2px 10px; }
   .lcd #lcdLine { font-size: 16px; }
   /* Écouter: one strip, no title — the knobs left, the layer chips beside them */

@@ -9,8 +9,8 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
     const bar=d.getElementById('pads'), pads=[...bar.querySelectorAll('.pad')], PE=(t,id)=>new w.PointerEvent(t,{bubbles:true,pointerId:id,pointerType:'touch'});
     ok(!bar.hidden && shown('#pads'), 'S5.7 : pastilles dès la Graine (le premier défi est une note)');
     A.game.unlock('m.bells'); await settle(300); A.garden.showTree(false); A.perform.setMode('listen'); await wait(30);
-    const stage=d.querySelector('.stage').getBoundingClientRect(), br=bar.getBoundingClientRect();
-    ok(!bar.hidden && pads.length===9 && A.play.PADS.length===9 && br.top>=stage.bottom-1 , 'pastilles : 9, sous l\'écran, dès la Mélodie auto');
+    const br=bar.getBoundingClientRect(), H=w.innerHeight, hit=d.elementFromPoint(br.left+br.width/2, br.top+br.height/2); // S8.3: the city fills the window, the pads float at its bottom
+    ok(!bar.hidden && pads.length===9 && A.play.PADS.length===9 && br.bottom<=H+1 && br.top>H/2 && !!hit && !!hit.closest('#pads'), 'pastilles : 9, en bas de l\'écran par-dessus la ville, touchables, dès la Mélodie auto');
     const sp=A.seq.playMidi, rel=[], lives=[]; A.bus.on('live',e=>lives.push(e.midi)); A.seq.playing=true;
     A.seq.playMidi=(m,v,r,h)=>{ A.bus.emit('live',{midi:m,time:0,vel:v,raw:r}); return {id:m,midi:m,release:()=>{}}; };
     const eo=A.seq.endLive; A.seq.endLive=(h)=>rel.push(h.midi);
