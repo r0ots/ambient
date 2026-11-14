@@ -412,3 +412,23 @@ Vague 3
 - Acquis : suite de tests stable (3 passes ALL OK d'affilée, ~60 s, serveur propre à la suite).
 - Question à l'utilisateur : écouter les 4 WAV sombres (scratchpad/dark) puis décider de la suppression des paysages doux.
 - Reste ouvert : halo « Nouveau » coûteux (~0,8 ms par image pendant 8 s) quand beaucoup de commandes s'ouvrent d'un coup ; Sauver et Renommer restent des `prompt()` natifs, sans mouvement.
+
+## Saison 8 — la ville qui réagit vraiment
+
+Demande de l'utilisateur (après v1.34) : « l'écran de la ville réagisse beaucoup mieux, là on voit des bâtiments qui se tortillent, c'est pas ouf » ; il valide toutes les idées proposées (« fais toute la saison ») et ajoute : animations du trafic, étoiles filantes, bâtiments qui se construisent et se déconstruisent, personnages qui arrivent et partent au travail, voitures volantes, motos à la Tron ; la ville prend tout l'écran, en responsive. Principe : les bâtiments ne se déforment plus jamais ; ce sont la lumière, la météo, le trafic, la vie et la caméra qui réagissent. Chaque grand réglage pilote une dimension entière du monde, visible sur tout l'écran ; la musique pilote la lumière ; deux réglages poussés ensemble déclenchent un combo énorme. Même monde en Parcours et en mode libre (son et commandes du mode libre inchangés). Reste un reflet : on ne touche jamais la scène.
+
+Vague 1 (en parallèle)
+- [ ] S8.1 Moteur de ville : modèle du monde (courant, trafic, caméra, météo, usure VHS, population, chantiers) séparé du dessin, bâtiments immobiles qui se construisent / se déconstruisent, plus aucune déformation ; même interface d'événements que le Jardin (notes, réglages, FX, découvertes)
+- [ ] S8.2 Passe de rendu WebGL : bloom néon, aberration chromatique, écran cathodique, brouillard, réglés par `JUICE` ; repli 2D propre si WebGL manque ou si le téléphone peine
+- [ ] S8.3 Plein écran responsive : la ville occupe tout l'écran (bureau, tablette, téléphone, portrait et paysage), l'instrument flotte par-dessus sans la cacher inutilement
+
+Vague 2 (en parallèle, sur le moteur S8.1)
+- [ ] S8.4 Un réglage = une dimension : Lumière = courant (vague d'allumage à la vitesse du geste), Densité = trafic et chantiers, Espace = caméra, profondeur, brouillard, traînées, Nostalgie = VHS qui s'abîme, Nature = bruine → orage (vent, éclairs, flaques) ; les autres réglages (effets, couches) ont aussi leur reflet
+- [ ] S8.5 La musique pilote la lumière : lasers depuis les toits sur les notes (hauteur = angle), grosse caisse = la ville bat et une onde court au sol, accord = balayage du ciel, basse = grille synthwave qui défile au tempo, étoiles filantes sur les temps forts ou les accents
+- [ ] S8.6 La vie de la ville : voitures volantes en files, motos à la Tron sur la grille avec traînées, personnages qui arrivent, partent au travail, rentrent, hologrammes publicitaires, projecteurs ; tout suit la musique et les réglages
+
+Vague 3
+- [ ] S8.7 Combos énormes : deux réglages croisés → « COMBO ×2 », tenir → charge → « SUPER » ; Orage électrique, Hyperespace, 1984 (fil de fer vectoriel), Embouteillage stellaire et d'autres ; ils remplacent les 15 combos visuels discrets (découvertes et ouvertures de nœuds rebranchées)
+
+Vague 4
+- [ ] S8.8 Revue (bureau, tablette, téléphone), coût par image, reduced-motion, puis corrections ; fin de la saison 8
