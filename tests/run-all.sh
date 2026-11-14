@@ -2,7 +2,7 @@
 # Runs every headless test page (the SLOW audio demo pages only with ALL=1), through a pool of PAR workers (default 5); fails on any JS error / exception / missing DONE.
 cd "$(dirname "$0")"
 # longest pages first so batches finish together
-PAGES="gameui gameui-play garden-visual generator dark gameui-end midi-path phrase lfo prog freeze play share wav reverb grains journal macros history app patches pianoroll pulses chords midi automation song looper bass motion city-gl city-music city-life game balance placement demandes tree-map secrets juice combos free-intact narrow regards"
+PAGES="gameui gameui-play garden-visual generator dark gameui-end midi-path phrase lfo prog freeze play share wav reverb grains journal macros history app patches pianoroll pulses chords midi automation song looper bass motion city-gl city-dims city-music city-life game balance placement demandes tree-map secrets juice combos free-intact narrow regards"
 # slow audio demo pages (no ok() assertions): ALL=1 tests/run-all.sh
 SLOW="engines smoke spectrum"
 [ -n "$ALL" ] && PAGES="$SLOW $PAGES"
