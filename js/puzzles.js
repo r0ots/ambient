@@ -23,10 +23,10 @@
   const GAP = { gate: 1, free: 4, hot: 2 }; // bars of plain music between two phrases (a gate to open, a replay: right away; after a right answer: soon)
   const START = 5; // s: the least the player has after « À toi » to play the first note
   // S6.7 THE timing windows (± s, absolute, after latency compensation: 'live'.played), one row per hand.
-  // parfait / bien: the live asks (js/demands.js; beyond bien, RATÉ up to two beats); juste: a timed note of the Réponse.
+  // juste: a timed note of the Réponse.
   const TOL = {
-    midi: { parfait: 0.06, bien: 0.13, juste: 0.13 }, // a MIDI keyboard: a musician's timing
-    doigt: { parfait: 0.25, bien: 0.6, juste: 0.25 }, // the pads, the A–L keys, the knobs: a child's
+    midi: { juste: 0.13 }, // a MIDI keyboard: a musician's timing
+    doigt: { juste: 0.25 }, // the pads, the A–L keys, the knobs: a child's
   };
   const SHOW = 3; // seconds the leaves of the last answer stay on the plant
   const GROUP = 0.35; // s: the notes of a chord played by hand (MIDI, keys) come within this
@@ -164,7 +164,6 @@
       const g = AMB.game; if (!this.can(g)) return false;
       const gate = this.gate(g);
       if (gate) this.wait = Math.min(this.wait, GAP.gate); // a gate to open: its phrase comes soon
-      if (AMB.demands && AMB.demands.busy()) return false; // S5.5: a live ask in progress, the phrase waits
       if (this.wait > 0) { this.wait--; return false; }
       if (!gate && !store.get('bells.on')) return false; // the mastery loop needs the Melody heard
       if (AMB.pianoRoll && AMB.pianoRoll.roll && AMB.pianoRoll.roll.recording) return false; // Rec live: the notes are the roll's
@@ -289,8 +288,7 @@
       this.last = Object.assign(c, { ok, at: this.now() });
       // S6.7: missed the first time: the same phrase once more, right away
       if (!ok && !c.again) { this.again = { gate: c.gate, lv: c.lv, lvl: c.lvl, degs: c.degs, steps: c.steps, cdeg: c.cdeg }; res.replay = true; }
-      const asks = AMB.demands && AMB.demands.gate(g); // a challenge asked in the music waits its turn: no hurry then
-      this.wait = gate || res.replay ? GAP.gate : ok && !asks ? GAP.hot : GAP.free;
+      this.wait = gate || res.replay ? GAP.gate : ok ? GAP.hot : GAP.free;
       if (gate && c.gate === gate.id) {
         const miss = ok ? 0 : (s.miss[gate.id] || 0) + 1;
         if (ok && c.len >= this.need(gate)) res.open = gate.id;

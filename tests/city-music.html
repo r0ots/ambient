@@ -2,7 +2,7 @@
 <!-- S8.5 « La musique pilote la lumière » (js/city-music.js): a note → a laser from its building's roof (angle by pitch,
      colour of the layer, player > machine, held until released, chord = fan), on the HEARD time; kick → ground ring +
      bloom pulse + windows; strong beat without kick; chord → sky sweep by function; bass → grid lit, scrolling on the
-     tempo; shooting stars (rare); caps; garden.FX ingredients (salvo, blackout, stars); JUICE 0 and reduced motion; cost.
+     tempo; shooting stars (rare); caps; garden.FX ingredients (blackout, stars); JUICE 0 and reduced motion; cost.
      The city alone with a fake audio clock (like tests/shot-city.html), no audio. -->
 <script>window.AMB_GAME_KEY = 'ambient.game.city-music'; localStorage.removeItem(window.AMB_GAME_KEY); localStorage.removeItem('ambient.vizMode');</script>
 <script src="lib.js"></script>
@@ -134,10 +134,7 @@ window.addEventListener('load', async () => {
     bus.emit('phrase', { i: 15, len: 16, time: T }); step(0.02); ok(CM.stars.length === 2, 'une fin de phrase → une étoile filante');
     CM.fx('stars'); step(0.9); const nst = CM.stars.length; ok(nst >= 4 && nst <= CM.CAPS.stars, 'pluie d\'étoiles (fête), plafonnée (' + nst + ' ≤ ' + CM.CAPS.stars + ')');
 
-    // --- 7. garden.FX ingredients: salvo (PARFAIT), blackout (RATÉ)
-    clear(); step(0.1); CM.fx('salvo'); step(0.3);
-    const from = new Set(CM.lasers.map((l) => l.plant));
-    ok(from.size >= GV.plants.filter((p) => p.vis > 0).length - 1 && CM.lasers.length >= 9, 'PARFAIT : salve de lasers depuis chaque toit (' + CM.lasers.length + ' lasers, ' + from.size + ' bâtiments)');
+    // --- 7. garden.FX ingredient: blackout (RATÉ)
     clear(); step(1); const p0 = W.power; CM.fx('blackout'); step(0.25);
     ok(p0 > 0.3 && W.power < 0.05, 'RATÉ : coupure de courant (' + p0.toFixed(2) + ' → ' + W.power.toFixed(2) + ')');
     bus.emit('note', { layer: 'seq', midi: 70, time: T, vel: 1, dur: 0.1 }); step(0.02); const dark = lum(...at(60));
