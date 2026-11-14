@@ -312,10 +312,9 @@
     // « Virtuose » itself checks nothing more: it lifts the Réponse to the Quinte (balance.html: the nephew's 1 h 30 – 2 h).
     // `objs` = the objectives checked
     place(p, g = AMB.game) {
-      const s = this.st(g), nodes = [];
+      const s = this.st(g), first = !(s.place >= 0);
       s.place = p;
-      nodes.push(...PLACE[0].nodes);
-      const objs = AMB.contracts ? AMB.contracts.grant(nodes, g) : [];
+      const objs = AMB.contracts && first ? AMB.contracts.grant(PLACE[0].nodes, g) : []; // (once: the first place reached)
       g.save();
       return { id: PLACE[p].id, name: PLACE[p].name, objs, nodes: [...new Set(objs.map((id) => AMB.contracts.byId[id].node))] };
     },

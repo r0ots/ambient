@@ -83,7 +83,7 @@ document.getElementById('f').addEventListener('load', async () => {
       const respTo = () => {
         if (!L) return; if (tl == null) { if (own.has('m.bells') && own.has('k.piano')) tl = tPiano = t; return; }
         while (tl + L.dur() <= t) { tl += L.dur(); const p = L.step(); if (p >= 0) { placed.push(`${P.PLACE[p].name} ${fmt(tl)}′`); placedIn.push(tl - tPiano);
-          for (const n of P.PLACE[0].nodes) { const l = left(n); if (l.length > 1 && !own.has(n)) { done.add(l[0].id); granted++; } } } }
+          if (placed.length === 1) for (const n of P.PLACE[0].nodes) { const l = left(n); if (l.length > 1 && !own.has(n)) { done.add(l[0].id); granted++; } } } }
       };
       const opened = (before) => { if (own.size > before) { const o = (own.size - before) * TIME.open * k; t += o; tOpen += o; if (firstNode == null) firstNode = t; if (t - last > gap) { gap = t - last; gapAt = [...own].pop(); } last = t; steps.push(`${Math.round(t / 60)}′ ${[...own].pop()}`); } };
       const share = opts.secretShare != null ? opts.secretShare : 1;
