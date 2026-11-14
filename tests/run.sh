@@ -12,7 +12,7 @@ launch() {
   for _ in $(seq 1 30); do mkdir "$LOCK" 2>/dev/null && break; sleep 0.1; done
   UD=$(mktemp -d)
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --autoplay-policy=no-user-gesture-required \
-    --user-data-dir="$UD" --no-first-run --disable-gpu --mute-audio --disable-audio-output "http://$HOST:$PORT/tests/$PAGE?s=$SCALE" >/dev/null 2>&1 &
+    --user-data-dir="$UD" --no-first-run --disable-gpu $([ "$PAGE" = city-gl.html ] && echo --enable-unsafe-swiftshader) --mute-audio --disable-audio-output "http://$HOST:$PORT/tests/$PAGE?s=$SCALE" >/dev/null 2>&1 &
   CPID=$!
   ( sleep ${LOCK_S:-0.6}; rmdir "$LOCK" 2>/dev/null ) &
 }
