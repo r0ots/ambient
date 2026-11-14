@@ -19,9 +19,9 @@
     // notes sound when stopped too, once audio has been started once (in the path, a note key starts it: S5.7)
     if (!AMB.engine.ctx && !(note && g && g.path && wakeAudio(true))) return;
     if (note) firstNote();
-    if ((i = MELODY_LOW.indexOf(e.code)) >= 0) press('k' + e.code, AMB.seq.playDegree(i, e.shiftKey ? 0.5 : 0.85, true, e.timeStamp));
+    if ((i = MELODY_LOW.indexOf(e.code)) >= 0) press('k' + e.code, AMB.seq.playDegree(i, e.shiftKey ? 0.5 : 0.85, true, e.timeStamp), i < PADS.length ? i : null);
     else if ((i = MELODY_HIGH.indexOf(e.code)) >= 0) press('k' + e.code, AMB.seq.playDegree(i + 7, e.shiftKey ? 0.5 : 0.85, true, e.timeStamp));
-    else if ((i = CHORDS.indexOf(e.code)) >= 0) AMB.seq.forceChord(i);
+    else if ((i = CHORDS.indexOf(e.code)) >= 0) { AMB.seq.forceChord(i); tapChord(i); }
     else return;
     e.preventDefault();
   }
@@ -32,12 +32,17 @@
   const held = new Map(); // key ('k' + e.code or 'm' + midi note) → handle from AMB.seq.playMidi
   const sustained = new Set(); // handles released while the pedal is down
   let pedal = false;
-  function press(key, h) {
+  // pad = the on-screen key it shows on (index 0..8), else the one nearest to the note played (padForMidi)
+  function press(key, h, pad = null) {
     lift(key, true); // same key struck again: the previous note ends
+    keyUp(key);
     if (h && typeof h === 'object') held.set(key, h); // (a stub or a silent engine returns no handle)
+    const b = padEl(pad != null ? pad : h && typeof h === 'object' && h.midi != null ? padForMidi(h.midi) : -1);
+    if (b) { struck.set(key, b); strike(b, true); }
   }
   // stamp: the input event's timeStamp, so a recorded length is the one played (not the handling delay)
   function lift(key, now = false, stamp = null) {
+    keyUp(key);
     const h = held.get(key);
     if (!h) return;
     held.delete(key);
@@ -103,7 +108,7 @@
     if (!notes.length || !AMB.seq.playing) return;
     const deg = chordForNotes(notes), hold = lowDown.size > 0 || pedal;
     if (chordHeld && hold && deg === AMB.seq.chordDeg) return; // more notes of the chord already held: no re-strike
-    AMB.seq.forceChord(deg, hold);
+    AMB.seq.forceChord(deg, hold); tapChord(deg);
     chordHeld = hold && AMB.seq.chordHold;
   }
   // keys and pedal up: the forced chord may end (at the next chord boundary)
@@ -123,6 +128,32 @@
     E.out.gain.value = 0;
     p.catch(() => {});
     return true;
+  }
+
+  // ---------- S9.1 ONE strike for the on-screen keys, whatever plays them (mouse, finger, A–L, MIDI) ----------
+  // The same classes, motion and sparks for every input: .on while held (+ .chord for a forced chord), the shared press
+  // of motion.js (sinks, springs back with sparks) and a burst in the key's colour when it is struck. Nothing waits for
+  // it (the note already sounds). The machine's notes light the keys their own way (padAuto, softer).
+  const struck = new Map(); // input key ('k…', 'm…', 'p…') → the pad button it holds down
+  const downs = new Map(); // pad button → how many inputs hold it
+  function padEl(i) { const bar = document.getElementById('pads'); return bar && !bar.hidden && i >= 0 ? bar.children[i] || null : null; }
+  function strike(b, down, o = {}) {
+    if (!b) return;
+    const M = AMB.motion, n = (downs.get(b) || 0) + (down ? 1 : -1);
+    if (n > 0) downs.set(b, n); else downs.delete(b);
+    if (down) {
+      b.classList.add('on'); if (o.chord) b.classList.add('chord');
+      if (M) { M.press(b, true); M.burst(b, { n: 9, spread: 1.7, speed: 280 }); }
+    } else if (n <= 0) {
+      b.classList.remove('on', 'chord');
+      if (M) M.press(b, false);
+    }
+  }
+  function keyUp(key) { const b = struck.get(key); if (b) { struck.delete(key); strike(b, false); } }
+  // a forced chord from a key (Z–M, MIDI low notes): its key strikes once with the chord mark
+  function tapChord(deg) {
+    const b = padEl(deg % PADS.length); if (!b) return;
+    strike(b, true, { chord: true }); setTimeout(() => strike(b, false), 160);
   }
 
   // ---------- touch pads: the 9 notes of A–L under the screen (a phone has no keys) ----------
@@ -146,7 +177,7 @@
     bar.hidden = !padsWanted();
     if (bar.hidden) padsUp();
   }
-  function padsUp() { [...padPtr.keys()].forEach(padUp); }
+  function padsUp() { [...padPtr.keys()].forEach(padUp); [...struck.keys()].forEach(keyUp); }
   function padDown(e) {
     const b = e.target.closest && e.target.closest('.pad'); if (!b || !AMB.seq || padPtr.has(e.pointerId)) return;
     const g = AMB.game, can = (id) => !g || g.isUnlocked(id);
@@ -155,9 +186,7 @@
     firstNote();
     const deg = +b.dataset.deg, key = 'p' + e.pointerId;
     try { b.setPointerCapture(e.pointerId); } catch (err) {}
-    b.classList.add('on');
-    if (AMB.motion) AMB.motion.burst(b, { n: 9, spread: 1.7, speed: 280 }); // S7.3: a pad sparks in its colour at once (and again when let go)
-    press(key, AMB.seq.playDegree(deg, 0.85, true, e.timeStamp));
+    press(key, AMB.seq.playDegree(deg, 0.85, true, e.timeStamp), deg); // (strike: the same as a key or a MIDI note)
     const t = setTimeout(() => { // long press: the chord of this degree (needs the Pad; the note keeps sounding)
       if (!padPtr.has(e.pointerId) || !can('h.pad')) return;
       AMB.seq.forceChord(deg % (AMB.seq.scale.length || 7));
@@ -169,7 +198,6 @@
   function padUp(id) {
     const p = padPtr.get(id); if (!p) return;
     padPtr.delete(id); clearTimeout(p.t); lift('p' + id);
-    if (![...padPtr.values()].some((q) => q.b === p.b)) p.b.classList.remove('on', 'chord');
   }
   // S5.2: the pads light up briefly on the Mélodie auto's notes (in their own colour), so the player sees what the machine
   // plays and can copy it. The pad of the same note, nearest in pitch (another octave = the pad of that degree).
@@ -202,7 +230,7 @@
   const padCall = (e) => { if (e && e.notes) e.notes.forEach((n) => n.midis.forEach((m) => padLight(m, n.time, n.dur * 1000, 'call'))); };
   function padsInit() {
     const bar = document.getElementById('pads'); if (!bar) return;
-    bar.innerHTML = PADS.map((k, i) => `<button type="button" class="pad" data-deg="${i}" style="--i:${i};--c:hsl(${250 - i * 27}, 85%, 64%)" title="Touche ${k} · appui long : accord" aria-label="Note ${i + 1}"><span>${k}</span></button>`).join('');
+    bar.innerHTML = PADS.map((k, i) => `<button type="button" class="pad" data-deg="${i}" style="--i:${i};--c:hsl(${250 - i * 27}, 85%, 64%)" title="Lettre ${k} du clavier · garde le doigt : accord" aria-label="Touche ${k}, note ${i + 1}"><span>${k}</span></button>`).join('');
     bar.addEventListener('pointerdown', padDown);
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((n) => bar.addEventListener(n, (e) => padUp(e.pointerId)));
     bar.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -231,7 +259,7 @@
       if (d1 === 64) { setPedal(d2 >= 64, msg.timeStamp); return letChordGo(); } // sustain pedal (holds notes and the forced chord)
       if (d1 === 123 || d1 === 120) return panic(); // All Notes Off / All Sound Off
       // S6.4: CC 80 = ● Boucle, CC 81 = ⊕ Overdub (a footswitch or a pad: pressed = value ≥ 64), where the Morceau is open
-      if ((d1 === 80 || d1 === 81) && AMB.looper) { if (d2 >= 64 && (!AMB.tree || AMB.tree.uiUnlocked('song'))) d1 === 80 ? AMB.looper.rec() : AMB.looper.dub(); return; }
+      if ((d1 === 80 || d1 === 81) && AMB.looper) { if (d2 >= 64 && (!AMB.tree || AMB.tree.uiUnlocked('song'))) { if (AMB.motion) AMB.motion.tap(document.querySelector(`.seqrow [data-l="${d1 === 80 ? 'rec' : 'dub'}"]`)); d1 === 80 ? AMB.looper.rec() : AMB.looper.dub(); } return; }
       // CCs drive the macros (perform.setMacro, source 'cc'): CC1 (mod wheel) = Densité, CC74 = Lumière, CC91 = Espace, CC93 = Nostalgie
       const cc = { 1: 'macro.density', 74: 'macro.light', 91: 'macro.space', 93: 'macro.nostalgia' }[d1];
       if (cc) AMB.perform.setMacro(cc, v);
@@ -277,5 +305,5 @@
     }
   });
 
-  AMB.play = { PADS, padsRefresh, padForMidi, degreeForPitch, chordForNotes, onMidi, panic, get held() { return held.size + sustained.size; } };
+  AMB.play = { PADS, strike, padsRefresh, padForMidi, degreeForPitch, chordForNotes, onMidi, panic, get held() { return held.size + sustained.size; } };
 })();

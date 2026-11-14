@@ -12,11 +12,14 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
   ok(d.body.classList.contains('game'), 'body.game');
   ok(shown('#treeBtn'), 'bouton Arbre visible en parcours'); d.getElementById('treeBtn').click(); await wait(50);
   ok(!d.getElementById('treeDlg').hidden && d.querySelectorAll('.tree-node').length===A.tree.NODES.length && !d.querySelector('.tree-col, .tree-nb, .tree-sub'), 'écran Arbre : tous les nœuds, en-tête allégé (ni cartes de branche, ni ligne de compteurs)');
-  ok(/Ouvre : .*Pad/.test(tn('h.pad').title) && /demande Pad, Mélodie auto/.test(tn('c.seq').getAttribute('aria-label')), 'infobulle « débloque » + prérequis d\'une autre branche (aria-label)');
+  ok(/Ouvre : .*Pad/.test(tn('h.pad').title) && /il faut d'abord Pad, Mélodie auto/.test(tn('c.seq').getAttribute('aria-label')), 'infobulle « débloque » + prérequis d\'une autre branche (aria-label)');
   { const miss=A.tree.NODES.flatMap(n=>n.req.map(r=>[r,n.id])).filter(([r,n])=>!d.querySelector('#treeDlg .tree-link[data-from="'+r+'"][data-to="'+n+'"]'));
     ok(!miss.length && d.querySelectorAll('#treeDlg .tree-link.x').length>0 && d.querySelector('#treeDlg svg.tree-links'), 'G11.1 : un lien SVG par prérequis, liens entre branches compris'+(miss.length?' manquants '+miss.join(' '):''));
-    ok(d.querySelector('.tree-link[data-from="racine"][data-to="h.pad"]').classList.contains('available') && d.querySelector('.tree-link[data-from="h.pad"][data-to="h.key"]').classList.contains('locked'), 'liens : disponible / verrouillé');
-    ok(tn('h.pad').tagName==='BUTTON' && /^Pad, Harmonie, peut s'ouvrir, s'ouvre par : Joue 6 notes/.test(tn('h.pad').getAttribute('aria-label')) && /fermé/.test(tn('h.scale').getAttribute('aria-label')) && !/éclat|✧/.test(tn('h.pad').getAttribute('aria-label')), 'nœuds : boutons, aria-label état + ce qui ouvre '+tn('h.pad').getAttribute('aria-label')); }
+    ok(d.querySelector('.tree-link[data-from="racine"][data-to="h.pad"]').classList.contains('available') && d.querySelector('.tree-link[data-from="h.pad"][data-to="h.key"]').classList.contains('dark') && /url\(/.test(d.querySelector('.tree-link[data-from="h.pad"][data-to="h.key"]').style.stroke) && w.getComputedStyle(d.querySelector('.tree-link[data-from="h.key"][data-to="h.scale"]')).display==='none', 'liens : disponible ; vers le noir : pointillés qui s\'estompent ; entre deux pièces cachées : rien');
+    // S9.1: what cannot open yet is not drawn at all (no name, no shape); the counter has no total; a branch's name once one of its nodes is open
+    const vis=(id)=>w.getComputedStyle(tn(id)).display!=='none', bn=(b)=>w.getComputedStyle(d.querySelector('.tree-bname[data-b="'+b+'"]')).display!=='none';
+    ok(vis('racine') && vis('h.pad') && !vis('h.scale') && !vis('c.song') && !/\//.test(d.querySelector('.tree-count').textContent) && /^1 ouvert$/.test(d.querySelector('.tree-count').textContent) && !bn('harmonie') && !d.querySelector('.tree-legend .st-locked') && d.querySelector('.tree-legend .lg-dark'), 'S9.1 : seuls les nœuds ouverts et à ouvrir sont dessinés, compteur « '+d.querySelector('.tree-count').textContent+' » sans total, pas d\'étiquette de branche avant d\'en ouvrir une, légende à jour');
+    ok(tn('h.pad').tagName==='BUTTON' && /^Pad, Harmonie, à ouvrir, s'ouvre par : Joue 6 notes/.test(tn('h.pad').getAttribute('aria-label')) && /dans le noir/.test(tn('h.scale').getAttribute('aria-label')) && !/éclat|✧/.test(tn('h.pad').getAttribute('aria-label')), 'nœuds : boutons, aria-label état + ce qui ouvre '+tn('h.pad').getAttribute('aria-label')); }
   tn('h.pad').dispatchEvent(new w.MouseEvent('mouseover',{bubbles:true})); ok(tn('racine').classList.contains('is-req') && tn('h.key').classList.contains('is-dep'), 'survol : prérequis et suites surlignés');
   ok(tn('racine').classList.contains('st-owned') && tn('h.pad').classList.contains('st-available') && tn('h.scale').classList.contains('st-locked'), 'états acquis / disponible / verrouillé');
   ok(!d.getElementById('lcdShards') && !d.querySelector('#treeBtn .tree-badge') && !d.querySelector('.tree-puzzles'), 'S4.3 : ni compteur ✧ sur le LCD, ni pastille sur l\'Arbre, ni liste d\'énigmes');
@@ -37,7 +40,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
   // S4.6 + G8.5: a challenge won makes its node READY — a chime, « ✦ Ouvrir : Pad » pulsing on the LCD, the tree says « prêt »;
   // nothing opens by itself. A tap says what it gives, « Ouvrir » plays the opening sequence on the map (link, node born at the
   // chime, children blink), then what it opened comes in animated (unfolds, halo, « Nouveau »)
-  A.perform.setMode('listen'); A.garden.showTree(false); A.garden.select(null); A.game.unlock('m.bells'); await settle(300); A.garden.showTree(false); A.perform.setMode('listen');
+  A.perform.setMode('sculpt'); A.garden.showTree(false); A.garden.select(null); A.game.unlock('m.bells'); await settle(300); A.garden.showTree(false); A.perform.setMode('sculpt');
   const lt=d.getElementById('lcdTask'), ltx=lt.querySelector('.lcd-task-txt'), odlg=d.getElementById('openDlg');
   A.contracts.finish('m.notes'); await wait(60);
   ok(!A.game.has('h.pad') && A.game.isReady('h.pad') && !A.garden.seq && d.getElementById('treeDlg').hidden && A.lcdMsg && A.lcdMsg.text==='✓ Défi réussi', 'S4.6 : défi réussi → fêté (carillon, « ✓ Défi réussi »), le Pad est prêt mais rien ne s\'ouvre seul');
@@ -46,16 +49,14 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
   ok(!lt.hidden && ltx.textContent==='✦ Ouvrir : Pad' && !A.game.has('h.pad') && odlg.hidden, 'S4.6 : le temps passe, rien ne disparaît ni ne s\'ouvre tant que le joueur n\'a pas agi');
   A.garden.showTree(true); await wait(30); tn('h.pad').click(); await wait(20);
   ok(tn('h.pad').classList.contains('st-ready') && /✦ prêt/.test(tn('h.pad').textContent) && /prêt/.test(tn('h.pad').getAttribute('aria-label')) && d.querySelector('#treeDlg .tree-info .ti-open') && d.querySelector('.tree-legend .st-ready'), 'S4.6 : l\'arbre le dit aussi (« ✦ prêt », fiche avec ✦ Ouvrir, légende)');
-  d.querySelector('#treeDlg .tree-info .ti-open').click(); await wait(30);
-  ok(d.getElementById('treeDlg').hidden && !odlg.hidden && !A.game.has('h.pad'), 'S4.6 : ✦ Ouvrir de la fiche → la carte d\'explication, pas encore ouvert');
+  ok(/plusieurs notes tenues ensemble/.test(d.querySelector('#treeDlg .tree-info .ti-d').textContent), 'S9.1 : la fiche d\'un nœud prêt dit ce qu\'il apporte, en mots simples');
+  A.garden.showTree(false); await wait(30); ltx.click(); await wait(30);
   odlg.querySelector('[data-close]').click(); await wait(20); ok(odlg.hidden && A.game.isReady('h.pad'), '« Plus tard » : la carte se ferme, le Pad reste prêt');
   ltx.click(); await wait(30);
   ok(!odlg.hidden && odlg.querySelector('.open-name').textContent==='Pad' && odlg.querySelector('.open-why').textContent===A.tree.byId['h.pad'].why && /plusieurs notes tenues ensemble/.test(odlg.textContent) && !odlg.querySelector('.open-more').textContent && !A.game.has('h.pad') && d.activeElement===odlg.querySelector('.open-go'), 'S4.6 : toucher le bouton du LCD → ce que le Pad apporte, en mots simples (« '+odlg.querySelector('.open-why').textContent.slice(0,50)+'… »), bouton Ouvrir');
   odlg.querySelector('.open-go').click(); await wait(60);
-  ok(odlg.hidden && A.game.has('h.pad') && A.garden.seq && !d.getElementById('treeDlg').hidden && d.querySelector('.tree-glow.lit[data-from="racine"][data-to="h.pad"]') && tn('h.pad').classList.contains('is-buying'), '« Ouvrir » → la séquence : l\'arbre s\'ouvre, lien racine→Pad qui s\'allume');
-  ok(!lt.classList.contains('ready') && A.contracts.state().active.length===1 && !d.querySelector('.panel[data-sec=pad] .is-new') && A.tree.pending.length>0, 'le défi suivant arrive une fois le Pad ouvert ; ses réglages attendent la fin de la séquence');
-  await wait(450);
-  ok(tn('h.pad').classList.contains('st-owned') && tn('h.pad').classList.contains('is-born') && tn('h.key').classList.contains('is-blink') && tn('h.drone').classList.contains('is-blink') && !d.getElementById('treeDlg').hidden, 'au carillon : nœud ouvert, enfants devenus atteignables qui clignotent');
+  ok(odlg.hidden && A.game.has('h.pad') && d.getElementById('treeDlg').hidden, 'S9.1 : « Ouvrir » (LCD) → ouvert sur l\'instrument, l\'Arbre ne s\'ouvre pas tout seul');
+  ok(!lt.classList.contains('ready') && A.contracts.state().active.length===1, 'le défi suivant arrive une fois le Pad ouvert');
   for (let i=0;i<60 && A.garden.seq;i++) await wait(40);
   const padP=d.querySelector('.panel[data-sec=pad]'), nf=d.querySelector('.is-new-first');
   ok(!A.garden.seq && d.getElementById('treeDlg').hidden, 'fin de séquence : arbre fermé');
@@ -75,12 +76,14 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
     A.store.set(key, v, 'preset'); }
   // a click during the sequence fast-forwards it; the highlight lasts NEW_MS at most (shortened here); reduced motion = final state at once
   { A.tree.NEW_MS=300; A.contracts.finish('h.forcer'); await wait(30); ok(A.game.isReady('h.drone') && !A.garden.seq, 'Drone qui suit prêt');
-    A.garden.openNode('h.drone'); ok(A.garden.seq && A.game.has('h.drone'), 'ouvert → séquence lancée');
+    A.garden.showTree(true); await wait(30); tn('h.drone').click(); await wait(20); d.querySelector('#treeDlg .tree-info .ti-open').click(); await wait(60);
+    ok(A.garden.seq && A.game.has('h.drone') && !d.getElementById('treeDlg').hidden && d.querySelector('.tree-glow.lit[data-from="h.pad"][data-to="h.drone"]') && tn('h.drone').classList.contains('is-buying') && A.tree.pending.length>0, '✦ Ouvrir dans l\'Arbre ouvert → la séquence sur la carte (lien qui s\'allume), ses réglages attendent sa fin');
+    await wait(450); ok(tn('h.drone').classList.contains('st-owned') && tn('h.drone').classList.contains('is-born'), 'au carillon : nœud ouvert sur la carte');
     d.querySelector('#treeDlg .tree-card').click(); ok(!A.garden.seq && d.getElementById('treeDlg').hidden && !d.querySelector('#treeDlg .is-buying, #treeDlg .is-born, #treeDlg .tree-glow.lit') && d.querySelector('[data-key="drone.follow"].is-new'), 'clic pendant la séquence : accélérée jusqu\'à la fin, le nouveau réglage arrive');
     await wait(450); ok(!d.querySelector('.is-new'), 'surbrillance terminée après NEW_MS (8 s au plus, ici 0,3 s) sans toucher'); A.tree.NEW_MS=8000;
     // the queue: two nodes ready, the button says how many; they open one after the other
     A.contracts.finish('h.son'); A.game.ready('e.reverb', 'm.monte'); await wait(20);
-    ok(ltx.textContent==='✦ Ouvrir : Accords riches' && lt.querySelector('.lcd-task-n').textContent==='2 prêts' && !A.contracts.state().active.length, 'file : « ✦ Ouvrir : Accords riches » · « 2 prêts »');
+    ok(ltx.textContent==='✦ Ouvrir : Accords riches' && lt.querySelector('.lcd-task-n').textContent==='2 prêtes' && !A.contracts.state().active.length, 'file : « ✦ Ouvrir : Accords riches » · « 2 prêtes »');
     ltx.click(); await wait(20); ok(/^Ensuite : [^,]+\.$/.test(odlg.querySelector('.open-more').textContent) && odlg.querySelector('.open-all').hidden, 'la carte dit lequel attend ensuite (« '+odlg.querySelector('.open-more').textContent+' »), pas de « Tout ouvrir » pour 2');
     A.garden.showTree(true); await wait(20); A.garden.reduced=true; odlg.querySelector('.open-go').click();
     ok(A.game.has('h.pad2') && tn('h.pad2').classList.contains('st-owned') && !tn('h.pad2').classList.contains('is-born') && !d.querySelector('#treeDlg .tree-glow.lit') && !d.getElementById('treeDlg').hidden, 'mouvement réduit : état final tout de suite, sans animation');
@@ -93,10 +96,10 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
   { f.style.width='390px'; f.style.height='844px'; await wait(200); A.garden.showTree(true); await wait(80);
     const de=d.documentElement, card=d.querySelector('#treeDlg .tree-card'), map=d.querySelector('#treeDlg .tree-map');
     ok(de.scrollWidth<=de.clientWidth && card.getBoundingClientRect().right<=de.clientWidth && map.clientWidth<=card.clientWidth && A.garden.view.k>=0.45 && A.garden.treeLayout().nar && (A.garden.fitTree(true), A.garden.treeLayout().W*A.garden.view.k<=map.clientWidth+1 && A.garden.treeLayout().H*A.garden.view.k<=map.clientHeight+1), '390 px : aucun débordement ('+de.scrollWidth+'/'+de.clientWidth+'), S5.7 éventail étroit, ouvre à k≥0,45, ⤢ = toute la carte (zoom '+A.garden.view.k.toFixed(2)+')'); A.garden.fitTree();
-    ok(/^\d+\/32$/.test(d.querySelector('.tree-count').textContent) && card.getBoundingClientRect().bottom<=de.clientHeight+1, '390 px : nœuds ouverts '+d.querySelector('.tree-count').textContent+', carte dans l\'écran');
+    ok(/^\d+ ouverts?$/.test(d.querySelector('.tree-count').textContent) && card.getBoundingClientRect().bottom<=de.clientHeight+1, '390 px : nœuds ouverts '+d.querySelector('.tree-count').textContent+', carte dans l\'écran');
     A.garden.showTree(false); f.style.width='1300px'; f.style.height='900px'; await wait(200); A.garden.showTree(true); await wait(30); }
   d.querySelector('#treeDlg [data-close]').click(); ok(d.getElementById('treeDlg').hidden, 'fermeture');
-  ok(!locked('#play') && !locked('[data-key="drone.vol"]') && !locked('[data-mode=sculpt]'), 'racine visible (lecture, drone, Sculpter)');
+  ok(!locked('#play') && !locked('[data-key="drone.vol"]') && locked('.modes') && A.mode==='sculpt', 'racine visible (lecture, drone) ; S9.1 : on est dans Sculpter, le groupe Mode attend Composer (un seul mode, pas de choix)');
   ok(locked('#dice') && locked('[data-key="fx.echo"]') && locked('[data-mode=compose]') && locked('#scenes') && locked('.recgrp'), 'le reste caché');
   ok(locked('.panel[data-sec=fx]') && locked('.panel[data-sec=bells]') && !locked('.panel[data-sec=drone]') && locked('.chords-panel'), 'panneaux vides cachés');
   A.perform.setMode('sculpt'); await wait(50);
@@ -108,7 +111,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
   A.game.setMode('free'); await wait(50);
   ok(!d.body.classList.contains('game') && d.querySelectorAll('.is-locked').length===0, 'mode libre : appli intacte');
   A.game.setMode('path'); A.game.reset(); A.perform.setMode('compose'); A.tree.applyLocks(); await wait(50);
-  ok(A.mode==='listen', 'mode verrouillé → retour Écouter');
+  ok(A.mode==='sculpt', 'mode verrouillé → retour Sculpter');
   // --- v1.06: no discoveries; the keys line and the MIDI button open with the Melody (no « MIDI » node any more)
   A.game.reset(); await wait(20); const n0=A.game.s.nodes.length;
   A.seq.playing=true; A.store.set('drone.vol',0.3,'user'); A.store.set('drone.motion',0.7,'user'); A.seq.playing=false;
@@ -118,7 +121,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
   ok(!locked('#midi') && locked('#exportMidi') && /\.mid/.test(A.tree.grantsText('c.seq')), 'Mélodie ouverte : le MIDI reste ; l\'export .mid vient avec la Mélodie écrite');
   // --- the challenge on the LCD (v1.06): one at a time on the 2nd line, ↷ = next, a tap = how to do it
   // S5.7: the first one is « Joue une note »; no jargon yet. S6.2: no glide on the screen, a MIDI CC still reaches the drone's colour
-  A.game.reset(); A.perform.setMode('listen'); A.lcdMsg=null; await wait(400);
+  A.game.reset(); A.perform.setMode('sculpt'); A.lcdMsg=null; await wait(400);
   ok(!d.getElementById('contracts') && shown('#lcdTask') && lline.hidden && /Joue une note/.test(task.textContent) && /·/.test(task.querySelector('.lcd-task-n').textContent) && !/✧/.test(task.textContent), 'premier défi sur la 2e ligne du LCD, sans ✧ : '+task.textContent);
   ok(d.body.classList.contains('jargon-off') && d.getElementById('lcdTop').textContent==='JUNOJUNO' && w.getComputedStyle(d.getElementById('hudInfo')).visibility==='hidden' && w.getComputedStyle(d.getElementById('chordName')).visibility==='hidden', 'début : ni nom de paysage, ni tonalité, gamme, tempo ou accord à l\'écran (« '+d.getElementById('lcdTop').textContent+' »)');
   ok(!d.getElementById('xyTip') && !d.querySelector('.xy-label'), 'S6.2 : plus de bulle ni de libellés du glissé sur l\'écran');
@@ -126,7 +129,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
   for (const x of [0.1,0.9,0.2,0.8]) { A.perform.setMacro('macro.light', x); A.perform.setMacro('macro.density', 0.5); }
   ok(A.store.get('drone.tone')!==tone0 && A.store.get('macro.light')===mac0 && locked('.macros [data-key="macro.light"]') && !A.game.isReady('m.bells'), 'un CC MIDI dès la Graine : la couleur du drone suit, les grands réglages restent fermés ; ce n\'est pas un défi');
   A.bus.emit('live',{midi:62,time:0,vel:0.8,raw:null}); ok(A.game.isReady('m.bells'), 'S5.7 : une note jouée → Mélodie prête');
-  A.garden.openNode('m.bells'); await settle(300); A.garden.showTree(false); A.perform.setMode('listen'); await wait(30);
+  A.garden.openNode('m.bells'); await settle(300); A.garden.showTree(false); A.perform.setMode('sculpt'); await wait(30);
   ok(/0\/6/.test(task.querySelector('.lcd-task-n').textContent) && /6 notes/.test(task.textContent), 'défi suivant : '+task.textContent);
   task.querySelector('.lcd-task-txt').click(); await wait(20);
   ok(task.classList.contains('help') && task.querySelector('.lcd-task-txt').textContent===A.game.txt(A.contracts.byId['m.notes'].hint), 'toucher le défi : son aide s\'affiche sur le LCD');
@@ -144,7 +147,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
   A.seq.playing=false;
   A.game.setMode('free'); await wait(20); ok(!shown('#lcdTask') && !lline.hidden, 'mode libre : la 2e ligne redevient l\'état du son'); A.game.setMode('path'); await wait(20);
   // 390 px: the contract stays in the LCD, nothing floats over the macros
-  { f.style.width='390px'; f.style.height='844px'; await wait(250); A.perform.setMode('listen'); A.game.unlock('t.son'); A.game.unlock('t.macros'); await wait(100);
+  { f.style.width='390px'; f.style.height='844px'; await wait(250); A.perform.setMode('sculpt'); A.game.unlock('t.son'); A.game.unlock('t.macros'); await wait(100);
     const R=(e)=>e.getBoundingClientRect(), mac=d.getElementById('macros'), lr=R(d.getElementById('lcd')), de=d.documentElement;
     const over=[...d.querySelectorAll('body *')].filter(e=>{ const cs=w.getComputedStyle(e); return (cs.position==='fixed') && e.getClientRects().length && !e.hidden && cs.display!=='none' && cs.visibility!=='hidden' && cs.pointerEvents!=='none' && e.id!=='toast' && !e.closest('.stage'); /* (S8.3: the city is the fixed background, under everything; checked below) */ }).filter(e=>{ const a=R(e), m=R(mac); return a.width && a.height && a.left<m.right && a.right>m.left && a.top<m.bottom && a.bottom>m.top; });
     const kr=R(mac.querySelector('.knob')), top=d.elementFromPoint(kr.left+kr.width/2, kr.top+kr.height/2);

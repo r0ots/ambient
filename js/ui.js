@@ -1,10 +1,10 @@
-// UI shell: panels, transport, presets, share, HUD, listening mode (widgets/rec/perform live in their own files)
+// UI shell: panels, transport, presets, share, HUD, full screen (widgets/rec/perform live in their own files)
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const store = AMB.store;
   const { $, h, bind } = AMB.dom;
   const { registry: widgets, knob, select, textField, toggle } = AMB.widgets;
-  const { setView, setMode } = AMB.perform;
+  const { setMode } = AMB.perform;
   const { toggleRec, setSleep } = AMB.rec;
 
   function section(secKey) {
@@ -48,7 +48,7 @@
         } catch (e) { name.textContent = 'Micro indisponible'; console.error(e); }
         mic.disabled = false; mic.textContent = '● Micro 8 s';
       });
-      const frz = h('button', 'btn small', '❄ Figer le son');
+      const frz = h('button', 'btn small frz', '❄ Figer le son');
       frz.title = 'Capture les 4 dernières secondes du mix comme source de grains (touche Entrée)';
       frz.addEventListener('click', () => freezeNow(name));
       row.append(lbl, mic, frz, name);
@@ -285,20 +285,6 @@
     const mac = $('#macros');
     if (mac) {
       mac.append(section('macro'));
-      // layer on/off chips so the simple view can still shape the arrangement
-      const chips = h('div', 'layer-chips');
-      for (const l of ['drone', 'pad', 'bells', 'grains', 'texture']) {
-        const sp = AMB.SCHEMA[l];
-        // own button (not toggle()) so the expert panel's widget registration is untouched
-        const b = h('button', 'tog', sp.label); b.style.setProperty('--c', sp.color);
-        const key = `${l}.on`;
-        b.dataset.key = key;
-        const r = () => b.classList.toggle('on', !!store.get(key));
-        b.addEventListener('click', () => store.set(key, !store.get(key), 'user'));
-        store.on((k) => { if (k === key) r(); }); r();
-        chips.append(b);
-      }
-      mac.querySelector('.panel').append(chips);
     }
     // reference pitch
     const applyTuning = () => {
@@ -308,10 +294,10 @@
     store.on((k) => { if (k === 'global.tuning') applyTuning(); });
     AMB.theory.A4 = store.get('global.tuning') === '432 Hz' ? 432 : 440;
     document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
-    // first visit = "Écouter"; returning users get their last mode (old 'ambient.view' mapped)
+    // first visit = Sculpter; returning users get their last mode (an old 'listen' = Sculpter, perform.setMode)
     let saved = null;
-    try { saved = localStorage.getItem('ambient.mode') || ({ simple: 'listen', expert: 'sculpt' })[localStorage.getItem('ambient.view')]; } catch (e) {}
-    setMode(saved || 'listen');
+    try { saved = localStorage.getItem('ambient.mode'); } catch (e) {}
+    setMode(saved || 'sculpt');
     layoutWatch(); // S8.3
 
     store.on((key) => { const w = widgets[key]; if (w) w.render(); });
@@ -347,8 +333,10 @@
 
     document.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-      if (e.code === 'Space') { e.preventDefault(); started ? stop() : play(); }
-      if (e.code === 'Enter' && e.target.tagName !== 'BUTTON') { e.preventDefault(); if (!AMB.tree || AMB.tree.uiUnlocked('freeze')) freezeNow(); }
+      // S9.1: a shortcut presses its button on screen like a click would (AMB.motion.tap: same press, same sparks)
+      const tap = (q) => AMB.motion && AMB.motion.tap(document.querySelector(q));
+      if (e.code === 'Space') { e.preventDefault(); tap('#play'); started ? stop() : play(); }
+      if (e.code === 'Enter' && e.target.tagName !== 'BUTTON') { e.preventDefault(); if (!AMB.tree || AMB.tree.uiUnlocked('freeze')) { tap('.sample-row .frz'); freezeNow(); } }
       if (e.code === 'Escape') { showHelp(false); if (document.body.classList.contains('listen')) setListen(false); }
       if (e.key === '?') { const d = $('#helpDlg'); showHelp(d && d.hidden); }
     });
@@ -383,7 +371,6 @@
     const vz = q.get('viz') === 'Ville' && AMB.gardenVisual ? 'Jardin' : q.get('viz'); // S6.7: the city (its mode id) too
     if (vz && (AMB.visual.MODES.includes(vz) || vz === 'Jardin')) { AMB.visual.mode = vz; if (vm) vm.textContent = vizLabel(vz); }
     if (q.get('mood')) { const m = $('#mood'); if (m) m.value = q.get('mood'); randomize(); }
-    if (q.get('view')) setView(q.get('view') === 'simple');
     if (q.get('mode')) setMode(q.get('mode'));
     if (q.get('listen')) setListen(true);
     if (q.get('autoplay')) play().catch(() => toast('Clique sur Lecture pour démarrer'));
@@ -407,11 +394,11 @@
   // ---------- S8.3 layout: the city fills the window, the instrument floats over it ----------
   // The canvas #viz is the whole window (css « S8.3 »: .stage fixed, inset 0); its size changes only with the window
   // (visual.js resize, devicePixelRatio), never with a mode or a drawer. `free` = the part of the city that no floating
-  // piece covers (bar, Écouter knobs, pads, drawer), in css px from each edge: --free-t / -r / -b / -l on <html> (the
+  // piece covers (bar, pads, drawer), in css px from each edge: --free-t / -r / -b / -l on <html> (the
   // stage's own overlays sit inside it) and AMB.gardenVisual.safe {top, right, bottom, left} = fractions of the window
   // (the city keeps what matters there). A piece taller than half the window is a side drawer, the others are bands.
   function layoutWatch() {
-    const de = document.documentElement, P = ['.top', '#macros', '#pads', '.drawer'].map((q) => $(q)).filter(Boolean);
+    const de = document.documentElement, P = ['.top', '#pads', '.drawer'].map((q) => $(q)).filter(Boolean);
     let raf = 0;
     const measure = () => {
       raf = 0;

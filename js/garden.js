@@ -16,7 +16,7 @@
       this.renderSwitch();
       // S6.6: stopped, the Parcours starts on « INSERT COIN » (the stage says it, no toast); already playing, the toast
       if (mode === 'free') AMB.ui.toast('◎ Mode libre : tout est ouvert');
-      else if (!this.coinUp()) AMB.ui.toast(AMB.game.txt('🕹 Parcours : une seule note pour commencer. {Touche une pastille, une touche de A à L ou ton clavier MIDI.|Touche une pastille de couleur.}'));
+      else if (!this.coinUp()) AMB.ui.toast(AMB.game.txt('🕹 Parcours : une seule note pour commencer. {Appuie sur une touche de couleur, une lettre de A à L ou ton clavier MIDI.|Appuie sur une touche de couleur.}'));
     },
     // ---- S6.6 « INSERT COIN »: in the Parcours, before the first sound, the stage is a blinking title screen (css
     // body.game:not(.playing):not(.coined) #coin); the first press — a finger on it or on a pad, a key, a MIDI note
@@ -43,7 +43,7 @@
     },
     coinWire() {
       const c = $('#coin'); if (!c) return;
-      const say = () => { const s = c.querySelector('small'); if (s) s.textContent = AMB.game.txt('{une note : pastille, touche A–L ou clavier MIDI|touche l\'écran ou une pastille}'); };
+      const say = () => { const s = c.querySelector('small'); if (s) s.textContent = AMB.game.txt('{une note : touche à l\'écran, A–L ou clavier MIDI|touche l\'écran ou une touche de couleur}'); };
       say(); if (AMB.bus) AMB.bus.on('game:mode', say);
       c.addEventListener('pointerdown', (e) => { e.preventDefault(); this.coin(); });
       c.addEventListener('click', () => this.coin()); // (keyboard: Enter on the focused button)
@@ -88,7 +88,7 @@
       if (rn) {
         box.dataset.id = 'open:' + rn.id; box.classList.remove('help');
         const t = box.querySelector('.lcd-task-txt'); t.textContent = `✦ Ouvrir : ${rn.name}`; t.title = 'Toucher : voir ce qui s\'ouvre';
-        this.rollN(box.querySelector('.lcd-task-n'), ready.length > 1 ? `${ready.length} prêts` : '');
+        this.rollN(box.querySelector('.lcd-task-n'), ready.length > 1 ? `${ready.length} prêtes` : '');
         return;
       }
       if (offer) {
@@ -394,7 +394,7 @@
         this.renderScore(r.ok && r.streak > 1);
         if (r.open || r.tier || r.tier || r.record || r.ok && r.streak > 1) return; // the juice table (FX: resp:*, game:ready) says it
         else if (r.ok) this.lcd(`✓ Juste · prochaine : ${r.next}`, 2500); // (its small juice: resp:streak → FX.juste)
-        // S6.7: a wrong answer is SEEN: « RATÉ » with its BZZT! (the juice table), and the phrase comes once more
+        // S6.7: a wrong answer is SEEN: « RATÉ » (the juice table), and the phrase comes once more
         else this.fx('rate', { say: r.replay ? '✗ RATÉ ! Réécoute…' : `✗ RATÉ · ${r.left != null ? `encore ${r.left} essai${r.left > 1 ? 's' : ''}` : r.name}`, ms: 3000 });
       }
     },
@@ -404,7 +404,7 @@
       const v = AMB.game.path && !this.handedOver() ? P.score() : null;
       el.hidden = !v || !v.best; if (el.hidden) return; // S5.7: not before a first series (« RECORD 0 » said nothing)
       el.textContent = `↺ ${v.name.toUpperCase()} · SÉRIE ${v.streak} · RECORD ${v.best}`;
-      el.title = `Réponse : palier ${v.name}, ${v.streak} réussie${v.streak > 1 ? 's' : ''} d'affilée, record ${v.best}`;
+      el.title = `Réponse : niveau ${v.name}, ${v.streak} réussie${v.streak > 1 ? 's' : ''} d'affilée, record ${v.best}`;
       if (bump) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
     },
     // ---- S5.9 « juice central »: ONE table, a moment of the game → a recipe of effects, all landing on the music's next
@@ -415,35 +415,35 @@
     //   'arcade' = the message scrolls in and blinks) · bounce (the buttons hop) · hop (one element hops) · punch (the scene
     //   zooms in, 1 | 1.5 | 2) · jingle (garden.chime kind, in the key) · pop (text that jumps out, arcade combo) · splash
     //   (S5.2 splashes of a plant) · beats (confetti again on the next beats) · say (the LCD message) · kick (S5.8 scene
-    //   layers of the Jardin that flare up: gardenVisual.flare, same JUICE) · boom (S6.6 the moment's comic onomatopoeia:
-    //   « POW! » in a starburst bubble, halftone, neon, tilted, bouncing in, the pop text under it; size by rank, × JUICE).
+    //   layers of the Jardin that flare up: gardenVisual.flare, same JUICE). S9.1: the pop is one short word (PARFAIT,
+    //   RATÉ, COMBO…), written plainly; the comic onomatopoeias (POW!, BZZT!…) and their bubbles are gone.
     // Moments fired in the same tick merge: the biggest (rank) plays alone (a gate answered = a challenge won, not also a
     // series). Reduced motion: a soft flash only (plus the jingle and the LCD message). S5.10 (combos, discoveries) reuses
     // it: fx('discovery', {name}).
     FX: {
-      first: { rank: 1, boom: 'POP!', confetti: 16, from: 'el', hop: 'el', jingle: 'pop', pop: '✦', kick: ['fireflies'] }, // a new control touched the 1st time
-      juste: { rank: 2, boom: 'BIP!', confetti: 12, from: '#lcd', hop: '#lcdScore', jingle: 'small', kick: ['fireflies'] }, // a right answer (series of 1)
-      ready: { rank: 2, boom: 'DING!', confetti: 24, from: '#treeBtn', hop: '#treeBtn', jingle: 'ready', kick: ['fireflies', 'twinkle'] }, // a node waits on « ✦ Ouvrir »
+      first: { rank: 1, confetti: 16, from: 'el', hop: 'el', jingle: 'pop', pop: 'NOUVEAU', kick: ['fireflies'] }, // a new control touched the 1st time
+      juste: { rank: 2, confetti: 12, from: '#lcd', hop: '#lcdScore', jingle: 'small', pop: 'JUSTE', kick: ['fireflies'] }, // a right answer (series of 1)
+      ready: { rank: 2, confetti: 24, from: '#treeBtn', hop: '#treeBtn', jingle: 'ready', pop: 'PRÊT', kick: ['fireflies', 'twinkle'] }, // a node waits on « ✦ Ouvrir »
       consolation: { rank: 2, confetti: 10, from: '#treeBtn', hop: '#treeBtn', jingle: 'small', kick: ['fireflies'] }, // a gate missed 6 times: « prêt quand même », no party
-      streak: { rank: 3, boom: 'ZING!', flash: 0.25, confetti: 40, shake: 1, lcd: 'glitch', jingle: 'streak', pop: (o) => `×${o.n} !`, splash: 'streak', kick: ['twinkle', 'ripple'], say: (o) => `✓ Juste · série ${o.n}` },
-      defi: { city: 'stars', rank: 4, boom: 'POW!', flash: 0.5, confetti: 140, shake: 1, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'defi', pop: 'DÉFI RÉUSSI !!!', kick: ['rays', 'twinkle', 'ripple'] },
-      record: { city: 'stars', rank: 5, boom: 'KAPOW!', flash: 0.55, confetti: 160, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1, jingle: 'record', pop: (o) => `★ RECORD ×${o.n} !`, splash: 'record', kick: ['aurora', 'twinkle', 'song'], say: (o) => `★ Record : série ${o.n} !` },
-      tier: { city: 'stars', rank: 6, boom: 'WHAM!', flash: 0.65, confetti: 220, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1.5, jingle: 'tier', pop: (o) => `↑ ${String(o.name || 'palier').toUpperCase()} !!`, splash: 'tier', kick: ['aurora', 'rays', 'song', 'ripple'], say: (o) => `↑ Palier : ${o.name}` },
-      open: { city: 'stars', rank: 7, boom: 'KA-BLAM!', flash: 0.75, confetti: 260, shake: 2, lcd: 'arcade', bounce: 1, punch: 1.5, jingle: 'unlock', pop: 'OUVERT !!!', splash: 'tier', kick: ['rays', 'aurora', 'ripple', 'hue'] },
-      end: { city: 'stars', rank: 8, boom: 'KA-BOOM!', flash: 1, confetti: 380, shake: 2, lcd: 'arcade', bounce: 1, punch: 2, jingle: 'end', pop: 'À TOI !!!', beats: 3, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'hue'] },
-      placement: { city: 'stars', rank: 10, boom: 'WHOOSH!', flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => `⚡ ${String(o.name || 'musicien').toUpperCase()} !!!`, hop: '#treeBtn', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `⚡ ${o.name || 'Musicien'} détecté` }, // S5.4 a Réponse placement (the queue « n prêts » is on the LCD's 2nd line)
+      streak: { rank: 3, flash: 0.25, confetti: 40, shake: 1, lcd: 'glitch', jingle: 'streak', pop: (o) => `SÉRIE ×${o.n}`, splash: 'streak', kick: ['twinkle', 'ripple'], say: (o) => `✓ Juste · série ${o.n}` },
+      defi: { city: 'stars', rank: 4, flash: 0.5, confetti: 140, shake: 1, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'defi', pop: 'RÉUSSI', kick: ['rays', 'twinkle', 'ripple'] },
+      record: { city: 'stars', rank: 5, flash: 0.55, confetti: 160, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1, jingle: 'record', pop: (o) => `RECORD ×${o.n}`, splash: 'record', kick: ['aurora', 'twinkle', 'song'], say: (o) => `★ Record : série ${o.n} !` },
+      tier: { city: 'stars', rank: 6, flash: 0.65, confetti: 220, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1.5, jingle: 'tier', pop: (o) => String(o.name || 'niveau').toUpperCase(), splash: 'tier', kick: ['aurora', 'rays', 'song', 'ripple'], say: (o) => `↑ Niveau : ${o.name}` },
+      open: { city: 'stars', rank: 7, flash: 0.75, confetti: 260, shake: 2, lcd: 'arcade', bounce: 1, punch: 1.5, jingle: 'unlock', pop: 'OUVERT', splash: 'tier', kick: ['rays', 'aurora', 'ripple', 'hue'] },
+      end: { city: 'stars', rank: 8, flash: 1, confetti: 380, shake: 2, lcd: 'arcade', bounce: 1, punch: 2, jingle: 'end', pop: 'À TOI', beats: 3, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'hue'] },
+      placement: { city: 'stars', rank: 10, flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => String(o.name || 'musicien').toUpperCase(), hop: '#treeBtn', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `⚡ ${o.name || 'Musicien'} détecté` }, // S5.4 a Réponse placement (the queue « n prêts » is on the LCD's 2nd line)
       // S5.5 the live asks (js/demands.js), judged on the time; n = the combo of successes in a row
-      parfait: { city: 'salvo', rank: 4, stamp: 1, boom: 'SHAZAM!', flash: 0.5, confetti: 130, shake: 1, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'streak', pop: (o) => o.n > 1 ? `PARFAIT !!! ×${o.n}` : 'PARFAIT !!!', splash: 'streak', kick: ['rays', 'twinkle', 'ripple'],
+      parfait: { city: 'salvo', rank: 4, stamp: 1, flash: 0.5, confetti: 130, shake: 1, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'streak', pop: (o) => o.n > 1 ? `PARFAIT ×${o.n}` : 'PARFAIT', splash: 'streak', kick: ['rays', 'twinkle', 'ripple'],
         say: (o) => `★ Parfait !${o.n > 1 ? ' ×' + o.n : ''}${o.node ? ' · ✦ ' + o.node : ''}` },
-      bien: { rank: 3, stamp: 1, boom: 'ZIP!', flash: 0.25, confetti: 50, shake: 1, lcd: 'glitch', jingle: 'streak', pop: (o) => o.n > 1 ? `BIEN ! ×${o.n}` : 'BIEN !', kick: ['twinkle'],
+      bien: { rank: 3, stamp: 1, flash: 0.25, confetti: 50, shake: 1, lcd: 'glitch', jingle: 'streak', pop: (o) => o.n > 1 ? `BIEN ×${o.n}` : 'BIEN', kick: ['twinkle'],
         say: (o) => `✓ Bien !${o.n > 1 ? ' ×' + o.n : ''}${o.node ? ' · ✦ ' + o.node : ''}` },
-      rate: { city: 'blackout', rank: 1, stamp: 1, boom: 'BZZT!', lcd: 'glitch', say: (o) => `✗ Raté${o.why ? ' · ' + o.why : ''} : la musique continue` },
+      rate: { city: 'blackout', rank: 1, stamp: 1, lcd: 'glitch', pop: 'RATÉ', say: (o) => `✗ Raté${o.why ? ' · ' + o.why : ''} : la musique continue` },
       // S8.7 the huge combos (js/city-combos.js), the instrument's: they play in free mode too (`free`), silent (no
       // jingle: the music is the player's), never a flash (the city flashes itself, × JUICE). A combo's first SUPER is a
-      // discovery: the `discovery` recipe, its onomatopoeia « SUPER! » (o.boom)
-      combo: { free: 1, rank: 3, boom: 'COMBO!', confetti: 30, pop: (o) => `COMBO ×${o.n || 2}`, say: (o) => `⚡ Combo ×${o.n || 2}${o.name ? ' · ' + o.name : ''} : tiens la position !` },
-      super: { free: 1, city: 'stars', rank: 8, boom: 'SUPER!', confetti: 300, shake: 2, bounce: 1, punch: 2, beats: 3, pop: (o) => `${String(o.name || 'combo').toUpperCase()} !!!`, say: (o) => `⚡ SUPER ! ${o.name || ''}` },
-      discovery: { city: 'stars', rank: 9, boom: 'ZAP!', flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => o.name ? `${String(o.name).toUpperCase()} !!!` : 'DÉCOUVERTE !!!', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `✦ Découverte${o.name ? ' : ' + o.name : ' !'}` },
+      // discovery: the `discovery` recipe, its word « SUPER » (o.boom)
+      combo: { free: 1, rank: 3, confetti: 30, pop: (o) => `COMBO ×${o.n || 2}`, say: (o) => `⚡ Combo ×${o.n || 2}${o.name ? ' · ' + o.name : ''} : garde les réglages là !` },
+      super: { free: 1, city: 'stars', rank: 8, confetti: 300, shake: 2, bounce: 1, punch: 2, beats: 3, pop: (o) => `SUPER · ${String(o.name || 'combo').toUpperCase()}`, say: (o) => `⚡ SUPER ! ${o.name || ''}` },
+      discovery: { city: 'stars', rank: 9, flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => [o.boom, o.name && String(o.name).toUpperCase()].filter(Boolean).join(' · ') || 'DÉCOUVERTE', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `✦ Découverte${o.name ? ' : ' + o.name : ' !'}` },
     },
     // the bus events that are moments (the others call fx() where they happen: an opening, a discovery, the end, a first touch)
     FX_ON: {
@@ -457,7 +457,7 @@
       'resp:streak': (d) => [d.streak > 1 ? 'streak' : 'juste', { n: d.streak }],
       'resp:record': (d) => ['record', { n: d.best }],
       'resp:tier': (d) => ['tier', { name: d.name }],
-      'resp:place': (d) => ['placement', { name: d.name, n: (d.nodes || []).length, ms: 6000, toast: (d.nodes || []).length ? `Tu joues déjà : ${d.nodes.length} nœud${d.nodes.length > 1 ? 's' : ''} prêt${d.nodes.length > 1 ? 's' : ''} → ✦ Ouvrir sur l'écran du haut` : '' }],
+      'resp:place': (d) => ['placement', { name: d.name, n: (d.nodes || []).length, ms: 6000, toast: (d.nodes || []).length ? `Tu joues déjà bien : ${d.nodes.length} pièce${d.nodes.length > 1 ? 's' : ''} prête${d.nodes.length > 1 ? 's' : ''} → touche ✦ Ouvrir sur l'écran du haut` : '' }],
     },
     juice() { const GV = AMB.gardenVisual; return GV && GV.JUICE != null ? GV.JUICE : 1; },
     // a moment: its message at once (LCD, toast), its effects on the next beat. Returns the queued {kind, o} or null.
@@ -484,8 +484,6 @@
       if (R.jingle) { this.chime(R.jingle, { at, n: o.n || 0, deg: o.deg || 0 }); did.push('jingle'); }
       if (R.splash && GV) { GV.cheer(R.splash, at, o.plant); did.push('splash'); }
       if (!red) for (const k of ['confetti', 'shake', 'lcd', 'bounce', 'hop', 'punch', 'pop', 'kick']) if (R[k]) did.push(k);
-      const boom = o.boom || R.boom; // (S8.7: a combo's discovery says « SUPER! »)
-      if (!red && boom && J > 0) did.push('boom');
       const beatMs = AMB.seq && AMB.seq.playing ? AMB.seq.stepDur() * 4000 : 380;
       let waits = 0;
       const fire = () => {
@@ -502,7 +500,7 @@
         if (R.bounce) this.fxClass(document.body, 'fx-bounce', 800);
         const el = R.hop === 'el' ? o.el : R.hop && $(R.hop); if (el) this.fxClass(el, 'fx-hop', 550);
         if (R.kick && GV && GV.flare) GV.flare(R.kick, J);
-        if (R.pop || boom) this.fxPop(R.pop ? (typeof R.pop === 'function' ? R.pop(o) : R.pop) : '', stage, R.rank, J > 0 ? boom : null, J);
+        if (R.pop) this.fxPop(typeof R.pop === 'function' ? R.pop(o) : R.pop, stage, R.rank);
         if (R.confetti) {
           const src = R.from === 'el' ? o.el : R.from ? $(R.from) : stage, n = Math.round(R.confetti * J);
           this.confetti.burst(n, src || stage);
@@ -526,32 +524,20 @@
       f.style.setProperty('--a', a.toFixed(2)); f.classList.toggle('soft', !!soft);
       this.fxClass(f, 'on', soft ? 950 : 600);
     },
-    // the pop text; S6.6 with its onomatopoeia (`boom`): a comic starburst (halftone, two neons picked by the word, tilted,
-    // bouncing in), the pop text under it, size by rank × JUICE; never over the LCD (it stays readable during an ask)
-    BOOM_COLS: [['#ff3fa4', '#fff36b', '#3ff0ff'], ['#3ff0ff', '#ff3fa4', '#fff36b'], ['#ffd23f', '#ff3348', '#3ff0ff'], ['#9d6bff', '#3ff0ff', '#fff36b']],
-    // S6.7: two never overlap — while one is up, a bigger (or equal) moment replaces it, a smaller one is dropped
-    fxPop(text, stage, rank, boom = null, J = 1) {
+    // the pop text: one short word, plainly (S9.1); S6.7: two never overlap — while one is up, a bigger (or equal)
+    // moment replaces it, a smaller one is dropped; never over the LCD (it stays readable during an ask)
+    fxPop(text, stage, rank) {
       const cur = this._pop, now = Date.now();
       if (cur && cur.el.isConnected) { if (now < cur.until && rank < cur.rank) return null; cur.el.remove(); }
       const L = this.confetti.layer(), r = stage ? stage.getBoundingClientRect() : { left: 0, top: 0, width: innerWidth, height: innerHeight };
       const p = document.createElement('div'); p.className = 'fx-pop';
-      const x = Math.round(r.left + r.width / 2); let y = Math.round(r.top + r.height * 0.42);
-      if (boom) {
-        let h = 0; for (const c of boom) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-        const C = this.BOOM_COLS[h % this.BOOM_COLS.length], k = Math.min(1.6, 0.6 + 0.4 * J);
-        p.classList.add('fx-boom');
-        p.style.setProperty('--b1', C[0]); p.style.setProperty('--b2', C[1]); p.style.setProperty('--b3', C[2]);
-        p.style.setProperty('--rot', ((this._boomTilt = -(this._boomTilt || 9)) + (Math.random() - 0.5) * 6).toFixed(1) + 'deg');
-        p.style.animationDuration = rank >= 7 ? '1.8s' : '1.3s';
-        p.style.fontSize = `min(${Math.round((22 + rank * 4) * k)}px, ${(8 * k).toFixed(1)}vw)`;
-        const b = document.createElement('b'); b.textContent = boom; p.append(b);
-        if (text) { const s = document.createElement('small'); s.textContent = text; p.append(s); }
-      } else { p.textContent = text; p.style.fontSize = `min(${24 + rank * 5}px, 10vw)`; }
+      const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height * 0.42);
+      p.textContent = text; p.style.fontSize = `min(${24 + rank * 5}px, 10vw)`;
       p.style.left = x + 'px'; p.style.top = y + 'px';
       L.hidden = false; L.append(p);
       const lcd = document.getElementById('lcd'), lr = lcd && lcd.getBoundingClientRect(), half = p.offsetHeight * 0.75;
       if (lr && lr.height && y - half < lr.bottom + 6) p.style.top = Math.round(lr.bottom + 6 + half) + 'px'; // under the LCD, never over it
-      const ms = boom && rank >= 7 ? 1800 : 1300;
+      const ms = rank >= 7 ? 1800 : 1300;
       this._pop = { el: p, rank, until: now + ms };
       setTimeout(() => { p.remove(); this.confetti.idle(); }, ms);
       return p;

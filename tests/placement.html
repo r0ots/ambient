@@ -41,7 +41,7 @@ f.addEventListener('load', async () => {
       `toute la branche passe à « prêt » (${ready.length}) dans la file, rien d'ouvert : ${ready.join(' ')}`);
     await wait(50);
     const box = d.getElementById('lcdTask');
-    ok(fxs.includes('placement') && !box.hidden && box.querySelector('.lcd-task-txt').textContent.startsWith('✦ Ouvrir') && box.querySelector('.lcd-task-n').textContent === `${ready.length} prêts`,
+    ok(fxs.includes('placement') && !box.hidden && box.querySelector('.lcd-task-txt').textContent.startsWith('✦ Ouvrir') && box.querySelector('.lcd-task-n').textContent === `${ready.length} prêtes`,
       `grosse fête fx('placement') et la file sur le LCD : « ${box.querySelector('.lcd-task-txt').textContent} · ${box.querySelector('.lcd-task-n').textContent} »`);
     ok(!g.s.active.length && st.place === 0, 'pas de défi tant que la file attend ; placement sauvegardé');
     // S5.5 cohabitation: no live ask during the placement party nor while its queue waits for « ✦ Ouvrir »
