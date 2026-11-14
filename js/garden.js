@@ -32,7 +32,14 @@
       if (AMB.bus) AMB.bus.emit('act', 'wake');
       return true;
     },
-    WAKE_MS: 1900, // the wake-up cascade (css body.waking), × the motion tokens
+    WAKE: [0, 260, 560, 860, 1200], // when each stage of the wake-up comes (css body.waking.w1…w5), ms × the motion tokens
+    WAKE_MS: 2600, // the end of the wake-up (the classes go)
+    // n stages on (0 = body.waking alone), -1 = all off; a slow phone (q-bas) gets no stages at all
+    wakeStages(n) {
+      const b = document.body, Q = AMB.quality, slow = Q && Q.cur && Q.cur().name === 'bas';
+      b.classList.toggle('waking', n >= 0 && !slow);
+      for (let i = 1; i <= 5; i++) b.classList.toggle('w' + i, n >= i && !slow);
+    },
     // the wake-up: the state changed already (coined), this only dresses it — a burst of sparks from the button, a CRT
     // line on the stage, body.waking (css: dust off, the pieces' neons crackle on one after the other), click-through
     coinFx() {
@@ -42,8 +49,10 @@
       stage.append(f);
       const btn = $('#coin'); // (the sparks follow AMB.quality, like every burst)
       if (btn) M.burst(btn.querySelector('b') || btn, { n: 30, spread: Math.PI * 2, speed: 340, color: '#ffb347' });
-      b.classList.add('waking');
-      clearTimeout(this._wakeT); this._wakeT = setTimeout(() => b.classList.remove('waking'), M.ms(this.WAKE_MS) + 100);
+      this.wakeStages(0);
+      (this._wakeTs || []).forEach(clearTimeout);
+      this._wakeTs = this.WAKE.map((t, i) => setTimeout(() => this.wakeStages(i + 1), M.ms(t)));
+      this._wakeTs.push(setTimeout(() => this.wakeStages(-1), M.ms(this.WAKE_MS)));
       setTimeout(() => f.remove(), M.ms('slow') * 2 + 120);
       return f;
     },
