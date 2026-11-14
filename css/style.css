@@ -1427,3 +1427,6 @@ body.listen .app > .stage { height: auto; }
 /* the key let go (k-rel: colour, background, shadows animated = a repaint per frame per key): its spring only */
 @keyframes q-krel { from { scale: calc(1 + .03 * var(--m-amp)); translate: 0 calc(-2px * var(--m-amp)); } }
 :is(.q-moyen, .q-bas) .pad.k-rel:not(.on) { animation-name: q-krel; }
+
+/* Tout recommencer: armed after the first tap (magenta tube until the second tap or 4 s) */
+.more .menu .reset-btn.armed { color: #fff; border-color: var(--magenta); box-shadow: 0 0 14px #ff2bd677; }

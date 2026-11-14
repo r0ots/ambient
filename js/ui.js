@@ -341,6 +341,21 @@
     if (vm) { vm.textContent = vizLabel(AMB.visual.mode); vm.addEventListener('click', () => { vm.textContent = vizLabel(AMB.visual.cycleMode()); }); }
     bind('#listen', 'click', toggleListen);
     bind('#help', 'click', () => showHelp(true));
+    // Start over as a new player: two taps (the first arms it for 4 s, no system dialog); saved landscapes and scenes stay
+    const rst = $('#resetAll');
+    if (rst) {
+      let armed = 0;
+      rst.addEventListener('click', (e) => {
+        if (Date.now() - armed > 4000) {
+          armed = Date.now(); e.stopImmediatePropagation(); rst.classList.add('armed'); rst.textContent = '↺ Sûr ? Touche encore';
+          setTimeout(() => { if (Date.now() - armed >= 4000) { rst.classList.remove('armed'); rst.textContent = '↺ Tout recommencer'; } }, 4100);
+          return;
+        }
+        AMB.resetting = true; const keep = ['ambient.userPresets.v1', 'ambient.scenes.v1'];
+        try { Object.keys(localStorage).filter((k) => k.startsWith('ambient.') && !keep.includes(k)).forEach((k) => localStorage.removeItem(k)); } catch (err) {}
+        location.replace(location.pathname);
+      });
+    }
     const more = $('.more');
     if (more) {
       more.querySelectorAll('.menu button').forEach((b) => b.addEventListener('click', () => { more.open = false; }));

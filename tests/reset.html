@@ -1,0 +1,22 @@
+<!doctype html><html><head><meta charset="utf-8"><title>reset</title></head><body>
+<iframe id="f" style="width:1280px;height:800px;border:0"></iframe>
+<script>
+// « ↺ Tout recommencer » (S10.2): first tap arms it (menu stays), second wipes progress but keeps saved landscapes and scenes
+const T='reset', S=+(new URLSearchParams(location.search).get('s')||0.4);
+const log=(m)=>{ new Image().src='/__log?'+encodeURIComponent(T+'|'+m); };
+const wait=(ms)=>new Promise(r=>setTimeout(r,ms*S));
+const ok=(c,m)=>log((c?'ok   ':'ERROR fail ')+m);
+(async()=>{ try {
+  localStorage.setItem('ambient.game.v1', JSON.stringify({mode:'path',nodes:['racine','t.son']}));
+  localStorage.setItem('ambient.userPresets.v1', '[{"name":"mien"}]'); localStorage.setItem('ambient.scenes.v1','{}'); localStorage.setItem('ambient.seenHelp','1');
+  const f=document.getElementById('f'); f.src='/index.html'; await new Promise(r=>f.onload=r); await wait(2500);
+  const d=f.contentDocument, b=d.getElementById('resetAll'), more=d.querySelector('.more');
+  ok(!!b, 'le bouton « Tout recommencer » est dans le menu ⋯');
+  more.open=true; b.click(); await wait(100);
+  ok(b.classList.contains('armed') && more.open && localStorage.getItem('ambient.game.v1'), 'premier appui : armé, menu ouvert, rien effacé');
+  const reloaded=new Promise(r=>f.onload=r); b.click(); await reloaded; await wait(1500);
+  ok(!localStorage.getItem('ambient.seenHelp') && !(localStorage.getItem('ambient.game.v1')||'').includes('t.son'), 'second appui : progression et réglages effacés');
+  ok(localStorage.getItem('ambient.userPresets.v1')==='[{"name":"mien"}]' && localStorage.getItem('ambient.scenes.v1')==='{}', 'les paysages sauvés et les scènes restent');
+  ok(!f.contentDocument.getElementById('welcomeDlg').hidden, 'on revient sur l’écran d’accueil');
+} catch(e){ log('EXC '+e.message); } log('DONE'); })();
+</script></body></html>

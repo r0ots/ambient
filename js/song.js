@@ -335,7 +335,7 @@
       if (keys.length) song.save();
     });
   }
-  window.addEventListener('pagehide', () => song.save());
+  window.addEventListener('pagehide', () => { if (!AMB.resetting) song.save(); }); // not after « Tout recommencer »
   // S7.2: entering Composer, behind its panels (motion.swap), their pieces cascade in: section chips, loop layers, chord
   // slots, motif tabs; then the grids' steps light up column by column (only what is in the window)
   function composeIn() {
