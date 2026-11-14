@@ -1,8 +1,12 @@
 <!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
-<!-- S5.10 combos and discoveries (js/discoveries.js COMBOS, garden-visual.js COMBO_FX): each combo of the table comes ON
-     when its conditions are held (judged on the beat), never on a near miss; its emergent effect lights up then goes out;
-     the first time is a discovery (saved, fx('discovery'), its node ready); the notebook in the tree; an older save with
-     secrets loads as discoveries; free mode: nothing; cost with 3 combos ON < 2 ms per frame. -->
+<!-- S8.7 huge combos (js/city-combos.js, table COMBOS) and their discoveries (js/discoveries.js): the table (≥ 8 combos, one
+     with three knobs, one with an effect of the instrument); the mechanics (a zone reached by a hand gesture = « COMBO ×n »,
+     a landscape loaded in the zone = nothing; holding fills the charge; notes fill it faster; full = « SUPER ! » with its
+     effect for SUPER_BEATS beats, then held = it charges again; let go before = the partial effect falls back; ×2 → ×3
+     keeps the charge; Stop drops it); the first SUPER is a discovery (saved, fx('discovery') saying SUPER!, its node
+     ready), never twice; out of reach in the Parcours = nothing; free mode = combos and effects, no discovery, no node;
+     JUICE 0 / reduced motion: no flash, no shake, a softer effect; each combo transforms the screen (pixels changed);
+     cost of a SUPER; older saves (the 15 small combos of S5.10) mapped to the new ids; the notebook. -->
 <script src="lib.js"></script>
 <script>localStorage.removeItem('ambient.game.combotest');</script>
 <iframe id="f" src="../index.html?gamekey=ambient.game.combotest" style="width:1280px;height:800px;border:0"></iframe>
@@ -11,120 +15,142 @@ const f = document.getElementById('f');
 f.addEventListener('load', async () => {
   if (f.dataset.ran) return; f.dataset.ran = 1;
   try {
-    const w = f.contentWindow, d = f.contentDocument, A = w.AMB, G = A.game, D = A.discoveries, GV = A.gardenVisual, St = A.store, T = A.tree;
+    const w = f.contentWindow, d = f.contentDocument, A = w.AMB, G = A.game, D = A.discoveries, C = A.cityCombos, GV = A.gardenVisual, St = A.store, T = A.tree, GL = A.cityGL;
     w.addEventListener('error', (e) => log('ERROR ' + e.message + ' @' + e.filename + ':' + e.lineno));
-    G.setMode('path'); A.garden.welcome(false); await A.ui.ensureStarted(); // (a key change while playing retunes the engine)
+    G.setMode('path'); A.garden.welcome(false);
+    GV.paused = true; // the mechanics are stepped by hand below (no frame of the app interferes)
+    const run0 = D.run; D.run = () => {}; // (the notes played below must not find a gesture)
     const ALL = T.NODES.map((n) => n.id);
     const below = (id) => { const out = new Set([id]); let more = true; while (more) { more = false; for (const n of T.NODES) if (!out.has(n.id) && n.req.some((r) => out.has(r))) { out.add(n.id); more = true; } } return out; };
     const own = (except) => { const no = except ? below(except) : new Set(); G.s.nodes = ALL.filter((n) => !no.has(n)); G.s.ready = []; T.applyLocks(); };
-    const fxs = []; const fx0 = A.garden.fx; A.garden.fx = function (k, o) { fxs.push([k, o && o.name]); return fx0.apply(this, arguments); };
-    const BASE = { 'drone.on': true, 'drone.vol': 0.5, 'drone.tone': 0.5, 'pad.on': true, 'pad.vol': 0.55, 'pad.tone': 0.5, 'pad.wave': 'Nappe', 'bells.on': true, 'bells.vol': 0.45, 'bells.tone': 0.5, 'bells.wave': 'Kalimba',
-      'texture.on': false, 'texture.vol': 0.25, 'texture.type': 'Vent', 'grains.on': false, 'grains.vol': 0.35, 'grains.density': 0.4, 'grains.size': 0.55, 'seq.on': false, 'seq.vol': 0.5, 'bass.on': false, 'perc.on': false,
-      'fx.space': 0.5, 'fx.shimmer': 0.15, 'fx.size': 0.75, 'fx.echo': 0.3, 'fx.feedback': 0.55, 'fx.tape': 0.3, 'fx.lofi': 0.15, 'global.tempo': 66, 'global.time': 'Pulsé', 'global.scale': 'Lydien' };
-    const set = (o) => { for (const k in o) St.set(k, o[k], 'preset'); };
-    let step = 0, nid = 100, tm = 1000;
-    const note = (off) => { const id = ++nid; A.bus.emit('live', { midi: 60, time: (tm += 2.5), vel: 0.8, raw: null, id }); if (off) A.bus.emit('liveOff', { id, midi: 60, time: tm + 0.1 }); };
-    const base = () => { D.stopAll(); set(BASE); A.seq.chordHold = false; G.s.resp = { lvl: 0, streak: 0, best: 0, miss: {} }; };
-    const beats = (n, each) => { for (let i = 0; i < n; i++) { if (each) each(); for (let k = 0; k < 4; k++) D.onStep(++step); } };
-    // each combo: what poses it, and a near miss (one condition short)
-    const P = {
-      monolithe: [() => set({ 'pad.on': false, 'bells.on': false, 'drone.tone': 0.1 }), () => set({ 'pad.on': false, 'bells.on': false, 'drone.tone': 0.3 })],
-      constellation: [{ each: () => { note(true); note(true); } }, { each: () => note(true) }],
-      soleil: [() => set({ 'drone.tone': 0.9, 'pad.tone': 0.9, 'bells.tone': 0.9 }), () => set({ 'drone.tone': 0.7, 'pad.tone': 0.7, 'bells.tone': 0.7 })],
-      portail: [() => { note(); note(); note(); }, () => { note(); note(); }],
-      brume: [() => set({ 'fx.space': 0.9, 'drone.tone': 0.2, 'pad.tone': 0.2, 'bells.tone': 0.2, 'texture.tone': 0.2, 'texture.on': true, 'texture.type': 'Pluie' }), () => set({ 'fx.space': 0.9, 'drone.tone': 0.2, 'pad.tone': 0.2, 'bells.tone': 0.2, 'texture.tone': 0.2, 'texture.on': true, 'texture.type': 'Vent' })],
-      maree: [() => set({ 'global.time': 'Flottant', 'global.tempo': 45, 'texture.on': true, 'texture.type': 'Océan' }), () => set({ 'global.time': 'Flottant', 'global.tempo': 60, 'texture.on': true, 'texture.type': 'Océan' })],
-      miroir: [{ pose: () => set({ 'fx.echo': 0.8, 'fx.feedback': 0.8 }), each: () => note(true) }, { pose: () => set({ 'fx.echo': 0.8, 'fx.feedback': 0.5 }), each: () => note(true) }],
-      blizzard: [() => set({ 'grains.on': true, 'grains.density': 0.9, 'grains.size': 0.2 }), () => set({ 'grains.on': true, 'grains.density': 0.9, 'grains.size': 0.4 })],
-      cathedrale: [() => set({ 'fx.shimmer': 0.8, 'fx.size': 0.9, 'pad.wave': 'Verre' }), () => set({ 'fx.shimmer': 0.8, 'fx.size': 0.9 })],
-      vhs: [() => set({ 'fx.tape': 0.8, 'fx.lofi': 0.7 }), () => set({ 'fx.tape': 0.8, 'fx.lofi': 0.4 })],
-      kaleido: [() => { const p = A.seq.playing; A.seq.playing = true; for (const k of ['E', 'G', 'A']) St.set('global.key', k, 'user'); A.seq.playing = p; }, () => { const p = A.seq.playing; A.seq.playing = true; for (const k of ['E', 'G']) St.set('global.key', k, 'user'); A.seq.playing = p; }],
-      eclipse: [() => { set({ 'global.scale': 'Éolien (mineur)' }); A.seq.chordHold = true; }, () => { A.seq.chordHold = true; }],
-      quintes: [() => { G.s.resp = { lvl: 10, streak: 2, best: 2, miss: {} }; }, () => { G.s.resp = { lvl: 10, streak: 1, best: 2, miss: {} }; }],
-      grille: [() => set({ 'bass.on': true, 'perc.on': true, 'global.tempo': 120 }), () => set({ 'bass.on': true, 'perc.on': true, 'global.tempo': 100 })],
-      reseau: [() => set({ 'texture.on': true, 'grains.on': true, 'seq.on': true }), () => set({ 'texture.on': true, 'grains.on': true })],
-    };
-    const run = (p, n) => { const o = typeof p === 'function' ? { pose: p } : p; if (o.pose) o.pose(); beats(n, o.each); };
+    const fxs = []; const fx0 = A.garden.fx; A.garden.fx = function (k, o) { fxs.push([k, o || {}]); return fx0.apply(this, arguments); };
+    let now = 1000; C.clock = () => now;
+    const step = (s, each) => { const n = Math.max(1, Math.round(s / 0.05)); for (let i = 0; i < n; i++) { now += s / n; if (each) each(i); C.step(s / n); } };
+    const MAC = { light: 0.45, density: 0.35, space: 0.55, nostalgia: 0.25, nature: 0.4 };
+    const base = () => { C.stop(); for (const k in MAC) St.set('macro.' + k, MAC[k], 'user'); St.set('fx.echo', 0.3, 'user'); St.set('fx.feedback', 0.55, 'user'); C.touched = {}; GV.shake = null; step(0.2); fxs.length = 0; };
+    const turn = (o) => { for (const k in o) St.set(k.includes('.') ? k : 'macro.' + k, o[k], 'user'); };
+    const POSE = { orage: { nature: 1, light: 0 }, hyper: { space: 1, nature: 0 }, wire: { nostalgia: 1, light: 1 }, bouchon: { density: 1, space: 1 }, aurore: { nature: 0, light: 0 },
+      kaiju: { space: 1, nature: 1 }, disco: { light: 0, density: 1, space: 0 }, miroir: { 'fx.echo': 0.95, light: 1 } };
+    const toSuper = () => { let s = 0; while (C.cur && C.cur.phase !== 'super' && s < 30) { step(0.25); s += 0.25; } return s; };
 
-    // --- the table
-    const ids = D.COMBOS.map((c) => c.id);
-    ok(ids.length >= 12 && ids.length <= 16 && new Set(ids).size === ids.length && D.COMBOS.every((c) => c.name && c.hint && c.effect && c.need.every((n) => T.byId[n]) && GV.COMBO_FX[c.id] && /\.$/.test(c.hint)),
-      'table COMBOS : ' + ids.length + ' combos, chacun nom, indice d\'une phrase, effet propre dessiné (COMBO_FX), nœuds requis valides');
-    ok(ids.every((id) => P[id]), 'chaque combo a sa pose de test');
-    ok(D.ALL.length === D.COMBOS.length + D.GESTES.length && D.GESTES.length === 9 && !A.secrets && Object.keys(D.OPENS).every((k) => D.byId[k] && T.byId[D.OPENS[k]]), 'un seul système : ' + D.ALL.length + ' découvertes (combos + 9 gestes, anciens secrets), une table OPENS ; plus de module secrets');
-    const easy = D.COMBOS.filter((c) => c.need.every((n) => ['racine', 'm.bells', 'h.pad'].includes(n))).map((c) => c.name);
-    ok(easy.length >= 3, 'accessibles dès le début du Parcours : ' + easy.join(', '));
+    // --- 1. the table
+    const ids = C.COMBOS.map((c) => c.id);
+    ok(ids.length >= 8 && new Set(ids).size === ids.length && C.COMBOS.every((c) => c.name && /\.$/.test(c.hint) && c.effect && c.need.every((n) => T.byId[n]) && c.knobs.length >= 2 && POSE[c.id]),
+      'table COMBOS : ' + ids.length + ' combos énormes (' + C.COMBOS.map((c) => c.name).join(', ') + '), chacun nom, énigme, effet, nœuds requis, 2 ou 3 réglages');
+    ok(C.COMBOS.some((c) => c.n === 3) && C.COMBOS.some((c) => c.knobs.some((k) => k.startsWith('fx.'))), 'un combo à trois réglages (' + C.COMBOS.filter((c) => c.n === 3).map((c) => c.name) + '), un avec un effet de l\'instrument (' + C.COMBOS.filter((c) => c.knobs.some((k) => k.startsWith('fx.'))).map((c) => c.name) + ')');
+    const zones = C.COMBOS.map((c) => JSON.stringify(Object.entries(c.zone).sort()));
+    ok(new Set(zones).size === zones.length, 'chaque combo sa zone (aucune en double)');
+    ok(D.COMBOS.length === C.COMBOS.length && D.COMBOS.every((x) => x.kind === 'combo' && C.byId[x.id]) && D.ALL.length === D.COMBOS.length + 9 && D.GESTES.length === 9, 'découvertes : ' + D.ALL.length + ' = ' + D.COMBOS.length + ' combos énormes + 9 gestes');
+    ok(ids.every((id) => T.byId[D.OPENS[id]]) && Object.keys(D.OPENS).every((k) => D.byId[k]), 'table OPENS rebranchée : chaque combo ouvre un nœud (' + ids.map((id) => id + '→' + D.OPENS[id]).join(', ') + ')');
+    ok(!GV.COMBO_FX && !GV.drawCombos && !GV.STACK.some((l) => /^combos-/.test(l.id)) && GV.STACK.some((l) => l.id === 'combo-sky') && !D.onStep && !D.on, 'ancien système supprimé : plus de COMBO_FX ni de calques combos-back/front, plus de jugement au pas');
 
-    // --- baseline: nothing
-    own(); base(); beats(12);
-    ok(D.on.size === 0 && !Object.keys(D.state().found).length, 'réglages de départ, 12 temps : aucun combo');
+    // --- 2. the mechanics (stopped: the free pulse, 0.75 s a beat)
+    own(); base(); step(3);
+    ok(!C.cur && !C.any, 'réglages de départ : aucun combo');
+    St.setMany({ 'macro.nature': 1, 'macro.light': 0 }, 'preset'); step(3);
+    ok(!C.cur, 'un paysage chargé dans la zone (pas de geste) : rien');
+    base(); turn(POSE.orage); step(0.1);
+    const c1 = fxs.find(([k]) => k === 'combo');
+    ok(C.cur && C.cur.id === 'orage' && C.cur.n === 2 && c1 && c1[1].n === 2 && A.garden.FX.combo.pop(c1[1]) === 'COMBO ×2', 'Nature en haut + Lumière en bas à la main : « ' + (c1 && A.garden.FX.combo.pop(c1[1])) + ' » (Orage électrique)');
+    step(2); const ch2 = C.cur.charge, l2 = C.L('orage');
+    ok(ch2 > 0.25 && ch2 < 0.5 && l2 > 0.2 && C.cur.phase === 'charge', 'tenir : la charge monte (' + ch2.toFixed(2) + ' en 2 s), l\'effet grandit (' + l2.toFixed(2) + ')');
+    const tS = 2 + toSuper();
+    ok(C.cur && C.cur.phase === 'super' && tS >= 5 && tS <= 7.5, 'pleine : SUPER ! après ' + tS.toFixed(1) + ' s (8 temps), sur un temps');
+    const disc = fxs.find(([k]) => k === 'discovery');
+    ok(D.has('orage') && disc && disc[1].boom === 'SUPER!' && disc[1].name === 'Orage électrique' && !fxs.some(([k]) => k === 'super'), '1er SUPER = découverte (sauvée, fête « SUPER! · ' + (disc && disc[1].name) + ' »)');
+    step(4); ok(C.cur.phase === 'super' && C.L('orage') > 0.95 && C.cur.beats >= 4, 'SUPER : l\'effet en grand, calé sur les temps (temps ' + C.cur.beats + ')');
+    step(9.5); ok(C.cur && C.cur.phase === 'charge' && C.cur.rounds === 1 && C.L('orage') >= 0.29, 'après ' + C.SUPER_BEATS + ' temps, tenu : la charge repart (effet soutenu ' + C.L('orage').toFixed(2) + ')');
+    fxs.length = 0; toSuper(); ok(fxs.some(([k]) => k === 'super') && !fxs.some(([k]) => k === 'discovery'), '2e SUPER : la fête SUPER, pas de 2e découverte');
+    // let go before the end of the charge: the partial effect falls back
+    base(); turn(POSE.hyper); step(2.5); const lh = C.L('hyper'); turn({ space: 0.5 }); step(0.05);
+    const gone = !C.cur; step(0.3); const mid = C.L('hyper'); step(2.5);
+    ok(gone && lh > 0.2 && mid < lh && mid > 0.01 && !C.L('hyper'), 'relâché avant la fin : le combo tombe, l\'effet partiel retombe (' + lh.toFixed(2) + ' → ' + mid.toFixed(2) + ' → 0)');
+    // ×2 → ×3: the charge is kept
+    base(); turn(POSE.aurore); step(1.5); const a2 = C.cur && C.cur.id === 'aurore' && C.cur.n === 2, chA = C.cur.charge; fxs.length = 0;
+    turn({ density: 1, space: 0 }); step(0.05); const p3 = fxs.find(([k]) => k === 'combo');
+    ok(a2 && C.cur.id === 'disco' && C.cur.n === 3 && C.cur.charge >= chA && p3 && A.garden.FX.combo.pop(p3[1]) === 'COMBO ×3', 'Aurore (×2) puis Densité haut + Espace bas : « COMBO ×3 » (Blackout disco), la charge gardée (' + chA.toFixed(2) + ')');
+    // the notes heard fill it faster
+    const charge = (notes) => { base(); turn(POSE.kaiju); step(2, notes ? (i) => { if (i % 5 === 0) A.bus.emit('live', { midi: 60 + i % 12, time: 1, vel: 0.8, raw: null, id: 9000 + i }); } : null); return C.cur ? C.cur.charge : 0; };
+    const c0 = charge(false), cN = charge(true);
+    const mel = (() => { base(); turn(POSE.kaiju); step(2, (i) => { if (i % 5 === 0) A.bus.emit('note', { layer: 'bells', midi: 72, time: 1, vel: 0.7 }); }); return C.cur.charge; })();
+    ok(cN > c0 + 0.25 && mel > c0 + 0.05, 'les notes accélèrent la charge : 2 s sans note ' + c0.toFixed(2) + ', avec tes notes ' + cN.toFixed(2) + ', avec la Mélodie ' + mel.toFixed(2));
+    // Stop
+    A.bus.emit('panic'); ok(!C.cur, '■ Stop : le combo tombe');
+    // out of reach in the Parcours (Grands réglages not open)
+    own('t.macros'); base(); turn(POSE.wire); step(1); ok(!C.cur, 'Parcours, Grands réglages pas ouverts : jamais');
+    own('e.echo'); base(); turn(POSE.miroir); step(1); ok(!C.cur, 'Ville miroir sans l\'Écho ouvert : jamais');
 
-    // --- each combo: near miss = nothing; posed = ON after its hold, discovery saved + celebrated, node ready, effect on then off
-    const cv = d.createElement('canvas'); cv.width = 480; cv.height = 300; const g2 = cv.getContext('2d');
-    GV.active = true; GV.visible = true; GV.refresh(480, 300, true);
-    const lit = (id) => { g2.setTransform(1, 0, 0, 1, 0, 0); g2.clearRect(0, 0, 480, 300); GV.ox = GV.oy = 0; GV.COMBO_FX[id].draw(GV, g2, 480, 300, GV.ground, 1, 3.3, GV.px); g2.setTransform(1, 0, 0, 1, 0, 0); const px = g2.getImageData(0, 0, 480, 300).data; let n = 0; for (let i = 3; i < px.length; i += 4) if (px[i]) n++; return n; };
+    // --- 3. each combo: its first SUPER is its discovery, its node ready (or the next one), never a near miss
     const bad = [], rep = [];
-    for (const c of D.COMBOS) {
-      const op = D.OPENS[c.id]; own(op); GV.refresh(480, 300, true);
-      base(); run(P[c.id][1], 12); const near = D.on.has(c.id);
-      base(); fxs.length = 0; const n0 = GV.starNotes.length;
-      const o = typeof P[c.id][0] === 'function' ? { pose: P[c.id][0] } : P[c.id][0]; if (o.pose) o.pose();
-      let k = 0; while (!D.on.has(c.id) && k < 14) { beats(1, o.each); k++; }
-      const on = D.on.has(c.id), held = (k - 1) * 4 >= c.hold * 16;
-      const saved = !!(JSON.parse(localStorage.getItem('ambient.game.combotest')).secrets || { found: {} }).found[c.id];
-      const party = fxs.some(([kk, nm]) => kk === 'discovery' && nm === c.name), ready = !op || G.isReady(op);
-      GV.cx = {}; GV.updateCombos(1); const glow = GV.cx[c.id] > 0.9, px = lit(c.id), drawn = GV.drawCombos(g2, 480, 300, GV.ground, GV.COMBO_FX[c.id].pass) >= 1;
-      base(); beats(1); GV.updateCombos(3); const off = !D.on.has(c.id) && !GV.cx[c.id];
-      const miss = [near && 'raté-proche', !on && 'pas ON', on && !held && 'trop tôt', !saved && 'non sauvé', !party && 'pas de fête', !ready && 'nœud pas prêt', !(glow && px > 20 && drawn) && 'effet', !off && 'ne s\'éteint pas'].filter(Boolean);
-      if (miss.length) bad.push(c.id + ':' + miss.join('+'));
-      rep.push(c.id + (op ? '→' + op : '') + ' ' + px + 'px');
+    for (const c of C.COMBOS) {
+      if (D.has(c.id)) continue;
+      const op = D.OPENS[c.id]; own(op); // (the node it opens not owned yet)
+      base(); const near = { ...POSE[c.id] }; const k0 = Object.keys(near)[0]; near[k0] = POSE[c.id][k0] > 0.5 ? 0.7 : 0.3; turn(near); step(1);
+      const nearOn = C.cur && C.cur.id === c.id;
+      base(); turn(POSE[c.id]); step(0.1); const on = C.cur && C.cur.id === c.id; fxs.length = 0; toSuper();
+      const found = D.has(c.id), party = fxs.some(([k, o]) => k === 'discovery' && o.name === c.name && o.boom === 'SUPER!'), ready = G.isReady(op) || (D.state().opened || {})[c.id];
+      const miss = [nearOn && 'raté-proche', !on && 'pas ON', !found && 'non trouvé', !party && 'pas de fête', !ready && 'nœud pas prêt'].filter(Boolean);
+      if (miss.length) bad.push(c.id + ':' + miss.join('+')); else rep.push(c.id + '→' + ((D.state().opened || {})[c.id] || op));
     }
-    ok(!bad.length, 'chaque combo : rien sur un raté proche ; ON après ses mesures ; découverte sauvée et fêtée ; nœud prêt ; effet allumé puis éteint ' + (bad.join(' ') || rep.join(', ')));
-    ok(D.foundCount() === D.COMBOS.length && !d.querySelector('#secrets'), 'toutes les découvertes de combos sauvées (' + D.foundCount() + ')');
-    // a second time: no second party
-    own(); base(); fxs.length = 0; run(P.vhs[0], 12); ok(D.on.has('vhs') && !fxs.some(([k]) => k === 'discovery'), 'un combo déjà découvert : son effet revient, pas de 2e fête');
-    // stop: every combo falls
-    A.bus.emit('panic'); ok(D.on.size === 0, '■ Stop : tous les combos tombent');
-    // out of reach (its nodes not owned): never
-    G.s.nodes = ['racine', 'm.bells']; T.applyLocks(); base(); run(P.vhs[0], 12); ok(!D.on.has('vhs'), 'hors de portée (Usure pas ouverte) : jamais');
+    ok(!bad.length, 'chaque combo : rien sur un raté proche ; ×n, charge, SUPER ; découverte fêtée ; nœud prêt ' + (bad.join(' ') || rep.join(', ')));
+    ok(D.foundCount() === C.COMBOS.length && JSON.parse(localStorage.getItem('ambient.game.combotest')).secrets.found.disco, 'toutes les découvertes de combos sauvées (' + D.foundCount() + ')');
 
-    // --- the notebook in the tree screen: found (name, effect), then riddles « ??? » with their hint, counter n/N
-    { own(); A.garden.showTree(true); await wait(30); const box = d.getElementById('discoveries'), head = box.querySelector('.dc-head');
+    // --- 4. free mode: combos and their effects (the instrument), no discovery, no node, the pop shown
+    await wait(20); // (the moments queued above, all in one task, play now: a microtask)
+    { G.setMode('free'); GV.paused = true; const f0 = D.foundCount(), r0 = (G.s.ready || []).length; base(); D.state().found = {}; turn(POSE.bouchon); step(0.1); const on = C.cur && C.cur.id === 'bouchon' && fxs.some(([k]) => k === 'combo');
+      await wait(30); const pop = A.garden.fxLast && A.garden.fxLast.kind === 'combo';
+      toSuper(); step(0.6); const sup = fxs.some(([k]) => k === 'super') && !fxs.some(([k]) => k === 'discovery');
+      ok(on && pop && sup && !D.foundCount() && C.L('bouchon') > 0.9 && D.box.hidden, 'mode libre : COMBO ×2 et SUPER joués (l\'instrument), aucune découverte ni nœud, pas de carnet');
+      G.setMode('path'); GV.paused = true; }
+
+    // --- 5. JUICE 0 / reduced motion: no flash, no shake, softer
+    { own(); D.state().found = Object.fromEntries(ids.map((id) => [id, 1]));
+      A.motion.set({ juice: 0 }); base(); turn(POSE.orage); step(0.1); fxs.length = 0; GL.pulses.length = 0; toSuper(); await wait(30);
+      const fl = GL.value('flash'), sh = GL.value('shake'), did = (A.garden.fxLast || {}).did || [];
+      ok(C.cur.phase === 'super' && fl === 0 && sh === 0 && !did.includes('flash') && !did.includes('boom') && C.soft() < 1 && !GV.shake, 'JUICE 0 : SUPER sans flash ni secousse (flash ' + fl + ', secousse ' + sh + '), effet doux (×' + C.soft() + ')');
+      A.motion.set({ juice: 1 }); GV.reduced = true; base(); turn(POSE.wire); step(0.1); const lr = C.L('wire'); fxs.length = 0; GL.pulses.length = 0; const T0 = C.T; toSuper(); await wait(30);
+      const did2 = (A.garden.fxLast || {}).did || [];
+      ok(lr > 0.09 && GL.value('flash') === 0 && GL.value('shake') === 0 && !did2.includes('flash') && C.T === T0 && C.soft() < 1, 'mouvement réduit : l\'effet est là tout de suite (' + lr.toFixed(2) + '), immobile, sans flash ni secousse');
+      GV.reduced = false; }
+
+    // --- 6. each SUPER transforms the screen (pixels that change vs the same city without it), and its cost
+    { own(); base(); A.perform.setMode('listen'); A.visual.gardenSync(); GV.active = true; GV.visible = true; GV.post2d = true; // (1984 drawn in 2D: no WebGL here)
+      const W0 = 640, H0 = 400, cv = d.createElement('canvas'); cv.width = W0; cv.height = H0; const g = cv.getContext('2d');
+      const frame = (n) => { for (let i = 0; i < n; i++) { GV.lastT = GV.now() - 33; GV.paused = false; GV.frame(g, W0, H0); GV.paused = true; } return g.getImageData(0, 0, W0, H0).data; };
+      const stepC = C.step.bind(C); let force = null; C.step = function (dt) { if (force) { this.cur = force; this.lvl = { [force.id]: 1 }; this.any = true; this.T = GV.st; return 1; } return stepC(dt); };
+      GV.refresh(W0, H0, true); force = null; C.stop(); const ref = frame(40);
+      const rep2 = [], weak = [];
+      for (const c of C.COMBOS) {
+        force = { id: c.id, n: c.n, phase: 'super', charge: 1, beats: 9, sp: 0.6, rounds: 0, left: false }; C.bolts.length = 0; if (c.id === 'orage') { C.strike(C.roofs()[0], 1); C.strike(null, 2); }
+        const px = frame(12); let n = 0; for (let i = 0; i < px.length; i += 16) if (Math.abs(px[i] - ref[i]) + Math.abs(px[i + 1] - ref[i + 1]) + Math.abs(px[i + 2] - ref[i + 2]) > 30) n++;
+        const share = n / (px.length / 16); rep2.push(c.id + ' ' + Math.round(share * 100) + ' %'); if (share < 0.08) weak.push(c.id);
+      }
+      ok(!weak.length, 'chaque SUPER change l\'écran (part des pixels, 640×400, sans WebGL) : ' + rep2.join(', ') + (weak.length ? ' — trop faibles : ' + weak : ''));
+      // cost at 1280×800: each combo in SUPER, frames in a burst, median of the JS of the whole city
+      const big = d.createElement('canvas'); big.width = 1280; big.height = 800; const gb = big.getContext('2d');
+      const med = () => { for (let i = 0; i < 20; i++) { GV.lastT = GV.now() - 16; GV.paused = false; GV.frame(gb, 1280, 800); GV.paused = true; } GV.times.length = 0; C.times.length = 0; for (let i = 0; i < 40; i++) { GV.lastT = GV.now() - 16; GV.paused = false; GV.frame(gb, 1280, 800); GV.paused = true; } const a = GV.times.slice().sort((x, y) => x - y); return a[a.length >> 1]; };
+      force = null; C.stop(); GV.refresh(1280, 800, true); const m0 = med(); const costs = [];
+      for (const c of C.COMBOS) { force = { id: c.id, n: c.n, phase: 'super', charge: 1, beats: 9, sp: 0.6, rounds: 0, left: false }; const m = med(); costs.push([c.id, m, C.stats().med]); }
+      const worst = costs.reduce((a, b) => (b[1] > a[1] ? b : a));
+      ok(worst[1] < m0 + 4, '1280×800 (canevas logiciel) : ville seule ' + m0.toFixed(2) + ' ms ; en SUPER ' + costs.map(([id, m, cc]) => id + ' ' + m.toFixed(2) + ' (combo ' + cc.toFixed(2) + ')').join(', '));
+      C.step = stepC; force = null; C.stop(); GV.paused = true; }
+
+    // --- 7. the notebook: combos found (name, effect, node), riddles « ??? » with their hint
+    { own(); D.state().found = { orage: 1, tons: 2 }; D.state().opened = { orage: 'e.texture' }; A.garden.showTree(true); await wait(30); const box = d.getElementById('discoveries'), head = box.querySelector('.dc-head');
       if (box.classList.contains('min')) head.click();
-      const items = [...box.querySelectorAll('.dc-item')], fi = items.findIndex((e) => !e.classList.contains('found'));
-      const ok1 = items.slice(0, fi).every((e) => e.classList.contains('found')) && items.slice(fi).every((e) => !e.classList.contains('found'));
-      const brume = box.querySelector('.dc-item[data-id="brume"]'), tons = box.querySelector('.dc-item[data-id="tons"]');
-      ok(box.closest('#treeDlg') && new RegExp('Découvertes ' + D.foundCount() + '/' + D.ALL.length).test(head.textContent) && items.length === D.ALL.length && ok1, 'carnet dans l\'Arbre : « ' + head.textContent + ' », trouvées d\'abord puis les énigmes');
-      ok(/Brume néon/.test(brume.textContent) && /néon/.test(brume.querySelector('span').textContent) && /Halo ouvert/.test(brume.textContent) && tons.querySelector('b').textContent === '???' && tons.querySelector('span').textContent === D.byId.tons.hint2, 'trouvée : nom, effet, ce qu\'elle a ouvert ; silhouette : « ??? » et son indice');
+      const o = box.querySelector('.dc-item[data-id="orage"]'), h = box.querySelector('.dc-item[data-id="hyper"]');
+      ok(/Orage électrique/.test(o.textContent) && /foudre/.test(o.textContent) && /Texture ouvert/.test(o.textContent) && h.querySelector('b').textContent === '???' && h.querySelector('span').textContent === C.byId.hyper.hint && o.classList.contains('combo'),
+        'carnet : « ' + head.textContent + ' » ; trouvé = nom, effet, nœud ouvert ; silhouette « ??? » et son énigme');
       A.garden.showTree(false); }
 
-    // --- free mode: nothing
-    { G.setMode('free'); base(); const f0 = D.foundCount(); run(P.monolithe[0], 12); run(P.grille[0], 12);
-      ok(D.on.size === 0 && D.foundCount() === f0 && D.box.hidden, 'mode libre : aucun combo, aucune découverte, pas de carnet'); G.setMode('path'); }
-
-    // --- cost: 3 combos ON (among the heaviest) + the whole garden, on the app's own animation frames
-    { own(); base(); A.garden.showTree(false); A.perform.setMode('listen'); A.visual.gardenSync(); d.getElementById('viz').scrollIntoView({ block: 'center' });
-      GV.paused = false; D.on = new Set(['brume', 'maree', 'blizzard']); await wait(600); GV.times.length = 0; const f0 = GV.frames; await wait(1500);
-      const s = GV.stats(), cv0 = GV.observed; ok(GV.frames - f0 > 20 && GV.cx.brume > 0.9 && s.avg < 2 && s.p95 < 2, '3 combos ON (brume, marée, vortex) + le Jardin (' + cv0.width + '×' + cv0.height + ') : ' + s.avg.toFixed(2) + ' ms par image, p95 ' + s.p95.toFixed(2) + ' (' + (GV.frames - f0) + ' images)');
-      { // full screen size (1280×800), frames in a burst: the median (a burst triggers GC pauses unrelated to the combos)
-        const big = d.createElement('canvas'); big.width = 1280; big.height = 800; const gb = big.getContext('2d'), ob = GV.observed; GV.paused = true; GV.active = true; GV.visible = true;
-        const run = () => { for (let i = 0; i < 30; i++) { GV.lastT = GV.now() - 100; GV.frame(gb, 1280, 800); } GV.times.length = 0; for (let i = 0; i < 60; i++) { GV.lastT = GV.now() - 16; const t = GV.now(); GV.paused = false; GV.frame(gb, 1280, 800); GV.paused = true; } const a = GV.times.slice().sort((x, y) => x - y); return a[a.length >> 1]; };
-        D.on = new Set(); const m0 = run(); D.on = new Set(['brume', 'maree', 'blizzard']); const m3 = run(); GV.paused = false; GV.refresh(ob.width, ob.height, true);
-        ok(m3 < 2, '1280×800 : médiane ' + m3.toFixed(2) + ' ms par image avec 3 combos (' + m0.toFixed(2) + ' ms sans)'); }
-      D.on = new Set(ids); await wait(300); GV.times.length = 0; await wait(700);
-      log('(info) les ' + ids.length + ' combos à la fois : ' + GV.stats().avg.toFixed(2) + ' ms par image, p95 ' + GV.stats().p95.toFixed(2));
-      // reduced motion: still drawn, standing still
-      GV.reduced = true; D.on = new Set(['kaleido']); GV.cx = {}; await wait(80); const st0 = GV.st; await wait(120);
-      ok(GV.cx.kaleido === 1 && GV.st === st0, 'mouvement réduit : l\'effet est là tout de suite, immobile'); GV.reduced = false; D.stopAll(); }
-
-    // --- an older save with secrets (v1.15): secrets found = discoveries found, their node ready, gift kept
-    localStorage.setItem('ambient.game.combotest', JSON.stringify({ v: 1, mode: 'path', nodes: ['racine', 'm.bells', 'h.pad'], contracts: [], active: [], prog: {}, skipped: [], ended: false, secrets: { found: { tons: 1, jazz: 2 }, midi: false, opened: { jazz: 'h.prog' }, gifts: { timbres: [{ sec: 'bells', opt: 'Givre' }] } } }));
+    // --- 8. an older save: the 15 small combos of S5.10 → the huge ones, secrets kept
+    localStorage.setItem('ambient.game.combotest', JSON.stringify({ v: 1, mode: 'path', nodes: ['racine', 'm.bells', 'h.pad'], contracts: [], active: [], prog: {}, skipped: [], ended: false, secrets: { found: { tons: 1, jazz: 2, brume: 3, vhs: 4, maree: 5, cathedrale: 6 }, midi: false, opened: { jazz: 'h.prog', brume: 'e.halo' }, gifts: { timbres: [{ sec: 'bells', opt: 'Givre' }] } } }));
     await new Promise((r) => { f.addEventListener('load', r, { once: true }); w.location.reload(); }); await wait(200);
-    { const A2 = f.contentWindow.AMB, D2 = A2.discoveries, G2 = A2.game;
-      ok(D2.has('tons') && D2.has('jazz') && D2.foundCount() === 2 && G2.isReady('h.prog') && A2.SCHEMA.bells.params.wave.options.includes('Givre') && D2.list().find((x) => x.id === 'jazz').found, 'ancienne sauvegarde avec secrets : chargée, 2 découvertes acquises, Progression prête, Givre gardé');
+    { const A2 = f.contentWindow.AMB, D2 = A2.discoveries, G2 = A2.game, q = D2.state();
+      ok(D2.has('tons') && D2.has('jazz') && D2.has('kaiju') && D2.has('wire') && D2.has('aurore') && D2.foundCount() === 5 && !q.found.brume && !q.found.vhs && q.opened.kaiju === 'e.halo' && G2.isReady('h.prog') && A2.SCHEMA.bells.params.wave.options.includes('Givre'),
+        'ancienne sauvegarde (S5.10) : Brume néon → Kaiju, Signal 2089 → 1984, Marée + Cathédrale → Aurore ; ' + D2.foundCount() + ' découvertes, nœuds et Givre gardés');
       G2.reset(); }
-    A.garden.fx = fx0;
-    localStorage.removeItem('ambient.game.combotest');
+    D.run = run0; localStorage.removeItem('ambient.game.combotest');
     done();
   } catch (e) { fail(e); }
 });

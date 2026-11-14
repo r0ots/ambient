@@ -203,7 +203,7 @@
     // the notes heard during a charge fill it faster
     note(kind) { const k = this.cur; if (k && k.phase === 'charge') this.boost += BOOST[kind] || 0; },
     stop() { if (this.cur) this.end(); this.lvl = {}; this.any = false; this.bolts.length = 0; },
-    stats() { const a = this.times.slice().sort((x, y) => x - y), n = a.length; return { avg: n ? a.reduce((s, x) => s + x, 0) / n : 0, p95: n ? a[Math.floor(n * 0.95) - (n > 1 ? 1 : 0)] : 0, n }; },
+    stats() { const a = this.times.slice().sort((x, y) => x - y), n = a.length; return { avg: n ? a.reduce((s, x) => s + x, 0) / n : 0, med: n ? a[n >> 1] : 0, p95: n ? a[Math.floor(n * 0.95) - (n > 1 ? 1 : 0)] : 0, n }; },
   };
 
   // ======================================================================================================================
