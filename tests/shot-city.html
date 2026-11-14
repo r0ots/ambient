@@ -3,7 +3,7 @@
   ?w=1280&h=720&dpr=1 (one frame's CSS size and pixel ratio; default 640×360, dpr 1), ?cols=3, ?scale=0.5 (tile scale).
   Sheets (#sheet=…): build (a layer opens: its building is built, then its layer is switched off: deconstructed),
   full (the whole city playing: notes, chords, beat), dawn (the end: replay at dawn), storm (Nature high, Dérive,
-  Reverb, Usure), grow (the Parcours: one layer after another, the camera framing), single (one frame), empty.
+  Reverb, Usure), music (S8.5: one bar played — melody, player notes, chords, bass, kick — lasers, ring, grid, sky sweep), grow (the Parcours: one layer after another, the camera framing), single (one frame), empty.
   Prints in the title the real cost of a frame (JS). --><style>body{margin:0;background:#000}canvas{display:block}#out{image-rendering:auto}</style></head><body>
 <script>window.__errs = []; window.addEventListener('error', (e) => window.__errs.push(e.message + ' @' + e.lineno)); window.AMB_GAME_KEY = 'ambient.game.shot-city'; localStorage.removeItem(window.AMB_GAME_KEY); localStorage.removeItem('ambient.vizMode');</script>
 <script src="lib.js"></script>
@@ -11,7 +11,7 @@
 AMB.tree = { NODES: [['racine', 'drone.on'], ['t.son', 'drone.wave'], ['h.drone', 'drone.follow'], ['h.pad', 'pad.on'], ['h.pad2', 'pad.attack'], ['h.prog', 'pad.prog'],
   ['m.bells', 'bells.on'], ['m.phrase', 'bells.mode'], ['m.grains', 'grains.on'], ['c.seq', 'seq.on'], ['c.rythme', 'bass.*'], ['c.rythme', 'perc.*'], ['e.texture', 'texture.*'], ['e.reverb', '*.send']].map(([id, p]) => ({ id, params: [p] })) };
 </script>
-<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script><script src="../js/city-music.js"></script>
 <canvas id="out"></canvas>
 <script>
 window.addEventListener('load', () => {
@@ -48,11 +48,21 @@ window.addEventListener('load', () => {
   } else if (sheet === 'storm') {
     St.setMany({ 'texture.vol': 1, 'texture.on': true, 'global.evolve': 1, 'fx.space': 1, 'fx.size': 1, 'fx.tape': 0.8, 'fx.lofi': 0.6 }, 'preset'); step(3);
     for (let k = 0; k < 6; k++) { step(0.4, music); snap('orage ' + k); }
+  } else if (sheet === 'music') { // S8.5: one bar (16 steps of 0.15 s): melody in eighths, player notes, chords I → V, bass, kick on 1 and 3
+    step(1.2); const t0 = T, ev = [];
+    for (let i = 0; i < 8; i++) ev.push([i * 0.3, 'note', { layer: i % 2 ? 'seq' : 'bells', midi: 60 + [0, 4, 7, 12, 16, 12, 7, 19][i], vel: 0.75, dur: 0.25 }]);
+    ev.push([0.45, 'live', { midi: 72, vel: 0.95, raw: 0.95, id: 1 }], [0.9, 'liveOff', { id: 1 }], [1.5, 'live', { midi: 55, vel: 0.9, raw: 0.9, id: 2 }], [2.1, 'liveOff', { id: 2 }], [1.95, 'live', { midi: 88, vel: 1, raw: 1, id: 3 }], [2.3, 'liveOff', { id: 3 }]);
+    ev.push([0, 'chord', { deg: 0, midis: [48, 52, 55] }], [1.2, 'chord', { deg: 4, midis: [43, 47, 50], forced: true }]);
+    for (let b = 0; b < 4; b++) ev.push([b * 0.6, 'note', { layer: 'bass', midi: 36, vel: 0.85, dur: 0.3 }]);
+    ev.push([0, 'perc', { track: 0, vel: 0.95 }], [1.2, 'perc', { track: 0, vel: 0.9 }]);
+    ev.sort((a, b) => a[0] - b[0]); let k = 0;
+    const music2 = () => { while (k < ev.length && t0 + ev[k][0] <= T + 0.001) { const [dt2, n, d] = ev[k++]; AMB.bus.emit(n, { ...d, time: t0 + dt2 }); } };
+    for (let f = 0; f < 12; f++) { step(0.2, music2); snap('t ' + (T - t0).toFixed(2) + ' s · temps ' + (1 + Math.floor((T - t0 - 0.001) / 0.6))); }
   } else if (sheet === 'empty') { G.s.nodes = []; GV.sig = null; step(0.5); snap('vide'); }
   else { step(1.5, music); snap('ville'); }
   const out = document.getElementById('out'), tw = Math.round(cv.width * sc), th = Math.round(cv.height * sc), n = tiles.length, c = Math.min(cols, n), rws = Math.ceil(n / c);
   out.width = c * tw; out.height = rws * (th + 16); const o = out.getContext('2d'); o.fillStyle = '#111'; o.fillRect(0, 0, out.width, out.height);
   tiles.forEach(([t, l], i) => { const x = (i % c) * tw, y = Math.floor(i / c) * (th + 16); o.drawImage(t, x, y + 16, tw, th); o.fillStyle = '#ffd36b'; o.font = '12px monospace'; o.fillText(l, x + 4, y + 12); });
-  cv.remove(); ms.sort((a, b) => a - b); document.title = 'ready ' + JSON.stringify(GV.stats()) + ' real ms avg ' + (ms.reduce((a, b) => a + b, 0) / ms.length).toFixed(2) + ' p95 ' + ms[Math.floor(ms.length * 0.95)].toFixed(2);
+  cv.remove(); ms.sort((a, b) => a - b); document.title = 'ready ' + JSON.stringify(GV.stats()) + ' music ' + JSON.stringify(AMB.cityMusic ? AMB.cityMusic.stats() : null) + ' real ms avg ' + (ms.reduce((a, b) => a + b, 0) / ms.length).toFixed(2) + ' p95 ' + ms[Math.floor(ms.length * 0.95)].toFixed(2);
 });
 </script></body></html>

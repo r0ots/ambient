@@ -426,19 +426,19 @@
       ready: { rank: 2, boom: 'DING!', confetti: 24, from: '#treeBtn', hop: '#treeBtn', jingle: 'ready', kick: ['fireflies', 'twinkle'] }, // a node waits on « ✦ Ouvrir »
       consolation: { rank: 2, confetti: 10, from: '#treeBtn', hop: '#treeBtn', jingle: 'small', kick: ['fireflies'] }, // a gate missed 6 times: « prêt quand même », no party
       streak: { rank: 3, boom: 'ZING!', flash: 0.25, confetti: 40, shake: 1, lcd: 'glitch', jingle: 'streak', pop: (o) => `×${o.n} !`, splash: 'streak', kick: ['twinkle', 'ripple'], say: (o) => `✓ Juste · série ${o.n}` },
-      defi: { rank: 4, boom: 'POW!', flash: 0.5, confetti: 140, shake: 1, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'defi', pop: 'DÉFI RÉUSSI !!!', kick: ['rays', 'twinkle', 'ripple'] },
-      record: { rank: 5, boom: 'KAPOW!', flash: 0.55, confetti: 160, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1, jingle: 'record', pop: (o) => `★ RECORD ×${o.n} !`, splash: 'record', kick: ['aurora', 'twinkle', 'song'], say: (o) => `★ Record : série ${o.n} !` },
-      tier: { rank: 6, boom: 'WHAM!', flash: 0.65, confetti: 220, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1.5, jingle: 'tier', pop: (o) => `↑ ${String(o.name || 'palier').toUpperCase()} !!`, splash: 'tier', kick: ['aurora', 'rays', 'song', 'ripple'], say: (o) => `↑ Palier : ${o.name}` },
-      open: { rank: 7, boom: 'KA-BLAM!', flash: 0.75, confetti: 260, shake: 2, lcd: 'arcade', bounce: 1, punch: 1.5, jingle: 'unlock', pop: 'OUVERT !!!', splash: 'tier', kick: ['rays', 'aurora', 'ripple', 'hue'] },
-      end: { rank: 8, boom: 'KA-BOOM!', flash: 1, confetti: 380, shake: 2, lcd: 'arcade', bounce: 1, punch: 2, jingle: 'end', pop: 'À TOI !!!', beats: 3, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'hue'] },
-      placement: { rank: 10, boom: 'WHOOSH!', flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => `⚡ ${String(o.name || 'musicien').toUpperCase()} !!!`, hop: '#treeBtn', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `⚡ ${o.name || 'Musicien'} détecté` }, // S5.4 a Réponse placement (the queue « n prêts » is on the LCD's 2nd line)
+      defi: { city: 'stars', rank: 4, boom: 'POW!', flash: 0.5, confetti: 140, shake: 1, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'defi', pop: 'DÉFI RÉUSSI !!!', kick: ['rays', 'twinkle', 'ripple'] },
+      record: { city: 'stars', rank: 5, boom: 'KAPOW!', flash: 0.55, confetti: 160, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1, jingle: 'record', pop: (o) => `★ RECORD ×${o.n} !`, splash: 'record', kick: ['aurora', 'twinkle', 'song'], say: (o) => `★ Record : série ${o.n} !` },
+      tier: { city: 'stars', rank: 6, boom: 'WHAM!', flash: 0.65, confetti: 220, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 1.5, jingle: 'tier', pop: (o) => `↑ ${String(o.name || 'palier').toUpperCase()} !!`, splash: 'tier', kick: ['aurora', 'rays', 'song', 'ripple'], say: (o) => `↑ Palier : ${o.name}` },
+      open: { city: 'stars', rank: 7, boom: 'KA-BLAM!', flash: 0.75, confetti: 260, shake: 2, lcd: 'arcade', bounce: 1, punch: 1.5, jingle: 'unlock', pop: 'OUVERT !!!', splash: 'tier', kick: ['rays', 'aurora', 'ripple', 'hue'] },
+      end: { city: 'stars', rank: 8, boom: 'KA-BOOM!', flash: 1, confetti: 380, shake: 2, lcd: 'arcade', bounce: 1, punch: 2, jingle: 'end', pop: 'À TOI !!!', beats: 3, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'hue'] },
+      placement: { city: 'stars', rank: 10, boom: 'WHOOSH!', flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => `⚡ ${String(o.name || 'musicien').toUpperCase()} !!!`, hop: '#treeBtn', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `⚡ ${o.name || 'Musicien'} détecté` }, // S5.4 a Réponse placement (the queue « n prêts » is on the LCD's 2nd line)
       // S5.5 the live asks (js/demands.js), judged on the time; n = the combo of successes in a row
-      parfait: { rank: 4, stamp: 1, boom: 'SHAZAM!', flash: 0.5, confetti: 130, shake: 1, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'streak', pop: (o) => o.n > 1 ? `PARFAIT !!! ×${o.n}` : 'PARFAIT !!!', splash: 'streak', kick: ['rays', 'twinkle', 'ripple'],
+      parfait: { city: 'salvo', rank: 4, stamp: 1, boom: 'SHAZAM!', flash: 0.5, confetti: 130, shake: 1, lcd: 'arcade', bounce: 1, punch: 1, jingle: 'streak', pop: (o) => o.n > 1 ? `PARFAIT !!! ×${o.n}` : 'PARFAIT !!!', splash: 'streak', kick: ['rays', 'twinkle', 'ripple'],
         say: (o) => `★ Parfait !${o.n > 1 ? ' ×' + o.n : ''}${o.node ? ' · ✦ ' + o.node : ''}` },
       bien: { rank: 3, stamp: 1, boom: 'ZIP!', flash: 0.25, confetti: 50, shake: 1, lcd: 'glitch', jingle: 'streak', pop: (o) => o.n > 1 ? `BIEN ! ×${o.n}` : 'BIEN !', kick: ['twinkle'],
         say: (o) => `✓ Bien !${o.n > 1 ? ' ×' + o.n : ''}${o.node ? ' · ✦ ' + o.node : ''}` },
-      rate: { rank: 1, stamp: 1, boom: 'BZZT!', lcd: 'glitch', say: (o) => `✗ Raté${o.why ? ' · ' + o.why : ''} : la musique continue` },
-      discovery: { rank: 9, boom: 'ZAP!', flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => o.name ? `${String(o.name).toUpperCase()} !!!` : 'DÉCOUVERTE !!!', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `✦ Découverte${o.name ? ' : ' + o.name : ' !'}` },
+      rate: { city: 'blackout', rank: 1, stamp: 1, boom: 'BZZT!', lcd: 'glitch', say: (o) => `✗ Raté${o.why ? ' · ' + o.why : ''} : la musique continue` },
+      discovery: { city: 'stars', rank: 9, boom: 'ZAP!', flash: 1, confetti: 480, shake: 2, lcd: 'glitch-big', bounce: 1, punch: 2, jingle: 'discovery', pop: (o) => o.name ? `${String(o.name).toUpperCase()} !!!` : 'DÉCOUVERTE !!!', splash: 'tier', beats: 4, kick: ['aurora', 'rays', 'twinkle', 'fireflies', 'song', 'ripple', 'hue'], say: (o) => `✦ Découverte${o.name ? ' : ' + o.name : ' !'}` },
     },
     // the bus events that are moments (the others call fx() where they happen: an opening, a discovery, the end, a first touch)
     FX_ON: {
@@ -488,6 +488,7 @@
         if (this.modalUp()) { if (++waits < 40) setTimeout(fire, 150); return; }
         const stage = $('.stage');
         if (R.flash) this.fxFlash(stage, red ? 0.22 : Math.min(1, R.flash * J), red);
+        if (R.city && AMB.cityMusic) AMB.cityMusic.fx(R.city); // S8.5 the city's light: salvo of lasers, power cut, shooting stars
         if (red) return;
         if (R.shake) { this.fxClass(stage, 'fx-shake', 500); if (R.shake > 1) this.fxClass($('.app'), 'fx-quake', 650); }
         if (R.punch) this.fxClass($('#viz'), R.punch >= 2 ? 'fx-punch-big' : 'fx-punch', 650);
