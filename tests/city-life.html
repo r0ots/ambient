@@ -1,0 +1,109 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0;background:#000">
+<!-- S8.6 « La vie de la ville » (js/city-life.js): the number of cars follows `traffic`, the people `population`, caps
+     (desktop and phone), no object leak over 10 000 simulated frames, the work cycle (morning: in the towers; evening:
+     out), light-cycles on the grid lines, JUICE 0 (no jumps, no flares) and reduced motion (nothing moves). No audio.
+     Dev contact sheets (not in the suite): #sheet=traffic|tron|work|holo|empty, ?w=&h=&dpr= (title = cost per frame). -->
+<script src="lib.js"></script>
+<script>
+window.AMB_GAME_KEY = 'ambient.game.test-life'; [window.AMB_GAME_KEY, 'ambient.vizMode'].forEach((k) => localStorage.removeItem(k));
+testBus(); AMB.engine = {};
+AMB.tree = { NODES: [['racine', 'drone.on'], ['t.son', 'drone.wave'], ['h.drone', 'drone.follow'], ['h.pad', 'pad.on'], ['h.pad2', 'pad.attack'], ['h.prog', 'pad.prog'],
+  ['m.bells', 'bells.on'], ['m.phrase', 'bells.mode'], ['m.grains', 'grains.on'], ['c.seq', 'seq.on'], ['c.rythme', 'bass.*'], ['c.rythme', 'perc.*'], ['e.texture', 'texture.*'], ['e.reverb', '*.send']].map(([id, p]) => ({ id, params: [p] })) };
+</script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script><script src="../js/city-life.js"></script>
+<canvas id="out"></canvas>
+<script>
+window.addEventListener('load', async () => {
+  try {
+    const Q = new URLSearchParams(location.search), sheet = (/sheet=([a-z]+)/.exec(location.hash) || [])[1];
+    const G = AMB.game, V = AMB.visual, GV = AMB.gardenVisual, St = AMB.store, CL = AMB.cityLife, cv = document.createElement('canvas');
+    const size = (w, h, dpr) => { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv.style.width = w + 'px'; cv.style.height = h + 'px'; V.dpr = dpr; GV.sig = null; };
+    document.body.appendChild(cv); V.c = cv; V.g = cv.getContext('2d');
+    let T = 100, fake = 1000; GV.clock = () => T; GV.now = () => fake; GV.visible = true;
+    const ALL = ['racine', 't.son', 'h.drone', 'h.pad', 'h.pad2', 'h.prog', 'm.bells', 'm.phrase', 'm.grains', 'c.seq', 'c.rythme', 'e.texture', 'e.reverb'];
+    G.setMode('path'); G.s.nodes = ALL.slice(); St.setMany({ 'seq.on': true, 'bass.on': true, 'perc.on': true, 'texture.on': true, 'grains.on': true }, 'preset');
+    AMB.seq = { playing: true, step: 0, nextTime: T, origin: 0, stepDur: () => 0.15 };
+    const seqAt = () => { const sd = 0.15, n = Math.floor((T - 100) / sd); AMB.seq.step = n + 1; AMB.seq.nextTime = 100 + (n + 1) * sd; };
+    const ms = [];
+    const step = (s, fn, dtf = 1 / 60) => { const n = Math.max(1, Math.round(s / dtf)); for (let i = 0; i < n; i++) { T += dtf; fake += dtf * 1000; seqAt(); if (fn) fn(i); const t0 = performance.now(); V.draw(); ms.push(performance.now() - t0); } };
+    // the dimensions are driven by S8.1 / S8.4: the test pins them
+    const dims = { traffic: 0.5, population: 0.5, play: 1 };
+    for (const k in dims) GV.addDim(k, { tau: 0, at: 'test', aim: () => dims[k] });
+    const music = (i) => { if (i % 9 === 0) AMB.bus.emit('note', { layer: ['bells', 'seq', 'bass'][(i / 9) % 3], midi: 55 + (i * 7) % 24, time: T, vel: 0.8 }); if (i % 60 === 0) AMB.bus.emit('chord', { time: T, deg: (i / 60) % 7, midis: [52, 55, 59] }); };
+
+    if (sheet) { // ---- contact sheets ----
+      const w = +Q.get('w') || 640, h = +Q.get('h') || 360, dpr = +Q.get('dpr') || 1, cols = +Q.get('cols') || 3, sc = +Q.get('scale') || 1;
+      size(w, h, dpr); V.draw(); step(0.5);
+      const tiles = [], snap = (l) => { const c = document.createElement('canvas'); c.width = cv.width; c.height = cv.height; c.getContext('2d').drawImage(cv, 0, 0); tiles.push([c, l]); };
+      if (sheet === 'traffic') {
+        dims.traffic = 0; dims.population = 0.2; step(3, music); snap('trafic 0'); dims.traffic = 0.4; step(6, music); snap('trafic 0,4');
+        dims.traffic = 1; step(8, music); snap('trafic 1'); step(0.3, music); snap('trafic 1 +0,3 s'); CL.L.zep.on = true; CL.L.zep.x = 0.3; step(0.2); snap('zeppelin'); dims.traffic = 0; step(12, music); snap('trafic retombé à 0');
+      } else if (sheet === 'tron') {
+        dims.traffic = 0.6; for (let k = 0; k < 6; k++) { step(0.5, music); snap('motos ' + (k * 0.5 + 0.5).toFixed(1) + ' s'); }
+      } else if (sheet === 'work') {
+        dims.population = 1; dims.traffic = 0.3; CL.L.day = 0.02; step(1.5, music); snap('matin, arrivées'); step(4, music); snap('matin : au travail'); step(5, music); snap('matin +10 s');
+        CL.L.day = 0.55; step(4, music); snap('soir : ils sortent'); St.setMany({ 'texture.vol': 1 }, 'preset'); step(4, music); snap('soir, orage : ils courent'); CL.party(); step(0.2); snap('fête : ils sautent');
+      } else if (sheet === 'holo') {
+        dims.population = 1; dims.traffic = 0.5; for (let k = 0; k < 6; k++) { step(k === 3 ? 0.15 : 5, music); snap('holo ' + k + ' ' + ['koi', 'visage', 'logo'][CL.L.ad]); }
+      } else { dims.population = 0; dims.traffic = 0; G.s.nodes = []; GV.sig = null; step(1); snap('vide'); }
+      const out = document.getElementById('out'), tw = Math.round(cv.width * sc), th = Math.round(cv.height * sc), n = tiles.length, c = Math.min(cols, n), rws = Math.ceil(n / c);
+      out.width = c * tw; out.height = rws * (th + 16); const o = out.getContext('2d'); o.fillStyle = '#111'; o.fillRect(0, 0, out.width, out.height);
+      tiles.forEach(([t, l], i) => { const x = (i % c) * tw, y = Math.floor(i / c) * (th + 16); o.drawImage(t, x, y + 16, tw, th); o.fillStyle = '#ffd36b'; o.font = '12px monospace'; o.fillText(l, x + 4, y + 12); });
+      cv.remove(); const m = ms.slice(-300).sort((a, b) => a - b);
+      document.title = 'ready ' + JSON.stringify(CL.stats()) + ' real ms avg ' + (m.reduce((a, b) => a + b, 0) / m.length).toFixed(2) + ' p95 ' + m[Math.floor(m.length * 0.95)].toFixed(2);
+      return;
+    }
+
+    // ---- tests ----
+    size(640, 360, 1); V.draw(); step(0.5);
+    ok(GV.STACK.filter((l) => l.id === 'traffic').length === 1 && ['life-beams', 'life-bikes', 'life-holo', 'traffic-back', 'life-people'].every((id) => GV.STACK.some((l) => l.id === id)), 'calques de la vie branchés par addLayer (traffic remplacé, à sa place)');
+    const zs = Object.fromEntries(GV.STACK.map((l) => [l.id, l.z]));
+    ok(zs['life-bikes'] > zs.street && zs['life-holo'] < zs.towers && zs['traffic-back'] < zs.towers && zs['life-people'] > zs.towers && zs.traffic < zs.weather, 'ordre : motos sur la rue, hologrammes et voie du fond derrière les tours, gens et voies proches devant');
+    const want = (tr, k = 1) => CL.LANES.reduce((s, ln) => s + Math.round(tr * ln.cap * k), 0);
+    for (const tr of [0, 0.3, 1, 0.5]) { await wait(0); dims.traffic = tr; step(14, null, 0.1); const n = CL.stats().cars; ok(n === want(tr), `trafic ${tr} → ${n} voitures (attendu ${want(tr)})`); }
+    for (const pop of [0.25, 1, 0.1]) { await wait(0); dims.population = pop; step(40, null, 0.1); const s = CL.stats(), w = Math.round(pop * CL.CAP.people); ok(s.people === w, `population ${pop} → ${s.people} personnages (cible ${w} ; ${s.leaving} quittent la ville à pied)`); }
+    dims.traffic = 1; dims.population = 1; step(30, null, 0.1);
+    let s = CL.stats(); ok(s.cars <= CL.CAP.cars && s.people <= CL.CAP.people && s.bikes <= CL.CAP.bikes, `plafonds bureau : ${s.cars}/${CL.CAP.cars} voitures, ${s.people}/${CL.CAP.people} gens, ${s.bikes}/${CL.CAP.bikes} motos`);
+    size(390, 780, 2); step(30, null, 0.1); s = CL.stats();
+    ok(s.cars <= Math.ceil(CL.CAP.cars * 0.55) + 1 && s.people <= Math.round(CL.CAP.people * 0.55), `plafonds téléphone (390 px) : ${s.cars} voitures, ${s.people} gens`);
+    size(320, 200, 1); step(1);
+    await wait(0); // ---- no leak over 10 000 frames: everything changes, the pools stay the same
+    const made = CL.L.made, pools = s.pools, t0 = performance.now(); let worst = 0;
+    const LIFE = GV.STACK.filter((l) => /^life-|^traffic/.test(l.id)), g = V.g; GV.refresh(cv.width, cv.height, true);
+    for (let i = 0; i < 10000; i++) {
+      if (i % 500 === 0) { dims.traffic = (i / 500) % 3 / 2; dims.population = ((i / 500) % 4) / 3; dims.play = (i / 500) % 5 ? 1 : 0; }
+      if (i % 1300 === 0) AMB.bus.emit('section', { index: i }); if (i % 2100 === 0) CL.party();
+      T += 1 / 60; fake += 1000 / 60; seqAt(); music(i);
+      if (i % 50) { GV.frames++; GV.dt = 1 / 60; GV.st += 1 / 60; const cam = GV.camera(cv.width, cv.height); for (const l of LIFE) l.draw(g, GV.world, cam, GV); } else V.draw(); // the life alone (1 full city frame in 50)
+      const q = CL.stats(); worst = Math.max(worst, q.cars - CL.CAP.cars, q.people - CL.CAP.people, q.bikes - CL.CAP.bikes);
+    }
+    s = CL.stats(); ok(CL.L.made === made && s.pools === pools && worst <= 0 && GV.parts.length <= GV.PARTS_MAX, `10 000 images (la vie seule, la ville entière 1 fois sur 50) : aucun objet créé (${CL.L.made}), pools fixes (${s.pools}), plafonds tenus (${Math.round(performance.now() - t0)} ms)`);
+    await wait(0); // ---- light-cycles stay on the grid lines and inside it
+    size(640, 360, 1); dims.traffic = 0.8; dims.play = 1; step(3, music);
+    let onGrid = true, nb = 0; for (let i = 0; i < 120; i++) { step(1 / 60, music); for (const b of CL.L.bikes) if (b.on) { nb++; const cu = Math.abs((b.u + 1) * 6 - Math.round((b.u + 1) * 6)) < 1e-3, cz = Math.abs(b.z * 8 - Math.round(b.z * 8)) < 1e-3; if (!(cu || cz) || b.u < -1 || b.u > 1 || b.z < 0 || b.z > 1) onGrid = false; } }
+    ok(nb > 0 && onGrid, 'motos : toujours sur une ligne de la grille, dedans (' + CL.stats().bikes + ' motos)');
+    dims.play = 0; step(2); ok(CL.stats().bikes === 0, 'lecture arrêtée : les motos rentrent');
+    await wait(0); // ---- the work cycle
+    dims.play = 1; dims.population = 1; CL.L.day = 0.02; step(12, music, 0.1);
+    const am = CL.stats(), goers = CL.L.people.filter((p) => p.st === 3).length; ok(CL.morning() && am.inside >= 3, `matin : ils partent au travail (${am.inside} dans les tours, ${goers} en chemin, ${am.people} en ville)`);
+    CL.L.day = 0.55; step(14, music, 0.1); const pm = CL.stats();
+    ok(!CL.morning() && pm.inside < am.inside, `soir : ils rentrent (${pm.inside} encore dedans, ${pm.people - pm.inside} dehors)`);
+    const d0 = CL.L.day; AMB.bus.emit('section', { index: 3 }); ok(Math.floor(CL.L.day * 2) === Math.floor(d0 * 2) + 1, 'une nouvelle section du morceau fait tourner la journée');
+    await wait(0); // ---- JUICE 0: nobody jumps, no flare; reduced motion: nothing moves
+    GV.JUICE = 0; step(0.6, music); CL.party(); step(0.3, music); ok(CL.L.people.every((p) => p.jump === 0) && CL.L.bikes.every((b) => b.flare === 0), 'JUICE 0 : pas de saut ni d\'éclat (la vie bouge quand même)');
+    GV.JUICE = 1; CL.party(); step(0.1); ok(CL.L.people.some((p) => p.jump > 0), 'JUICE 1 : une fête les fait sauter');
+    GV.reduced = true; step(0.1); const snapPos = JSON.stringify([CL.L.cars.map((c) => c.x), CL.L.people.map((p) => p.x), CL.L.bikes.map((b) => [b.u, b.z])]); step(2, music);
+    ok(snapPos === JSON.stringify([CL.L.cars.map((c) => c.x), CL.L.people.map((p) => p.x), CL.L.bikes.map((b) => [b.u, b.z])]), 'mouvement réduit : rien ne bouge');
+    GV.reduced = false;
+    await wait(0); // ---- free mode: the life too
+    G.setMode('free'); GV.sig = null; step(3, music); ok(GV.free && CL.stats().cars > 0 && CL.stats().people > 0, 'mode libre : la ville vit aussi');
+    await wait(0); // ---- cost (JS of the whole city, 1280×800, everything at full)
+    G.setMode('path'); size(1280, 800, 1); dims.traffic = 1; dims.population = 1; step(4, music);
+    const cost = () => { ms.length = 0; step(3, music); const m = ms.slice().sort((a, b) => a - b); return 'médiane ' + m[m.length >> 1].toFixed(2) + ' ms, p90 ' + m[Math.floor(m.length * 0.9)].toFixed(2); }; // headless (no GPU) flushes the canvas every ~12 frames: ~100 ms spikes with or without the life
+    const withLife = cost(), lifeMs = CL.L.cost.toFixed(2), saved = GV.STACK.filter((l) => /^life-|^traffic/.test(l.id));
+    saved.forEach((l) => GV.STACK.splice(GV.STACK.indexOf(l), 1)); const without = cost(); saved.forEach((l) => GV.addLayer(l));
+    log(`coût par image 1280×800 (JS, tout plein) : ville + vie ${withLife}, ville sans la vie ${without} ; vie seule ~${lifeMs} ms ${JSON.stringify(CL.L.lay, (k, v) => typeof v === 'number' ? +v.toFixed(2) : v)}, qualité ${CL.L.q.toFixed(2)}`);
+    done();
+  } catch (e) { fail(e); }
+});
+</script></body></html>
