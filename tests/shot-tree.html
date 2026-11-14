@@ -10,7 +10,7 @@
   S5.9 : #juice-defi / #juice-open / #juice-tier (un moment du juice central en plein effet, figé) ; S6.6 : #juice-end (la fin, KA-BOOM!), #coin (« INSERT COIN » avant le premier son), #hiscores (HIGH SCORES dans l'Arbre, initiales en cours) ;
   S5.4 : #placement (« ⚡ Musicien détecté » en pleine fête, la file « ✦ Ouvrir · n prêts ») ;
   S5.5 : #demande (une demande en direct sur le LCD, son compte à rebours), #demande-parfait (« PARFAIT !!! ×3 », figé) ;
-  S5.10 : #combo=<id>,<id> (combos ON dans le Jardin), #discovery=<id> (la fête d'une découverte, figée), #carnet (le carnet des découvertes dans l'Arbre : trouvées, puis silhouettes) ;
+  S5.10/S8.7 : #combo=<id> (le combo énorme tenu : ses réglages tournés à la main dans sa zone ; anciens ids renommés), #discovery=<id> (la fête d'une découverte, figée), #carnet (le carnet des découvertes dans l'Arbre : trouvées, puis silhouettes) ;
   S5.2 : #splash (notes jouées sur la Mélodie, une tenue ; une pastille allumée par la Mélodie auto) ;
   S4.5w : #grow (plante à mi-croissance), #sky=<degré> (ciel d'un accord), #dawn (fin : relecture, aube), #dawn-end (remis, WAV proposé). --><meta charset="utf-8"><style>body{margin:0}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body>
 <script>localStorage.removeItem('ambient.game.shot');</script>
@@ -129,7 +129,7 @@ document.getElementById('f').addEventListener('load', () => {
     }, 1600);
     return;
   }
-  if (/#(combo|discovery)/.test(h)) { // S5.10: combos ON in the Jardin (#combo=brume,soleil), the party of a discovery (#discovery=<id>)
+  if (/#(combo|discovery)/.test(h)) { // S8.7: a huge combo held (#combo=orage), the party of a discovery (#discovery=<id>)
     const w = document.getElementById('f').contentWindow, G = A.garden, GV = A.gardenVisual, D = A.discoveries;
     ['m.bells', 'h.pad', 'h.key', 'm.grains', 'e.texture', 'e.reverb', 'c.seq'].forEach((i) => A.game.unlock(i));
     const burst0 = G.confetti.burst; D.run = () => {}; G.confetti.burst = () => {}; // (the notes played below must not find a gesture; the openings' confetti would hide the scene)
@@ -137,7 +137,8 @@ document.getElementById('f').addEventListener('load', () => {
     setTimeout(() => {
       G.showTree(false); A.perform.setMode('listen'); A.visual.gardenSync(); doc.getElementById('bigPlay').style.display = 'none';
       GV.sig = null; GV.grow = {}; setInterval(() => A.visual.draw(), 40);
-      setInterval(() => { D.on = new Set(ids); }, 100);
+      { const c = A.cityCombos.byId[D.RENAMED[ids[0]] || ids[0]]; // S8.7: the knobs of its zone turned by hand (the combo charges, then its SUPER)
+        if (c && h.includes('#combo')) for (const k of c.knobs) { const key = k.includes('.') ? k : 'macro.' + k; A.store.set(key, c.zone[k] === 'hi' ? 0.95 : 0.05, 'user'); } }
       let k = 0, id = 700; setInterval(() => { const n = ++id; A.bus.emit('live', { midi: 60 + [0, 7, 4, 12, 9, 2, 16, 11][k++ % 8], time: GV.clock(), vel: 0.8, raw: null, id: n }); A.bus.emit('liveOff', { id: n, time: GV.clock() + 0.1 }); }, 300);
       if (h.includes('discovery')) {
         const fc = G.fxClass; G.fxClass = function (el, c) { return fc.call(this, el, c, 6e5); }; // the effects stay on

@@ -29,8 +29,8 @@ document.getElementById('f').addEventListener('load', async () => {
     const fmt = (s) => (s / 60).toFixed(1);
     // a key secret is reachable once its node is owned (Lenteur céleste also plays Halo and Tempo); MIDI-only ones for the musician
     const SECRET_NEED = { lent: ['e.halo', 'm.tempo'] };
-    const SECRETS = A.discoveries.GESTES.map((d) => ({ id: d.id, need: [...d.need, ...(SECRET_NEED[d.id] || [])], opens: A.discoveries.OPENS[d.id], midi: d.midi })) // the gestures (former secrets); of the combos, only Constellation (6 notes of his own in 4 beats: a MIDI flurry)
-      .concat({ id: 'constellation', need: A.discoveries.byId.constellation.need, opens: A.discoveries.OPENS.constellation, midi: true });
+    const SECRETS = A.discoveries.GESTES.map((d) => ({ id: d.id, need: [...d.need, ...(SECRET_NEED[d.id] || [])], opens: A.discoveries.OPENS[d.id], midi: d.midi })) // the gestures (former secrets)
+      .concat(A.discoveries.COMBOS.map((d) => ({ id: d.id, need: d.need, opens: A.discoveries.OPENS[d.id], midi: false }))); // S8.7 the huge combos (two knobs held ~2 bars: a SUPER), once Grands réglages is open
 
     // S5.4 the Réponse during play, once the Melody is there: one phrase every PH s (phrase bar + answer bar + GAP.free bars,
     // default tempo), the REAL ladder (puzzles.level: one up on a success, one down on a miss) and placement rule

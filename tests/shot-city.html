@@ -3,7 +3,8 @@
   ?w=1280&h=720&dpr=1 (one frame's CSS size and pixel ratio; default 640×360, dpr 1), ?cols=3, ?scale=0.5 (tile scale).
   Sheets (#sheet=…): build (a layer opens: its building is built, then its layer is switched off: deconstructed),
   full (the whole city playing: notes, chords, beat), dawn (the end: replay at dawn), storm (Nature high, Dérive,
-  Reverb, Usure), music (S8.5: one bar played — melody, player notes, chords, bass, kick — lasers, ring, grid, sky sweep), grow (the Parcours: one layer after another, the camera framing), single (one frame), empty.
+  Reverb, Usure), music (S8.5: one bar played — melody, player notes, chords, bass, kick — lasers, ring, grid, sky sweep), grow (the Parcours: one layer after another, the camera framing), single (one frame), empty,
+  combo (S8.7: #sheet=combo&c=<orage|hyper|wire|bouchon|aurore|kaiju|disco|miroir>: its knobs turned by hand into the zone, the charge, the SUPER on the beat and its bars, then let go).
   Prints in the title the real cost of a frame (JS). --><style>body{margin:0;background:#000}canvas{display:block}#out{image-rendering:auto}</style></head><body>
 <script>window.__errs = []; window.addEventListener('error', (e) => window.__errs.push(e.message + ' @' + e.lineno)); window.AMB_GAME_KEY = 'ambient.game.shot-city'; localStorage.removeItem(window.AMB_GAME_KEY); localStorage.removeItem('ambient.vizMode');</script>
 <script src="lib.js"></script>
@@ -11,7 +12,7 @@
 AMB.tree = { NODES: [['racine', 'drone.on'], ['t.son', 'drone.wave'], ['h.drone', 'drone.follow'], ['h.pad', 'pad.on'], ['h.pad2', 'pad.attack'], ['h.prog', 'pad.prog'],
   ['m.bells', 'bells.on'], ['m.phrase', 'bells.mode'], ['m.grains', 'grains.on'], ['c.seq', 'seq.on'], ['c.rythme', 'bass.*'], ['c.rythme', 'perc.*'], ['e.texture', 'texture.*'], ['e.reverb', '*.send']].map(([id, p]) => ({ id, params: [p] })) };
 </script>
-<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script><script>if (/[?&]gl=1/.test(location.search)) document.write('<script src="../js/city-gl.js"><\/script>');</script><script src="../js/city-dims.js"></script><script src="../js/city-music.js"></script><script src="../js/widgets.js"></script><script src="../js/perform.js"></script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script><script>if (/[?&]gl=1/.test(location.search)) document.write('<script src="../js/city-gl.js"><\/script>');</script><script src="../js/city-dims.js"></script><script src="../js/city-music.js"></script><script src="../js/city-life.js"></script><script src="../js/city-combos.js"></script><script src="../js/widgets.js"></script><script src="../js/perform.js"></script>
 <canvas id="out"></canvas>
 <script>
 window.addEventListener('load', () => {
@@ -68,6 +69,19 @@ window.addEventListener('load', () => {
     for (const f of [0.3, 0.55, 0.8, 1]) { turn(f); snap(m + ' geste ' + Math.round(f * 100) + ' %'); }
     step(0.35, music); snap(m + ' 1 +0,35 s'); step(3, music); snap(m + ' 1 (posé)');
     step(0.5); St.set(k, 0.5, 'user'); step(0.05); St.set(k, 1, 'user'); step(0.05); St.set(k, 0.2, 'user'); step(0.12, music); snap(m + ' surcharge (vite)');
+  } else if (sheet === 'combo') { // S8.7: a huge combo, from the gesture to the end of its SUPER (free mode: no discovery)
+    const id = (/[&#]c=([a-z]+)/.exec(location.hash) || [, 'orage'])[1], CC = AMB.cityCombos, c = CC.byId[id];
+    const POSE = { orage: { nature: 1, light: 0 }, hyper: { space: 1, nature: 0 }, wire: { nostalgia: 1, light: 1 }, bouchon: { density: 1, space: 1 }, aurore: { nature: 0, light: 0 },
+      kaiju: { space: 1, nature: 1 }, disco: { light: 0, density: 1, space: 0 }, miroir: { 'fx.echo': 0.95, light: 1 } }[id];
+    G.setMode('free'); GV.sig = null; step(2, music); snap('avant');
+    const ks = Object.keys(POSE), n = 30; // the knobs turned together in ~0.5 s
+    for (let i = 1; i <= n; i++) { for (const k of ks) { const key = k.includes('.') ? k : 'macro.' + k, v0 = St.get(key); St.set(key, v0 + (POSE[k] - v0) * (1 / (n - i + 1)), 'user'); } step(0.016, music); }
+    step(0.3, music); snap('COMBO ×' + c.n + ' · ' + c.name);
+    const until = (f, max) => { let t = 0; while (!f() && t < max) { step(0.05, music); t += 0.05; } };
+    until(() => CC.cur && CC.cur.charge >= 0.55, 8); snap('charge ' + Math.round(CC.cur.charge * 100) + ' %');
+    until(() => CC.cur && CC.cur.phase === 'super', 8); step(0.12, music); snap('SUPER ! (temps 0)');
+    for (const b of [2, 5, 8, 11, 14]) { until(() => CC.cur && CC.cur.beats >= b, 6); step(0.1, music); snap('SUPER temps ' + CC.cur.beats); }
+    for (const k of ks) St.set(k.includes('.') ? k : 'macro.' + k, 0.5, 'user'); until(() => !CC.cur || CC.cur.phase !== 'super', 4); step(0.6, music); snap('relâché');
   } else if (sheet === 'empty') { G.s.nodes = []; GV.sig = null; step(0.5); snap('vide'); }
   else { step(1.5, music); snap('ville'); }
   const out = document.getElementById('out'), tw = Math.round(cv.width * sc), th = Math.round(cv.height * sc), n = tiles.length, c = Math.min(cols, n), rws = Math.ceil(n / c);

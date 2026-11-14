@@ -4,8 +4,8 @@
 //
 // S8.1 « Moteur de ville »: three parts, each knows nothing of the next one's insides.
 //   1. TABLES (what the controls and the music mean, pure functions, unchanged since S4.6–S6.5): LOOK / LOOK_ALL (each
-//      element shows its layer's settings), SCENE (every other control drives a scene layer), SPLASH (each note seen),
-//      COMBO_FX (the emergent picture of each combo of js/discoveries.js).
+//      element shows its layer's settings), SCENE (every other control drives a scene layer), SPLASH (each note seen).
+//      (S8.7: the combos are drawn by js/city-combos.js, through the hooks below.)
 //   2. THE WORLD MODEL (`gv.world`, smoothed every frame): named DIMENSIONS (table DIMS: courant = power, trafic, caméra
 //      = cam.back / cam.depth / cam.fog, météo = weather.rain / wind / storm, usure VHS, population, chantiers = sites,
 //      aube, lecture), each `aim(c)` → 0..1 from the settings, the open layers and the scene, with its own smoothing;
@@ -14,7 +14,7 @@
 //      (scaffold, crane, floors stacking up, windows lit one by one), one that gets lower or whose layer is switched off is
 //      DECONSTRUCTED (floors going dark and sinking, neon dust), both timed on the audio clock (`grow`).
 //   3. THE DRAWING: an ordered stack of layers (STACK; `gv.addLayer({id, z, draw(g, world, cam, gv)})`): sky, stars, far
-//      city, street, combos (back), towers, sparks, traffic, weather, front, combos (front), post, scene HUD. One camera
+//      city, street, towers, sparks, traffic, weather, front, post, scene HUD. One camera
 //      (`cam`: zoom = recul, pan with parallax by depth, shake) for all; `cam.set(g, d)` puts a layer at depth d (0 = sky,
 //      1 = the main street, > 1 = in front). Later waves add dimensions (`gv.addDim`) and layers (`gv.addLayer`) without
 //      touching the rest.
@@ -23,7 +23,8 @@
 //
 // Mode policy (wraps AMB.visual, visual.js is untouched): « Jardin » (the « Ville » on screen) is the default visual and
 // in the cycle of both modes. In free mode the city is a pure reflection of the music: every layer has its building, at
-// full height, and nothing of the game is drawn (no Réponse, tier marks, discoveries, combos, celebrations, dawn of the end).
+// full height, and nothing of the game is drawn (no Réponse, tier marks, discoveries, celebrations, dawn of the end; S8.7:
+// the combos are the instrument's, drawn in both modes by js/city-combos.js).
 // Perf: sprites (normal, dark, emission) cached per element, height and look; cached skies, far city, ground; real dt;
 // nothing drawn while the tab is hidden or the canvas off screen; reduced motion = nothing moves (the light still follows).
 // stats() gives the cost per frame (ms). Canvas of any size and ratio (phone portrait to 21:9), any devicePixelRatio.
@@ -132,7 +133,8 @@
   // intensity 0..1 (the MEAN of its cells: a select = its option's rank, a toggle 0/1, a text = how much it holds, a knob =
   // its range); `poll` = app state outside the store (mode, playback, song). A touched control (sources user / macro / cc,
   // or the event `ev`) kicks its layer: an impulse 1 → 0 in ~0.8 s on top of the lasting state. `layers()` gives them
-  // (S5.10 combos read them).
+  // (js/city-dims.js reads them). S8.7: Cassette has no layer of its own any more (its tape band doubled the WebGL VHS and
+  // the S8.4 `vhs` dimension); Usure keeps its grain, drawn only without WebGL (one grain, never two).
   const SCENE = {
     hue: { at: 'ciel : teinte', keys: ['global.key', 'global.tuning'] },
     clouds: { at: 'ciel : nuages qui dérivent', keys: ['global.evolve'] },
@@ -144,7 +146,6 @@
     frost: { at: 'météo : givre', keys: ['grains.source'], ev: 'freeze' },
     ripple: { at: 'sol : ondulation', keys: ['global.swing', 'global.humanize', 'bass.octave', 'perc.steps'] },
     echo: { at: 'filtre : écho (bâtiments fantômes)', keys: ['fx.echo', 'fx.echoTime', 'fx.feedback'] },
-    tape: { at: 'filtre : bande qui défile, image qui tremble', keys: ['fx.tape'] },
     grain: { at: 'filtre : grain et vignette', keys: ['fx.lofi'] },
     lens: { at: 'filtre : grille (Sculpter), portée (Composer)', poll: () => ({ sculpt: 0.5, compose: 1 })[AMB.mode] || 0 },
     play: { at: 'lumière : allumée en lecture, voilée à l\'arrêt', poll: () => (AMB.seq && AMB.seq.playing ? 1 : 0) },
@@ -380,7 +381,6 @@
   // sky per chord: a hue per scale degree; minor scales (minor third) darker and cooler
   const HUES = [285, 320, 200, 255, 230, 335, 5]; // I violet, ii magenta, iii cyan, IV indigo, V blue, vi pink, vii red
   const SKY_FADE = 2; // s
-  const q = (x, px) => Math.round(x / px) * px;
 
   // ======================================================================================================================
   // 3. THE DRAWING — the layers (calques). Each: {id, z, draw(g, world, cam, gv)}; the stack calls them in z order with
@@ -388,147 +388,6 @@
   // depth d; cam.x(d, x) / cam.y(d, y) / cam.k(d) map a point of that depth to the screen.
   const STACK = [];
   function addLayer(def) { const i = STACK.findIndex((l) => l.id === def.id); if (i >= 0) STACK.splice(i, 1); STACK.push(def); STACK.sort((a, b) => a.z - b.z); return def; }
-
-  // ---- S5.10 « Combos »: the EMERGENT effect of each combo of js/discoveries.js (COMBOS), drawn only while that combo is
-  // ON (intensity a 0..1, in and out in ~0.25 s): a new picture, not the sum of the layers. pass 'back' = over the sky and
-  // the street, behind the buildings; 'front' = over the buildings, under the full-screen filters. T = the scene's time.
-  // (S8.7 replaces them with the huge combos.)
-  const COMBO_FX = {
-    monolithe: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // a black obelisk, its edges lit on the beat, glyphs running up
-      const w = Math.max(4 * px, q(W * 0.05, px)), x0 = q(W / 2 - w / 2, px), top = q(gd * 0.26, px), h = gd - top;
-      g.globalAlpha = Math.min(1, a); g.fillStyle = '#06040b'; g.fillRect(x0, top, w, h);
-      for (let i = 1; i <= 3; i++) g.fillRect(x0 + i * px, top - i * px, Math.max(px, w - 2 * i * px), px);
-      g.globalCompositeOperation = 'lighter'; g.fillStyle = '#5ff0ff';
-      g.globalAlpha = Math.min(1, a * (0.45 + 0.25 * Math.sin(T * 2) + 2 * (v.pulse || 0)));
-      g.fillRect(x0 - px, top, px, h); g.fillRect(x0 + w, top, px, h);
-      for (let i = 0; i < 6; i++) g.fillRect(x0 + q(w / 2 - px, px), q(gd - ((T * 14 * px + i * h / 6) % h), px), 2 * px - 1, px - 1);
-    } },
-    soleil: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // two suns turning around each other
-      const R = Math.max(4, q(gd * 0.16, px)), an = T * 0.7;
-      g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, a);
-      [[255, 196, 110], [255, 110, 190]].forEach((col, i) => {
-        const s = i ? -1 : 1, x = W / 2 + s * Math.cos(an) * R * 1.5, y = gd * 0.38 + s * Math.sin(an) * R * 0.4;
-        const gl = v.glow(col, 2 * R); g.drawImage(gl, Math.round(x - 2 * R), Math.round(y - 2 * R));
-        const disc = v.fx('sun' + i, R, R, () => { const c = v.canvas(2 * R, 2 * R), x2 = c.getContext('2d'); x2.fillStyle = rgb(col, 1.15); for (let yy = 0; yy < 2 * R; yy += px) for (let xx = 0; xx < 2 * R; xx += px) { const d = Math.hypot(xx + px / 2 - R, yy + px / 2 - R); if (d < R * 0.62) { x2.fillStyle = d < R * 0.35 ? '#fff6e0' : rgb(col, 1.15); x2.fillRect(xx, yy, px - 1, px - 1); } } return c; });
-        g.drawImage(disc, Math.round(x - R), Math.round(y - R));
-      });
-    } },
-    constellation: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // the player's last notes as stars (pitch = height), linked
-      const n = v.starNotes.length; if (!n) return;
-      const pts = v.starNotes.map((s, i) => [q(W * (0.08 + 0.84 * (i + 0.5) / n), px), q(gd * (0.78 - 0.62 * s.p), px)]);
-      g.globalCompositeOperation = 'lighter'; g.fillStyle = '#bfe6ff';
-      for (let i = 1; i < n; i++) {
-        const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], k = Math.max(1, Math.round(Math.hypot(x1 - x0, y1 - y0) / (2 * px)));
-        g.globalAlpha = Math.min(1, a * 0.55);
-        for (let j = 1; j < k; j++) g.fillRect(q(x0 + (x1 - x0) * j / k, px), q(y0 + (y1 - y0) * j / k, px), Math.max(1, px - 1), Math.max(1, px - 1));
-      }
-      g.fillStyle = '#fff4d6';
-      pts.forEach(([x, y], i) => { g.globalAlpha = Math.min(1, a * (0.7 + 0.3 * Math.sin(T * 4 + i))); g.fillRect(x - px, y, 3 * px - 1, px - 1); g.fillRect(x, y - px, px - 1, 3 * px - 1); });
-    } },
-    portail: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // a ring of LEDs turning in the middle, a glow inside
-      const R = gd * 0.24 * (0.92 + 0.08 * Math.sin(T * 3)), cx = W / 2, cy = gd * 0.46, n = 28, gl = v.glow([140, 120, 255], q(R, px) || px);
-      g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, a * 0.8); g.drawImage(gl, Math.round(cx - gl.width / 2), Math.round(cy - gl.height / 2));
-      for (let i = 0; i < n; i++) { const an = i / n * 6.283 + T * 1.2; g.globalAlpha = Math.min(1, a * (0.5 + 0.5 * Math.sin(i * 0.9 - T * 6))); g.fillStyle = i % 2 ? '#a58cff' : '#5ff0ff'; g.fillRect(q(cx + Math.cos(an) * R, px), q(cy + Math.sin(an) * R, px), 2 * px - 1, 2 * px - 1); }
-    } },
-    brume: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // neon fog: pink and cyan bands rolling at the foot of the buildings
-      const bh = Math.round(H * 0.34), cv = v.fx('neonfog', W, H, (w) => {
-        const c = v.canvas(w / 4, bh / 4), x = c.getContext('2d'), r = mulberry(83);
-        for (let i = 0; i < 18; i++) { const cx = r() * c.width, cy = c.height * (0.3 + 0.5 * r()), R = c.height * (0.25 + 0.35 * r()), gg = x.createRadialGradient(cx, cy, 0, cx, cy, R), col = i % 2 ? '255,79,160' : '79,224,255'; gg.addColorStop(0, `rgba(${col},0.45)`); gg.addColorStop(1, `rgba(${col},0)`); x.fillStyle = gg; x.fillRect(cx - R, cy - R, 2 * R, 2 * R); }
-        return c;
-      });
-      const off = ((T * px * 7) % W + W) % W, y = gd - bh * 0.62;
-      g.globalCompositeOperation = 'lighter'; g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, a);
-      g.drawImage(cv, off, y, W, bh); g.drawImage(cv, off - W, y, W, bh); g.imageSmoothingEnabled = false;
-      for (let i = 0; i < 4; i++) {
-        const yy = q(gd - bh * (0.08 + 0.1 * i), px), fl = 0.6 + 0.4 * Math.sin(T * (7 + i) + i * 2);
-        g.globalAlpha = Math.min(1, a * fl); g.fillStyle = i % 2 ? '#4fe0ff' : '#ff4fa0'; g.fillRect(q(((T * (30 + 12 * i) * px) % (W * 1.5)) - W * 0.25, px), yy, q(W * (0.25 + 0.1 * i), px), Math.max(1, px >> 1));
-      }
-      g.globalCompositeOperation = 'source-over'; g.fillStyle = '#000'; g.globalAlpha = Math.min(1, 0.25 * a);
-      for (let yy = q(y, px); yy < y + bh; yy += 3 * px) g.fillRect(0, yy, W, Math.max(1, px >> 1));
-    } },
-    maree: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // slow waves of light rising from the ground
-      g.globalCompositeOperation = 'lighter'; const st = 2 * px;
-      for (let j = 0; j < 3; j++) {
-        const lift = gd * (0.08 + 0.12 * j) * (0.6 + 0.4 * Math.sin(T * 0.35 + j * 2)), A = gd * 0.05;
-        g.fillStyle = ['#4fe0ff', '#7fd6ff', '#c7f0ff'][j]; g.globalAlpha = Math.min(1, a * (0.5 - 0.12 * j));
-        for (let x = 0; x < W; x += st) g.fillRect(x, q(gd - lift + Math.sin(x * 0.006 + T * (0.6 + 0.2 * j) + j) * A, px), st - 1, px);
-      }
-    } },
-    miroir: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // the city reflected under the street, rippling
-      g.globalAlpha = Math.min(1, a * 0.32);
-      for (const p of v.plants) {
-        if (!p.vis) continue;
-        const s = v.sprite(p, px), k = p.k || 1;
-        g.setTransform(k, 0, 0, -k * 0.7, p.sx + Math.sin(T * 1.7 + p.x * 0.02) * px * 2, p.sy + px * 2); g.drawImage(s.cv, 0, s.h - p.vis, s.w, p.vis, -s.w / 2, -p.vis, s.w, p.vis);
-      }
-      g.setTransform(1, 0, 0, 1, v.ox || 0, v.oy || 0); g.globalCompositeOperation = 'lighter'; g.fillStyle = '#7fd6ff';
-      for (let i = 0; i < 5; i++) { g.globalAlpha = Math.min(1, a * 0.25); const y = q(gd + (H - gd) * (0.15 + 0.17 * i), px), x = q(((T * (20 + 9 * i) * px) % W), px); g.fillRect(x - W * 0.2, y, W * 0.4, Math.max(1, px >> 1)); }
-    } },
-    blizzard: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // a whirl of frost pixels
-      const cx = W / 2, cy = gd * 0.55, R = Math.min(W, gd) * 0.5, s = Math.max(1, px - 1);
-      g.globalCompositeOperation = 'lighter'; g.fillStyle = '#e4f4ff';
-      for (let i = 0; i < 150; i++) { const k = ((i * 0.618 + T * 0.12) % 1), r = R * (1 - k), an = i * 2.4 + T * (1 + 3 * k); g.globalAlpha = Math.min(1, a * (0.3 + 0.7 * k)); g.fillRect(q(cx + Math.cos(an) * r, px), q(cy + Math.sin(an) * r * 0.55, px), s, s); }
-    } },
-    cathedrale: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // pillars of stained glass light
-      const cv = v.fx('vitrail', W, gd, (w, h) => {
-        const c = v.canvas(w / 4, h / 4), x = c.getContext('2d'), r = mulberry(97), cw = c.width / 7;
-        for (let i = 0; i < 7; i++) for (let y = 0; y < c.height; y += 6) { const hue = (i * 51 + Math.floor(r() * 40)) % 360, fall = 1 - y / c.height; x.fillStyle = `hsla(${hue},90%,65%,${(0.5 * fall).toFixed(2)})`; x.fillRect(Math.round(i * cw + cw * 0.25), y, Math.round(cw * 0.5), 5); }
-        return c;
-      });
-      g.globalCompositeOperation = 'lighter'; g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, a * (0.75 + 0.25 * Math.sin(T * 0.8)));
-      g.drawImage(cv, 0, 0, W, gd); g.imageSmoothingEnabled = false;
-      const sx = q(((T * 0.15) % 1.4 - 0.2) * W, px); g.globalAlpha = Math.min(1, a * 0.3); g.fillStyle = '#fff4d6'; g.fillRect(sx, 0, q(W * 0.03, px) || px, gd);
-    } },
-    vhs: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // the picture derails: red / blue edges, a rolling band, « ● REC 2089 »
-      const r = mulberry(Math.floor(T * 8)), fs = Math.max(12, Math.round(px * 5));
-      g.globalCompositeOperation = 'lighter';
-      for (let i = 0; i < 9; i++) { const y = q(r() * H, px), h = q(px * (1 + r() * 5), px) || px, dx = q((r() - 0.5) * px * 16, px); g.globalAlpha = Math.min(1, a * 0.35); g.fillStyle = '#ff3050'; g.fillRect(dx, y, W, h); g.fillStyle = '#30b0ff'; g.fillRect(-dx, y + px, W, h); }
-      g.globalCompositeOperation = 'source-over'; g.globalAlpha = Math.min(1, a * 0.3); g.fillStyle = '#000'; g.fillRect(0, q(((T * 0.2) % 1) * H, px), W, q(H * 0.05, px));
-      g.globalAlpha = Math.min(1, a); g.font = `${fs}px VT323, monospace`; g.fillStyle = '#f0f0f0'; g.fillText('REC 2089', Math.round(px * 6 + fs), Math.round(H - px * 4));
-      if (Math.floor(T * 2) % 2 === 0) { g.fillStyle = '#ff3050'; g.fillRect(Math.round(px * 4), Math.round(H - px * 4 - fs * 0.6), Math.round(fs * 0.55), Math.round(fs * 0.55)); }
-    } },
-    kaleido: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // the sky as a kaleidoscope: 8 mirrored wedges turning
-      const cx = W / 2, cy = gd * 0.45, R = Math.min(W, gd) * 0.55, h0 = (T * 40) % 360;
-      g.globalCompositeOperation = 'lighter';
-      for (let k = 0; k < 8; k++) {
-        const an = k / 8 * 6.283 + T * 0.3, b = an + 0.39;
-        g.globalAlpha = Math.min(1, a * 0.22); g.fillStyle = `hsl(${(h0 + k * 45) % 360},90%,60%)`;
-        g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(an) * R, cy + Math.sin(an) * R * 0.8); g.lineTo(cx + Math.cos(b) * R * 0.6, cy + Math.sin(b) * R * 0.48); g.closePath(); g.fill();
-      }
-    } },
-    eclipse: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // a black moon over a corona, the sky darker
-      const R = Math.max(4, q(gd * 0.11, px)), cx = W * 0.62, cy = gd * 0.32;
-      g.globalAlpha = Math.min(1, a * 0.4); g.fillStyle = '#000'; g.fillRect(0, 0, W, gd);
-      g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, a); const gl = v.glow([255, 200, 150], 3 * R); g.drawImage(gl, Math.round(cx - 3 * R), Math.round(cy - 3 * R));
-      g.globalCompositeOperation = 'source-over'; g.fillStyle = '#030204'; g.beginPath(); g.arc(cx, cy, R, 0, 6.283); g.fill();
-      const an = T * 0.5; g.globalCompositeOperation = 'lighter'; g.fillStyle = '#fff'; g.fillRect(q(cx + Math.cos(an) * R, px) - px, q(cy + Math.sin(an) * R, px) - px, 2 * px, 2 * px);
-    } },
-    quintes: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // the twelve fifths: a {12/5} star turning, a LED on each point
-      const cx = W / 2, cy = gd * 0.42, R = Math.min(W, gd) * 0.3, an = (i) => i / 12 * 6.283 + T * 0.2 - 1.571, pt = (i) => [cx + Math.cos(an(i)) * R, cy + Math.sin(an(i)) * R * 0.85];
-      g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, a * 0.6); g.strokeStyle = '#ffd36b'; g.lineWidth = Math.max(1, px >> 1);
-      g.beginPath(); for (let i = 0, j = 0; i <= 12; i++, j = (j + 5) % 12) { const [x, y] = pt(j); if (i) g.lineTo(x, y); else g.moveTo(x, y); } g.stroke();
-      for (let i = 0; i < 12; i++) { const [x, y] = pt(i); g.globalAlpha = Math.min(1, a * (0.6 + 0.4 * Math.sin(T * 3 + i * 7))); g.fillStyle = '#fff3c4'; g.fillRect(q(x, px) - px, q(y, px) - px, 2 * px, 2 * px); }
-    } },
-    grille: { pass: 'back', draw(v, g, W, H, gd, a, T, px) { // a neon grid running to the horizon, a striped sun behind it
-      const R = Math.max(6, q(gd * 0.16, px)), sun = v.fx('synthsun', R, R, () => { const c = v.canvas(2 * R, R), x = c.getContext('2d'), grd = x.createLinearGradient(0, 0, 0, R); grd.addColorStop(0, '#ffd36b'); grd.addColorStop(1, '#ff4fa0'); x.fillStyle = grd; x.beginPath(); x.arc(R, R, R, Math.PI, 0); x.fill(); x.globalCompositeOperation = 'destination-out'; for (let i = 0; i < 6; i++) x.fillRect(0, R * (0.45 + i * 0.1), 2 * R, Math.max(1, R * 0.02 * (i + 1))); return c; });
-      g.globalAlpha = Math.min(1, a); g.drawImage(sun, Math.round(W / 2 - R), gd - R);
-      g.globalCompositeOperation = 'lighter'; g.strokeStyle = '#ff4fa0'; g.lineWidth = Math.max(1, px >> 1); g.globalAlpha = Math.min(1, a * (0.6 + 1.5 * (v.pulse || 0)));
-      g.beginPath();
-      for (let k = -10; k <= 10; k++) { g.moveTo(W / 2 + k * W * 0.015, gd); g.lineTo(W / 2 + k * W * 0.12, H); }
-      for (let i = 0; i < 8; i++) { const z = ((i / 8 + T * 0.25) % 1), y = gd + (H - gd) * z * z; g.moveTo(0, Math.round(y)); g.lineTo(W, Math.round(y)); }
-      g.stroke();
-    } },
-    reseau: { pass: 'front', draw(v, g, W, H, gd, a, T, px) { // arcs of light between the rooftops, a spark running on each
-      const ps = v.plants.filter((p) => p.vis).sort((u, w) => u.sx - w.sx).map((p) => [p.sx, p.sy - p.vis * (p.k || 1) * 0.8]);
-      g.globalCompositeOperation = 'lighter'; g.strokeStyle = '#5ff0ff'; g.lineWidth = Math.max(1, px >> 1);
-      for (let i = 1; i < ps.length; i++) {
-        const [x0, y0] = ps[i - 1], [x1, y1] = ps[i], mx = (x0 + x1) / 2, my = Math.min(y0, y1) - gd * 0.12;
-        g.globalAlpha = Math.min(1, a * 0.45); g.beginPath(); g.moveTo(x0, y0); g.quadraticCurveTo(mx, my, x1, y1); g.stroke();
-        const t = (T * 0.6 + i * 0.37) % 1, u = 1 - t, x = u * u * x0 + 2 * u * t * mx + t * t * x1, y = u * u * y0 + 2 * u * t * my + t * t * y1;
-        g.globalAlpha = Math.min(1, a); g.fillStyle = '#fff'; g.fillRect(q(x, px) - px, q(y, px) - px, 2 * px, 2 * px);
-      }
-    } },
-  };
 
   // ---- state → layout (pure): where each building stands (world coordinates, before the camera) ----
   // state = {layers: [ids], levels: {layer: 0..1}, secrets: [ids]}. One row of buildings on the street; on a narrow
@@ -571,7 +430,6 @@
     get JUICE() { return AMB.motion ? AMB.motion.JUICE : this._juice; }, set JUICE(v) { if (AMB.motion) AMB.motion.set({ juice: v }); else this._juice = v; }, _juice: JUICE,
     SPLASH, WAVES_PER_PLANT, PARTS_MAX, splash, waves: [], zap: {}, shake: null, ox: 0, oy: 0, // S5.2 notes seen
     SCENE, scene, sc: {}, kick: {}, sAim: null, sPoll: {}, st: 0, speed: 1, fxc: {}, // S5.8 scene layers
-    COMBO_FX, cx: {}, starNotes: [], // S5.10 combos
     world: makeWorld(), // S8.1 the world model
     hooks: [], post2d: true, safe: null, // S8.1 for S8.2 (afterDraw, post2d) and S8.3 (safe)
     sprites: new Map(), glows: new Map(), labels: new Map(),
@@ -1034,25 +892,6 @@
     },
     canvas(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; },
 
-    // ---- S5.10 combos: each one ON in js/discoveries.js fades in (~0.25 s), and out when it falls; drawn by COMBO_FX ----
-    updateCombos(dt) {
-      const D = AMB.discoveries, on = !this.free && D && D.on, kT = this.reduced ? 1 : 1 - Math.exp(-dt / 0.25);
-      for (const id in COMBO_FX) {
-        const want = on && on.has(id) ? 1 : 0, c = this.cx[id] || 0, n = c + (want - c) * kT;
-        if (!want && n < 0.01) delete this.cx[id]; else this.cx[id] = n;
-      }
-    },
-    drawCombos(g, W, H, gd, pass) {
-      let n = 0;
-      for (const id in this.cx) {
-        const F = COMBO_FX[id], a = this.cx[id]; if (!F || F.pass !== pass || a < 0.01) continue;
-        g.setTransform(1, 0, 0, 1, this.ox || 0, this.oy || 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
-        F.draw(this, g, W, H, gd, a, this.st, this.px || 3); n++;
-      }
-      g.setTransform(1, 0, 0, 1, this.ox || 0, this.oy || 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; g.imageSmoothingEnabled = false;
-      return n;
-    },
-
     // ---- events: queued with their audio time, applied when they sound ----
     onEvent(layer, time, vel) {
       if (!this.running() || this.replay) return; // the finale lights the buildings from the recorded song only
@@ -1235,7 +1074,7 @@
       const dt = this.lastT == null ? 1 / 60 : Math.max(0, Math.min(0.1, (t0 - this.lastT) / 1000));
       this.lastT = t0; this.t = (this.t || 0) + dt; this.dt = dt; this.dpr = dpr;
       const now = this.clock();
-      this.watch(); this.updateScene(dt); this.updateLook(dt); this.updateCombos(dt);
+      this.watch(); this.updateScene(dt); this.updateLook(dt);
       if (!this.reduced) this.st += dt * this.speed; // the scene's time: the tempo is its speed, still in reduced motion
       for (let i = this.pending.length - 1; i >= 0; i--) { const e = this.pending[i]; if (e.time <= now + 0.02) { this.pending.splice(i, 1); this.hit(e.layer, e.vel); } }
       const ans = this.answer(now);
@@ -1326,7 +1165,7 @@
       bus.on('note', (n) => { if (n) { this.onEvent(n.layer, n.time, n.vel); this.onSplash('note', n); } });
       bus.on('grain', (n) => n && this.onEvent('grains', n.time, n.vel));
       bus.on('perc', (n) => { if (n) { this.onEvent('perc', n.time, n.vel); this.onSplash('perc', n); } });
-      bus.on('live', (n) => { this.onSplash('live', n); if (n && this.running()) { this.starNotes.push({ p: pitchK(n.midi) }); if (this.starNotes.length > 12) this.starNotes.shift(); } });
+      bus.on('live', (n) => this.onSplash('live', n));
       bus.on('liveOff', (n) => n && this.release(n.id, n.time));
       bus.on('panic', () => this.release(null));
       bus.on('chord', (c) => {
@@ -1461,9 +1300,8 @@
     g.globalCompositeOperation = 'lighter';
     if (w.dawn > 0) { g.fillStyle = `rgba(255,122,79,${(w.dawn * 0.12).toFixed(3)})`; g.fillRect(0, sgd, W, H - sgd); }
     const bp = red || R ? null : w.beat.on ? w.beat : null;
-    v.pulse_ = 0;
+    if (!bp && (red || R)) v.pulse = 0; // (v.pulse: the street's beat, read by the tests)
     if (bp) { const a = (bp.strong ? 0.3 : 0.16) * Math.exp(-bp.ph * 5); v.pulse = a; g.fillStyle = rgb(TOK.pink, 1, Math.min(1, a * 2.2)); g.fillRect(0, sgd, W, Math.max(2, px)); g.fillStyle = rgb(TOK.pink, 1, a * 0.16); g.fillRect(0, sgd, W, H - sgd); }
-    else if (red || R) v.pulse = 0;
     const a = v.amt('ripple'); // the ground ondulates (rhythm feel): two wavy lines of light along its edge
     if (a >= 0.03) {
       const A = px * (0.5 + 3 * a), stp = px * 2, s = Math.max(1, px >> 1);
@@ -1475,7 +1313,6 @@
     }
     void k;
   } });
-  addLayer({ id: 'combos-back', z: 35, draw(g, w, cam, v) { if (Object.keys(v.cx).length) v.drawCombos(g, cam.W, cam.H, cam.gd, 'back'); } });
   // towers (z 40): the back row, then the front row, then the discoveries; each with its halo and its echo ghosts
   addLayer({ id: 'towers', z: 40, draw(g, w, cam, v) {
     const px = cam.px, now = v.now_, R = v.replay;
@@ -1584,31 +1421,12 @@
       if (staff > 0.02) { g.globalAlpha = Math.min(1, 0.35 * staff + 0.3 * k); g.fillStyle = '#ff9ee0'; for (let i = 0; i < 5; i++) g.fillRect(0, Math.round(gd * 0.18 + i * px * 4), W, Math.max(1, px >> 1)); }
     }
   } });
-  addLayer({ id: 'combos-front', z: 75, draw(g, w, cam, v) { if (Object.keys(v.cx).length) v.drawCombos(g, cam.W, cam.H, cam.gd, 'front'); } });
-  // post (z 80): full-screen filters: the tape band and wobble (Cassette), grain and vignette (Usure), the veil when
+  // post (z 80): full-screen filters: grain and vignette (Usure, without WebGL), the veil when
   // stopped, a flash when it starts, the lightning, the CRT band
   addLayer({ id: 'post', z: 80, draw(g, w, cam, v) {
     const W = cam.W, H = cam.H, px = cam.px, T = v.st, red = v.reduced;
     let a;
-    if ((a = v.amt('tape')) > 0.03) {
-      const bh = Math.round(H * 0.07), cv = v.fx('tape', W, H, (ww) => {
-        const c = v.canvas(ww / 4, bh), x = c.getContext('2d'), r = mulberry(61);
-        const grd = x.createLinearGradient(0, 0, 0, bh); grd.addColorStop(0, 'rgba(255,255,255,0)'); grd.addColorStop(0.5, 'rgba(220,230,255,0.25)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
-        x.fillStyle = grd; x.fillRect(0, 0, c.width, bh);
-        for (let i = 0; i < 60; i++) { x.fillStyle = ['rgba(255,60,60,0.5)', 'rgba(60,255,200,0.5)', 'rgba(80,120,255,0.5)'][i % 3]; x.fillRect(r() * c.width, bh * (0.3 + 0.4 * r()), 2 + r() * 10, 1); }
-        return c;
-      });
-      const y = red ? H * 0.6 : ((T * H * 0.12) % (H + bh)) - bh;
-      g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, 0.2 + 0.7 * a); g.imageSmoothingEnabled = true;
-      g.drawImage(cv, 0, Math.round(y), W, bh); g.imageSmoothingEnabled = false; g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
-      if (a > 0.2) for (let i = 0; i < 3; i++) { // tracking lines (no read-back of the canvas: it would stall)
-        const sy = Math.round(((T * (40 + 30 * i) * px + i * H / 3) % H) / px) * px, dx = red ? 0 : Math.round(Math.sin(T * 9 + i * 2) * a * px * 6);
-        g.globalAlpha = Math.min(1, 0.5 * a); g.fillStyle = 'rgba(0,0,0,0.8)'; g.fillRect(0, sy, W, px);
-        g.globalCompositeOperation = 'lighter'; g.fillStyle = i % 2 ? 'rgba(255,70,90,0.6)' : 'rgba(70,200,255,0.6)'; g.fillRect(dx, sy + px, W, Math.max(1, px >> 1)); g.globalCompositeOperation = 'source-over';
-      }
-      g.globalAlpha = 1;
-    }
-    if ((a = v.amt('grain')) > 0.03) {
+    if (v.post2d !== false && (a = v.amt('grain')) > 0.03) { // (with WebGL, its own grain: S8.4 drives it from Nostalgie)
       const nw = Math.ceil(W / (2 * px)), nh = Math.ceil(H / (2 * px)), f = red ? 0 : Math.floor(T * 14) % 4;
       const cv = v.fx('grain' + f, W, H, () => {
         const c = v.canvas(nw, nh), x = c.getContext('2d'), d = x.createImageData(nw, nh), r = mulberry(70 + f);
@@ -1616,7 +1434,7 @@
         x.putImageData(d, 0, 0); return c;
       });
       g.globalAlpha = Math.min(1, 0.15 + 0.85 * a); g.drawImage(cv, 0, 0, W, H);
-      if (v.post2d !== false) { g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.75 * a); g.drawImage(v.vignette(W, H), 0, 0, W, H); g.imageSmoothingEnabled = false; }
+      g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, 0.75 * a); g.drawImage(v.vignette(W, H), 0, 0, W, H); g.imageSmoothingEnabled = false;
     }
     const pl = v.sc.play == null ? 1 : v.sc.play, pk = v.kick.play || 0;
     if (pl < 0.98) { g.globalAlpha = 1; g.fillStyle = `rgba(4,2,10,${(0.3 * (1 - pl)).toFixed(3)})`; g.fillRect(0, 0, W, H); }
