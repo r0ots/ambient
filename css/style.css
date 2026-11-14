@@ -1424,3 +1424,6 @@ body.listen .app > .stage { height: auto; }
 .q-warm .w2 { display: block; font: 400 30px/1 var(--f-logo); }
 .q-warm .k-laser, .q-warm .k-ring { position: absolute; left: 10px; top: 10px; height: 40px; }
 .q-warm .k-ring { width: 40px; }
+/* the key let go (k-rel: colour, background, shadows animated = a repaint per frame per key): its spring only */
+@keyframes q-krel { from { scale: calc(1 + .03 * var(--m-amp)); translate: 0 calc(-2px * var(--m-amp)); } }
+:is(.q-moyen, .q-bas) .pad.k-rel:not(.on) { animation-name: q-krel; }

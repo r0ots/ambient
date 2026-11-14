@@ -103,7 +103,7 @@ window.addEventListener('load', async () => {
       ok(Q.pick({ hardwareConcurrency: 12, deviceMemory: 8 }, fake({ w: 1440 })) === 0 && Q.pick({ hardwareConcurrency: 8, deviceMemory: 8 }, fake({ w: 412, coarse: true })) === 1
         && Q.pick({ hardwareConcurrency: 8, deviceMemory: 4 }, fake({ w: 1440 })) === 1 && Q.pick({ hardwareConcurrency: 2, deviceMemory: 2 }, fake({ w: 412, coarse: true })) === 2,
         'départ : bureau = haut, téléphone (pointeur grossier, petit écran) ou 4 Go = moyen, 2 cœurs = bas');
-      Q.set(0, 'test'); Q.start = 0; Q.auto = true; Q.win.length = 0; Q.winT = 0; G.enable();
+      Q.set(0, 'test'); Q.start = 0; Q.auto = true; Q.GRACE_MS = 0; Q.win.length = 0; Q.winT = 0; G.enable();
       ok(G.mode === 'gl' && G.level === 2, 'haut : WebGL, deux rayons de bloom');
       const seen = []; const off = Q.on((e) => seen.push(e.name));
       for (let i = 0; i < 150; i++) Q.tick(16.7);

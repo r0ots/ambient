@@ -28,7 +28,7 @@
   const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} return null; };
 
   const Q = {
-    LEVELS, NAMES, SLOW_MS: 20, FAST_MS: 17.5, WINDOW_MS: 2000, UP_S: 10,
+    LEVELS, NAMES, SLOW_MS: 20, FAST_MS: 17.5, WINDOW_MS: 2000, UP_S: 10, GRACE_MS: 4000,
     level: 0, start: 0, auto: true, why: 'start', subs: [],
     cur() { return LEVELS[this.level]; },
     name() { return this.cur().name; },
@@ -68,7 +68,7 @@
       if (!(dt > 0) || dt > 250) return; // a hidden tab, a pause, a debugger: not a slow frame
       this.ring.push(dt); this.ringT += dt;
       while (this.ringT > this.WINDOW_MS && this.ring.length > 1) this.ringT -= this.ring.shift();
-      if (!this.auto) return;
+      if (!this.auto || performance.now() < this.GRACE_MS) return; // (the load's own work is not a slow device)
       this.win.push(dt); this.winT += dt;
       if (this.winT < this.WINDOW_MS) return;
       const avg = this.winT / this.win.length;
