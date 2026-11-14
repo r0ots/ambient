@@ -38,7 +38,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
       // the other shortcuts press their button on screen like a click (space = ▶ Lecture)
       d.body.classList.add('coined'); const pb=d.getElementById('play'); kd('keydown','Space'); const sp1=pb.classList.contains('is-pressed'); await wait(250);
       ok(sp1 && !pb.classList.contains('is-pressed') && pb.classList.contains('is-released'), 'S9.1 : la barre d\'espace enfonce ▶ Lecture comme un clic, puis il rebondit');
-      kd('keydown','Space'); await wait(50); A.seq.playing=true; }
+      for (let i=0;i<50 && !d.body.classList.contains('playing');i++) await wait(40); A.ui.stop(); await wait(50); A.seq.playing=true; } // (the space really played: stopped again, nothing left running)
     const ch=[], fc=A.seq.forceChord; A.seq.forceChord=(dg)=>ch.push(dg); A.game.unlock('h.pad');
     pads[3].dispatchEvent(PE('pointerdown',3)); await wait(250); const early=ch.length; await wait(350);
     ok(early===0 && ch.join()==='3' && pads[3].classList.contains('chord'), 'appui long : l\'accord du degré (pas avant)');
