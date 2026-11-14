@@ -174,9 +174,9 @@ window.addEventListener('load', async () => {
       ok(JSON.stringify(dflt) === JSON.stringify(same) && GV.ASPECTS.every((k) => Object.values(dflt).every((a) => a[k] >= 0 && a[k] <= 1)), 'look() pur : valeurs par défaut = schéma, ' + GV.ASPECTS.length + ' aspects entre 0 et 1');
       // S8.1 Niveau → floors: built (a construction) or taken down, never scaled; the layer switched off = deconstructed
       const done = () => { for (const id in GV.grow) GV.grow[id].start = GV.clock() - 60; step(1); };
-      St.set('pad.vol', 0.05, 'user'); step(2); done(); const small = GV.built.pad, k0 = P().k;
+      St.set('pad.vol', 0.05, 'user'); step(2); done(); const small = GV.built.pad, k0 = P().k / GV.cam.k(1);
       St.set('pad.vol', 1, 'user'); step(1); const e = GV.grow.pad, big = GV.built.pad;
-      ok(big >= small * 1.6 && e && Math.abs(e.h0 - small) < 1e-9 && e.h1 === big && P().k === k0, 'Niveau → étages : ' + small + ' → ' + big + ' cellules, par un chantier (même échelle : rien ne s\'étire)');
+      ok(big >= small * 1.6 && e && Math.abs(e.h0 - small) < 1e-9 && e.h1 === big && Math.abs(P().k / GV.cam.k(1) - k0) < 1e-9, 'Niveau → étages : ' + small + ' → ' + big + ' cellules, par un chantier (même échelle : rien ne s\'étire)');
       ok(P().vis < GV.sprite(P(), GV.px).h * 0.6, 'pas de saut : juste après, seuls les anciens étages sont là (' + Math.round(P().vis) + ' / ' + GV.sprite(P(), GV.px).h + ' px), les nouveaux en échafaudage');
       done(); ok(!GV.grow.pad && P().vis === GV.sprite(P(), GV.px).h, 'chantier fini : le bâtiment entier');
       St.set('pad.vol', 0.05, 'user'); step(1); const dn = GV.grow.pad;

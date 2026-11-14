@@ -35,6 +35,10 @@ window.addEventListener('load', () => {
     step(1.5); snap('construit'); St.set('seq.on', false, 'user');
     for (const t of [0.3, 0.4, 0.4]) { step(t); snap('déconstruction'); }
     step(1.2); snap('terrain vague'); St.set('seq.on', true, 'user'); step(0.7); snap('reconstruction');
+  } else if (sheet === 'grow') { // the Parcours: the city grows one layer at a time, the camera pulls back
+    G.s.nodes = ['racine']; GV.sig = null; GV.built = {}; GV.grow = {}; step(3); snap('Allumage');
+    for (const n of ['h.pad', 'm.bells', 'm.grains', 'c.rythme', 'e.texture', 'c.seq']) { GV.growAt(T + 0.1); G.s.nodes.push(n); GV.sig = null; step(1.2, music); snap('+ ' + n + ' (chantier)'); step(2.4, music); }
+    snap('ville entière');
   } else if (sheet === 'full') {
     for (let k = 0; k < 6; k++) { step(0.35, music); AMB.bus.emit('live', { midi: 64 + k * 3, time: T, vel: 0.9, raw: 0.9, id: k }); step(0.12); snap('ville pleine ' + k); }
   } else if (sheet === 'dawn') {

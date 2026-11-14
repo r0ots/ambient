@@ -225,6 +225,9 @@
   const DIMS = {
     power: { tau: 0.5, at: 'courant : la lumière de la ville (fenêtres, néons, halos ; voilée à l\'arrêt)', aim: (c) => c.dawn + (1 - c.dawn) * (0.2 + 0.8 * mean(c.plants, (p) => lk(p).light * lk(p).on)) * (0.55 + 0.45 * c.L.play) },
     traffic: { tau: 1.2, at: 'trafic : voitures volantes et de la rue', aim: (c) => clamp((0.15 + 0.5 * mean(c.plants, (p) => lk(p).bloom * lk(p).on) + 0.35 * c.all.pace) * (0.35 + 0.65 * c.L.play) * Math.min(1, 0.25 + c.plants.length / 5)) },
+    // the framing: the camera centres the built city and comes closer while it is small (never into the HUD)
+    'cam.frame': { tau: 1.8, at: 'caméra : cadrage (1 = toute la rue, plus = plus près de la ville bâtie)', aim: (c) => c.frame().z },
+    'cam.cx': { tau: 1.8, at: 'caméra : centre du cadrage (x, part de la largeur)', aim: (c) => c.frame().cx },
     'cam.back': { tau: 1.5, at: 'caméra : recul (0 = près, 1 = loin)', aim: (c) => 0.15 + 0.35 * c.all.space },
     'cam.depth': { tau: 1.5, at: 'caméra : profondeur (parallaxe)', aim: (c) => 0.3 + 0.7 * c.L.haze },
     'cam.fog': { tau: 1.2, at: 'caméra : brouillard à l\'horizon', aim: (c) => 0.15 + 0.6 * c.L.haze * c.L.haze },
@@ -537,10 +540,12 @@
   function layout(st, W, H, safe) {
     const ids = LAYERS.map((l) => l.id).filter((id) => (st.layers || []).includes(id)), sf = safe || {};
     const sl = clamp(+sf.left || 0, 0, 0.4), sr = clamp(+sf.right || 0, 0, 0.4), sb = clamp(+sf.bottom || 0, 0, 0.5), X0 = W * sl, FW = W * (1 - sl - sr);
-    const n = ids.length, ground = Math.round(H * Math.max(0.45, Math.min(W < H ? 0.8 : 0.76, 1 - sb - 0.03))), rows = FW < H * 0.95 && n > 4 ? 2 : 1;
-    const nf = rows === 2 ? Math.ceil(n / 2) : n, slotW = (FW * 0.9) / Math.max(1, nf);
-    const plants = ids.map((id, i) => {
-      const r = mulberry(hash('plant:' + id)), row = rows === 2 ? i % 2 : 0, j = rows === 2 ? i >> 1 : i;
+    // S8.1: each layer has its own lot, always the same (a building never moves when another one opens); the camera
+    // frames the lots that are built (cam.frame, cam.cx)
+    const N = LAYERS.length, ground = Math.round(H * Math.max(0.45, Math.min(W < H ? 0.8 : 0.76, 1 - sb - 0.03))), rows = FW < H * 0.95 ? 2 : 1;
+    const nf = rows === 2 ? Math.ceil(N / 2) : N, slotW = (FW * 0.9) / nf;
+    const plants = ids.map((id) => {
+      const i = LAYERS.indexOf(byLayer[id]), r = mulberry(hash('plant:' + id)), row = rows === 2 ? i % 2 : 0, j = rows === 2 ? i >> 1 : i;
       const lv = clamp(+((st.levels || {})[id]) || 0);
       const x = row ? X0 + FW * 0.05 + slotW * (j + 1) : X0 + FW * 0.05 + slotW * (j + 0.5);
       return {
@@ -954,7 +959,8 @@
 
     // ---- S8.1 the world: every dimension smoothed toward its aim, the impulses falling, the beat ----
     updateWorld(dt, now) {
-      const w = this.world, c = { get: this.getter(), L: this.sc, all: this.allAim || lookAll(() => undefined), plants: this.plants, dawn: this.dawnLevel(now), free: !!this.free, nature: this.nature || 0, sites: this.sites || 0 };
+      const w = this.world, c = { get: this.getter(), L: this.sc, all: this.allAim || lookAll(() => undefined), plants: this.plants, dawn: this.dawnLevel(now), free: !!this.free, nature: this.nature || 0, sites: this.sites || 0, frame: () => fr || (fr = this.framing()) };
+      let fr = null;
       for (const name in DIMS) {
         const D = DIMS[name]; let a = 0; try { a = +D.aim(c) || 0; } catch (e) {}
         const cur = getPath(w, name), kT = this.reduced || !D.tau || cur == null ? 1 : 1 - Math.exp(-dt / D.tau);
@@ -982,8 +988,24 @@
         set(g, d) { const k = this.k(d); g.setTransform(k, 0, 0, k, this.W / 2 * (1 - k) + this.pan * d * this.W + this.ox, this.gd * (1 - k) + this.oy); return k; },
       });
       cam.W = W; cam.H = H; cam.gd = gd; cam.px = this.px || 3; cam.ox = this.ox || 0; cam.oy = this.oy || 0;
-      cam.zoom = 1 - 0.16 * ((w.cam && w.cam.back) || 0); cam.pan = (w.cam && w.cam.x) || 0;
+      const wc = w.cam || {}, z = (wc.frame || 1) * (1 - 0.16 * (wc.back || 0));
+      cam.zoom = z; cam.pan = (wc.x || 0) - ((wc.cx == null ? 0.5 : wc.cx) - 0.5) * z;
       return cam;
+    },
+    // the framing the camera aims at: the built buildings (x span, the tallest) fill the street, never into the HUD;
+    // at most ×1.6 closer; {z, cx}
+    framing() {
+      const W = this.W || 1, H = this.H || 1, gd = this.ground || H * 0.76, px = this.px || 3, ps = this.plants.concat(this.rares);
+      if (!ps.length) return { z: 1, cx: 0.5 };
+      let x0 = Infinity, x1 = -Infinity, up = 1;
+      for (const p of ps) {
+        const rk = p.row ? ROW_K : 1, hw = 10 * px * rk, hc = p.rare ? 9 : (this.built[p.id] != null ? this.built[p.id] : this.wantOf(p)) + 7;
+        x0 = Math.min(x0, p.x - hw); x1 = Math.max(x1, p.x + hw); up = Math.max(up, gd - p.y + hc * px * rk);
+      }
+      const cx = (x0 + x1) / 2, span = Math.max(1, x1 - x0), room = gd - H * Math.max(this.ceil || 0.1, ...this.zones.map((zz) => zz.b));
+      const z = clamp(Math.min(W * 0.8 / span, room / up), 1, 1.6);
+      // a closer camera keeps the framed lots on screen; at ×1 the whole street is seen as it is
+      return { z, cx: z <= 1.001 ? 0.5 : clamp(cx / W, 0.5 / z, 1 - 0.5 / z) };
     },
     // where each building is on screen now (sx, sy = its foot, k = its scale, vis = its built height in sprite px, gy =
     // built share), from the construction and the camera
@@ -1197,11 +1219,12 @@
     },
     // an empty lot (layer switched off, or not built yet): a slab, a fence, a blinking amber lamp
     drawLot(g, p, s, now) {
-      const px = this.px, hw = Math.max(4 * px, Math.min(s.l, s.r));
-      g.fillStyle = rgb(TOK.wall, 1.6); g.fillRect(-hw, -px, 2 * hw, px);
-      g.fillStyle = rgb(p.col, 0.45, 0.8); for (let x = -hw; x <= hw; x += 2 * px) g.fillRect(x, -3 * px, Math.max(1, px >> 1), 2 * px);
-      g.fillRect(-hw, -3 * px, 2 * hw, Math.max(1, px >> 1));
-      if (this.reduced || Math.floor(this.st * 2) % 2) { g.fillStyle = rgb(TOK.amber, 1.1); g.fillRect(hw - px, -4 * px, px, px); }
+      const px = this.px, hw = Math.max(5 * px, Math.round(Math.min(s.l, s.r) / px) * px);
+      g.fillStyle = rgb(TOK.wall, 1.8); g.fillRect(-hw, -2 * px, 2 * hw, 2 * px); // the foundation slab
+      g.fillStyle = rgb(p.col, 0.5, 0.9); for (let x = -hw; x <= hw; x += 2 * px) g.fillRect(x, -5 * px, Math.max(1, px >> 1), 3 * px); // fence posts
+      for (let x = -hw, i = 0; x < hw; x += px, i++) { g.fillStyle = i % 2 ? rgb(TOK.amber, 0.9) : '#120a08'; g.fillRect(x, -5 * px, px, px); } // a hazard board
+      g.fillStyle = rgb(p.col, 0.35, 0.9); for (let y = 3; y < 9; y += 2) g.fillRect(-px, -(5 + y) * px, 2 * px, Math.max(1, px >> 1)); // the starter of a crane mast
+      if (this.reduced || Math.floor(this.st * 2) % 2) { g.fillStyle = rgb(TOK.amber, 1.2); g.fillRect(-hw, -6 * px, px, px); g.fillRect(hw - px, -6 * px, px, px); }
     },
 
     // ---- one frame (called by AMB.visual.draw while the mode is « Jardin ») ----
