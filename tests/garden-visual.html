@@ -20,6 +20,7 @@ window.addEventListener('load', async () => {
     const G = AMB.game, V = AMB.visual, GV = AMB.gardenVisual, cv = document.getElementById('c');
     V.c = cv; V.g = cv.getContext('2d'); V.dpr = 1;
     const frame = () => V.draw(), REAL = AMB.store;
+    GV.awake = true; // S9.3: the music has been heard (the empty start and the rules A / B are tested at the end)
 
     // --- mode policy (S6.7): the city (mode id « Jardin ») is the default in both modes, each mode keeps its own choice
     ok(V.mode === 'Jardin' && !V.MODES.includes('Jardin'), 'mode non choisi = libre : la Ville par défaut, liste classique intacte (Orbes, Horizon, Spectre)');
@@ -37,7 +38,7 @@ window.addEventListener('load', async () => {
     { const s0 = { nodes: G.s.nodes, ended: G.s.ended, secrets: G.s.secrets }; G.s.nodes = ['racine']; G.s.ended = true; G.s.secrets = { found: { tons: 1 } };
       V.mode = 'Jardin'; frame(); GV.refresh(cv.width, cv.height, true);
       const P0 = AMB.puzzles; AMB.puzzles = { view: () => ({ phase: 'listen' }), mark: () => 5 };
-      ok(GV.active && GV.free && GV.plants.length === GV.LAYERS.length && GV.plants.every((p) => p.level === 1) && !GV.rares.length && GV.dawnLevel(0) === 0 && GV.answer(0) === null && GV.drawMark(V.g, 12) === 0 && GV.cheer('tier') === false,
+      ok(GV.active && GV.free && GV.plants.length === GV.LAYERS.length && GV.plants.every((p) => p.level === 1) && GV.dawnLevel(0) === 0 && GV.answer(0) === null && GV.drawMark(V.g, 12) === 0 && GV.cheer('tier') === false,
         'libre en Ville : toutes les couches (' + GV.plants.length + '), pleine hauteur ; ni découverte, ni aube de fin, ni Réponse, ni palier, ni fête');
       AMB.puzzles = P0; Object.assign(G.s, s0); }
     try { localStorage.setItem('ambient.vizMode', 'Horizon'); } catch (e) {}
@@ -47,7 +48,7 @@ window.addEventListener('load', async () => {
     G.s.nodes = ['racine', 'h.pad', 'm.bells'];
     const before = { g: JSON.stringify(G.s), lg: localStorage.getItem(G.key) };
     let st = GV.readState();
-    ok(st.layers.join() === 'drone,pad,bells' && st.secrets.length === 0, 'une plante par couche débloquée : ' + st.layers.join(', '));
+    ok(st.layers.join() === 'drone,pad,bells', 'une plante par couche débloquée : ' + st.layers.join(', '));
     ok(JSON.stringify(G.s) === before.g, 'lecture seule de l\'état du jeu');
     const l1 = GV.layout(st, 1280, 800), l2 = GV.layout({ ...st, layers: st.layers.slice().reverse() }, 1280, 800);
     ok(JSON.stringify(l1) === JSON.stringify(l2) && JSON.stringify(l1) === JSON.stringify(GV.layout(GV.readState(), 1280, 800)), 'positions déterministes (même état → mêmes positions, ordre des données indifférent)');
@@ -61,8 +62,8 @@ window.addEventListener('load', async () => {
       const top = tall.y - GV.sprite({ ...tall, level: 1, spr: GV.wantOf({ ...tall, level: 1 }) }, GV.px).h; // S8.1: the tallest it may be built
       ok(top >= H * GV.ceil - GV.px, 'plafond : la plus haute plante (niveau 1) reste sous le HUD (haut ' + top + ' px ≥ ' + Math.round(H * GV.ceil) + ' px)');
       GV.sig = null; }
-    const a1 = GV.layout(st, 1280, 800), a2 = GV.layout({ ...st, secrets: ['tons'] }, 1280, 800);
-    ok(a1.rares.length === 2 && JSON.stringify(a1.plants) === JSON.stringify(a2.plants) && a1.rares.find((r) => r.id === 'secret:tons').x === a2.rares[0].x, 'plantes rares = secrets (2), un secret de plus ne déplace rien d\'autre');
+    const a1 = GV.layout(st, 1280, 800);
+    ok(!('rares' in a1) && a1.plants.every((p) => p.kind !== 'crystal'), 'S9.3 : les découvertes ne posent plus d\'hologramme dans la rue (elles sont des habitants)');
     const sB = GV.sprite(a1.plants.find((p) => p.id === 'bells'), 4), sD = GV.sprite(a1.plants.find((p) => p.id === 'drone'), 4);
     ok(sB.hC > sD.hC + 15, 'plante plus haute quand plus de nœuds de sa couche sont débloqués (' + sB.hC + ' vs ' + sD.hC + ' cellules)');
     const misses = GV.cacheMisses; GV.sprite(a1.plants.find((p) => p.id === 'bells'), 4);
@@ -72,7 +73,7 @@ window.addEventListener('load', async () => {
     const emitted = []; const be = AMB.bus.emit.bind(AMB.bus);
     AMB.bus.emit = (e, d) => { emitted.push(e); return be(e, d); };
     let earns = 0; const ge = G.earn; G.earn = (...x) => { earns++; return ge.apply(G, x); };
-    AMB.store = { set: () => { earns += 100; }, setMany: () => { earns += 100; } };
+    AMB.store = { set: () => { earns += 100; }, setMany: () => { earns += 100; }, get: (k) => (/\.on$/.test(k) ? true : undefined) }; // (every layer on: S9.3 builds only what is active)
     GV.sig = null; frame(); frame();
     ok(GV.active && GV.plants.length === 8, 'Jardin actif, 8 plantes dessinées');
     const p0 = GV.parts.length;
@@ -241,6 +242,7 @@ window.addEventListener('load', async () => {
     { const realClock = GV.clock, realNow = GV.now; let T = 100, fake = performance.now(); GV.clock = () => T; GV.now = () => fake;
       const step = (n = 1, ms = 16) => { for (let i = 0; i < n; i++) { T += ms / 1000; fake += ms; frame(); } };
       const reset = () => { GV.waves.length = 0; GV.parts.length = 0; GV.band = {}; GV.grow = {}; GV.zap = {}; GV.shake = null; };
+      AMB.store.setMany({ 'seq.on': true, 'bass.on': true, 'perc.on': true }, 'preset'); // S9.3: a splash is seen on what stands (active)
       G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.rythme', 'e.texture']; GV.grow = {}; GV.sig = null; step(3); reset();
       const P = (id) => GV.plants.find((p) => p.id === id);
       ok(typeof GV.JUICE === 'number' && GV.SPLASH.player.parts > GV.SPLASH.machine.parts * 3 && GV.SPLASH.player.ring > GV.SPLASH.machine.ring * 2, 'une seule constante JUICE (' + GV.JUICE + ') ; table SPLASH : la machine plus discrète que le joueur');
@@ -332,6 +334,7 @@ window.addEventListener('load', async () => {
         const b0 = lumSky(); St.set('global.key', 'F', 'user'); step(1); const b1 = lumSky();
         ok(b1 > b0 * 1.15, 'l\'impulsion se voit : ciel plus lumineux d\'un coup en changeant de tonalité (' + (b1 / b0).toFixed(2) + ' ×)'); }
       // each layer draws, distinctly; they add up (the scene alone, everything at 0, then one layer at 1, then all)
+      G.s.nodes = ['racine', 'h.pad', 'm.bells', 'm.grains', 'c.seq', 'c.rythme', 'e.texture', 'e.reverb', 'e.echo']; St.setMany({ 'fx.echo': 0.5, 'seq.on': true, 'bass.on': true, 'perc.on': true }, 'preset'); // (S9.3: aurora = Reverb, echo = Écho)
       cv.width = 640; cv.height = 400; GV.sig = null; // smaller canvas: quicker reads
       const hash = () => { const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let h = 0; for (let i = 0; i < d.length; i += 4) h = (Math.imul(h, 31) + d[i] + 3 * d[i + 1] + 7 * d[i + 2]) | 0; return h; };
       const upd = GV.updateScene, names = Object.keys(GV.SCENE), fixed = (o) => { GV.updateScene = function () { this.sc = { ...o }; this.kick = {}; }; };
