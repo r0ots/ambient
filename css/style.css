@@ -303,7 +303,7 @@ select option, select optgroup { background: var(--bg); color: var(--text); font
 .chip { border-radius: var(--radius-btn); background: color-mix(in srgb, var(--bg) 80%, transparent); border: 1.5px solid var(--line-hi); color: var(--text); font: 600 12px var(--f); letter-spacing: .08em; padding: 6px 11px; }
 /* a switch (Sculpter / Composer): a neon tab, underlined in light */
 .modes { border: 1.5px solid var(--line-hi); border-radius: var(--radius-btn); }
-.mode-btn { background: transparent; color: var(--muted); font: 600 13px var(--f); letter-spacing: .14em; text-transform: uppercase; }
+.mode-btn { background: transparent; color: var(--muted); font: 600 13px var(--f); letter-spacing: .1em; text-transform: uppercase; padding-inline: 12px; }
 .mode-btn + .mode-btn { border-left: 0; }
 .mode-btn.on { --c: var(--cyan); color: #fff; font-weight: 700; background: color-mix(in srgb, var(--c) 10%, transparent); box-shadow: inset 0 -3px 0 var(--c); text-shadow: 0 0 8px var(--c); }
 .menu { background: color-mix(in srgb, var(--bg) 96%, transparent); border: 1.5px solid var(--line-hi); border-radius: var(--radius); box-shadow: 0 0 24px #22e6ff26, 0 16px 40px #000c; }
@@ -491,7 +491,7 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .fx-pop { --k: var(--magenta); position: absolute; translate: -50% -50%; font: 700 1em/1 var(--f); letter-spacing: .3em; padding-left: .3em; white-space: nowrap; color: #fff;
   text-shadow: 0 0 .1em #fff, 0 0 .25em var(--k), 0 0 .7em var(--k), 0 0 1.4em var(--k); display: grid; justify-items: center; gap: .25em; }
 .fx-pop .fx-word { position: relative; display: block; }
-.fx-pop .fx-word i { font-style: normal; display: inline-block; opacity: 0; animation: fx-letter calc(var(--m-med) + 60ms) steps(1, end) forwards; animation-delay: calc(var(--d) * (var(--m-stagger) + 10ms)); }
+.fx-pop .fx-word i { font-style: normal; white-space: pre; display: inline-block; opacity: 0; animation: fx-letter calc(var(--m-med) + 60ms) steps(1, end) forwards; animation-delay: calc(var(--d) * (var(--m-stagger) + 10ms)); }
 .fx-pop .fx-word::after { content: ""; position: absolute; top: 50%; left: 0; width: .3em; height: .3em; margin: -.15em 0 0 -.15em; border-radius: 50%; background: #fff; box-shadow: 0 0 .3em #fff, 0 0 .8em var(--k);
   opacity: 0; animation: fx-head calc(var(--n) * (var(--m-stagger) + 10ms) + 40ms) linear forwards; }
 .fx-pop.fx-out { animation: fx-out var(--m-slow) steps(1, end) forwards; }
@@ -533,7 +533,7 @@ body.jargon-off #chordName, body.jargon-off #hudInfo { visibility: hidden; } /* 
 .tree-legend em { font-style: normal; }
 .tree-legend .lg-short { display: none; }
 .tree-legend i { display: inline-block; flex: none; width: 14px; height: 12px; clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); background: var(--line-hi); }
-.tree-legend i.st-owned { background: linear-gradient(90deg, var(--cyan) 0 34%, var(--magenta) 0 67%, var(--green) 0); }
+.tree-legend i.st-owned { background: conic-gradient(var(--cyan) 0 20%, var(--magenta) 0 40%, var(--green) 0 60%, var(--amber) 0 80%, #8a5cff 0); } /* (a hex of the 5 branch colours) */
 .tree-legend i.st-ready { background: var(--amber); }
 .tree-legend i.st-available { background: color-mix(in srgb, var(--amber) 45%, var(--bg)); }
 .tree-legend i.st-locked { clip-path: none; width: 20px; height: 0; background: none; border-top: 2px dashed #5d4a85; }
@@ -1226,7 +1226,6 @@ html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 .app > .top { grid-area: top; background: linear-gradient(180deg, #07040fee, #07040fb3); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid #ff2bd655; border-radius: 6px; box-shadow: 0 1px 18px #ff2bd633, 0 8px 28px #0009; padding: 8px 14px; gap: 8px 16px; align-items: center; }
 .brand p { display: none; }
-.brand .logo { width: 30px; height: 30px; }
 .lcd { box-shadow: inset 0 0 18px #ff8a0022, 0 0 18px #000a; }
 /* Écouter: the five knobs and the layer chips, one glass console at the bottom centre */
 .app > .macros { grid-area: macros; justify-self: center; width: min(100%, 880px); margin: 0; }
@@ -1261,7 +1260,9 @@ body.game:not(.playing):not(.coined) .coin { inset: var(--free-t) var(--free-r) 
 body.listen .app { padding: 0; }
 body.listen .app > .stage { height: auto; }
 /* below a wide screen: no group captions; the logo (smaller) heads the bar's first row, then the LCD */
-@media (max-width: 1239px) { .transport .tgrp > small { display: none; } .logo { font-size: 22px; } }
+/* (S9.2: no group captions — Header.dc.html: the tubes say what they are) */
+.transport .tgrp > small { display: none; }
+@media (max-width: 1239px) { .logo { font-size: 22px; } }
 /* (tablet, phone on its side) two fixed rows: logo · LCD · play · rec · tree · ⋯ / landscape · modes */
 @media (min-width: 561px) and (max-width: 1239px) {
   .app > .top { display: grid; grid-template-columns: auto minmax(0, 1fr) repeat(5, auto); align-items: center;
@@ -1357,8 +1358,9 @@ body.listen .app > .stage { height: auto; }
 
 /* the bar (Header.dc.html): Chakra Petch tubes, 44 px high; ▶ LECTURE lit in magenta; the Arbre's count in phosphor */
 .top .btn, .top summary.btn, .top .nsel-btn, .top .mode-btn { min-height: 44px; }
-.top .btn, .top summary.btn { text-transform: uppercase; letter-spacing: .12em; }
+.top .btn, .top summary.btn { text-transform: uppercase; letter-spacing: .1em; }
 .tree-btn { --c: var(--green); }
+.top > .lcd { flex: 1 1 300px; max-width: 460px; } /* (one row when it fits: the LCD gives way first) */
 .modes { min-height: 44px; }
 .menu .btn { text-transform: none; letter-spacing: .06em; min-height: 40px; }
 /* the logo: a Monoton tube that crackles as it switches on (once; still in reduced motion / JUICE 0) */

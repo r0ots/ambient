@@ -541,7 +541,7 @@
       const p = document.createElement('div'); p.className = 'fx-pop'; p.setAttribute('role', 'status');
       if (this.SIGN_COL[kind]) p.style.setProperty('--k', this.SIGN_COL[kind]);
       const w = document.createElement('b'); w.className = 'fx-word'; const ch = [...word];
-      ch.forEach((c, i) => { const e = document.createElement('i'); e.textContent = c === ' ' ? '\u00a0' : c; e.style.setProperty('--d', i); w.append(e); });
+      ch.forEach((c, i) => { const e = document.createElement('i'); e.textContent = c; e.style.setProperty('--d', i); w.append(e); });
       w.style.setProperty('--n', ch.length); w.setAttribute('aria-label', word); p.append(w);
       p.style.fontSize = `min(${Math.round((20 + rank * 4) * k)}px, ${(7.5 * k).toFixed(1)}vw)`;
       const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height * 0.42);

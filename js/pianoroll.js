@@ -512,7 +512,7 @@
         // rows that are tones of the chord playing now (relative to the motif when following chords)
         if (chordPcs.has(((T.degreeToMidi(r + (store.get('seq.follow') ? seq.chordDeg : 0), seq.root, seq.scale, 3)) % 12 + 12) % 12)) {
           g.fillStyle = 'rgba(242,162,58,0.08)'; g.fillRect(G.labelW, y, G.w - G.labelW, G.rowH);
-          g.fillStyle = '#f2a23a'; g.fillRect(G.labelW - 3, y + 4, 2, G.rowH - 8);
+          g.fillStyle = '#ffb347'; g.fillRect(G.labelW - 3, y + 4, 2, G.rowH - 8);
         }
         const midi = T.degreeToMidi(r, seq.root, seq.scale, 3);
         g.fillStyle = isRoot ? '#ffcf7a' : '#8a7f66';
