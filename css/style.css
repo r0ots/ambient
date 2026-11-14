@@ -1362,3 +1362,6 @@ body.listen .app > .stage { height: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .drawer { animation: none !important; } }
 
+
+/* S8.8: a short window (phone on its side) keeps the city for the city: no keyboard hint over it */
+@media (max-height: 520px) { .stage .hint { display: none; } }
