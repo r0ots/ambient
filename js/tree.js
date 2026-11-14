@@ -19,7 +19,7 @@
     // Tronc — the starting point and the tools to keep / share a sound
     N('racine', 'tronc', 'Allumage', [], ['drone.on', 'drone.vol', 'drone.tone', 'global.volume'], ['play'], 'Une note tenue et sa lumière : la machine s\'allume. Tout part de là.'),
     // S11.1: the player's own notes are a piece of their own, after the Mélodie auto (the machine starts with the drone alone)
-    N('k.piano', 'tronc', 'Piano', ['m.bells'], [], ['keys', 'midi'], 'Tes propres notes : les touches à l\'écran, les lettres A–L et ton clavier MIDI.'),
+    N('k.piano', 'tronc', 'Piano', ['m.bells'], [], ['keys', 'midi'], 'Tes propres notes, sur des touches de couleur.'),
     N('t.son', 'tronc', 'Timbre du drone', ['racine'], ['drone.wave', 'drone.motion'], [], 'Choisir le son du drone et le faire respirer.'),
     N('t.viz', 'tronc', 'Écran', ['racine'], [], ['listen'], 'Passer en plein écran : juste regarder la ville et écouter.'),
     N('t.journal', 'tronc', 'Journal', ['t.son'], [], ['journal', 'save'], 'Revenir à un moment passé, garder un paysage.'),
@@ -66,7 +66,7 @@
   // S4.6 — what opening a node gives, in plain words for a child who is not a musician (the « ✦ Ouvrir » card, garden.js):
   // one or two sentences, the words of the lexicon (ARCHITECTURE.md). The only table of these texts.
   const EXPLAIN = {
-    'k.piano': 'Tu joues tes propres notes : des touches de couleur sous l\'écran, les lettres A à L ou ton clavier MIDI.',
+    'k.piano': 'Tu joues tes propres notes : des touches de couleur sous l\'écran{, les lettres A à L ou ton clavier MIDI|}.',
     't.son': 'Le drone change de voix : plus doux, plus rond ou plus pointu, et il peut respirer lentement. À régler dans Sculpter, Drone.',
     't.viz': 'Tu peux passer en plein écran pour juste regarder la ville et écouter.',
     't.journal': 'L\'instrument se souvient de ce que tu as entendu : ♥ garde un moment, et tu peux revenir à un moment passé.',

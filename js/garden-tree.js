@@ -351,7 +351,7 @@
       // S6.7: while nodes wait on « ✦ Ouvrir » no challenge runs (contracts.refill): its card says so, not a challenge
       // that cannot come yet
       const wait = g.path && !g.s.ended ? (g.s.ready || []).filter((r) => g.canOpen(r.id)).length : 0;
-      const opTxt = (wait && ops.some((o) => o.d) ? [`Ouvre d'abord ce qui est prêt (${wait})`] : []).concat(ops.filter((o) => !(wait && o.d)).map((o) => o.objs ? o.objs.map((d) => `${K.done(d.id) ? '☑' : '☐'} ${this.objText(d).slice(2)}`).join('<br>') : o.text));
+      const opTxt = (wait && ops.some((o) => o.d || o.objs) ? [`Ouvre d'abord ce qui est prêt (${wait})`] : []).concat(ops.filter((o) => !(wait && (o.d || o.objs))).map((o) => o.objs ? o.objs.map((d) => `${K.done(d.id) ? '☑' : '☐'} ${this.objText(d).slice(2)}`).join('<br>') : o.text));
       box.style.setProperty('--c', st === 'ready' ? 'var(--amber)' : br.color);
       const fresh = box.hidden || box.dataset.id !== id; // S7.3: a new card slides in (the same one repainted does not)
       box.dataset.id = id; box.className = `tree-info st-${st}`;

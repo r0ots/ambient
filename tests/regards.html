@@ -34,28 +34,28 @@ f.addEventListener('load', async () => {
     ok(D.byId.iv.need.includes('h.key') && /orange.*violettes/.test(K.byId['m.descend'].hint) && !/droite à gauche/.test(K.byId['m.descend'].hint), 'S5.7 : « Force l\'accord IV » après Tonalité ; les notes qui descendent : « ' + G.txt(K.byId['m.descend'].hint) + ' »');
 
     // --- 6. the score line waits for a first series
-    G.s.resp = { lvl: 0, len: 3, streak: 0, best: 0, miss: {} }; G.s.nodes = ['racine', 'm.bells']; Gd.renderScore();
-    const h0 = d.getElementById('lcdScore').hidden; G.s.resp.best = 1; G.s.resp.streak = 1; Gd.renderScore();
-    ok(h0 && !d.getElementById('lcdScore').hidden, 'S5.7 : « ↺ PHRASES · SÉRIE 0 · RECORD 0 » caché, montré dès un record de 1');
+    G.s.resp = { lvl: 0, len: 3, streak: 0, best: 0, miss: {} }; G.s.nodes = ['racine', 'm.bells', 'k.piano']; Gd.renderScore();
+    const sc = d.querySelector('#goals .gw-score'), h0 = sc.hidden; G.s.resp.best = 1; G.s.resp.streak = 1; Gd.renderScore();
+    ok(h0 && !sc.hidden, 'S5.7 : « ↺ PHRASES · SÉRIE 0 · RECORD 0 » caché, montré dès un record de 1');
     G.reset(); await wait(30);
 
     // --- 7. at 19 nodes the bar grows: the pads stay in sight (they stick to the bottom of the window)
-    ['m.bells', 'h.pad', 't.son', 't.viz', 't.journal', 't.rec', 't.share', 'h.key', 'h.drone', 'h.pad2', 'e.reverb', 'e.salle', 'e.echo', 'm.tempo', 'm.phrase', 't.macros', 't.dice', 'm.grains'].forEach((i) => G.unlock(i));
+    ['m.bells', 'k.piano', 'h.pad', 't.son', 't.viz', 't.journal', 't.rec', 't.share', 'h.key', 'h.drone', 'h.pad2', 'e.reverb', 'e.salle', 'e.echo', 'm.tempo', 'm.phrase', 't.macros', 't.dice', 'm.grains'].forEach((i) => G.unlock(i));
     for (let t = 0; t < 60 && Gd.seq; t++) await wait(40); Gd.showTree(false); A.perform.setMode('sculpt'); w.scrollTo(0, 0); await wait(80);
     const pr = d.getElementById('pads').getBoundingClientRect();
     const hit = d.elementFromPoint(pr.left + pr.width / 2, pr.top + pr.height / 4); // S8.3: the pads float over the city, at the bottom of the window
-    ok(G.s.nodes.length === 19 && !!hit && !!hit.closest('#pads') && pr.height >= 44 && pr.top < w.innerHeight - 44 && pr.bottom <= w.innerHeight + 8, // (a party's hop may lift them a few px)
-        'S5.7 : 19 nœuds à 390 px, les touches restent visibles (' + Math.round(pr.top) + '–' + Math.round(pr.bottom) + ' / ' + w.innerHeight + ')');
+    ok(G.s.nodes.length === 20 && !!hit && !!hit.closest('#pads') && pr.height >= 44 && pr.top < w.innerHeight - 44 && pr.bottom <= w.innerHeight + 8, // (a party's hop may lift them a few px)
+        'S5.7 : 20 nœuds à 390 px, les touches restent visibles (' + Math.round(pr.top) + '–' + Math.round(pr.bottom) + ' / ' + w.innerHeight + ')');
 
     // --- 1. an ask only when the LCD is seen (an opening scrolls to what it opened)
     // S6.7: the rule stays (an ask waits for a visible LCD); S8.3: the LCD never leaves the window: the page does not scroll, the panels scroll inside their drawer
-    { A.perform.setMode('sculpt'); await wait(200); const lcd = d.getElementById('lcd'), dr = d.querySelector('.drawer'), y0 = lcd.getBoundingClientRect().top;
+    { A.perform.setMode('sculpt'); await wait(200); const lcd = d.getElementById('goals'), dr = d.querySelector('.drawer'), y0 = lcd.getBoundingClientRect().top;
       w.scrollTo(0, 3000); dr.scrollTop = 1e5; await wait(60); const r = lcd.getBoundingClientRect(), seen = D.seen(), y1 = r.top;
       ok(w.scrollY === 0 && dr.scrollTop > 0 && seen && Math.abs(y1 - y0) < 2 && r.bottom <= w.innerHeight && r.width > 300,
-        'S8.3 : panneaux défilés dans le tiroir (' + Math.round(dr.scrollTop) + ' px), page immobile, LCD en vue à sa place (' + Math.round(y0) + ' → ' + Math.round(y1) + ' px, ' + Math.round(r.width) + ' px de large, seen ' + seen + ')');
+        'S8.3 : panneaux défilés dans le tiroir (' + Math.round(dr.scrollTop) + ' px), page immobile, widget Objectifs en vue à sa place (' + Math.round(y0) + ' → ' + Math.round(y1) + ' px, ' + Math.round(r.width) + ' px de large, seen ' + seen + ')');
       dr.scrollTop = 0;
       lcd.style.display = 'none'; const hid = D.seen(); lcd.style.display = '';
-      ok(!hid, 'la règle reste : un LCD invisible → aucune demande'); }
+      ok(!hid, 'la règle reste : un widget Objectifs invisible → aucune demande'); }
     A.perform.setMode('sculpt');
 
     // --- 2. the countdown: « prêt ? », 3, 2, 1, « MAINTENANT ! » on the 1 (never « sur le 1 » in the texts)
@@ -96,9 +96,9 @@ f.addEventListener('load', async () => {
       ok(/trop aiguë/.test(toast.textContent), 'S5.7 Rec live : une note trop aiguë pour le piano roll, écrite une octave plus bas, est signalée (« ' + toast.textContent.slice(0, 60) + '… »)');
       roll.recording = false; S.playing = st.p; roll.save([]); G.setMode('path'); Gd.welcome(false); await wait(30); }
 
-    // --- 18. a long LCD title is never cut
-    { Gd.lcd('✦ Découverte : Entre les touches', 5000); await wait(400); const top = d.getElementById('lcdTop'), lcd = d.getElementById('lcd');
-      ok(top.textContent === '✦ DÉCOUVERTE : ENTRE LES TOUCHES' && top.scrollWidth <= lcd.clientWidth, 'S5.7 LCD : « ' + top.textContent + ' » en entier (' + top.scrollWidth + ' ≤ ' + lcd.clientWidth + ' px, ' + top.style.fontSize + ')');
+    // --- 18. a long message on the widget is never cut (S11.1: the widget's head, two lines at most)
+    { Gd.lcd('✦ Découverte : Entre les touches', 5000); await wait(400); const top = d.querySelector('#goals .gw-line');
+      ok(top.textContent === '✦ Découverte : Entre les touches' && top.scrollHeight <= top.clientHeight + 1 && top.scrollWidth <= top.clientWidth + 1, 'S5.7 → S11.1 widget : « ' + top.textContent + ' » en entier (' + top.scrollHeight + ' ≤ ' + top.clientHeight + ' px)');
       A.lcdMsg = null; }
 
     // --- 19. a party never over a window: it waits for it to close
@@ -106,31 +106,28 @@ f.addEventListener('load', async () => {
       const during = C.n; Gd.showTree(false); await wait(350);
       ok(during === 0 && C.n > 0, 'S5.7 : fête pendant que l\'Arbre est ouvert → rien par-dessus (' + during + '), elle part à la fermeture (' + C.n + ' confettis)'); C.clear(); }
 
-    // --- 12. « ✦ Tout ouvrir (n) » when more than 3 wait: one after another, no map, no scrolling
-    { G.reset(); await wait(30); w.scrollTo(0, 0); const q = ['m.bells', 'h.pad', 't.son', 'e.reverb', 't.viz']; q.forEach((i) => G.ready(i)); await wait(30);
-      Gd.ask('m.bells'); const all = d.querySelector('#openDlg .open-all'), more = d.querySelector('#openDlg .open-more').textContent;
-      ok(!all.hidden && /\(5\)/.test(all.textContent) && /^Ensuite : .+, .+, .+ et 1 autre\.$/.test(more), 'S5.7 : file de 5 → « ' + all.textContent + ' » ; « ' + more + ' »');
-      all.click(); const y0 = w.scrollY; let mapSeen = false;
-      for (let t = 0; t < 60 && q.some((i) => !G.has(i)); t++) { await wait(50); if (!d.getElementById('treeDlg').hidden) mapSeen = true; }
-      ok(q.every((i) => G.has(i)) && !mapSeen && w.scrollY === y0 && !G.s.ready.length && d.getElementById('openDlg').hidden, 'tout s\'ouvre à la suite, sans carte ni défilement (LCD gardé en vue)');
-      Gd.ask(null); }
+    // --- 12. S11.1 no « ✦ Tout ouvrir » nor its card: a queue of 5 says the first and how many more; each opens in the Arbre
+    { G.reset(); await wait(30); w.scrollTo(0, 0); const q = ['m.bells', 'h.pad', 't.son', 'e.reverb', 't.viz']; q.forEach((i) => G.ready(i)); Gd.renderContracts(); await wait(30);
+      const rb = d.querySelector('#goals .gw-ready');
+      ok(!d.getElementById('openDlg') && !Gd.ask && !Gd.openAll && rb.textContent === '✦ Mélodie auto est prêt : ouvre-le dans l\'Arbre (+4)', 'S11.1 : file de 5 → « ' + rb.textContent + ' », ni carte ni « Tout ouvrir »');
+      G.reset(); await wait(30); }
 
     // --- 15. the notebook's hints say what is judged
     { const S = A.discoveries.byId;
       ok(/fort.*presque rien.*fort/i.test(S.velo.hint) && !/tout en haut/.test(S.velo.hint) && /molette/.test(S.chroma.hint2) && !/se laissent descendre/.test(S.chroma.hint) && !/Une main qui se promène/.test(S.cinq.hint), 'S5.7 carnet : Funambule = fort / doux / fort, Entre les touches = 6 demi-tons (pas la molette), Petite phrase moins évidente'); }
 
     // ===== S6.7a (a child of 9 on a 390 px phone, a musician at his desk) =====
-    { G.reset(); await wait(30); Gd.showTree(false); A.perform.setMode('sculpt'); w.scrollTo(0, 0); await wait(50);
+    { G.reset(); G.unlock('m.bells'); G.unlock('k.piano'); for (let t = 0; t < 60 && Gd.seq; t++) await wait(40); Gd.showTree(false); A.perform.setMode('sculpt'); w.scrollTo(0, 0); await wait(50);
       const rect = (s) => d.querySelector(s).getBoundingClientRect(), padTop = () => Math.round(rect('#pads').top);
       // a celebration's quake (fx-quake, a transient translate of .app's children) may still be playing on a loaded machine:
       // the layout is what must not move, so wait for the quakes to end before measuring
       const calm = async () => { for (let i = 0; i < 40 && d.getAnimations().some((a) => /fx-quake|fx-shake/.test(a.animationName || '')); i++) await wait(50); };
-      // 7. the Rec appearing and the challenge's help on the LCD never move the pads
+      // 7. the Rec appearing and an objective's help in the widget (unfolded over the city) never move the pads
       await calm(); const p0 = padTop(); G.unlock('t.rec'); for (let t = 0; t < 60 && Gd.seq; t++) await wait(40); Gd.showTree(false); w.scrollTo(0, 0); await wait(80);
       await calm(); const p1 = padTop(), recIn = css('.tgrp:has(#rec)', 'display') !== 'none';
-      d.querySelector('#lcdTask .lcd-task-txt').click(); await wait(30); await calm(); const help = d.getElementById('lcdTask').classList.contains('help'), p2 = padTop();
-      d.querySelector('#lcdTask .lcd-task-txt').click(); await wait(30);
-      ok(recIn && help && p0 === p1 && p1 === p2, 'S6.7 : l\'arrivée de ● Rec et l\'aide du défi sur le LCD ne bougent pas les pastilles (' + [p0, p1, p2].join(' → ') + ' px)');
+      Gd.toggleGoals(true); await wait(30); const gt = d.querySelector('#goals .gw-obj .gw-txt'); gt.click(); await wait(30); await calm(); const help = gt.closest('.gw-obj').classList.contains('help'), p2 = padTop();
+      gt.click(); Gd.toggleGoals(!Gd.compact()); await wait(30);
+      ok(recIn && help && p0 === p1 && p1 === p2, 'S6.7 : l\'arrivée de ● Rec et l\'aide d\'un objectif dans le widget ne bougent pas les pastilles (' + [p0, p1, p2].join(' → ') + ' px)');
       // 2 + 6. the end of the path at 390 px: a compact bar, the city and the pads together in the window, no chord / tempo over the city
       for (let k = 0; k < 40; k++) T.NODES.forEach((n) => { if (T.status(n.id) === 'available') G.unlock(n.id); });
       for (let t = 0; t < 80 && Gd.seq; t++) await wait(40); Gd.showTree(false); A.tree.release && A.tree.release(); Gd.checkEnd(); Gd.renderContracts(); w.scrollTo(0, 0); await wait(120);
@@ -152,7 +149,7 @@ f.addEventListener('load', async () => {
     { G.reset(); await wait(30); G.ready('m.bells'); await wait(30); Gd.showTree(true); Gd.select('h.pad'); await wait(30);
       const t = d.querySelector('#treeDlg .tree-info').textContent; Gd.showTree(false);
       G.reset(); await wait(30); Gd.showTree(true); Gd.select('h.pad'); await wait(30); const t2 = d.querySelector('#treeDlg .tree-info').textContent; Gd.showTree(false);
-      ok(/Pour l'ouvrir : Ouvre d'abord ce qui est prêt \(1\)/.test(t) && !/Joue 6 notes/.test(t) && /Pour l'ouvrir : ◇ Joue 6 notes/.test(t2), 'S6.7 fiche de l\'Arbre : un nœud prêt → « Ouvre d\'abord ce qui est prêt (1) » ; sinon le défi (« ' + t2.replace(/.*Pour l'ouvrir : /, '').slice(0, 40) + ' »)'); }
+      const t1 = G.txt(K.forNode('h.pad')[0].title); ok(/Pour l'ouvrir :\s?Ouvre d'abord ce qui est prêt \(1\)/.test(t) && !t.includes(t1) && t2.includes('☐ ' + t1), 'S6.7 fiche de l\'Arbre : un nœud prêt → « Ouvre d\'abord ce qui est prêt (1) » ; sinon le défi (« ' + t2.replace(/.*Pour l'ouvrir :\s?/, '').slice(0, 40) + ' »)'); }
 
     // 1. « Enregistre ton morceau » with the bar's ● Rec: the take ends the path (kept for the finale, no download)
     { G.reset(); await wait(30); Gd.END_MS = 30000; // (the finale itself is tested by gameui-end)
