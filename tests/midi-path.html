@@ -114,13 +114,16 @@ f.addEventListener('load', async () => {
     const kh = A.play.held; d.dispatchEvent(new w.KeyboardEvent('keyup', { code: 'KeyA', bubbles: true }));
     ok(kh === 1 && A.play.held === 0 && offs.length === 1, 'clavier d\'ordinateur : touche enfoncée = note tenue, relâchée = fin');
 
-    // --- the path: S5.7 MIDI notes play from the Graine (its challenge is « Joue une note »), chords with the Pad
+    // --- the path: S11.1 MIDI notes wait for the Piano piece (CC still reach the drone); chords with the Pad
     reset(); A.game.setMode('path'); A.game.reset(); await wait(20);
     kb.on(67, 64); kb.off(67); kb.on(40, 90);
-    ok(app.notes.length === 1 && app.notes[0][0] === 67 && app.live.length === 1 && !app.chords.length && !d.getElementById('midi').closest('.is-locked') && A.game.isReady('m.bells'), 'S5.7 Parcours, à la Graine : le clavier MIDI joue (sa note réussit le premier défi), pas d\'accord sans le Pad, bouton visible');
+    ok(!app.notes.length && !app.live.length && !app.chords.length && d.getElementById('midi').closest('.is-locked') && !A.game.isReady('m.bells'), 'S11.1 Parcours, machine endormie : les notes MIDI muettes, ne comptent pas ; bouton MIDI avec le Piano');
     A.game.unlock('m.bells'); await wait(20); reset();
+    kb.on(67, 64); kb.off(67);
+    ok(!app.notes.length && !app.live.length, 'Mélodie ouverte, pas encore le Piano : toujours muettes');
+    A.game.unlock('k.piano'); await wait(20); reset();
     kb.on(67, 64); kb.off(67); kb.on(40, 90);
-    ok(app.notes.length === 1 && app.notes[0][0] === 67 && app.live.length === 1 && !app.chords.length, 'Parcours, Mélodie ouverte : le clavier MIDI joue toujours (accords avec le Pad)');
+    ok(app.notes.length === 1 && app.notes[0][0] === 67 && app.live.length === 1 && !app.chords.length && !d.getElementById('midi').closest('.is-locked'), 'Piano ouvert : le clavier MIDI joue (accords avec le Pad), bouton visible');
     A.game.unlock('h.pad'); kb.on(40, 90); kb.off(40); await wait(60); ok(app.chords.length === 1, 'Pad ouvert : notes graves → accords');
     // S4.1: stopped, a MIDI note sounds in the path too; S4.2: a Réponse waiting for its answer takes MIDI at any octave
     A.ui.stop(); hush(); await wait(20); reset(); kb.on(67, 100); const pk = await peak(250); kb.off(67);
