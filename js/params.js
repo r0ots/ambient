@@ -39,7 +39,8 @@
       color: '#22c6ff',
       params: {
         on: { label: 'On', type: 'toggle', def: true },
-        wave: { label: 'Timbre', hint: 'Timbre de la note tenue de fond.', type: 'select', options: ['Chaud', 'Creux', 'Orgue', 'Sub', 'Abîmé'], def: 'Chaud' },
+        wave: { label: 'Timbre', hint: 'Timbre de la note tenue de fond.', type: 'select', options: ['Chaud', 'Creux', 'Orgue', 'Sub', 'Abîmé', 'Néon', 'Pulsar', 'Reese', 'Vent', 'Voix', 'Anneau', 'Spectre'], def: 'Chaud',
+          optHints: { 'Chaud': 'Scies chaudes et rondes.', 'Creux': 'Carré creux, un peu boisé.', 'Orgue': 'Orgue pur, sinus empilés.', 'Sub': 'Grave profond, presque sans timbre.', 'Abîmé': 'Saturé et numérique, cassé.', 'Néon': 'Mur de scies désaccordées (Juno).', 'Pulsar': 'Impulsion dont la largeur respire.', 'Reese': 'Deux scies graves qui grondent.', 'Vent': 'Vent qui siffle entre les tours.', 'Voix': 'Une voix tient une voyelle qui change.', 'Anneau': 'Modulation en anneau : métal qui bat.', 'Spectre': 'Halo de cloche FM qui tourne.' } },
         vol: { label: 'Niveau', hint: 'Le volume de ce son seul.', min: 0, max: 1, def: 0.5 },
         tone: { label: 'Lumière', hint: 'Son sombre et doux à gauche, clair et brillant à droite.', min: 0, max: 1, def: 0.35, evolve: true },
         motion: { label: 'Mouvement', hint: 'Lent mouvement du filtre, du volume et de la position stéréo.', min: 0, max: 1, def: 0.4, evolve: true },
@@ -52,7 +53,8 @@
       color: '#8a5cff',
       params: {
         on: { label: 'On', type: 'toggle', def: true },
-        wave: { label: 'Timbre', hint: 'Timbre des accords tenus.', type: 'select', options: ['Nappe', 'Verre', 'Chœur', 'Cordes', 'Onde', 'FM', 'Cuivres', 'Cendre'], def: 'Nappe' },
+        wave: { label: 'Timbre', hint: 'Timbre des accords tenus.', type: 'select', options: ['Nappe', 'Verre', 'Chœur', 'Cordes', 'Onde', 'FM', 'Cuivres', 'Cendre', 'Juno', 'Vangelis', 'Brume', 'Strobe'], def: 'Nappe',
+          optHints: { 'Nappe': 'Scies douces désaccordées.', 'Verre': 'Sinus clairs, verre soufflé.', 'Chœur': 'Chœur lointain qui chante « a ».', 'Cordes': 'Ensemble de cordes avec vibrato.', 'Onde': 'Table d\'ondes qui se transforme.', 'FM': 'FM douce qui respire.', 'Cuivres': 'Cuivres sombres qui s\'ouvrent.', 'Cendre': 'S\'use et se désagrège en tenant.', 'Juno': 'Impulsion qui respire (PWM), années 80.', 'Vangelis': 'Cuivres-cordes CS-80 de Blade Runner.', 'Brume': 'Souffle accordé, brouillard.', 'Strobe': 'Accord haché en doubles croches.', 'Aube': 'Lever de soleil (découverte).' } },
         vol: { label: 'Niveau', hint: 'Le volume de ce son seul.', min: 0, max: 1, def: 0.55 },
         tone: { label: 'Lumière', hint: 'Son sombre et doux à gauche, clair et brillant à droite.', min: 0, max: 1, def: 0.4, evolve: true },
         attack: { label: 'Attaque', hint: 'Les accords arrivent doucement (haut) ou directement (bas).', min: 0, max: 1, def: 0.6 },
@@ -69,7 +71,8 @@
       color: '#c8ff39',
       params: {
         on: { label: 'On', type: 'toggle', def: true },
-        wave: { label: 'Timbre', hint: 'Timbre des notes de mélodie.', type: 'select', options: ['Cloche', 'Kalimba', 'Verre', 'Pluck', 'Doux', 'Lame'], def: 'Kalimba' },
+        wave: { label: 'Timbre', hint: 'Timbre des notes de mélodie.', type: 'select', options: ['Cloche', 'Kalimba', 'Verre', 'Pluck', 'Doux', 'Lame', 'Piano FM', 'Laser', '8 bits', 'Thérémine', 'Orgue', 'Néon'], def: 'Kalimba',
+          optHints: { 'Cloche': 'Cloche FM, claire et longue.', 'Kalimba': 'Petit piano à pouces, boisé.', 'Verre': 'Verre frappé, cristallin.', 'Pluck': 'Corde pincée, courte.', 'Doux': 'Voix douce qui tient la note.', 'Lame': 'Cuivre sombre qui glisse d\'une note à l\'autre.', 'Piano FM': 'Piano électrique des années 80 (DX7).', 'Laser': 'Zap d\'arcade qui plonge sur la note.', '8 bits': 'Console de jeu : onde fine, vibrato.', 'Thérémine': 'Fantôme de SF : glisse, vibre, tient la note.', 'Orgue': 'Orgue à tirettes et cabine tournante.', 'Néon': 'Supersaw synthwave, filtre qui claque.', 'Givre': 'Cristaux de givre (découverte).' } },
         vol: { label: 'Niveau', hint: 'Le volume de ce son seul.', min: 0, max: 1, def: 0.45 },
         mode: { label: 'Jeu', hint: 'Aléatoire : improvise. Phrase : répète un motif qui varie lentement.', type: 'select', options: ['Aléatoire', 'Phrase'], def: 'Aléatoire' },
         phraseLen: { label: 'Phrase', hint: 'Longueur du motif répété en mode Phrase.', type: 'select', options: ['1 mes.', '2 mes.', '4 mes.'], def: '2 mes.' },
@@ -86,7 +89,8 @@
       color: '#ff2bd6',
       params: {
         on: { label: 'On', type: 'toggle', def: false },
-        wave: { label: 'Timbre', hint: 'Timbre de la mélodie écrite. « Doux » tient la longueur des notes.', type: 'select', options: ['Cloche', 'Kalimba', 'Verre', 'Pluck', 'Doux', 'Lame'], def: 'Doux' },
+        wave: { label: 'Timbre', hint: 'Timbre de la mélodie écrite. « Doux », « Lame », « Thérémine » et « Orgue » tiennent la longueur des notes.', type: 'select', options: ['Cloche', 'Kalimba', 'Verre', 'Pluck', 'Doux', 'Lame', 'Piano FM', 'Laser', '8 bits', 'Thérémine', 'Orgue', 'Néon'], def: 'Doux',
+          optHints: { 'Cloche': 'Cloche FM, claire et longue.', 'Kalimba': 'Petit piano à pouces, boisé.', 'Verre': 'Verre frappé, cristallin.', 'Pluck': 'Corde pincée, courte.', 'Doux': 'Voix douce qui tient la note.', 'Lame': 'Cuivre sombre qui glisse d\'une note à l\'autre.', 'Piano FM': 'Piano électrique des années 80 (DX7).', 'Laser': 'Zap d\'arcade qui plonge sur la note.', '8 bits': 'Console de jeu : onde fine, vibrato.', 'Thérémine': 'Fantôme de SF : glisse, vibre, tient la note.', 'Orgue': 'Orgue à tirettes et cabine tournante.', 'Néon': 'Supersaw synthwave, filtre qui claque.', 'Givre': 'Cristaux de givre (découverte).' } },
         mode: { label: 'Jeu', hint: 'Piano roll : joue tes notes. Arpège : égrène l\'accord en cours.', type: 'select', options: ['Piano roll', 'Arpège'], def: 'Piano roll' },
         arpDir: { label: 'Arpège', hint: 'Dans quel sens les notes de l\'accord sont égrenées : vers le haut, vers le bas…', type: 'select', options: ['Monte', 'Descend', 'Aller-retour', 'Aléatoire'], def: 'Monte' },
         arpRate: { label: 'Vitesse', hint: 'Vitesse de l\'arpège.', type: 'select', options: ['1/16', '1/8', '1/8.', '1/4'], def: '1/8' },
@@ -115,7 +119,8 @@
       color: '#5c7bff',
       params: {
         on: { label: 'On', type: 'toggle', def: false },
-        wave: { label: 'Timbre', type: 'select', options: ['Sub', 'Ronde', 'Pluck', 'Saturée'], def: 'Ronde' },
+        wave: { label: 'Timbre', hint: 'Timbre de la basse.', type: 'select', options: ['Sub', 'Ronde', 'Pluck', 'Saturée', 'Acide', 'FM', 'Reese', '808'], def: 'Ronde',
+          optHints: { 'Sub': 'Sinus grave, juste le poids.', 'Ronde': 'Ronde et chaude.', 'Pluck': 'Pincée, filtre qui se ferme.', 'Saturée': 'Grogne, saturée.', 'Acide': 'La 303 : filtre résonant qui couine.', 'FM': 'Basse DX7 : attaque qui claque.', 'Reese': 'Deux scies qui grondent (drum & bass).', '808': 'Boum de boîte à rythmes, long.' } },
         vol: { label: 'Niveau', min: 0, max: 1, def: 0.5 },
         tone: { label: 'Lumière', min: 0, max: 1, def: 0.3 },
         decay: { label: 'Tenue', hint: 'Notes courtes et détachées à gauche, longues et liées à droite.', min: 0, max: 1, def: 0.6 },

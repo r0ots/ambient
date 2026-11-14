@@ -1292,6 +1292,9 @@ body.listen .app > .stage { height: auto; }
 .nsel-opt.act { color: #fff; background: #ff2bd614; box-shadow: inset 3px 0 0 color-mix(in srgb, var(--magenta) 70%, transparent); }
 .nsel-opt[aria-selected=true] { color: #fff; font-weight: 700; background: linear-gradient(90deg, color-mix(in srgb, var(--c) 22%, transparent), transparent); box-shadow: inset 3px 0 0 var(--c); text-shadow: 0 0 8px var(--c); }
 .nsel-opt[aria-disabled=true] { opacity: .45; cursor: default; }
+.nsel-opt.has-hint { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; padding-top: 6px; padding-bottom: 6px; }
+.nsel-hint { font: 400 11.5px/1.2 var(--f); letter-spacing: .02em; color: var(--muted); text-shadow: none; }
+.nsel-opt.act .nsel-hint, .nsel-opt[aria-selected=true] .nsel-hint { color: #d8cdf0; }
 .nsel-grp { padding: 10px 14px 4px; font: 700 11px var(--f); letter-spacing: .26em; text-transform: uppercase; color: var(--muted); }
 .nsel-grp:not(:first-child) { border-top: 1px solid var(--line); margin-top: 4px; }
 .menu-row .nsel-btn, .sleep .nsel-btn { min-width: 120px; }
