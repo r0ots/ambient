@@ -63,6 +63,10 @@ window.addEventListener('load', async () => {
     ok(nN === 1, 'la même note répétée 40 fois → un seul faisceau ravivé (' + nN + ')');
     ok(wN <= w1 * 1.3 + 0.002, 'pas de barre blanche : pixels blancs ' + (w1 * 100).toFixed(2) + ' % (une note) → ' + (wN * 100).toFixed(2) + ' % (40 répétées)');
     clear(); step(0.6); ok(!CM.lasers.length, 'et il s\'éteint quand les notes s\'arrêtent');
+    // S8.8: a legato Mélodie auto (long notes, one after the other) = shots, never a beam standing all the time
+    clear(); let lit = 0, fr = 0;
+    for (let i = 0; i < 6; i++) { bus.emit('note', { layer: 'bells', midi: 62 + i * 3, time: T, vel: 0.8, dur: 1.6 }); for (let f = 0; f < 20; f++) { step(0.05); fr++; if (CM.lasers.some((l) => CM.now <= l.t1)) lit++; } }
+    ok(lit / fr < 0.6, 'Mélodie auto liée (notes de 1,6 s) : des tirs, pas un faisceau planté (allumé ' + Math.round(100 * lit / fr) + ' % du temps)');
 
     // --- 2. player > machine; held until released; looper; chord = fan
     clear();

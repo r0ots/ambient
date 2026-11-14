@@ -41,7 +41,7 @@ uniform sampler2D S,B1,B2;uniform vec2 R,TX,SH;uniform vec3 FC;
 uniform float T,SL,BL,CH,CR,FG,VH,FL,WP,GR,MK;
 float hs(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
 vec3 tx(vec2 u){return texture2D(S,u).rgb;}
-vec3 scene(vec2 u){vec3 c=tx(u);if(WP>.001){vec3 a=vec3(0.);vec2 d=(u-.5)*WP*.035;for(int i=1;i<9;i++)a+=tx(u-d*float(i))*(1.-float(i)*.09);c=max(c,a*.14*min(1.,WP));}return c;}
+vec3 scene(vec2 u){vec3 c=tx(u);if(WP>.001){vec3 a=vec3(0.);vec2 d=(u-.5)*WP*.05;for(int i=1;i<9;i++)a+=tx(u-d*float(i))*(1.-float(i)*.09);c=max(c,a*.14*min(1.,WP));}return c;}
 float lu(vec3 c){return dot(c,vec3(.299,.587,.114));}
 void main(){
 vec2 c=v*2.-1.;c*=1.+CR*.07*vec2(c.y*c.y,c.x*c.x);vec2 t=c*.5+.5;vec2 u=t+SH;
@@ -56,7 +56,7 @@ vec3 bl=max(texture2D(B1,u).rgb*.6+texture2D(B2,u).rgb*.55-.03,0.);col+=bl*min(B
 if(FG>.001){float n=.5+.25*sin(u.x*6.+T*.3+sin(u.y*9.-T*.2))+.25*sin(u.x*13.-T*.5+u.y*4.);float fo=FG*(1.-smoothstep(.05,.9,u.y))*(.45+.55*n);col=mix(col,FC+bl*1.1,clamp(fo,0.,.55));}
 col=col*(1.+FL*1.3)+FL*.12*vec3(.7,.65,1.);
 float mx=max(col.r,max(col.g,col.b));if(mx>.72){col*=(.72+.28*(1.-exp((.72-mx)/.28)))/mx;}
-col=max(mix(vec3(lu(col)),col,1.18)-.012,0.);col=mix(col,col*col*(3.-2.*min(col,1.)),.4);
+col=max(mix(vec3(lu(col)),col,1.18)-.012,0.);col=mix(col,col*col*(3.-2.*min(col,1.)),.25);
 float s=.5+.5*sin(gl_FragCoord.y*3.14159/SL);col*=1.-CR*.28*(1.-s);
 if(MK>.001){float m=mod(gl_FragCoord.x,3.);vec3 mk=m<1.?vec3(1.,.55,.55):m<2.?vec3(.55,1.,.55):vec3(.55,.55,1.);col*=mix(vec3(1.),mk*1.3,min(1.,MK)*.6);}
 float r2=dot(c,c);col*=1.-CR*.45*r2*r2*.25;

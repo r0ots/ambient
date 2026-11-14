@@ -171,7 +171,7 @@
       if (!first) this.fx('super', { name: c.name, n: c.n });
       if (this.live()) {
         const G = AMB.cityGL, J = Math.min(2, this.juice());
-        if (G) { G.pulse('flash', 0.55 * J, 260); G.pulse('shake', 0.9 * J, 700); G.pulse('bloom', 0.9, 700); }
+        if (G) { G.pulse('flash', 0.45 * J, 160); G.pulse('shake', 0.9 * J, 700); G.pulse('bloom', 0.9, 700); }
         gv.shake = { t0: gv.t || 0, amp: 1.2 * J };
       }
       this.emit('combo', { id: c.id, on: true, n: c.n, super: true });
@@ -353,8 +353,8 @@
     const body = mk(), glow = mk(), b = body.getContext('2d'), gg = glow.getContext('2d');
     for (let y = 0; y < 40; y++) for (let x = 0; x < 48; x++) {
       const t = KAIJU[y * 48 + x]; if (!t) continue;
-      const X = x * cell, Y = (39 - y) * cell, edge = !KAIJU[(y + 1) * 48 + x] || !KAIJU[y * 48 + x - 1];
-      if (t === 1) { b.fillStyle = edge ? '#3a1d55' : '#10081c'; b.fillRect(X, Y, cell, cell); }
+      const X = x * cell, Y = (39 - y) * cell, edge = !KAIJU[(y + 1) * 48 + x] || !KAIJU[y * 48 + x - 1] || !KAIJU[y * 48 + x + 1] || (y > 0 && !KAIJU[(y - 1) * 48 + x]);
+      if (t === 1) { b.fillStyle = edge ? '#b0306e' : '#0a0512'; b.fillRect(X, Y, cell, cell); if (edge) { gg.fillStyle = 'rgba(255,60,160,0.75)'; gg.fillRect(X, Y, cell, cell); } } // a magenta rim light (also in the glow: it shines through the fog)
       if (t === 2) { gg.fillStyle = '#55f0ff'; gg.fillRect(X, Y, cell - (cell > 3 ? 1 : 0), cell - (cell > 3 ? 1 : 0)); b.fillStyle = '#123848'; b.fillRect(X, Y, cell, cell); }
       if (t === 3) { gg.fillStyle = '#ff3050'; gg.fillRect(X, Y, cell, cell); b.fillStyle = '#ff3050'; b.fillRect(X, Y, cell, cell); }
     }
@@ -368,6 +368,10 @@
       const ph = C.b.ph || 0, prog = sup ? (k.beats + Math.min(1, ph * 2.5)) / SUPER_BEATS : mine ? 0.12 * k.charge : 0.5;
       const x = Math.round(-sp.body.width * 0.3 + (W + sp.body.width * 0.1) * (0.12 + 0.7 * prog) + cam.ox), bob = sup && C.live() ? -Math.round(Math.sin(Math.min(1, ph * 2.5) * Math.PI) * cell * 1.5) : 0;
       const y = Math.round(gd - sp.body.height + cell * 2 + bob + cam.oy);
+      { // backlit by the city's glow in the fog: a dark shape against light (S8.8)
+        const R = Math.round(sp.body.height * 0.75), bg = v.glow([255, 50, 140], R); g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, a * 0.55);
+        g.drawImage(bg, x + sp.body.width / 2 - R, y + sp.body.height * 0.55 - R); g.globalCompositeOperation = 'source-over';
+      }
       g.globalAlpha = Math.min(1, a * 0.95); g.drawImage(sp.body, x, y);
       const roar = sup && k.beats >= 8 && k.beats < 13;
       g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, a * (0.55 + 0.45 * (w.beat ? w.beat.k || 0 : 0) + (roar ? 0.4 : 0))); g.drawImage(sp.glow, x, y);

@@ -216,8 +216,8 @@
     const off = ((T * W * 0.01 * (0.3 + 2 * (w.weather.wind || 0))) % W + W) % W;
     g.setTransform(1, 0, 0, 1, cam.ox, cam.oy); g.imageSmoothingEnabled = true; g.globalAlpha = Math.min(1, a);
     g.drawImage(cv, off, 0, W, gd * 0.5); g.drawImage(cv, off - W, 0, W, gd * 0.5);
-    const fl = w.pulse.flash || 0;
-    if (fl > 0.05 && !v.reduced) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, fl * 0.8); g.drawImage(cv, off, 0, W, gd * 0.5); g.drawImage(cv, off - W, 0, W, gd * 0.5); g.fillStyle = 'rgba(150,120,255,0.25)'; g.fillRect(0, 0, W, gd * 0.45); }
+    const fl = (w.pulse.flash || 0) * Math.min(1, D.juice());
+    if (fl > 0.05 && !v.reduced) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, fl * 0.6); g.drawImage(cv, off, 0, W, gd * 0.5); g.drawImage(cv, off - W, 0, W, gd * 0.5); g.fillStyle = 'rgba(120,80,255,0.14)'; g.fillRect(0, 0, W, gd * 0.45); }
     g.imageSmoothingEnabled = false;
   } });
   // fog in layers (z 22 behind the background city, z 27 in front of it, z 36 at the foot of the towers): Espace

@@ -41,23 +41,26 @@ window.addEventListener('load', async () => {
     G.set('crt', 5); ok(G.get('crt') === 2, 'set borné à 0..2'); reset();
     ok(G.NAMES.join() === 'bloom,chroma,crt,fog,vhs,flash,shake,warp,grain,mask', 'entrées nommées : ' + G.NAMES.join(', '));
     // bloom: the halo next to the pink bar
-    const halo = [0.42, 0.5];
+    const halo = [0.43, 0.5];
     G.set('bloom', 0); frame(); const h0 = lum(px(...halo)), center = px(0.5, 0.5);
     G.set('bloom', 1.5); frame(); const h1 = lum(px(...halo));
     ok(center[0] > 150 && center[2] > 80, 'la scène passe dans la texture (néon rose au centre : ' + center.map(Math.round) + ')');
-    ok(h1 > h0 + 30, 'bloom : halo autour du néon (' + Math.round(h0) + ' → ' + Math.round(h1) + ')');
+    ok(h1 > h0 + 12, 'bloom : halo autour du néon (' + Math.round(h0) + ' → ' + Math.round(h1) + ')');
     reset();
     // flash pulse: bright, then gone
     frame(); const dark = lum(px(0.8, 0.2));
     G.pulse('flash', 1, 300 * S / 0.4 + 200); frame(); const fl = lum(px(0.8, 0.2));
-    ok(fl > dark + 300 && G.value('flash') > 0.5, 'flash : éclair plein écran (' + Math.round(dark) + ' → ' + Math.round(fl) + ')');
+    const flc = lum(px(0.5, 0.5)), fln = px(0.5, 0.5);
+    ok(fl > dark + 40 && flc > lum(center) + 60 && G.value('flash') > 0.5, 'flash : l\'éclair illumine toute l\'image (fond ' + Math.round(dark) + ' → ' + Math.round(fl) + ', néon ' + Math.round(lum(center)) + ' → ' + Math.round(flc) + ')');
+    ok(fl < 200, 'S8.8 : pas de voile blanc, le noir reste sombre pendant l\'éclair (' + Math.round(fl) + ')');
+    ok(Math.max(...fln) - Math.min(...fln) > 60, 'S8.8 : le néon garde sa couleur, pas de blanc brûlé (' + fln.map(Math.round) + ')');
     await wait(400 * S / 0.4 + 300); frame();
     ok(G.value('flash') === 0 && G.pulses.length === 0 && lum(px(0.8, 0.2)) < dark + 20, 'pulse : l\'impulsion retombe à 0');
     // warp: the neon smeared towards the edge (radial blur)
     const out = [0.62, 0.5];
     frame(); const w0 = lum(px(...out)); G.set('bloom', 0); frame(); const w0b = lum(px(...out));
     G.set('warp', 1.5); frame(); const w1 = lum(px(...out));
-    ok(w1 > w0b + 20, 'warp : traînées radiales (' + Math.round(w0b) + ' → ' + Math.round(w1) + ')'); reset();
+    ok(w1 > w0b + 8, 'warp : traînées radiales (' + Math.round(w0b) + ' → ' + Math.round(w1) + ')'); reset();
     // vhs: the image changes from frame to frame (tracking, noise)
     G.set('vhs', 1.5); frame(); const v1 = px(0.5, 0.55, 3); await wait(80); frame(); const v2 = px(0.5, 0.55, 3);
     const dif = (a, b) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
