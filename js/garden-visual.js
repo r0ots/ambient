@@ -1438,7 +1438,7 @@
     }
     const pl = v.sc.play == null ? 1 : v.sc.play, pk = v.kick.play || 0;
     if (pl < 0.98) { g.globalAlpha = 1; g.fillStyle = `rgba(4,2,10,${(0.3 * (1 - pl)).toFixed(3)})`; g.fillRect(0, 0, W, H); }
-    if (pk > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 1; g.fillStyle = `rgba(255,150,230,${(0.12 * pk).toFixed(3)})`; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over'; }
+    if (pk > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 1; g.fillStyle = `rgba(255,80,200,${(0.05 * pk).toFixed(3)})`; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over'; }
     const fl = w.pulse.flash; // lightning: the whole sky white-violet, a bolt down to the city
     if (fl > 0.02 && !red) {
       g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, fl * 0.45); g.fillStyle = '#c8b8ff'; g.fillRect(0, 0, W, cam.gd);

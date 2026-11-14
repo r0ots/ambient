@@ -243,13 +243,12 @@
   // the WebGL pass: after S8.4 set its base levels (its hook runs first), the combos add theirs
   gv.afterDraw(() => {
     const G = AMB.cityGL; if (!G || !G.set) return;
-    const k = C.cur, ch = k && k.phase !== 'super' ? k.charge : 0, sup = k && k.phase === 'super' ? 1 : 0, w1 = C.L('wire');
-    let wire = 0;
-    if (w1 > 0.01) wire = k && k.id === 'wire' && k.phase === 'super' ? (k.sp < 0.5 ? clamp(k.sp * 4) : 1 + clamp((k.sp - 0.5) * 4)) * w1 : 0.55 * w1 * (k && k.id === 'wire' ? k.charge : 1);
-    G.set('wire', wire);
+    const k = C.cur, ch = k && k.phase !== 'super' ? k.charge : 0, sup = k && k.phase === 'super' ? 1 : 0;
     G.set('warp', 1.5 * C.L('hyper') * (k && k.id === 'hyper' && k.phase === 'super' ? 1 : 0.25));
     G.set('shake', 0.22 * ch);
     if (C.any) { G.set('bloom', (G.get('bloom') || 0) + 0.45 * ch + 0.3 * sup); G.set('fog', (G.get('fog') || 0) + 0.7 * C.L('kaiju')); }
+    const wv = C.L('wire'); // 1984: a clean vector screen (the worn tape of Nostalgie would smear its lines)
+    if (wv > 0.01) for (const n of ['vhs', 'grain', 'chroma', 'fog']) G.set(n, (G.get(n) || 0) * (1 - 0.85 * wv));
   });
   gv.afterDraw(() => { if (C.any || C.cost_) { C.times.push(C.cost_); if (C.times.length > 240) C.times.shift(); } C.cost_ = 0; });
 
@@ -411,13 +410,13 @@
     const W = cam.W, H = cam.H, yT = cam.y(1, cam.gd), px = cam.px, k = C.cur, sup = k && k.id === 'hyper' && k.phase === 'super', T = C.T, cx = W / 2 + cam.ox;
     const spd = sup ? 3.2 : 0.3 + 0.8 * a, N = 14;
     g.globalCompositeOperation = 'lighter'; g.lineWidth = Math.max(1, px * 0.5);
-    g.strokeStyle = '#ff4fd8'; g.globalAlpha = Math.min(1, a * 0.8); g.beginPath();
+    g.strokeStyle = '#ff4fd8'; g.globalAlpha = Math.min(1, a * 0.55); g.beginPath();
     for (let i = 0; i < N; i++) { const z = ((i / N - T * spd / N * 4) % 1 + 1) % 1, y = Math.round(yT + (H - yT) / (1 + 4 * z)); g.moveTo(0, y); g.lineTo(W, y); }
     g.stroke(); g.strokeStyle = '#4ff0ff'; g.beginPath();
     for (let u = -8; u <= 8; u++) { g.moveTo(cx + u * 0.7 * W / 5, yT + (H - yT) / 5); g.lineTo(cx + u * 0.7 * W, H); }
     g.stroke();
   }) });
-  // in front (z 74): the bolts on the roofs, the front of the spiral, the disco's colours, 1984 drawn in 2D (no WebGL),
+  // in front (z 74): the bolts on the roofs, the front of the spiral, the disco's colours, 1984 in vector lines,
   // the charge crackling between the roofs
   gv.addLayer({ id: 'combo-front', z: 74, draw: timed((g, w, cam, v) => {
     const W = cam.W, H = cam.H, gd = cam.y(1, cam.gd), px = cam.px, T = C.T, s = C.soft(), k = C.cur;
@@ -454,20 +453,6 @@
         g.globalAlpha = Math.min(1, a * 0.55); g.fillStyle = rgba(PAL[i % PAL.length], 1); g.fillRect(Math.round(x - r2), Math.round(y - r2 * 0.5), Math.round(2 * r2), Math.round(r2));
       }
     }
-    if ((a = C.L('wire')) > 0.01 && v.post2d !== false) { // 1984 without WebGL: the city in vector lines on a black screen
-      const neon = k && k.id === 'wire' && k.phase === 'super' && k.sp >= 0.5, green = [60, 255, 140];
-      g.globalCompositeOperation = 'source-over'; g.globalAlpha = Math.min(1, a * 0.78); g.fillStyle = '#010a05'; g.fillRect(0, 0, W, H);
-      g.globalCompositeOperation = 'lighter'; g.lineWidth = Math.max(1, Math.round(px * 0.5)); g.globalAlpha = Math.min(1, a);
-      for (const p of v.plants) {
-        if (!p.vis) continue;
-        const sp = v.sprite(p, px), kk = p.k || 1, x0 = Math.round(p.sx - sp.l * kk), w2 = Math.round((sp.l + sp.r) * kk), h = Math.round(p.vis * kk), y0 = Math.round(p.sy - h);
-        g.strokeStyle = rgba(neon ? p.col : green, 1); g.strokeRect(x0 + 0.5, y0 + 0.5, w2, h);
-        g.beginPath(); for (let y = p.sy - px * kk * 4; y > y0; y -= px * kk * 4) { g.moveTo(x0, Math.round(y) + 0.5); g.lineTo(x0 + w2, Math.round(y) + 0.5); } g.stroke();
-      }
-      g.strokeStyle = rgba(neon ? [255, 80, 220] : green, 1); g.beginPath(); g.moveTo(0, Math.round(gd) + 0.5); g.lineTo(W, Math.round(gd) + 0.5);
-      for (let u = -8; u <= 8; u++) { g.moveTo(W / 2 + u * W * 0.07, gd); g.lineTo(W / 2 + u * W * 0.5, H); }
-      g.stroke();
-    }
     if (k && k.phase !== 'super' && k.charge > 0.02) { // the energy building up: arcs crackling between the roofs
       const roofs = C.roofs(); if (roofs.length) {
         const seed = C.live() ? Math.floor((gv.t || 0) * 16) : 1, r = mulberry(seed * 977 + 13), n = Math.min(10, 1 + Math.round(9 * k.charge)), col = byId[k.id].col;
@@ -485,6 +470,94 @@
       }
     }
   }) });
+  // 1984 (S8.8: drawn from the world model, not edge-detected on the picture): the screen goes black and the city is
+  // redrawn in clean vector lines, Battlezone / Tron style — each building's silhouette (its sprite's skyline, simplified
+  // into straight strokes: stairs become slopes, masts stay spikes) and its floors, the ground grid scrolling on the
+  // beat, a mountain range and a moon on the horizon, the notes' beams as single lines. Phosphor green, then (second half
+  // of the SUPER) each building takes its own neon, swept from left to right. The HUD (captions) stays on top.
+  const outlines = new WeakMap();
+  function outline(sp, cell) { // the skyline of a sprite in its pixels (y up from the base), simplified; + the column tops
+    let o = outlines.get(sp); if (o && o.cell === cell) return o;
+    const n = Math.max(1, Math.round(sp.w / cell)), top = new Array(n).fill(0);
+    try {
+      const d = sp.cv.getContext('2d').getImageData(0, 0, sp.w, sp.h).data;
+      for (let c = 0; c < n; c++) {
+        const x = Math.min(sp.w - 1, Math.round((c + 0.5) * cell));
+        for (let y = 0; y < sp.h; y += Math.max(1, cell >> 1)) if (d[(y * sp.w + x) * 4 + 3] > 90) { top[c] = sp.h - y; break; }
+      }
+    } catch (e) { top.fill(sp.h); }
+    let a = 0, b = n - 1; while (a < b && !top[a]) a++; while (b > a && !top[b]) b--;
+    const pts = [{ x: a * cell, y: 0 }];
+    for (let c = a; c <= b; c++) pts.push({ x: c * cell, y: top[c] }, { x: (c + 1) * cell, y: top[c] });
+    pts.push({ x: (b + 1) * cell, y: 0 });
+    o = { cell, top, a, b, pts: rdp(pts, cell * 1.1) }; outlines.set(sp, o); return o;
+  }
+  function rdp(P, eps) { // Ramer–Douglas–Peucker: the pixel stairs become straight strokes
+    if (P.length < 3) return P;
+    const A = P[0], B = P[P.length - 1], dx = B.x - A.x, dy = B.y - A.y, L = Math.hypot(dx, dy) || 1;
+    let im = 0, dm = 0;
+    for (let i = 1; i < P.length - 1; i++) { const dd = Math.abs(dy * P[i].x - dx * P[i].y + B.x * A.y - B.y * A.x) / L; if (dd > dm) { dm = dd; im = i; } }
+    if (dm <= eps) return [A, B];
+    return rdp(P.slice(0, im + 1), eps).slice(0, -1).concat(rdp(P.slice(im), eps));
+  }
+  const MOUNT = [0, 0.3, 0.07, 0.75, 0.13, 0.4, 0.2, 1, 0.27, 0.5, 0.31, 0.62, 0.38, 0.2, 0.47, 0.55, 0.53, 0.35, 0.6, 0.85, 0.66, 0.3, 0.74, 0.6, 0.8, 0.15, 0.88, 0.7, 0.94, 0.4, 1, 0.25];
+  function vector(g, cam, v, a) {
+    const W = cam.W, H = cam.H, gd = cam.y(1, cam.gd), px = cam.px, k = C.cur, mine = k && k.id === 'wire', sup = mine && k.phase === 'super';
+    const neonK = sup ? clamp((k.sp - 0.5) / 0.12) : 0, green = [60, 255, 140], lw = Math.max(1, Math.round(px * 0.45));
+    const flick = C.live() ? 0.9 + 0.1 * ih(Math.floor((gv.t || 0) * 30), 77) : 1;
+    const colAt = (x, col) => { const f = clamp(neonK * 1.6 - x / W * 0.6); return f <= 0 ? green : green.map((c, i) => Math.round(c + (col[i] - c) * f)); };
+    g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over';
+    g.globalAlpha = Math.min(0.94, a * 1.1); g.fillStyle = '#010604'; g.fillRect(0, 0, W, H); // the screen goes black
+    g.globalCompositeOperation = 'lighter'; g.lineJoin = 'miter'; g.lineCap = 'square';
+    const A = Math.min(1, a * 1.4) * flick;
+    const stroke = (col, al, w2) => { g.strokeStyle = rgba(col, 1); g.globalAlpha = Math.min(1, al); g.lineWidth = w2; g.stroke(); };
+    const glowStroke = (col, al) => { stroke(col, al * 0.22, lw * 4); stroke(col, al, lw); };
+    // horizon: the mountain range, the moon
+    const mh = gd * 0.09;
+    g.beginPath(); for (let i = 0; i < MOUNT.length; i += 2) { const x = MOUNT[i] * W, y = gd - MOUNT[i + 1] * mh; if (i) g.lineTo(x, y); else g.moveTo(x, y); }
+    glowStroke(colAt(0, [255, 80, 220]), A * 0.7);
+    g.beginPath(); g.arc(W * 0.8, gd * 0.3, Math.max(6, gd * 0.06), 0, Math.PI * 2); glowStroke(colAt(W * 0.8, [255, 200, 90]), A * 0.6);
+    // the ground: horizon line, lines to the vanishing point, rows coming on the beat (S8.5's grid phase)
+    const G2 = gv.grid, ph = G2 ? G2.phase : 0, cx = W / 2 + (cam.ox || 0);
+    g.beginPath(); g.moveTo(0, Math.round(gd) + 0.5); g.lineTo(W, Math.round(gd) + 0.5);
+    for (let u = -10; u <= 10; u++) { g.moveTo(cx + u * W * 0.035, gd); g.lineTo(cx + u * W * 0.35, H); }
+    for (let i = 1; i <= 8; i++) { const z = (i - ph) / 3; if (z <= 0) continue; const y = Math.round(gd + (H - gd) / (1 + 4 * z)) + 0.5; g.moveTo(0, y); g.lineTo(W, y); }
+    glowStroke(colAt(W / 2, [255, 63, 164]), A * 0.55);
+    // the buildings: silhouette + floors, from their sprites (back row first)
+    const order = v.plants.slice().sort((p1, p2) => p2.row - p1.row);
+    for (const p of order) {
+      if (!p.vis || p.vis < px) continue;
+      const sp = v.sprite(p, px), o = outline(sp, px), kk = p.k || 1, X = (x) => p.sx + (x - sp.w / 2) * kk, Y = (y) => p.sy - Math.min(y, p.vis) * kk;
+      const col = colAt(p.sx, p.col), en = Math.min(1, (v.energy && v.energy[p.id]) || 0);
+      g.beginPath(); o.pts.forEach((q, i) => (i ? g.lineTo(X(q.x), Y(q.y)) : g.moveTo(X(q.x), Y(q.y))));
+      g.globalCompositeOperation = 'source-over'; g.globalAlpha = Math.min(0.94, a * 1.1); g.fillStyle = '#010604'; g.fill(); // solid: hides what is behind (hidden lines)
+      g.globalCompositeOperation = 'lighter'; glowStroke(col, A * (0.85 + 0.3 * en));
+      g.beginPath(); // floors every 4 cells, where the building is that tall
+      const fl = px * 4;
+      for (let y = fl; y < p.vis - px; y += fl) {
+        let run = -1;
+        for (let c = o.a; c <= o.b + 1; c++) {
+          const inb = c <= o.b && o.top[c] > y + px;
+          if (inb && run < 0) run = c;
+          else if (!inb && run >= 0) { if (c - run >= 2) { const yy = Math.round(Y(y)) + 0.5; g.moveTo(X(run * px + px * 0.5), yy); g.lineTo(X(c * px - px * 0.5), yy); } run = -1; }
+        }
+      }
+      stroke(col, A * (0.3 + 0.4 * en), lw);
+    }
+    // the notes: one line per beam
+    const CM = AMB.cityMusic;
+    if (CM && CM.lasers.length) {
+      const L2 = Math.hypot(W, H);
+      for (const L of CM.lasers) {
+        if (CM.now < L.t0 || (L.t1 !== Infinity && CM.now > L.t1 + L.rel)) continue;
+        const p = L.plant && v.plants.find((q) => q.id === L.plant), x = p ? p.sx : W / 2, y = p ? p.sy - p.vis * p.k : gd;
+        g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.sin(L.ang) * L2, y - Math.cos(L.ang) * L2); glowStroke(colAt(x, L.col), A * 0.8 * L.a);
+      }
+    }
+    g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; g.lineCap = 'butt';
+  }
+  // 1984 (z 79.5): over the city and its VHS grading (z 79), under the post filters and the HUD
+  gv.addLayer({ id: 'combo-vector', z: 79.5, draw: timed((g, w, cam, v) => { const a = C.L('wire'); if (a > 0.01) vector(g, cam, v, a); }) });
   // the HUD (z 88): the arcade charge meter under the top of the screen: « COMBO ×n · NAME », 16 segments; SUPER: the
   // segments empty with the beats left
   gv.addLayer({ id: 'combo-hud', z: 88, draw: timed((g, w, cam) => {

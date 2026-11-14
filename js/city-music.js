@@ -153,6 +153,16 @@
         if (i < 0) { if (who !== 'player') return null; i = 0; }
         this.lasers.splice(i, 1);
       }
+      // S8.8: a note repeated on the same beam (same roof, same pitch) RE-LIGHTS that beam instead of stacking another one
+      // on it: additive beams piled at the same angle made a huge white bar that never went away
+      if (!spread && held == null) {
+        const p0 = this.plant(layer), pid = p0 ? p0.id : null, el = this.elevOf(midi);
+        for (const L of this.lasers) {
+          if (L.plant !== pid || L.held != null || Math.abs(L.elev - el) > 2.5 || (L.t1 !== Infinity && t0 > L.t1 + L.rel)) continue;
+          L.t1 = Math.max(L.t1, t1); L.a = Math.max(L.a, (WHO[who] || W).a * (0.55 + 0.45 * clamp(vel == null ? 0.7 : +vel))); if (who === 'player') L.who = who;
+          return L;
+        }
+      }
       const p = this.plant(layer) || GV.plants.filter((qq) => qq.vis > 0).sort((a, b) => b.vis * b.k - a.vis * a.k)[0];
       const lay = GV.LAYERS.find((l) => l.id === layer), col = (p && p.id === layer ? p.col : lay && lay.col) || [255, 196, 92];
       const elev = clamp(this.elevOf(midi) + Math.abs(spread) * -0.4, 4, 90);

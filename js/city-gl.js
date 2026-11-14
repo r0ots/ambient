@@ -3,14 +3,14 @@
 // it (.city-gl, click-through; #viz stays in the page, transparent, and keeps drawing). No dependency, raw WebGL1.
 //   - passes: bright pass (threshold) at half resolution → 9-tap gaussian blur (H, V) at half then quarter resolution
 //     (neon bloom, two radii) → one composite: barrel curvature, chromatic aberration, VHS (tracking bands, colour bleed),
-//     warp (hyperspace radial blur), wire (Sobel edges, 1984 vector look: 0..1 phosphor green, 1..2 the scene's own neon
-//     colours, S8.7), fog, bloom, CRT (scanlines, vignette, optional
-//     shadow mask `mask`), grain, flash.
-//   - named inputs (0..2), driven later from the world model: bloom, chroma, crt, fog, vhs, flash, shake, warp, wire,
+//     warp (hyperspace radial blur), fog, bloom, flash, a hue-keeping highlight shoulder (S8.8: saturated colours, never a
+//     white or milky veil; blacks stay black), CRT (scanlines, vignette, optional shadow mask `mask`), grain.
+//     (S8.8: the Sobel `wire` input is gone: 1984 is drawn in vector lines from the world model, js/city-combos.js.)
+//   - named inputs (0..2), driven later from the world model: bloom, chroma, crt, fog, vhs, flash, shake, warp,
 //     grain, mask. AMB.cityGL.set(name, v) sets the base level; pulse(name, amount, ms) adds a decaying impulse on top.
 //   - JUICE (AMB.motion): look effects (bloom, chroma, crt, mask) × (0.25 + 0.75 JUICE); motion effects (vhs, grain,
 //     shake, warp, flash) × JUICE; JUICE 0 = a still image (time frozen, no motion effect). Reduced motion: the look at
-//     half strength, every motion effect off (no flash), time frozen. fog and wire are content (not scaled).
+//     half strength, every motion effect off (no flash), time frozen. fog is content (not scaled).
 //   - robustness: no WebGL, a lost context, or a frame budget blown (sliding measure of the frame interval and of this
 //     pass's own cost: quality steps down — render scale 0.7, one bloom radius, scale 0.5 — then 2D) → automatic fallback:
 //     the GL canvas hides, #viz shows again with the css CRT (body.city .stage::after) and the 2D post of garden-visual
@@ -22,10 +22,10 @@
 // drawn when the tab is hidden or the city is off screen. No change in garden-visual.js or visual.js.
 (function () {
   const AMB = (window.AMB = window.AMB || {});
-  const NAMES = ['bloom', 'chroma', 'crt', 'fog', 'vhs', 'flash', 'shake', 'warp', 'wire', 'grain', 'mask'];
+  const NAMES = ['bloom', 'chroma', 'crt', 'fog', 'vhs', 'flash', 'shake', 'warp', 'grain', 'mask'];
   const LOOK = { bloom: 1, chroma: 1, crt: 1, mask: 1 }, MOTION = { vhs: 1, grain: 1, shake: 1, warp: 1, flash: 1 };
   const BASE = { bloom: 1.2, chroma: 0.35, crt: 0.55, grain: 0.2 }; // the default look (others 0)
-  const FOG = [0.36, 0.16, 0.5]; // violet neon fog (--city-horizon, lifted)
+  const FOG = [0.13, 0.05, 0.2]; // S8.8: a DARK violet haze (the lights glow through it), never a milky veil
   const LEVELS = [{ scale: 1, q: true }, { scale: 0.7, q: false }, { scale: 0.5, q: false }]; // budget steps, then 2D
   const BUDGET = { warm: 30, window: 90, interval: 36, own: 6 }; // ms: below ~28 fps, or this pass > 6 ms → one step down
   const qs = (() => { try { return new URLSearchParams(location.search).get('gl'); } catch (e) { return null; } })();
@@ -33,15 +33,15 @@
   const VS = 'attribute vec2 p;varying vec2 v;void main(){v=p*.5+.5;gl_Position=vec4(p,0.,1.);}';
   const BRIGHT = `precision mediump float;varying vec2 v;uniform sampler2D S;uniform vec2 TX;uniform float TH;
 void main(){vec3 c=(texture2D(S,v+TX*vec2(-1.,-1.)).rgb+texture2D(S,v+TX*vec2(1.,-1.)).rgb+texture2D(S,v+TX*vec2(-1.,1.)).rgb+texture2D(S,v+TX).rgb)*.25;
-float m=max(c.r,max(c.g,c.b));gl_FragColor=vec4(c*smoothstep(TH,1.,m)*1.4,1.);}`;
+float m=max(c.r,max(c.g,c.b)),l=dot(c,vec3(.299,.587,.114));gl_FragColor=vec4(c*smoothstep(TH,1.,m)*(1.25-.45*smoothstep(.75,1.,l)),1.);}`;
   const BLUR = `precision mediump float;varying vec2 v;uniform sampler2D S;uniform vec2 D;
 void main(){vec3 c=texture2D(S,v).rgb*.227027+(texture2D(S,v+D*1.384615).rgb+texture2D(S,v-D*1.384615).rgb)*.316216+(texture2D(S,v+D*3.230769).rgb+texture2D(S,v-D*3.230769).rgb)*.070270;gl_FragColor=vec4(c,1.);}`;
   const COMP = `precision mediump float;varying vec2 v;
 uniform sampler2D S,B1,B2;uniform vec2 R,TX,SH;uniform vec3 FC;
-uniform float T,SL,BL,CH,CR,FG,VH,FL,WP,WR,GR,MK;
+uniform float T,SL,BL,CH,CR,FG,VH,FL,WP,GR,MK;
 float hs(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
 vec3 tx(vec2 u){return texture2D(S,u).rgb;}
-vec3 scene(vec2 u){if(WP>.001){vec3 a=vec3(0.);vec2 d=(u-.5)*WP*.06;for(int i=0;i<8;i++)a+=tx(u-d*float(i));return a*.125;}return tx(u);}
+vec3 scene(vec2 u){vec3 c=tx(u);if(WP>.001){vec3 a=vec3(0.);vec2 d=(u-.5)*WP*.035;for(int i=1;i<9;i++)a+=tx(u-d*float(i))*(1.-float(i)*.09);c=max(c,a*.14*min(1.,WP));}return c;}
 float lu(vec3 c){return dot(c,vec3(.299,.587,.114));}
 void main(){
 vec2 c=v*2.-1.;c*=1.+CR*.07*vec2(c.y*c.y,c.x*c.x);vec2 t=c*.5+.5;vec2 u=t+SH;
@@ -52,18 +52,16 @@ vec3 col=vec3(scene(u+d).r,scene(u).g,scene(u-d).b);
 if(VH>.001){vec3 sm=(tx(u-vec2(TX.x*5.,0.))+tx(u-vec2(TX.x*10.,0.)))*.5;float l=lu(col);vec3 ch=mix(col,sm,.7)-lu(mix(col,sm,.7));
 col=mix(col,vec3(l)+ch*1.15,min(1.,VH));col*=1.-.12*VH;
 float roll=smoothstep(.97,1.,fract(u.y*.8-T*.21));col+=VH*(roll*.5+.06)*hs(vec2(floor(u.y*R.y/2.),floor(gl_FragCoord.x/3.)+T));}
-if(WR>.001){vec2 e=TX*1.5;
-float a=lu(tx(u+e*vec2(-1.,1.))),b=lu(tx(u+e*vec2(0.,1.))),f=lu(tx(u+e)),g=lu(tx(u+e*vec2(-1.,0.))),h=lu(tx(u+e*vec2(1.,0.))),i=lu(tx(u-e)),j=lu(tx(u+e*vec2(0.,-1.))),k=lu(tx(u+e*vec2(1.,-1.)));
-float gx=(f+2.*h+k)-(a+2.*g+i),gy=(a+2.*b+f)-(i+2.*j+k);float ed=smoothstep(.06,.3,length(vec2(gx,gy)));
-float nm=.15+.85*clamp(WR-1.,0.,1.);vec3 w=mix(vec3(.2,1.,.55),normalize(col+.04)*1.6,nm)*ed+vec3(0.,.015,.03)*(1.-nm);col=mix(col,w,min(1.,WR));}
-vec3 bl=texture2D(B1,u).rgb*.75+texture2D(B2,u).rgb;col+=bl*BL*(1.+FG*.8);
-if(FG>.001){float n=.5+.25*sin(u.x*6.+T*.3+sin(u.y*9.-T*.2))+.25*sin(u.x*13.-T*.5+u.y*4.);float fo=FG*(1.-smoothstep(.05,.9,u.y))*(.45+.55*n);col=mix(col,FC*1.4+bl*.7,clamp(fo,0.,.9));}
+vec3 bl=max(texture2D(B1,u).rgb*.6+texture2D(B2,u).rgb*.55-.03,0.);col+=bl*min(BL,1.6)*(1.+FG*.5);
+if(FG>.001){float n=.5+.25*sin(u.x*6.+T*.3+sin(u.y*9.-T*.2))+.25*sin(u.x*13.-T*.5+u.y*4.);float fo=FG*(1.-smoothstep(.05,.9,u.y))*(.45+.55*n);col=mix(col,FC+bl*1.1,clamp(fo,0.,.55));}
+col=col*(1.+FL*1.3)+FL*.12*vec3(.7,.65,1.);
+float mx=max(col.r,max(col.g,col.b));if(mx>.72){col*=(.72+.28*(1.-exp((.72-mx)/.28)))/mx;}
+col=max(mix(vec3(lu(col)),col,1.18)-.012,0.);col=mix(col,col*col*(3.-2.*min(col,1.)),.4);
 float s=.5+.5*sin(gl_FragCoord.y*3.14159/SL);col*=1.-CR*.28*(1.-s);
 if(MK>.001){float m=mod(gl_FragCoord.x,3.);vec3 mk=m<1.?vec3(1.,.55,.55):m<2.?vec3(.55,1.,.55):vec3(.55,.55,1.);col*=mix(vec3(1.),mk*1.3,min(1.,MK)*.6);}
 float r2=dot(c,c);col*=1.-CR*.45*r2*r2*.25;
 vec2 o=smoothstep(vec2(0.),vec2(.004),t)*smoothstep(vec2(0.),vec2(.004),1.-t);col*=o.x*o.y;
 col+=(hs(gl_FragCoord.xy+fract(T*.37)*911.)-.5)*.14*GR;
-col+=FL*vec3(.95,.88,1.);
 gl_FragColor=vec4(col,1.);}`;
 
   const G = {
@@ -220,7 +218,7 @@ gl_FragColor=vec4(col,1.);}`;
       const [A, B, C, D] = this.fb, P = this.P;
       const bloom = V.bloom > 0.001 || V.fog > 0.001;
       if (bloom) {
-        this.pass(P.bright, A, this.tex, (u) => { gl.uniform2f(u.TX, 1 / src.width, 1 / src.height); gl.uniform1f(u.TH, 0.42); });
+        this.pass(P.bright, A, this.tex, (u) => { gl.uniform2f(u.TX, 1 / src.width, 1 / src.height); gl.uniform1f(u.TH, 0.58); });
         this.pass(P.blur, B, A.t, (u) => gl.uniform2f(u.D, 1 / A.w, 0));
         this.pass(P.blur, A, B.t, (u) => gl.uniform2f(u.D, 0, 1 / A.h));
         if (L.q) {
@@ -238,7 +236,7 @@ gl_FragColor=vec4(col,1.);}`;
         gl.uniform2f(u.SH, sh ? (Math.random() - 0.5) * sh : 0, sh ? (Math.random() - 0.5) * sh : 0);
         gl.uniform3f(u.FC, FOG[0], FOG[1], FOG[2]);
         gl.uniform1f(u.T, this.T); gl.uniform1f(u.SL, Math.max(1.5, h / 300));
-        const U = { BL: 'bloom', CH: 'chroma', CR: 'crt', FG: 'fog', VH: 'vhs', FL: 'flash', WP: 'warp', WR: 'wire', GR: 'grain', MK: 'mask' };
+        const U = { BL: 'bloom', CH: 'chroma', CR: 'crt', FG: 'fog', VH: 'vhs', FL: 'flash', WP: 'warp', GR: 'grain', MK: 'mask' };
         for (const k in U) if (u[k]) gl.uniform1f(u[k], bloom || k !== 'BL' ? V[U[k]] : 0);
       });
       this.measure(now, performance.now() - t0);
