@@ -4,6 +4,8 @@
   Sheets (#sheet=…): build (a layer opens: its building is built, then its layer is switched off: deconstructed),
   full (the whole city playing: notes, chords, beat), dawn (the end: replay at dawn), storm (Nature high, Dérive,
   Reverb, Usure), music (S8.5: one bar played — melody, player notes, chords, bass, kick — lasers, ring, grid, sky sweep), grow (the Parcours: one layer after another, the camera framing), single (one frame), empty,
+  grows (S9.3: the city that grows with you — empty start, the Drone alone, 3 layers, the Mélodie auto playing (one car
+  per note), everything active (song sections, loops, discoveries, bass, rhythm, reverb, echo), a layer switched off taken down),
   combo (S8.7: #sheet=combo&c=<orage|hyper|wire|bouchon|aurore|kaiju|disco|miroir>: its knobs turned by hand into the zone, the charge, the SUPER on the beat and its bars, then let go).
   Prints in the title the real cost of a frame (JS). --><style>body{margin:0;background:#000}canvas{display:block}#out{image-rendering:auto}</style></head><body>
 <script>window.__errs = []; window.addEventListener('error', (e) => window.__errs.push(e.message + ' @' + e.lineno)); window.AMB_GAME_KEY = 'ambient.game.shot-city'; localStorage.removeItem(window.AMB_GAME_KEY); localStorage.removeItem('ambient.vizMode');</script>
@@ -12,7 +14,7 @@
 AMB.tree = { NODES: [['racine', 'drone.on'], ['t.son', 'drone.wave'], ['h.drone', 'drone.follow'], ['h.pad', 'pad.on'], ['h.pad2', 'pad.attack'], ['h.prog', 'pad.prog'],
   ['m.bells', 'bells.on'], ['m.phrase', 'bells.mode'], ['m.grains', 'grains.on'], ['c.seq', 'seq.on'], ['c.rythme', 'bass.*'], ['c.rythme', 'perc.*'], ['e.texture', 'texture.*'], ['e.reverb', '*.send']].map(([id, p]) => ({ id, params: [p] })) };
 </script>
-<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script><script>if (/[?&]gl=1/.test(location.search)) document.write('<script src="../js/city-gl.js"><\/script>');</script><script src="../js/city-dims.js"></script><script src="../js/city-music.js"></script><script src="../js/city-life.js"></script><script src="../js/city-combos.js"></script><script src="../js/widgets.js"></script><script src="../js/perform.js"></script>
+<script src="../js/theory.js"></script><script src="../js/params.js"></script><script src="../js/game.js"></script><script src="../js/visual.js"></script><script src="../js/garden-visual.js"></script><script>if (/[?&]gl=1/.test(location.search)) document.write('<script src="../js/city-gl.js"><\/script>');</script><script src="../js/city-dims.js"></script><script src="../js/city-music.js"></script><script src="../js/city-life.js"></script><script src="../js/city-life.js"></script><script src="../js/city-combos.js"></script><script src="../js/widgets.js"></script><script src="../js/perform.js"></script>
 <canvas id="out"></canvas>
 <script>
 window.addEventListener('load', () => {
@@ -32,7 +34,21 @@ window.addEventListener('load', () => {
   const tiles = [], snap = (label) => { const c = document.createElement('canvas'), GL = AMB.cityGL, gl = GL && GL.mode === 'gl' && GL.cv; c.width = cv.width; c.height = cv.height; if (gl) { GL.render(); c.getContext('2d').drawImage(gl, 0, 0, c.width, c.height); } else c.getContext('2d').drawImage(cv, 0, 0); tiles.push([c, label + (AMB.cityDims && /dbg/.test(location.hash) ? ' P' + GV.world.power.toFixed(2) + ' L' + St.get('macro.light').toFixed(2) + ' w' + AMB.cityDims.waves.length : '')]); };
   const music = (i) => { if (i % 9 === 0) AMB.bus.emit('note', { layer: ['bells', 'seq', 'bass'][(i / 9) % 3], midi: 55 + (i * 7) % 24, time: T, vel: 0.8 }); if (i % 6 === 0) AMB.bus.emit('perc', { track: i % 3, time: T, vel: 0.8 }); if (i % 60 === 0) AMB.bus.emit('chord', { time: T, deg: (i / 60) % 7, midis: [52, 55, 59] }); };
   V.draw(); step(0.5);
-  if (sheet === 'build') {
+  if (sheet === 'grows') { // S9.3: activating builds, playing animates
+    const sections = [], loops = [];
+    AMB.song = { sections, playing: true, idx: 1 }; AMB.looper = { layers: () => loops }; AMB.discoveries = { ALL: [], foundCount: () => found }; let found = 0;
+    AMB.seq.playing = false; GV.awake = false; G.s.nodes = ['racine']; GV.sig = null; GV.built = {}; GV.grow = {}; step(1.5); snap('départ : rien ne joue');
+    AMB.seq.playing = true; step(0.6); snap('le Drone joue : sa tour se construit'); step(2.2); snap('le Drone seul');
+    for (const n of ['h.pad', 'm.bells']) { GV.growAt(T + 0.1); G.s.nodes.push(n); GV.sig = null; step(0.5); }
+    step(2.4, (i) => { if (i % 50 === 0) AMB.bus.emit('chord', { time: T, deg: (i / 50) % 7, midis: [52, 55, 59] }); }); snap('3 couches : Drone, Pad, Mélodie auto');
+    const mel = (i) => { if (i % 14 === 0) AMB.bus.emit('note', { layer: 'bells', midi: 50 + (i * 5) % 34, time: T, vel: 0.8 }); if (i % 70 === 0) AMB.bus.emit('chord', { time: T, deg: (i / 70) % 7, midis: [52, 55, 59] }); };
+    step(1.6, mel); snap('Mélodie auto qui joue : une voiture par note'); step(1.4, mel);
+    G.s.nodes = ALL.concat(['c.song', 'e.echo']); St.setMany({ 'fx.echo': 0.4 }, 'preset'); sections.push({}, {}, {}); loops.push({ notes: [1] }, { notes: [1] }); found = 4; GV.growAt(T + 0.1); GV.sig = null;
+    const all = (i) => { mel(i); if (i % 9 === 0) AMB.bus.emit('note', { layer: 'bass', midi: 36 + (i % 5), time: T, vel: 0.8 }); if (i % 18 === 0) AMB.bus.emit('perc', { track: (i / 18) % 2, time: T, vel: 0.9 }); if (i % 40 === 0) AMB.bus.emit('note', { layer: 'bells', loop: true, midi: 67, time: T, vel: 0.7 }); };
+    step(1.2, all); snap('tout s\'ouvre : chantiers'); step(4, all); snap('tout activé, tout joue');
+    St.set('pad.on', false, 'user'); step(0.4, all); snap('Pad coupé : il se déconstruit'); step(2.2, all); snap('Pad coupé : il n\'en reste rien');
+    AMB.seq.playing = false; step(2.5); snap('arrêt : plus rien ne bouge');
+  } else if (sheet === 'build') {
     G.s.nodes = ALL.filter((n) => n !== 'c.seq'); GV.sig = null; step(1.2);
     snap('avant'); GV.growAt(T + 0.2); G.s.nodes.push('c.seq'); GV.sig = null;
     for (const t of [0.5, 0.6, 0.6, 0.6, 0.8]) { step(t); snap('construction +' + (T - 100).toFixed(1)); }

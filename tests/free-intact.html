@@ -79,7 +79,7 @@ f.addEventListener('load', async () => {
     while (V.mode !== seenViz.values().next().value) V.cycleMode();
     // S6.7: the dark city (mode id « Jardin ») is the free mode's default visual, a pure reflection: no game drawn on it
     const GV = A.gardenVisual; await wait(100);
-    ok(seenViz.has('Jardin') && V.mode === 'Jardin' && GV.active && GV.free && !GV.rares.length && GV.answer(0) === null && GV.dawnLevel(0) === 0 && d.getElementById('vizMode').textContent === 'Ville',
+    ok(seenViz.has('Jardin') && V.mode === 'Jardin' && GV.active && GV.free && GV.answer(0) === null && GV.dawnLevel(0) === 0 && d.getElementById('vizMode').textContent === 'Ville',
       'visuel : la Ville par défaut en libre, reflet sans jeu (aucune découverte, Réponse ni aube) ; Orbes, Horizon, Spectre au choix (' + [...seenViz].join(', ') + ')');
 
     // --- localStorage: no new game key

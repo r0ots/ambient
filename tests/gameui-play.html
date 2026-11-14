@@ -54,6 +54,7 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, task, lline, buyAll, sdiff, KEY, 
       ok(!lit().length, 'une note jouée, la phrase de la Réponse (live) ou la basse : aucune pastille allumée par la machine'); }
     // 390 px: at least 44 px high under the thumb (S9.1: Sculpter's sheet is always there, the 9 keys stay on one row), nothing wider than the screen
     f.style.width='390px'; f.style.height='780px'; await wait(250);
+    pads.forEach(b=>b.getAnimations().forEach(a=>a.finish())); // (a hop of the keys still running from a celebration — fx-bounce — scales them: measure them at rest)
     const de=d.documentElement, r2=pads.map(b=>b.getBoundingClientRect());
     ok(r2.every(r=>r.width>=36 && r.height>=44 && r.right<=de.clientWidth+1 && r.left>=-1) && de.scrollWidth<=de.clientWidth+1, '390 px : touches ≥ 36 × 44 px sur une rangée, dans l\'écran ('+Math.round(Math.min(...r2.map(r=>r.width)))+'×'+Math.round(Math.min(...r2.map(r=>r.height)))+')');
     f.style.width='1300px'; f.style.height='900px'; await wait(200);

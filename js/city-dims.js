@@ -1,16 +1,16 @@
 // S8.4 « Un réglage = une dimension du monde »: each grand réglage drives one WHOLE dimension of the city (js/garden-visual.js
 // world model), visible on the whole screen, and reacts to the GESTURE (how fast the knob turns) as well as to the value.
-//   Lumière   → power: the city's current. 0 = blackout (a few windows, dead street lamps), 1 = every sign lit, saturated
+//   Lumière   → power: the city's current. 0 = blackout (a few windows), 1 = every sign lit, saturated
 //               neon (bloom up). Turning it sends a WAVE of lighting / blackout across the city, left to right, at the speed
 //               of the gesture (a power FIELD of NC columns: windows switch in cascade, a light snap at the front).
-//   Densité   → traffic (drawn by S8.6, js/city-life.js), population, and the background city (`mid`): far buildings are
-//               BUILT (crane, floors stacking) when it goes up, taken down when it goes down; it fills the empty lots.
+//   Densité   → traffic (S9.3: Densité builds nothing any more — the 22 buildings of the background city are gone; it
+//               multiplies what exists: cars per note, inhabitants out, js/city-life.js; `traffic` = their trails).
 //   Espace    → the camera: recul (zoom out), depth (parallax: a slow dolly, stronger), fog in layers (2D bands + cityGL
 //               fog); the reverb (fx.space × fx.size) = TRAILS of the neons (persistence, a light echo of the last frames).
 //   Nostalgie → vhs (fx.tape, fx.lofi): cityGL vhs / chroma / grain, colour grading to magenta-sepia, tracking bands that
 //               jump with the gesture.
 //   Nature    → weather: clear starry sky at 0 → drizzle → downpour → storm (wind slants the rain, lightning with a cityGL
-//               flash, then the visual thunder: a shake), puddles and stronger reflections.
+//               flash, then the visual thunder: a shake), the puddles stronger (S9.3: the wet ground is the Reverb's).
 // The other settings (effects, volumes, mutes, tempo, key) each have their reflection: one table, TABLE (setting →
 // dimension), read by tests/city-dims.html. Turning fast (> HOT ranges per second) = OVERLOAD: the dimension overshoots
 // for ~0.7 s (shake, flash, sparks) then comes back (world.surge[name]).
@@ -18,8 +18,8 @@
 // JUICE 0: the dimensions and the waves stay (they are the content), no snap, no overload, no flash. Reduced motion: no
 // wave (the power follows at once), no construction (floors at once), no trails, no tracking jumps, no overload.
 // Ownership (S8.5 / S8.6 / S8.7): S8.4 sets the BASE levels of cityGL bloom, chroma, fog, vhs, grain (cityGL.set) every
-// frame; others add impulses (cityGL.pulse). S8.4 owns the DIMS power, traffic, population, cam.*, weather.*, vhs,
-// trails, skyline, lamps, cam.dx; world.surge, world.wave.
+// frame; others add impulses (cityGL.pulse). S8.4 owns the DIMS power, traffic, cam.*, weather.*, vhs, trails, cam.dx;
+// world.surge, world.wave.
 (function () {
   const AMB = (window.AMB = window.AMB || {});
   const gv = AMB.gardenVisual;
@@ -40,8 +40,8 @@
   // ---- THE TABLE: setting → dimension of the world (one reading of what every control does to the city). `dim`: a world
   // path (gv.world, smoothed), `scene:<layer>` (garden-visual SCENE), `look:<aspect>` (each building, LOOK), `speed`.
   const TABLE = [
-    { name: 'Lumière', keys: ['macro.light'], dim: 'power', at: 'courant : fenêtres, néons, lampadaires, bloom ; vague d\'allumage au geste' },
-    { name: 'Densité', keys: ['macro.density'], dim: 'traffic', also: ['skyline', 'population'], at: 'trafic (S8.6), habitants, ville de fond qui se construit' },
+    { name: 'Lumière', keys: ['macro.light'], dim: 'power', at: 'courant : fenêtres, néons, bloom ; vague d\'allumage au geste' },
+    { name: 'Densité', keys: ['macro.density'], dim: 'traffic', at: 'multiplie ce qui existe : voitures par note, habitants dehors (S9.3), traînées' },
     { name: 'Espace', keys: ['macro.space'], dim: 'cam.back', also: ['cam.depth', 'cam.fog'], at: 'caméra : recul, parallaxe, brouillard en couches' },
     { name: 'Nostalgie', keys: ['macro.nostalgia', 'fx.tape', 'fx.lofi'], dim: 'vhs', at: 'bande VHS, chroma, grain, étalonnage magenta-sépia, tracking au geste' },
     { name: 'Nature', keys: ['macro.nature'], dim: 'weather.rain', also: ['weather.wind', 'weather.storm', 'weather.clear'], at: 'ciel clair → bruine → averse → orage, flaques' },
@@ -50,7 +50,7 @@
     { name: 'Halo (shimmer)', keys: ['fx.shimmer'], dim: 'scene:aurora', at: 'aurores néon dans le ciel' },
     { name: 'Cassette / Usure', keys: ['fx.tape', 'fx.lofi'], dim: 'vhs', at: 'voir Nostalgie (même dimension)' },
     { name: 'Volumes', keys: ['drone.vol', 'pad.vol', 'bells.vol', 'texture.vol', 'grains.vol', 'seq.vol', 'bass.vol', 'perc.vol', 'global.volume'], dim: 'look:size', at: 'étages de chaque bâtiment (construits / déconstruits)' },
-    { name: 'Coupure des couches', keys: ['drone.on', 'pad.on', 'bells.on', 'texture.on', 'grains.on', 'seq.on', 'bass.on', 'perc.on'], dim: 'look:on', at: 'couche coupée : bâtiment déconstruit jusqu\'au terrain vague' },
+    { name: 'Coupure des couches', keys: ['drone.on', 'pad.on', 'bells.on', 'texture.on', 'grains.on', 'seq.on', 'bass.on', 'perc.on'], dim: 'look:on', at: 'couche coupée : son élément est déconstruit, il n\'en reste rien (S9.3)' },
     { name: 'Tempo', keys: ['global.tempo', 'global.time'], dim: 'speed', at: 'vitesse de toute la scène (pluie, trafic, nuages)' },
     { name: 'Tonalité / gamme', keys: ['global.key', 'global.tuning'], dim: 'scene:hue', at: 'teinte du ciel (et ciel de chaque accord)' },
   ];
@@ -60,7 +60,6 @@
     gest: {}, // macro → {v, t, rate (ranges/s), dir, last}
     surge: {}, // macro → 0..1 (overload, falls in ~0.7 s)
     cols: null, colAim: null, waves: [], // the power field and the lighting waves
-    mid: null, // the background city (built by Densité)
     trail: null, // the trails canvas (reverb)
     track: 0, // tracking jump (Nostalgie gesture) 0..1
     thunder: [], prevFlash: 0, ms: [],
@@ -168,10 +167,7 @@
   // THE DIMENSIONS (re-wired through gv.addDim; S8.1's table keeps its key order: power runs first and steps the frame)
   const sur = (m) => D.surge[m] || 0;
   gv.addDim('power', { tau: 0, at: 'courant (Lumière) : moyenne du champ de courant (vague au geste) ; aube = 1', aim: (c) => { D.step(c); return clamp(D.meanPower() + 0.25 * sur('light')); } });
-  gv.addDim('lamps', { tau: 0.15, at: 'lampadaires (Lumière) : morts en panne, ils grésillent juste au-dessus', aim: (c) => { const p = D.meanPower(); return p < 0.12 ? 0.04 : p < 0.3 ? (gv.reduced || ih(Math.floor((gv.t || 0) * 12), 9) > 0.35 ? 0.5 : 0.08) : 0.45 + 0.4 * p; } });
   gv.addDim('traffic', { tau: 0.8, at: 'trafic (Densité) : voitures volantes et files (dessin S8.6)', aim: (c) => clamp((0.04 + 0.96 * Math.pow(D.mac('density'), 0.9)) * (0.5 + 0.5 * c.L.play) + 0.35 * sur('density'), 0, 1.3) });
-  gv.addDim('population', { tau: 1.5, at: 'habitants (Densité × couches ouvertes × lecture ; aube = tous)', aim: (c) => Math.max(c.dawn, clamp((0.08 + 0.92 * D.mac('density')) * (0.4 + 0.6 * Math.min(1, c.plants.length / 4)) * (0.5 + 0.5 * c.L.play))) });
-  gv.addDim('skyline', { tau: 0, at: 'ville de fond construite (Densité) 0..1', aim: () => D.mac('density') });
   gv.addDim('cam.back', { tau: 0.9, at: 'caméra : recul (Espace ; 1,6 = zoom ×0,74)', aim: () => 1.6 * D.mac('space') + 0.6 * sur('space') });
   gv.addDim('cam.depth', { tau: 0.9, at: 'caméra : profondeur, parallaxe (Espace)', aim: () => 0.1 + 1.9 * D.mac('space') });
   gv.addDim('cam.fog', { tau: 1, at: 'caméra : brouillard (Espace)', aim: () => 0.04 + 0.9 * Math.pow(D.mac('space'), 1.3) });
@@ -236,62 +232,6 @@
   } });
   fogBand(22, 0.4, 0.34, 0.75, 'dims-fog-far'); fogBand(27, 0.6, 0.3, 0.6, 'dims-fog-mid'); fogBand(36, 1, 0.22, 0.45, 'dims-fog-near');
 
-  // the background city (z 25, depth 0.6): Densité builds it, slot by slot (each a threshold), floor by floor
-  const MID_N = 22, MID_D = 0.6;
-  D.midInit = function (W, gd, px) {
-    const key = W + '|' + gd + '|' + px;
-    if (this.mid && this.mid.key === key) return this.mid;
-    const r = mulberry(515), m = Math.max(2, Math.round(px * 0.8)), FW = W * 1.3, slots = [];
-    const order = Array.from({ length: MID_N }, (_, i) => i).sort(() => r() - 0.5);
-    for (let i = 0; i < MID_N; i++) {
-      const wc = 7 + Math.floor(r() * 9), hmax = Math.round((gd * (0.22 + 0.42 * r() * r() + 0.08 * r())) / (2 * m)); // floors of 2 cells; a few very tall
-      slots.push({ x: -W * 0.15 + FW * (i + 0.5) / MID_N + (r() - 0.5) * FW / MID_N * 0.4, wc, hmax, th: order[i] / MID_N * 0.92, f: null, col: [[255, 196, 110], [120, 230, 255], [255, 110, 200]][Math.floor(r() * 3)], seed: Math.floor(r() * 1e6), sprites: {} });
-    }
-    const old = this.mid; if (old) slots.forEach((s, i) => { s.f = old.slots[i] ? Math.min(old.slots[i].f, s.hmax) : null; });
-    return (this.mid = { key, slots, m });
-  };
-  // one building of the background city at full height: walls, windows lit up to a power level q (0..LV)
-  const LV = 8;
-  D.midSprite = function (s, m, q) {
-    if (s.sprites[q]) return s.sprites[q];
-    const w = s.wc * m, h = s.hmax * 2 * m + m, c = gv.canvas(w, h), x = c.getContext('2d'), r = mulberry(s.seed);
-    x.fillStyle = 'rgb(26,16,46)'; x.fillRect(0, 0, w, h);
-    x.fillStyle = rgba(s.col, 0.35); x.fillRect(0, 0, m, h); x.fillRect(w - m, 0, m, h); // neon edges
-    for (let fl = 0; fl < s.hmax; fl++) for (let i = 1; i < s.wc - 1; i += 2) {
-      const th = ih(s.seed + i, fl), lit = th < q / LV && (q > 0 || th < 0.04), y = h - (fl + 1) * 2 * m;
-      x.fillStyle = lit ? rgba(r() < 0.7 ? s.col : [255, 240, 200], 0.9) : 'rgb(36,24,56)'; x.fillRect(i * m, y, m - (m > 2 ? 1 : 0), m - (m > 2 ? 1 : 0));
-    }
-    x.fillStyle = rgba(s.col, 0.95); x.fillRect(0, 0, w, Math.max(1, m >> 1)); if (s.wc > 10) { x.fillStyle = rgba(s.col, 0.8); x.fillRect(Math.round(w * 0.2), Math.round(h * 0.12), Math.max(m, Math.round(w * 0.12)), Math.round(h * 0.18)); } // the roof's neon line, a vertical sign on the wide ones
-    return (s.sprites[q] = c);
-  };
-  gv.addLayer({ id: 'dims-mid', z: 25, draw(g, w, cam, v) {
-    const W = cam.W, gd = cam.gd, px = cam.px, M = D.midInit(W, gd, px), m = M.m, dens = w.skyline || 0, dt = D.dt || 0, red = v.reduced, T = v.st;
-    const k = cam.k(MID_D), base = cam.y(MID_D, gd), Gd = D.gest.density, speed = 6 * (1 + 1.5 * (Gd && v.now() / 1000 - Gd.last < 1 ? clamp(Gd.rate, 0, 2) : 0)) * (1 + sur('density')); // floors / s: faster with a faster gesture (≤ ×8)
-    let n = 0;
-    for (const s of M.slots) {
-      const want = dens > s.th ? Math.round(s.hmax * (0.35 + 0.65 * clamp((dens - s.th) / 0.3))) : 0;
-      if (s.f == null || red) s.f = want; else if (s.f < want) s.f = Math.min(want, s.f + speed * dt); else if (s.f > want) s.f = Math.max(want, s.f - speed * 1.4 * dt);
-      const fl = Math.floor(s.f + 1e-6); if (fl <= 0 && s.f <= 0) continue;
-      const sx = cam.x(MID_D, s.x), pw = D.colAt(clamp(sx / W)), q = Math.round(clamp(pw) * LV), spr = D.midSprite(s, m, q), hv = fl * 2 * m + m, sw = spr.width;
-      g.setTransform(k, 0, 0, k, sx, base);
-      g.drawImage(spr, 0, spr.height - hv, sw, hv, -sw / 2, -hv, sw, hv);
-      n++;
-      const growing = s.f < want - 0.01, falling = s.f > want + 0.01;
-      if (growing && !red) { // a crane over it, the floor being built (amber), sparks
-        const top = -hv, mx = sw / 2 + m, mt = top - 6 * m, an = Math.sin(T * 0.7 + s.seed), jl = 10 * m * an;
-        g.fillStyle = 'rgba(255,180,80,0.85)'; g.fillRect(mx, mt, m, -mt); g.fillRect(Math.min(mx, mx - jl), mt, Math.abs(jl) + m, Math.max(1, m >> 1));
-        g.fillRect(mx - jl * 0.7, mt, Math.max(1, m >> 1), top - mt - 2 * m);
-        const frac = s.f - fl; g.fillStyle = 'rgba(80,240,255,0.7)'; g.fillRect(-sw / 2, top - 2 * m, sw, Math.max(1, m >> 1)); g.fillRect(-sw / 2, top - 2 * m, Math.max(1, m >> 1), 2 * m); g.fillRect(sw / 2 - m, top - 2 * m, Math.max(1, m >> 1), 2 * m);
-        g.fillStyle = 'rgba(255,200,120,0.9)'; g.fillRect(-sw / 2, top - Math.round(frac * 2 * m), Math.round(sw * frac), Math.max(1, m >> 1));
-        if (Math.floor(T * 3 + s.seed) % 2) { g.fillStyle = '#ff3348'; g.fillRect(mx, mt - m, m, m); }
-        if (gv.parts.length < 200 && ih(Math.floor(T * 20), s.seed) < 0.3) gv.parts.push({ x: sx + (ih(s.seed, Math.floor(T * 20)) - 0.5) * sw * k, y: base + top * k, vx: (ih(n, Math.floor(T * 30)) - 0.5) * 10 * px, vy: -6 * px, life: 0.6, decay: 1.8, g: 30, col: [255, 236, 190], s: 1 });
-      } else if (falling && !red) { // the top floor dark, neon dust
-        g.fillStyle = 'rgba(10,6,20,0.85)'; g.fillRect(-sw / 2, -hv, sw, 2 * m);
-        if (gv.parts.length < 200 && ih(Math.floor(T * 20), s.seed + 1) < 0.35) gv.parts.push({ x: sx + (ih(s.seed, Math.floor(T * 17)) - 0.5) * sw * k, y: base - hv * k, vx: (w.weather.wind || 0) * 10 * px, vy: -3 * px, life: 0.8, decay: 1, g: -2, col: s.col, s: 1 });
-      }
-    }
-    D.midBuilt = n;
-  } });
   // the downpour (z 61, over the S8.1 rain): long streaks, slanted by the wind, when Nature is past the drizzle
   gv.addLayer({ id: 'dims-rain', z: 61, draw(g, w, cam, v) {
     const k = clamp(((w.weather.rain || 0) - 0.4) / 0.6); if (k < 0.03) return;
@@ -304,9 +244,9 @@
     }
     g.stroke();
   } });
-  // puddles and stronger reflections (z 31, on the wet street): Nature
+  // puddles and stronger reflections (z 31, on the wet street): S9.3 the wet ground is the Reverb's; Nature's rain adds to it
   gv.addLayer({ id: 'dims-puddles', z: 31, draw(g, w, cam, v) {
-    const wet = clamp((w.weather.rain || 0) * 1.1); if (wet < 0.05) return;
+    const wet = (v.featK.reverb || 0) * clamp(0.3 + (w.weather.rain || 0) * 0.9); if (wet < 0.05) return;
     const W = cam.W, H = cam.H, px = cam.px, T = v.reduced ? 0 : v.st, sgd = cam.y(1, cam.gd);
     g.globalCompositeOperation = 'lighter';
     for (const p of v.plants) { // the lights of each building, reflected, rippling
