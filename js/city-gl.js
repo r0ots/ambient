@@ -23,10 +23,10 @@
   const AMB = (window.AMB = window.AMB || {});
   const NAMES = ['bloom', 'chroma', 'crt', 'fog', 'vhs', 'flash', 'shake', 'warp', 'wire', 'grain', 'mask'];
   const LOOK = { bloom: 1, chroma: 1, crt: 1, mask: 1 }, MOTION = { vhs: 1, grain: 1, shake: 1, warp: 1, flash: 1 };
-  const BASE = { bloom: 0.9, chroma: 0.35, crt: 0.55, grain: 0.2 }; // the default look (others 0)
+  const BASE = { bloom: 1.2, chroma: 0.35, crt: 0.55, grain: 0.2 }; // the default look (others 0)
   const FOG = [0.36, 0.16, 0.5]; // violet neon fog (--city-horizon, lifted)
   const LEVELS = [{ scale: 1, q: true }, { scale: 0.7, q: false }, { scale: 0.5, q: false }]; // budget steps, then 2D
-  const BUDGET = { warm: 30, window: 90, interval: 40, own: 6 }; // ms: below 25 fps, or this pass > 6 ms → one step down
+  const BUDGET = { warm: 30, window: 90, interval: 36, own: 6 }; // ms: below ~28 fps, or this pass > 6 ms → one step down
   const qs = (() => { try { return new URLSearchParams(location.search).get('gl'); } catch (e) { return null; } })();
 
   const VS = 'attribute vec2 p;varying vec2 v;void main(){v=p*.5+.5;gl_Position=vec4(p,0.,1.);}';
@@ -56,7 +56,7 @@ float a=lu(tx(u+e*vec2(-1.,1.))),b=lu(tx(u+e*vec2(0.,1.))),f=lu(tx(u+e)),g=lu(tx
 float gx=(f+2.*h+k)-(a+2.*g+i),gy=(a+2.*b+f)-(i+2.*j+k);float ed=smoothstep(.06,.3,length(vec2(gx,gy)));
 vec3 w=mix(vec3(.2,1.,.85),normalize(col+.04)*1.5,.35)*ed+vec3(0.,.015,.03);col=mix(col,w,min(1.,WR));}
 vec3 bl=texture2D(B1,u).rgb*.75+texture2D(B2,u).rgb;col+=bl*BL*(1.+FG*.8);
-if(FG>.001){float n=.5+.25*sin(u.x*6.+T*.3+sin(u.y*9.-T*.2))+.25*sin(u.x*13.-T*.5+u.y*4.);float fo=FG*(1.-smoothstep(.1,.8,u.y))*(.5+.5*n);col=mix(col,FC+bl*.6,clamp(fo*.8,0.,.85));}
+if(FG>.001){float n=.5+.25*sin(u.x*6.+T*.3+sin(u.y*9.-T*.2))+.25*sin(u.x*13.-T*.5+u.y*4.);float fo=FG*(1.-smoothstep(.05,.9,u.y))*(.45+.55*n);col=mix(col,FC*1.4+bl*.7,clamp(fo,0.,.9));}
 float s=.5+.5*sin(gl_FragCoord.y*3.14159/SL);col*=1.-CR*.28*(1.-s);
 if(MK>.001){float m=mod(gl_FragCoord.x,3.);vec3 mk=m<1.?vec3(1.,.55,.55):m<2.?vec3(.55,1.,.55):vec3(.55,.55,1.);col*=mix(vec3(1.),mk*1.3,min(1.,MK)*.6);}
 float r2=dot(c,c);col*=1.-CR*.45*r2*r2*.25;
@@ -219,7 +219,7 @@ gl_FragColor=vec4(col,1.);}`;
       const [A, B, C, D] = this.fb, P = this.P;
       const bloom = V.bloom > 0.001 || V.fog > 0.001;
       if (bloom) {
-        this.pass(P.bright, A, this.tex, (u) => { gl.uniform2f(u.TX, 1 / src.width, 1 / src.height); gl.uniform1f(u.TH, 0.5); });
+        this.pass(P.bright, A, this.tex, (u) => { gl.uniform2f(u.TX, 1 / src.width, 1 / src.height); gl.uniform1f(u.TH, 0.42); });
         this.pass(P.blur, B, A.t, (u) => gl.uniform2f(u.D, 1 / A.w, 0));
         this.pass(P.blur, A, B.t, (u) => gl.uniform2f(u.D, 0, 1 / A.h));
         if (L.q) {
