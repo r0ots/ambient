@@ -155,8 +155,10 @@ gameUI(async ({ f, w, d, A, shown, locked, tn, goals, buyAll, sdiff, KEY, settle
     A.bus.emit('live',{midi:62,time:0,vel:0.8,raw:null}); ok(!A.seq.playing && !A.game.s.contracts.includes('k.allume'), 'une note MIDI ne réveille rien');
     coin.dispatchEvent(new w.PointerEvent('pointerdown',{bubbles:true})); await wait(300);
     ok(A.seq.playing && d.body.classList.contains('coined') && !shown('#coin') && A.game.s.contracts.includes('k.allume') && (d.body.classList.contains('waking') || !A.motion.on()) && pads.hidden, 'le bouton ⏻ : la machine se réveille (cascade), la musique part, « Allume la machine » coché ; toujours pas de touches');
-    { const an=(sel)=>w.getComputedStyle(d.querySelector(sel)).animationName, on=A.motion.on() && !d.documentElement.classList.contains('q-bas');
-      ok(!on || (an('.app > .top')==='m-wake' && an('.dust')==='dust-off' && an('.app > .drawer')==='m-wake' && an('#viz')==='m-wake-city' && d.querySelector('.coin-fx .cf-crt')), 'le réveil : la poussière s\'envole (dust-off), les néons grésillent en cascade (m-wake), la ville s\'éclaire, ligne CRT'); }
+    { const on=A.motion.on() && !d.documentElement.classList.contains('q-bas'), cl=d.body.classList;
+      ok(!on || (cl.contains('waking') && cl.contains('w1') && d.querySelector('.coin-fx .cf-crt')), 'le réveil par étapes : ligne CRT, la poussière se lève (w1)');
+      for (let i=0;i<40 && on && !cl.contains('w5');i++) await wait(50);
+      ok(!on || (cl.contains('w2') && cl.contains('w5')), 'puis la barre, le widget, les éditeurs grésillent en cascade, la ville s\'éclaire (w5)'); }
     for (let i=0;i<60 && d.body.classList.contains('waking');i++) await wait(50); ok(!d.body.classList.contains('waking') && !/grayscale/.test(w.getComputedStyle(d.querySelector('.app > .top')).filter), 'réveillée : plus de gris, la cascade finie');
     A.ui.stop(); await wait(100); A.game.reset(); d.body.classList.remove('coined'); await wait(30);
     w.dispatchEvent(new w.KeyboardEvent('keydown',{code:'Space',key:' ',bubbles:true})); await wait(200);

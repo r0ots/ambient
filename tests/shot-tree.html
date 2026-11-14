@@ -61,9 +61,20 @@ document.getElementById('f').addEventListener('load', () => {
   }
   if (h.includes('free')) { A.game.setMode('free'); A.garden.welcome(false); return; }
   A.game.setMode('path'); A.garden.welcome(false);
-  if (h.includes('wake=')) { // S11.1: the wake-up frozen at <ms> (the button pressed, every animation paused there)
-    const ms = +h.split('wake=')[1]; A.quality.auto = false; A.quality.set(0, 'shot'); setTimeout(() => { A.quality.auto = false; A.quality.set(0, 'shot'); doc.querySelectorAll('.m-ghost').forEach((e) => e.remove()); A.garden.coin(); clearTimeout(A.garden._wakeT); const st = doc.createElement('style'); st.textContent = `body.waking .app > *, body.waking .stage > *, body.waking .dust { animation-play-state: paused !important; animation-delay: -${ms}ms !important; }`; doc.head.append(st); }, 1200); return; // (the class that drives the cascade stays: frozen)
+  if (h.includes('wake=')) { // S11.1: the wake-up held at a stage (#wake=0…5: body.waking + w1…wn), the button pressed
+    const n = +h.split('wake=')[1]; A.quality.auto = false; A.quality.set(0, 'shot');
+    setTimeout(() => { doc.querySelectorAll('.m-ghost').forEach((e) => e.remove()); A.garden.coin(); }, 1200);
+    setTimeout(() => { // (a headless capture runs slow: the stage is forced, held, its animations frozen)
+      try {
+        const G = A.garden, cl = doc.body.classList; (G._wakeTs || []).forEach(clearTimeout); G.wakeStages = () => {};
+        doc.documentElement.classList.remove('q-bas', 'q-moyen'); cl.add('waking');
+        for (let i = 1; i <= 5; i++) cl.toggle('w' + i, n >= i);
+        const st = doc.createElement('style'); st.textContent = 'body.waking .app > *, body.waking .stage > *, body.waking .logo { animation: none !important; transition: none !important; }'; doc.head.appendChild(st);
+      } catch (e) { document.body.dataset.dbg = 'ERR ' + e.message; }
+    }, 2000); return;
   }
+
+
   if (!h.includes('coin')) doc.body.classList.add('coined'); // S6.6: past the power button (#coin = the machine asleep itself, S11.1)
   if (h.includes('coin')) { setTimeout(() => doc.querySelectorAll('.m-ghost').forEach((e) => e.remove()), 1000); return; } // (the welcome's closing ghost stays frozen in a headless capture)
   // S11.1 #goals (the Objectifs widget: a piece of 3 objectives, one done and struck, one going, history struck below),
