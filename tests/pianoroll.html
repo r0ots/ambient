@@ -117,7 +117,7 @@ window.addEventListener('load', async ()=>{
     ok(Math.abs(ctx.currentTime-pa-0.1-out)<0.03, 'playedAt : 100 ms d\'avance de l\'événement rattrapés (+ latence de sortie '+(out*1000).toFixed(0)+' ms)');
     const sd=AMB.seq.stepDur(), at=(k)=>AMB.seq.nextTime+(k-AMB.seq.step)*sd, len=parseInt(st.get('seq.steps'),10);
     st.set('seq.pattern',''); rb.click();
-    const k=AMB.seq.step+8; AMB.bus.emit('live',{midi:64,time:at(k+3),played:at(k),vel:0.8,id:9100}); AMB.bus.emit('liveOff',{id:9100,midi:64,time:at(k+5),played:at(k+2)});
+    let k=AMB.seq.step+8; if (k%len===len-1) k++; /* (S8.8: a note on the last step is cut to 1 by design: that made it fail 1 time in 16) */ AMB.bus.emit('live',{midi:64,time:at(k+3),played:at(k),vel:0.8,id:9100}); AMB.bus.emit('liveOff',{id:9100,midi:64,time:at(k+5),played:at(k+2)});
     rb.click(); const n=PR.parse(st.get('seq.pattern'))[0]||{};
     ok(n.s===k%len && n.l===2, 'Rec live : pas et longueur pris à l\'instant joué ('+st.get('seq.pattern')+')'); }
   // ---- S4.6 a chromatic .mid keeps its sharps ----
