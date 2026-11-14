@@ -10,7 +10,7 @@
 //      and the combo's effect plays at full size for SUPER_BEATS beats, its story timed on the beats; held on, it charges
 //      again (sustain); let go before the end of the charge = the partial effect falls back.
 // Each combo transforms the WHOLE screen through the world (dimensions wrapped with gv.addDim: power, traffic, camera,
-// weather, fog) and AMB.cityGL (warp, wire, bloom, fog, flash, shake), plus its own layers (sky, behind the towers, ground,
+// weather, fog) and AMB.cityGL (warp, bloom, fog, flash, shake; 1984 is drawn in vector lines, S8.8), plus its own layers (sky, behind the towers, ground,
 // in front, HUD). Buildings never deform. The table COMBOS is THE table of the combos: js/discoveries.js reads it (names,
 // hints, nodes needed) to make each one a discovery; `gate` (set there) keeps a combo out of reach in the Parcours until
 // its nodes are owned.
