@@ -613,10 +613,10 @@
       let s = this.labels.get(key);
       if (s) return s;
       const cv = document.createElement('canvas'), g = cv.getContext('2d'), pad = Math.ceil(fs * 0.4);
-      let font = `${fs}px VT323, "IBM Plex Mono", monospace`; g.font = font;
+      let font = `${fs}px "Chakra Petch", sans-serif`; g.font = font;
       const fits = (t) => g.measureText(t).width + 4 + 2 * pad <= maxW, short = p.short.toUpperCase();
       const lines = [fits(full) ? full : short];
-      if (!fits(lines[0])) { const f2 = Math.max(Math.round(fs * 0.7), Math.floor(fs * (maxW - 4 - 2 * pad) / g.measureText(short).width)); font = `${f2}px VT323, "IBM Plex Mono", monospace`; g.font = font; }
+      if (!fits(lines[0])) { const f2 = Math.max(Math.round(fs * 0.4), Math.floor(fs * (maxW - 4 - 2 * pad) / g.measureText(short).width)); font = `${f2}px "Chakra Petch", sans-serif`; g.font = font; }
       const w = Math.ceil(Math.max(...lines.map((t) => g.measureText(t).width))) + 4 + 2 * pad;
       cv.width = w; cv.height = Math.ceil(fs * 1.05 * lines.length + fs * 0.2) + pad;
       g.font = font; g.textBaseline = 'top'; g.textAlign = 'center';

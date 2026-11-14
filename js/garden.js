@@ -500,7 +500,7 @@
         if (R.bounce) this.fxClass(document.body, 'fx-bounce', 800);
         const el = R.hop === 'el' ? o.el : R.hop && $(R.hop); if (el) this.fxClass(el, 'fx-hop', 550);
         if (R.kick && GV && GV.flare) GV.flare(R.kick, J);
-        if (R.pop) this.fxPop(typeof R.pop === 'function' ? R.pop(o) : R.pop, stage, R.rank);
+        if (R.pop) this.fxPop(typeof R.pop === 'function' ? R.pop(o) : R.pop, stage, R.rank, J, kind);
         if (R.confetti) {
           const src = R.from === 'el' ? o.el : R.from ? $(R.from) : stage, n = Math.round(R.confetti * J);
           this.confetti.burst(n, src || stage);
@@ -524,21 +524,31 @@
       f.style.setProperty('--a', a.toFixed(2)); f.classList.toggle('soft', !!soft);
       this.fxClass(f, 'on', soft ? 950 : 600);
     },
-    // the pop text: one short word, plainly (S9.1); S6.7: two never overlap — while one is up, a bigger (or equal)
-    // moment replaces it, a smaller one is dropped; never over the LCD (it stays readable during an ask)
-    fxPop(text, stage, rank) {
+    // S9.2 the party's word as a neon sign: written by a laser letter by letter, held, then it crackles and goes out
+    // (css .fx-pop; no bubble, no comic font). The word = the moment's one short word (S9.1: RATÉ, PARFAIT, COMBO…). Colour by moment (phosphor = success, magenta = missed, cyan =
+    // combo / discovery, amber = what opens); size by rank × JUICE; never over the LCD (it stays readable during an ask)
+    SIGN_COL: { rate: '#ff2bd6', parfait: '#39ff88', bien: '#39ff88', juste: '#39ff88', streak: '#39ff88', defi: '#39ff88', record: '#39ff88', tier: '#39ff88',
+      combo: '#22e6ff', super: '#22e6ff', discovery: '#22e6ff', placement: '#22e6ff', open: '#ffb347', end: '#ffb347', ready: '#ffb347', first: '#ffb347' },
+    // S6.7: two never overlap — while one is up, a bigger (or equal) moment replaces it, a smaller one is dropped
+    fxPop(text, stage, rank, J = 1, kind = null) {
       const cur = this._pop, now = Date.now();
       if (cur && cur.el.isConnected) { if (now < cur.until && rank < cur.rank) return null; cur.el.remove(); }
       const L = this.confetti.layer(), r = stage ? stage.getBoundingClientRect() : { left: 0, top: 0, width: innerWidth, height: innerHeight };
-      const p = document.createElement('div'); p.className = 'fx-pop';
+      const word = String(text || ''), k = Math.min(1.5, 0.7 + 0.3 * J);
+      const p = document.createElement('div'); p.className = 'fx-pop'; p.setAttribute('role', 'status');
+      if (this.SIGN_COL[kind]) p.style.setProperty('--k', this.SIGN_COL[kind]);
+      const w = document.createElement('b'); w.className = 'fx-word'; const ch = [...word];
+      ch.forEach((c, i) => { const e = document.createElement('i'); e.textContent = c; e.style.setProperty('--d', i); w.append(e); });
+      w.style.setProperty('--n', ch.length); w.setAttribute('aria-label', word); p.append(w);
+      p.style.fontSize = `min(${Math.round((20 + rank * 4) * k)}px, ${(7.5 * k).toFixed(1)}vw)`;
       const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height * 0.42);
-      p.textContent = text; p.style.fontSize = `min(${24 + rank * 5}px, 10vw)`;
       p.style.left = x + 'px'; p.style.top = y + 'px';
       L.hidden = false; L.append(p);
       const lcd = document.getElementById('lcd'), lr = lcd && lcd.getBoundingClientRect(), half = p.offsetHeight * 0.75;
       if (lr && lr.height && y - half < lr.bottom + 6) p.style.top = Math.round(lr.bottom + 6 + half) + 'px'; // under the LCD, never over it
-      const ms = rank >= 7 ? 1800 : 1300;
+      const ms = rank >= 7 ? 1900 : 1400, out = AMB.motion.ms('slow');
       this._pop = { el: p, rank, until: now + ms };
+      setTimeout(() => p.classList.add('fx-out'), Math.max(0, ms - out)); // the sign crackles and goes out
       setTimeout(() => { p.remove(); this.confetti.idle(); }, ms);
       return p;
     },

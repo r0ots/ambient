@@ -512,7 +512,7 @@
         // rows that are tones of the chord playing now (relative to the motif when following chords)
         if (chordPcs.has(((T.degreeToMidi(r + (store.get('seq.follow') ? seq.chordDeg : 0), seq.root, seq.scale, 3)) % 12 + 12) % 12)) {
           g.fillStyle = 'rgba(242,162,58,0.08)'; g.fillRect(G.labelW, y, G.w - G.labelW, G.rowH);
-          g.fillStyle = '#f2a23a'; g.fillRect(G.labelW - 3, y + 4, 2, G.rowH - 8);
+          g.fillStyle = '#ffb347'; g.fillRect(G.labelW - 3, y + 4, 2, G.rowH - 8);
         }
         const midi = T.degreeToMidi(r, seq.root, seq.scale, 3);
         g.fillStyle = isRoot ? '#ffcf7a' : '#8a7f66';
@@ -550,7 +550,7 @@
         if (nt.p < 10) { // dashed outline + percentage for probabilistic notes
           g.setLineDash([3, 2]); g.strokeStyle = '#fff8'; g.lineWidth = 1;
           roundRect(g, x + 0.5, y + 0.5, w - 1, G.rowH - 5, 3); g.stroke(); g.setLineDash([]);
-          if (w > 22) { g.fillStyle = '#1d1407'; g.font = '9px "IBM Plex Mono", monospace'; g.fillText(nt.p * 10 + '%', x + 3, y + (G.rowH - 4) / 2); }
+          if (w > 22) { g.fillStyle = '#1d1407'; g.font = '600 9px "Chakra Petch", sans-serif'; g.fillText(nt.p * 10 + '%', x + 3, y + (G.rowH - 4) / 2); }
         }
       }
       this.drawFx(g, G);

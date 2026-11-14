@@ -138,6 +138,9 @@
       const T = AMB.tree, g = AMB.game;
       const n = T.NODES.filter((x) => g.has(x.id)).length; // S9.1: no total, what is left is still in the dark
       $('#treeDlg .tree-count').textContent = g.s.ended ? '✦ L\'instrument est à toi' : `${n} ouvert${n > 1 ? 's' : ''}`;
+      const cnt = $('#treeDlg .tree-count'), rdy = $('#treeDlg .tree-ready'), nr = T.NODES.filter((x) => T.status(x.id) === 'ready').length;
+      cnt.classList.toggle('done', !!g.s.ended);
+      if (rdy) { rdy.hidden = !nr || !!g.s.ended; rdy.textContent = `${nr} ${nr > 1 ? 'prêts' : 'prêt'}`; } // (S9.2: the neon counters)
       if (!map.querySelector('.tree-stage') || map.dataset.n !== T.NODES.length + (this.narrowTree() ? 'n' : '')) this.buildMap(map);
       this.paintTree();
     },
@@ -147,6 +150,14 @@
       if (d) out.push({ kind: d.kind === 'reponse' ? 'reponse' : 'défi', d, text: d.kind === 'reponse' ? `↺ Réponse « ${d.title} » (${AMB.puzzles.need(d)} notes)` : AMB.game.txt(d.kind === 'demande' ? `♪ Demande : ${d.title}` : `◇ ${d.title}`) });
       if (S) for (const [sid, nid] of Object.entries(S.OPENS)) if (nid === id) out.push({ kind: 'secret', text: `✦ Découverte : ${S.has(sid) ? S.byId[sid].name : '???'}` });
       return out;
+    },
+    // S9.2 a circuit trace from a (below) to b: straight up, a 45° bend towards b's column (a flat run if the step is
+    // wide), straight up into b — never a curve
+    linkPath(a, b) {
+      const dx = b.x - a.x, dy = a.y - b.y, sx = Math.sign(dx), diag = Math.min(Math.abs(dx), Math.max(0, dy - 24)), flat = Math.abs(dx) - diag;
+      if (!dx) return `M${a.x} ${a.y}V${b.y}`;
+      const y1 = a.y - Math.max(12, (dy - diag) / 2), y2 = y1 - diag;
+      return `M${a.x} ${a.y}V${y1}L${a.x + sx * diag} ${y2}${flat ? `H${b.x}` : ''}V${b.y}`;
     },
     // the stage: SVG links under absolutely placed LED buttons, in layout units (pan/zoom = one transform)
     buildMap(map) {
@@ -170,8 +181,7 @@
       const gl = document.createElementNS(SVGNS, 'g'), defs = document.createElementNS(SVGNS, 'defs');
       svg.append(defs);
       for (const n of T.NODES) for (const r of n.req) {
-        const a = lay.pos[r], b = lay.pos[n.id], dy = a.y - b.y;
-        const d = `M${a.x} ${a.y}C${a.x} ${a.y - dy * 0.55} ${b.x} ${b.y + dy * 0.45} ${b.x} ${b.y}`;
+        const d = this.linkPath(lay.pos[r], lay.pos[n.id]);
         const cross = T.byId[r].branch !== n.branch;
         // S9.1: a link towards a node still in the dark fades out from the visible end (its gradient, oriented by paintTree)
         const lg = document.createElementNS(SVGNS, 'linearGradient');
@@ -235,7 +245,13 @@
         } else p.style.stroke = '';
       });
       // a branch's name shows once one of its nodes is open
-      map.querySelectorAll('.tree-bname').forEach((t) => t.classList.toggle('gone', !T.NODES.some((n) => n.branch === t.dataset.b && g.has(n.id))));
+      // (S9.2: right above its highest node in sight, not at the tip of a band still in the dark)
+      map.querySelectorAll('.tree-bname').forEach((t) => {
+        t.classList.toggle('gone', !T.NODES.some((n) => n.branch === t.dataset.b && g.has(n.id)));
+        const ps = T.NODES.filter((n) => n.branch === t.dataset.b && T.status(n.id) !== 'locked').map((n) => lay.pos[n.id]).filter(Boolean); if (!ps.length) return;
+        const top = Math.min(...ps.map((q) => q.y)), xs = ps.filter((q) => q.y === top).map((q) => q.x);
+        t.setAttribute('x', xs.reduce((u, v) => u + v, 0) / xs.length); t.setAttribute('y', top - 40);
+      });
       if (this.sel) this.showInfo(this.sel);
     },
 

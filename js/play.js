@@ -38,7 +38,7 @@
     keyUp(key);
     if (h && typeof h === 'object') held.set(key, h); // (a stub or a silent engine returns no handle)
     const b = padEl(pad != null ? pad : h && typeof h === 'object' && h.midi != null ? padForMidi(h.midi) : -1);
-    if (b) { struck.set(key, b); strike(b, true); }
+    if (b) { struck.set(key, b); strike(b, true, { src: key[0] }); }
   }
   // stamp: the input event's timeStamp, so a recorded length is the one played (not the handling delay)
   function lift(key, now = false, stamp = null) {
@@ -142,11 +142,13 @@
     const M = AMB.motion, n = (downs.get(b) || 0) + (down ? 1 : -1);
     if (n > 0) downs.set(b, n); else downs.delete(b);
     if (down) {
-      b.classList.add('on'); if (o.chord) b.classList.add('chord');
-      if (M) { M.press(b, true); M.burst(b, { n: 9, spread: 1.7, speed: 280 }); }
+      b.classList.remove('k-rel'); b.classList.add('on'); if (o.chord) b.classList.add('chord');
+      if (M) M.press(b, true);
+      keys.fx(b, { source: SRC[o.src] || 'key' }); // S9.2: the neon strike (ring, laser to the city, sparks of its colour)
     } else if (n <= 0) {
       b.classList.remove('on', 'chord');
       if (M) M.press(b, false);
+      keys.release(b); // S9.2: let go = 400 ms brighter
     }
   }
   function keyUp(key) { const b = struck.get(key); if (b) { struck.delete(key); strike(b, false); } }
@@ -222,6 +224,7 @@
     const b = bar.children[padForMidi(midi)]; if (!b) return;
     const ctx = AMB.engine && AMB.engine.ctx, wait = ctx && time ? Math.max(0, (time - ctx.currentTime) * 1000) : 0, T = cls === 'auto' ? autoT : callT;
     setTimeout(() => {
+      if (cls === 'auto') return keys.hit(+b.dataset.deg, { source: 'machine', ms }); // S9.2: the machine's strike, softer
       b.classList.add(cls); clearTimeout(T.get(b));
       T.set(b, setTimeout(() => b.classList.remove(cls), ms));
     }, wait);
@@ -230,7 +233,8 @@
   const padCall = (e) => { if (e && e.notes) e.notes.forEach((n) => n.midis.forEach((m) => padLight(m, n.time, n.dur * 1000, 'call'))); };
   function padsInit() {
     const bar = document.getElementById('pads'); if (!bar) return;
-    bar.innerHTML = PADS.map((k, i) => `<button type="button" class="pad" data-deg="${i}" style="--i:${i};--c:hsl(${250 - i * 27}, 85%, 64%)" title="Lettre ${k} du clavier · garde le doigt : accord" aria-label="Touche ${k}, note ${i + 1}"><span>${k}</span></button>`).join('');
+    bar.innerHTML = PADS.map((k, i) => `<button type="button" class="pad" data-deg="${i}" style="--i:${i};--c:${KEY_COL[i]}" title="Lettre ${k} du clavier · garde le doigt : accord" aria-label="Touche ${k}, note ${i + 1}"><b>${k}</b><small></small></button>`).join('');
+    padNames(); AMB.store.on((key) => { if (key === 'global.key' || key === 'global.scale') padNames(); }); // (S9.2: each key says its note)
     bar.addEventListener('pointerdown', padDown);
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((n) => bar.addEventListener(n, (e) => padUp(e.pointerId)));
     bar.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -239,6 +243,51 @@
     AMB.bus.on('resp:call', padCall);
     padsRefresh();
   }
+
+  // ---------- S9.2 the strike of a key: ONE look for every input (mouse or finger on a key, computer key, MIDI note,
+  // and — softer, never squashed — the machine's notes): crushed and full of light while held (.on), a ring, a laser
+  // towards the city and sparks of its colour; let go = 400 ms brighter (.k-rel). The state changes at once; the
+  // motion (ring, laser, sparks, the 400 ms) is off in reduced motion and at JUICE 0. Keys = the 9 notes of A–L.
+  const KEY_COL = ['#8a5cff', '#5c7bff', '#22c6ff', '#22e6ff', '#22ffc8', '#39ff88', '#c8ff39', '#ffb347', '#ff2bd6'];
+  const NOTE_FR = ['DO', 'DO♯', 'RÉ', 'RÉ♯', 'MI', 'FA', 'FA♯', 'SOL', 'SOL♯', 'LA', 'LA♯', 'SI'];
+  function padNames() {
+    const bar = document.getElementById('pads'), S = AMB.seq, T = AMB.theory; if (!bar || !S || !S.scale || !T) return;
+    [...bar.children].forEach((b, i) => { const sm = b.querySelector('small'), n = NOTE_FR[((T.degreeToMidi(i, S.root, S.scale, 4) % 12) + 12) % 12]; if (sm) sm.textContent = n; b.setAttribute('aria-label', `Note ${n}`); });
+  }
+  const SRC = { k: 'key', m: 'midi', p: 'mouse' };
+  const machineT = new WeakMap();
+  const keys = {
+    COL: KEY_COL,
+    // the machine's note on key i (padAuto): softer, never squashed (a player's strike goes through strike(), above)
+    hit(i, o = {}) {
+      const b = padEl(i); if (!b) return null;
+      b.classList.add('auto'); clearTimeout(machineT.get(b)); machineT.set(b, setTimeout(() => b.classList.remove('auto'), o.ms || AUTO_MS));
+      return this.fx(b, { source: 'machine' });
+    },
+    // the motion of a strike: o = {source: 'mouse' | 'key' | 'midi' | 'machine', vel (0..1)}; off in reduced motion / JUICE 0
+    fx(b, o = {}) {
+      const soft = o.source === 'machine', M = AMB.motion, i = +b.dataset.deg;
+      if (!M || !M.on() || document.hidden) return b;
+      const r = b.getBoundingClientRect(), c = KEY_COL[i] || '#22e6ff', v = o.vel != null ? o.vel : 0.85; if (!r.width) return b;
+      // the laser: from the key's top up into the city (longer when struck harder; the machine's = shorter, fainter)
+      const h = Math.max(50, Math.min(r.top * 0.55, 340)) * (soft ? 0.45 : 0.55 + 0.45 * v), lz = M.ghost('k-laser', { left: r.left + r.width / 2 + 'px', top: r.top - h + 'px', height: h + 'px' });
+      lz.style.setProperty('--c', c);
+      const an = lz.animate([{ transform: 'scaleY(0)', opacity: 1 }, { transform: 'scaleY(1)', opacity: soft ? 0.5 : 1, offset: 0.28 }, { transform: 'scaleY(1)', opacity: 0 }],
+        { duration: M.ms('slow') + (soft ? 0 : 120 * M.t()), easing: 'ease-out' });
+      an.onfinish = an.oncancel = () => lz.remove();
+      if (soft) return b;
+      const rg = M.ghost('k-ring', { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' }); rg.style.setProperty('--c', c);
+      const ar = rg.animate([{ transform: 'scale(1)', opacity: 0.9 }, { transform: `scale(${1 + 0.18 * Math.min(1.5, M.amp())}, ${1 + 0.4 * Math.min(1.5, M.amp())})`, opacity: 0 }], { duration: M.ms('med') + 60 * M.t(), easing: M.EASE.out });
+      ar.onfinish = ar.oncancel = () => rg.remove();
+      M.burst(b, { n: 9, spread: 2.6, speed: 300, color: c }); // (the same 9 sparks whatever struck it: S9.1 parity)
+      return b;
+    },
+    // let go: no longer crushed, 400 ms brighter, a few sparks
+    release(b) {
+      const i = +b.dataset.deg, M = AMB.motion; if (M && M.on()) { M.pop(b, 'k-rel', { ms: 400 }); M.burst(b, { n: 6, spread: 2, speed: 220, life: 0.4, color: KEY_COL[i] }); }
+    },
+  };
+  AMB.keys = keys;
 
   let midiAccess = null;
   function onMidi(msg) {

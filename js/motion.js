@@ -344,6 +344,7 @@
     // ✦ Nouveau paysage: the die rolls, sparks, the name rolls in like a reel (glitch), the scene reacts
     landscape(btn, sel) {
       if (!this.on()) return false;
+      if (sel && sel._neon) sel = sel._neon; // (S9.2: a select is shown by its neon button)
       if (btn) { this.pop(btn.querySelector('.m-die') || btn, 'm-dice', { ms: this.ms('slow') + 260 }); this.rainbow(btn, { n: 5, speed: 420, life: 0.7 }); }
       if (sel) { this.pop(sel, 'm-reel', { ms: this.ms('slow') + 60 }); this.glitch(sel); }
       this.scene();
@@ -506,10 +507,11 @@
       }, true);
       // a select changed by hand: its LCD glitches once
       document.addEventListener('change', (e) => {
-        const t = e.target; if (!t || t.tagName !== 'SELECT' || !this.glitch(t)) return;
+        const t0 = e.target; if (!t0 || t0.tagName !== 'SELECT') return;
+        const t = t0._neon || t0; if (!this.glitch(t)) return; // (S9.2: its neon button)
         this.burst(t, { n: 8 });
-        if (t.id === 'preset') { this.pop(t, 'm-reel', { ms: this.ms('slow') + 60 }); this.scene(); } // S7.4: a landscape chosen: its name rolls in, the scene reacts
-        if (t.id === 'mood') this.pop(document.querySelector('#dice .m-die'), 'm-dice', { ms: this.ms('slow') + 260 }); // the die shivers: the next landscape takes this mood
+        if (t0.id === 'preset') { this.pop(t, 'm-reel', { ms: this.ms('slow') + 60 }); this.scene(); } // S7.4: a landscape chosen: its name rolls in, the scene reacts
+        if (t0.id === 'mood') this.pop(document.querySelector('#dice .m-die'), 'm-dice', { ms: this.ms('slow') + 260 }); // the die shivers: the next landscape takes this mood
       }, true);
       // hover (a fine pointer): the control under it lifts in 3D and leans towards the pointer (css .m-tilt, --m-rx /
       // --m-ry), one element at a time, at most once per frame

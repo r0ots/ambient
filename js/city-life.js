@@ -121,10 +121,10 @@
     };
     return L.cache;
   }
-  // the chord sign's text (cached by name and size): the name in neon, VT323
+  // the chord sign's text (cached by name and size): the name in neon, Chakra Petch (S9.2)
   function signText(name, fs) {
     const key = name + '|' + fs; let c = L.signs.get(key); if (c) return c;
-    const m = canvas(8, 8).getContext('2d'); m.font = fs + 'px VT323, "IBM Plex Mono", monospace';
+    const m = canvas(8, 8).getContext('2d'); m.font = '600 ' + fs + 'px "Chakra Petch", sans-serif';
     const w = Math.ceil(m.measureText(name).width) + fs; c = canvas(w, Math.ceil(fs * 1.2));
     const x = c.getContext('2d'); x.font = m.font; x.textAlign = 'center'; x.textBaseline = 'middle';
     x.shadowColor = '#5ff0ff'; x.shadowBlur = fs * 0.35; x.fillStyle = '#5ff0ff'; x.fillText(name, w / 2, c.height / 2);

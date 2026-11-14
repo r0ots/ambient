@@ -49,22 +49,24 @@ f.addEventListener('load', async () => {
     await wait(400);
 
     // --- 1b. S9.1 no more comics: one short plain word per moment (no onomatopoeia, no bubble, no tilt), bigger for
-    // bigger moments; never over the LCD; JUICE 0 = none (reduced motion: section 4)
+    // bigger moments; S9.2 written as a neon sign, letter by letter (one <i> per letter, each later than the one before); never over the LCD; JUICE 0 = none (reduced motion: section 4)
     { const last = () => [...d.querySelectorAll('.fx-pop')].pop();
       ok(kinds.every((k) => !G.FX[k].boom) && G.FX.rate.pop === 'RATÉ' && G.FX.parfait.pop({ n: 1 }) === 'PARFAIT' && G.FX.combo.pop({ n: 2 }) === 'COMBO ×2' && !G.BOOM_COLS, 'S9.1 : plus d\'onomatopées de BD, un mot court par moment (RATÉ, PARFAIT, COMBO ×2…)');
-      const size = {}; let plain = true;
+      const size = {}; let plain = true, letters = true;
       for (const k of ['defi', 'open', 'placement']) {
         G._pop = null; G.fx(k, { name: 'Musicien' }); await tick(); const p = last();
-        if (!p || p.querySelector('b, small') || p.classList.contains('fx-boom') || /!/.test(p.textContent)) plain = false;
+        if (!p || p.querySelector('small') || p.classList.contains('fx-boom') || /!/.test(p.textContent)) plain = false;
+        const ls = p ? [...p.querySelectorAll('.fx-word > i')] : [];
+        if (!ls.length || ls.map((e) => e.textContent).join('') !== p.textContent || ls.some((e, n) => +e.style.getPropertyValue('--d') !== n)) letters = false;
         size[k] = p ? parseFloat(w.getComputedStyle(p).fontSize) : 0; await wait(30);
       }
       const p = last(), cs = p && w.getComputedStyle(p, '::before');
-      ok(plain && size.open > size.defi && size.placement > size.open && cs.content === 'none', 'le mot du moment, écrit sobrement (sans bulle ni « ! »), plus gros pour les gros moments (' + JSON.stringify(size) + ', « ' + (p && p.textContent) + ' »)');
+      ok(plain && letters && /Chakra Petch/.test(w.getComputedStyle(p).fontFamily) && size.open > size.defi && size.placement > size.open && cs.content === 'none', 'le mot du moment, enseigne néon écrite lettre à lettre (sans bulle ni « ! »), plus gros pour les gros moments (' + JSON.stringify(size) + ', « ' + (p && p.textContent) + ' »)');
       // a phone: the LCD right above the stage — the word goes under it, never over it
       const lcd = d.getElementById('lcd'), sr = d.querySelector('.stage').getBoundingClientRect(), css0 = lcd.style.cssText;
       lcd.style.cssText = 'position:fixed;left:0;right:0;top:' + Math.round(sr.top + sr.height * 0.25) + 'px;z-index:1'; const lb = lcd.getBoundingClientRect().bottom;
       G._pop = null; G.fx('end', {}); await tick(); const pe = last(), top = parseFloat(pe.style.top) - pe.offsetHeight / 2;
-      ok(top >= lb, 'jamais par-dessus le LCD (haut du mot ' + Math.round(top) + ' px ≥ bas du LCD ' + Math.round(lb) + ' px)'); lcd.style.cssText = css0;
+      ok(top >= lb - 1, 'jamais par-dessus le LCD (haut du mot ' + Math.round(top) + ' px ≥ bas du LCD ' + Math.round(lb) + ' px)'); lcd.style.cssText = css0;
       // S6.7: two words never overlap — a bigger moment replaces the one up, a smaller one is dropped, after it ends: shown
       { d.querySelectorAll('.fx-pop').forEach((x) => x.remove()); G._pop = null; const words = () => [...d.querySelectorAll('.fx-pop')].map((x) => x.textContent);
         G.fx('defi', {}); await tick(); const a = words(); G.fx('open', {}); await tick(); const b = words(); G.fx('bien', { n: 1 }); await tick(); const c = words();

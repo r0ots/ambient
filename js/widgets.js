@@ -109,6 +109,7 @@
     sp.options.forEach((o) => { const op = h('option', null, (sp.labels && sp.labels[o]) || o); op.value = o; s.append(op); });
     s.addEventListener('change', () => store.set(key, s.value, 'user'));
     wrap.append(s, h('div', 'k-lab', sp.label));
+    neonSelect(s);
     widgets[key] = { render: () => { s.value = store.get(key); }, el: wrap };
     widgets[key].render();
     return wrap;
@@ -139,6 +140,150 @@
     return b;
   }
 
+  // ---------- S9.2 the neon list: ONE component in place of every <select> (no system menu anywhere) ----------
+  // The native <select> stays in the page, hidden, as the source of truth (value, options, 'change': the code and the
+  // tests keep using it); a button shows its choice and opens a list of neon rows (fixed, over everything). Keyboard:
+  // ↑ ↓ (Home / End) move, Entrée / Espace choose, Échap closes (and undoes a timbre being tried), Tab chooses and goes
+  // on; a click outside closes; aria: button (haspopup = listbox, expanded) + listbox / option (selected,
+  // activedescendant). A timbre (a layer's « wave »): each row tried is heard at once (the layer plays it).
+  const NS = new WeakMap();
+  const PROTO = {}; ['value', 'selectedIndex'].forEach((k) => { PROTO[k] = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, k); });
+  let openSt = null, uid = 0;
+  function nsName(sel) {
+    const a = sel.getAttribute('aria-label'); if (a) return a;
+    const lb = sel.closest('label');
+    return lb ? [...lb.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(' ').trim() : sel.title || '';
+  }
+  function nsLayer(sel) { const w = sel.closest('.ctl.sel[data-key]'), k = w && w.dataset.key; return k && /\.wave$/.test(k) ? k.split('.')[0] : null; }
+  // a timbre tried: the layer plays a note of the key (a chord for the Pad; the Drone is heard as it holds)
+  function previewTimbre(layer) {
+    const E = AMB.engine, L = AMB.layers && AMB.layers[layer], S = AMB.seq, T = AMB.theory;
+    if (!E || !E.ctx || !L || !S || !S.scale || !T || typeof L !== 'object') return;
+    const t = E.ctx.currentTime + 0.02, m = (d, o) => T.degreeToMidi(d, S.root, S.scale, o);
+    try {
+      if (typeof L.playChord === 'function') L.playChord([m(0, 3), m(2, 3), m(4, 3)], t, 1.2);
+      else if (layer === 'bass' && L.note) L.note(m(0, 2), t, 0.5);
+      else if (L.note) L.note(m(4, 4), t, 0.75, true, 0.5, { bright: null, dest: S.playing || !S.liveDest ? null : S.liveDest(L) });
+    } catch (e) { /* a layer that cannot play now: the choice stays */ }
+  }
+  function neonSelect(sel) {
+    if (!sel || NS.has(sel) || sel.multiple || !sel.parentNode) return null;
+    const btn = h('button', 'nsel-btn'), val = h('span', 'nsel-val'), car = h('i', 'nsel-car', '▾');
+    btn.type = 'button'; car.setAttribute('aria-hidden', 'true'); btn.append(val, car);
+    btn.setAttribute('aria-haspopup', 'listbox'); btn.setAttribute('aria-expanded', 'false');
+    if (sel.id) btn.dataset.for = sel.id;
+    if (sel.title) btn.title = sel.title;
+    btn.classList.add(...[...sel.classList]); // (its size rules: .song-bars, .loop-len…)
+    sel.classList.add('nsel-native'); sel.tabIndex = -1; sel.setAttribute('aria-hidden', 'true');
+    sel.after(btn);
+    const st = { sel, btn, list: null, act: -1, orig: -1, layer: nsLayer(sel) };
+    const sync = () => {
+      const o = sel.options[PROTO.selectedIndex.get.call(sel)];
+      val.textContent = o ? o.textContent : '';
+      btn.disabled = sel.disabled;
+      btn.setAttribute('aria-label', `${nsName(sel)} : ${val.textContent}`.replace(/^ : /, ''));
+      if (st.list) st.list.querySelectorAll('[role=option]').forEach((li) => li.setAttribute('aria-selected', +li.dataset.i === sel.selectedIndex));
+    };
+    st.sync = sync;
+    // set by code (sel.value = …, a list refilled): the button follows
+    for (const k of ['value', 'selectedIndex']) Object.defineProperty(sel, k, { configurable: true, get() { return PROTO[k].get.call(this); }, set(v) { PROTO[k].set.call(this, v); sync(); } });
+    new MutationObserver(sync).observe(sel, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled', 'label'] });
+    btn.addEventListener('click', () => (st.list ? nsClose(st) : nsOpen(st)));
+    btn.addEventListener('keydown', (e) => { if (!st.list && /^(ArrowDown|ArrowUp)$/.test(e.key)) { e.preventDefault(); e.stopPropagation(); nsOpen(st); } });
+    NS.set(sel, st); sel._neon = btn;
+    sync();
+    return btn;
+  }
+  function nsOpts(st) { return [...st.list.querySelectorAll('[role=option]:not([aria-disabled=true])')]; }
+  function nsOpen(st) {
+    const { sel, btn } = st; if (st.list || sel.disabled) return;
+    if (openSt) nsClose(openSt, false);
+    const ul = h('ul', 'nsel-list'); ul.id = 'nsel-' + ++uid; ul.tabIndex = -1;
+    ul.setAttribute('role', 'listbox'); ul.setAttribute('aria-label', nsName(sel));
+    const c = getComputedStyle(btn).getPropertyValue('--c').trim(); if (c) ul.style.setProperty('--c', c);
+    const add = (o) => {
+      const li = h('li', 'nsel-opt', o.textContent); li.id = `${ul.id}-${o.index}`; li.dataset.i = o.index;
+      li.setAttribute('role', 'option'); li.setAttribute('aria-selected', o.index === sel.selectedIndex);
+      if (o.disabled) li.setAttribute('aria-disabled', 'true');
+      ul.append(li);
+    };
+    for (const ch of sel.children) {
+      if (ch.tagName === 'OPTGROUP') { const g = h('li', 'nsel-grp', ch.label); g.setAttribute('role', 'presentation'); ul.append(g); [...ch.children].forEach(add); } else if (ch.tagName === 'OPTION') add(ch);
+    }
+    document.body.append(ul);
+    st.list = ul; st.orig = sel.selectedIndex; openSt = st;
+    btn.setAttribute('aria-expanded', 'true'); btn.setAttribute('aria-controls', ul.id); btn.classList.add('open');
+    nsPlace(st); nsAct(st, sel.selectedIndex);
+    ul.addEventListener('pointermove', (e) => { const li = e.target.closest('[role=option]'); if (li && li.getAttribute('aria-disabled') !== 'true') nsAct(st, +li.dataset.i, false); });
+    ul.addEventListener('click', (e) => { const li = e.target.closest('[role=option]'); if (li && li.getAttribute('aria-disabled') !== 'true') { nsChoose(st, +li.dataset.i, true); nsClose(st); } });
+    ul.addEventListener('keydown', (e) => nsKey(st, e));
+    ul.focus({ preventScroll: true });
+    const M = AMB.motion;
+    if (M && M.on() && ul.animate) {
+      const up = ul.classList.contains('up');
+      ul.style.transformOrigin = up ? '50% 100%' : '50% 0';
+      ul.animate([{ opacity: 0, transform: `scaleY(${1 - 0.6 * Math.min(1, M.amp())})`, filter: 'brightness(2.2)' }, { opacity: 1, transform: 'none', filter: 'none' }],
+        { duration: M.ms('med'), easing: M.EASE.spring });
+      M.stagger(ul.children, { y: up ? 6 : -6, max: 10 });
+    }
+  }
+  function nsPlace(st) {
+    const r = st.btn.getBoundingClientRect(), ul = st.list, vh = innerHeight, vw = innerWidth, below = vh - r.bottom - 10, above = r.top - 10;
+    const up = below < 180 && above > below;
+    ul.classList.toggle('up', up);
+    ul.style.minWidth = Math.max(140, r.width) + 'px';
+    ul.style.maxHeight = Math.max(120, Math.min(420, up ? above : below)) + 'px';
+    const w = ul.offsetWidth, left = Math.max(6, Math.min(r.left, vw - w - 6));
+    ul.style.left = left + 'px';
+    if (up) { ul.style.top = 'auto'; ul.style.bottom = (vh - r.top + 4) + 'px'; } else { ul.style.bottom = 'auto'; ul.style.top = (r.bottom + 4) + 'px'; }
+  }
+  function nsAct(st, i, scroll = true) {
+    const ul = st.list; if (!ul) return;
+    const li = ul.querySelector(`[data-i="${i}"]`); st.act = li ? i : -1;
+    ul.querySelectorAll('.act').forEach((x) => x.classList.remove('act'));
+    if (!li) { ul.removeAttribute('aria-activedescendant'); return; }
+    li.classList.add('act'); ul.setAttribute('aria-activedescendant', li.id);
+    if (scroll) { const top = li.offsetTop, bot = top + li.offsetHeight; if (top < ul.scrollTop) ul.scrollTop = top; else if (bot > ul.scrollTop + ul.clientHeight) ul.scrollTop = bot - ul.clientHeight; }
+  }
+  function nsChoose(st, i, hear) {
+    const sel = st.sel;
+    if (i !== sel.selectedIndex) {
+      PROTO.selectedIndex.set.call(sel, i); st.sync();
+      sel.dispatchEvent(new Event('input', { bubbles: true })); sel.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (hear && st.layer) previewTimbre(st.layer);
+  }
+  function nsKey(st, e) {
+    e.stopPropagation(); // (A–L, Espace…: the list has the keys, not the instrument)
+    const o = nsOpts(st), k = o.findIndex((li) => +li.dataset.i === st.act);
+    const go = (j) => { const li = o[Math.max(0, Math.min(o.length - 1, j))]; if (!li) return; nsAct(st, +li.dataset.i); if (st.layer) nsChoose(st, +li.dataset.i, true); };
+    if (e.key === 'ArrowDown') { e.preventDefault(); go(k + 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); go(k - 1); }
+    else if (e.key === 'Home') { e.preventDefault(); go(0); }
+    else if (e.key === 'End') { e.preventDefault(); go(o.length - 1); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (st.act >= 0) nsChoose(st, st.act, !st.layer); nsClose(st); }
+    else if (e.key === 'Escape') { e.preventDefault(); if (st.layer && st.sel.selectedIndex !== st.orig) nsChoose(st, st.orig, false); nsClose(st); }
+    else if (e.key === 'Tab') { if (st.act >= 0) nsChoose(st, st.act, false); nsClose(st, false); }
+  }
+  function nsClose(st, focus = true) {
+    if (!st || !st.list) return;
+    const ul = st.list; st.list = null; if (openSt === st) openSt = null;
+    st.btn.setAttribute('aria-expanded', 'false'); st.btn.removeAttribute('aria-controls'); st.btn.classList.remove('open');
+    ul.remove();
+    if (focus && st.btn.isConnected) st.btn.focus({ preventScroll: true });
+  }
+  // a click outside, the window resized or scrolled under it: the open list closes (as it is)
+  document.addEventListener('pointerdown', (e) => { if (openSt && !openSt.list.contains(e.target) && !openSt.btn.contains(e.target)) nsClose(openSt, false); }, true);
+  window.addEventListener('resize', () => openSt && nsClose(openSt, false));
+  document.addEventListener('scroll', (e) => { if (openSt && !(e.target instanceof Node && openSt.list.contains(e.target))) nsClose(openSt, false); }, true);
+  // every select of the page, now and to come (panels rebuilt, looper, song, scenes)
+  function neonAll(root) { if (root.tagName === 'SELECT') neonSelect(root); else if (root.querySelectorAll) root.querySelectorAll('select').forEach(neonSelect); }
+  const start = () => {
+    neonAll(document);
+    new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) neonAll(n); }).observe(document.body, { childList: true, subtree: true });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+
   AMB.dom = { $, h, bind };
-  AMB.widgets = { registry: widgets, knob, select, textField, toggle };
+  AMB.widgets = { registry: widgets, knob, select, textField, toggle, neonSelect, neonClose: () => nsClose(openSt, false), neonOpen: (sel) => { const s = NS.get(sel); if (s) nsOpen(s); return s && s.list; } };
 })();
