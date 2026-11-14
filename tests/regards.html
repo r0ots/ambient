@@ -122,10 +122,13 @@ f.addEventListener('load', async () => {
     // ===== S6.7a (a child of 9 on a 390 px phone, a musician at his desk) =====
     { G.reset(); await wait(30); Gd.showTree(false); A.perform.setMode('sculpt'); w.scrollTo(0, 0); await wait(50);
       const rect = (s) => d.querySelector(s).getBoundingClientRect(), padTop = () => Math.round(rect('#pads').top);
+      // a celebration's quake (fx-quake, a transient translate of .app's children) may still be playing on a loaded machine:
+      // the layout is what must not move, so wait for the quakes to end before measuring
+      const calm = async () => { for (let i = 0; i < 40 && d.getAnimations().some((a) => /fx-quake|fx-shake/.test(a.animationName || '')); i++) await wait(50); };
       // 7. the Rec appearing and the challenge's help on the LCD never move the pads
-      const p0 = padTop(); G.unlock('t.rec'); for (let t = 0; t < 60 && Gd.seq; t++) await wait(40); Gd.showTree(false); w.scrollTo(0, 0); await wait(80);
-      const p1 = padTop(), recIn = css('.tgrp:has(#rec)', 'display') !== 'none';
-      d.querySelector('#lcdTask .lcd-task-txt').click(); await wait(30); const help = d.getElementById('lcdTask').classList.contains('help'), p2 = padTop();
+      await calm(); const p0 = padTop(); G.unlock('t.rec'); for (let t = 0; t < 60 && Gd.seq; t++) await wait(40); Gd.showTree(false); w.scrollTo(0, 0); await wait(80);
+      await calm(); const p1 = padTop(), recIn = css('.tgrp:has(#rec)', 'display') !== 'none';
+      d.querySelector('#lcdTask .lcd-task-txt').click(); await wait(30); await calm(); const help = d.getElementById('lcdTask').classList.contains('help'), p2 = padTop();
       d.querySelector('#lcdTask .lcd-task-txt').click(); await wait(30);
       ok(recIn && help && p0 === p1 && p1 === p2, 'S6.7 : l\'arrivée de ● Rec et l\'aide du défi sur le LCD ne bougent pas les pastilles (' + [p0, p1, p2].join(' → ') + ' px)');
       // 2 + 6. the end of the path at 390 px: a compact bar, the city and the pads together in the window, no chord / tempo over the city

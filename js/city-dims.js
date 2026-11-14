@@ -103,7 +103,15 @@
     // the cost of the heavy layers (trails, grading), watched over 40 frames: above SLOW_MS, that layer goes (or simpler)
     // for the session — a software canvas (no GPU) cannot afford them
     slow: {}, costs: {}, SLOW_MS: 2.5, // (the grading is two plain fills: not watched)
-    cost(name, ms) { const c = this.costs[name] || (this.costs[name] = { n: 0, s: 0 }); if (++c.n > 5) c.s += ms; if (c.n >= 45) { if (c.s / 40 > this.SLOW_MS && !this.noSlow) this.slow[name] = true; c.n = 0; c.s = 0; } },
+    // quick verdict first (the 3 frames after the first two: a software canvas costs ~15 ms there, a GPU one < 0.5 ms),
+    // then a sliding check over 40 frames
+    cost(name, ms) {
+      const c = this.costs[name] || (this.costs[name] = { n: 0, s: 0, q: 0, first: true });
+      c.n++;
+      if (c.first) { if (c.n > 2) c.q += ms; if (c.n === 5) { c.first = false; if (c.q / 3 > this.SLOW_MS && !this.noSlow) this.slow[name] = true; c.n = 0; } return; }
+      if (c.n > 5) c.s += ms;
+      if (c.n >= 45) { if (c.s / 40 > this.SLOW_MS && !this.noSlow) this.slow[name] = true; c.n = 0; c.s = 0; }
+    },
     // ---- Lumière: a wave sweeps the power field from the left, at the gesture's speed (screen widths / s)
     wave(G, dv) {
       const target = this.powerTarget(this.lastC), speed = clamp(0.45 + 0.9 * G.rate, 0.45, 4.5), w = this.waves[this.waves.length - 1];
